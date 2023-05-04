@@ -27,7 +27,6 @@ import weakref
 from eflips.settings import globalConstants, rcParams
 from eflips.helperFunctions import createEvalScheme, add_class_attribute, \
     complex_setter, change_getter
-from eflips.misc import translate
 from inspect import getsourcelines
 from openpyxl import load_workbook
 import matplotlib.patches as patches
@@ -35,8 +34,6 @@ import math
 from itertools import cycle
 
 # Caution: rcParams is not actively called, but required for matplotlib
-
-from eflips.misc import ArgumentError
 
 class DataLogger:
     """Log attributes and properties of one object continuously or only
@@ -155,7 +152,7 @@ class DataLogger:
         """
         sub_attr_list = attr.split('.')
         # attribute in main object (vehicle.attr)
-        if len(sub_attr_list) is 1:
+        if len(sub_attr_list) == 1:
             # check if attribute is a property; if not:
             if eval('isinstance(getattr(type(self.logObj)'
                     + ', \'' + attr + '\', None)'
@@ -273,7 +270,7 @@ class DataLogger:
         """
         sub_attr_list = attr.split('.')
         # attribute in main object (vehicle.attr)
-        if len(sub_attr_list) is 1:
+        if len(sub_attr_list) == 1:
             # check if attribute is a property; if not:
             if eval('isinstance(getattr(type(self.logObj)'
                     + ', \'' + attr + '\', None)'
@@ -490,7 +487,7 @@ class DataGatherer:
                                                          [key]).keys())
                                                 - set(attributes))
                     for sub_attr in attributes:
-                        if sub_attr is not 'env':  # no need for env
+                        if sub_attr != 'env':  # no need for env
                             new_attr = attr + '.' + sub_attr
                             # create new dict e.g. data[1]['state.velocity']
                             self.data[idx][new_attr] = {}

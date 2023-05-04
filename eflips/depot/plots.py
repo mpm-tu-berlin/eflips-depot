@@ -19,28 +19,28 @@ ev.vehicle_periods(
 ev.nvehicles_used(save=True, show=True)
 ev.departure_delay_vt(save=True, show=True)
 
-ev.sl_all(save=False, show=True)
+ev.sl_all(save=True, show=True)
 
-ev.nvehicles_initstore_end(save=False, show=True)
-ev.nvehicles_area('S_1', save=False, show=True)
+ev.nvehicles_initstore_end(save=True, show=True)
+ev.nvehicles_area('S_1', save=True, show=True)
 
-ev.usage_history('workers_service', save=False, show=True)
-ev.usage_history('shunting_service', save=False, show=True)
+ev.usage_history('workers_service', save=True, show=True)
+ev.usage_history('shunting_service', save=True, show=True)
 
-ev.area_history('SB_DC 1', save=False, show=True)
-ev.battery_level('SB_DC 1', save=False, show=True)
-ev.vehicle_power('SB_DC 1', save=False, show=True)
+ev.area_history('SB_DC 1', save=True, show=True)
+ev.battery_level('SB_DC 1', save=True, show=True)
+ev.vehicle_power('SB_DC 1', save=True, show=True)
 
-ev.idle_time_dist(charge_IDs=('charge_dc', 'charge_oc'), bins=60, save=False, show=True)
+ev.idle_time_dist(charge_IDs=('charge_dc', 'charge_oc'), bins=60, save=True, show=True)
 
-ev.arrival_soc(typs={'SB_DC': '#2ca02c', 'AB_OC': '#CD3333'}, formats=('pdf', 'png',), save=False, show=True, language='de')
-ev.departure_soc(typs={'SB_DC': '#2ca02c', 'AB_OC': '#CD3333'}, formats=('pdf', 'png',), save=False, show=True, language='de')
+ev.arrival_soc(typs={'SB_DC': '#2ca02c', 'AB_OC': '#CD3333'}, formats=('pdf', 'png',), save=True, show=True, language='de')
+ev.departure_soc(typs={'SB_DC': '#2ca02c', 'AB_OC': '#CD3333'}, formats=('pdf', 'png',), save=True, show=True, language='de')
 
-ev.congestion(save=False, show=True)
+ev.congestion(save=True, show=True)
 ev.occupancy_rate()
 
-ev.lead_time_match_scatter(save=False, show=True)
-ev.lead_time_match_dist(save=False, show=True)
+ev.lead_time_match_scatter(save=True, show=True)
+ev.lead_time_match_dist(save=True, show=True)
 
 for resource in ev.depot.resources:
     if resource[0:2] == "ci":

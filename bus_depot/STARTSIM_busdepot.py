@@ -14,9 +14,11 @@ import eflips
 simulate_with_gui = False
 
 # Switch for simulation with smart charging
-simulate_with_smart_charging = True
+simulate_with_smart_charging = False
 
-######## SETTINGS, SCHEDULE AND TEMPLATE FOR DEPOT LAYOUT (DISSERTATION E.LAUTH) ########
+######## SETTINGS, SCHEDULE AND TEMPLATE FOR DEPOT LAYOUT #####
+# DEFAULT = EXAMPLE DISSERTATION E.LAUTH, https://depositonce.tu-berlin.de/items/f47662f7-c9ae-4fbf-9e9c-bcd307b73aa7)
+
 filename_eflips_settings = '..\\bus_depot\\eflips_settings\\kls_diss_settings_210219'
 filename_schedule = '..\\bus_depot\\schedules\\schedule_kls_diss_scenario1_SB_DC_AB_OC_210203'
 filename_template = '..\\bus_depot\\templates\\diss_kls_6xS, 94x150kW_SB, 147x75kW_AB, shunting+precond+chargeequationsteps'
