@@ -1,0 +1,21 @@
+{
+    "descr": "This is example data for Testskripte/Demo_eflipsSettings2_usage_demo.py.",
+    "dict": {
+        "eins": 1,
+        "zwei": 2
+    },
+    "list": [
+        1,
+        2
+    ],
+    "tuple": [
+        1,
+        2
+    ],
+    "str": "1.2",
+    "int": 1,
+    "float": 1.2,
+    "bool_true": true,
+    "bool_false": false,
+    "None": null
+}

@@ -1,0 +1,276 @@
+<!--
+    author: B.Bober
+    -->
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:eflips"
+        WindowStartupLocation="CenterScreen"
+        Title="Depot GUI" Height="1000" Width="1800" Name="Window">
+    <Window.Resources>
+        <ResourceDictionary>
+            <Style x:Key="ParkingLotBorder" TargetType="Border">
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="BorderBrush" Value="Black" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="WhiteSmoke" />
+                <Setter Property= "Margin" Value="20, 0, 0, 0"/>  <!--left, top, right, bottom-->
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="LightGray" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!--Style x:Key="DepotAreaBorder" TargetType="Border" BasedOn="{StaticResource ParkingLotBorder}">
+                <Setter Property="Width" Value="160" />
+                <Setter Property="Height" Value="120" />
+                <Setter Property= "Margin" Value="2"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="LightGray" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>-->
+
+            <Style x:Key="VehicleSlot" TargetType="Rectangle">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Stroke" Value="Black" />
+                <Setter Property="Width" Value="60" />
+                <Setter Property="Height" Value="18" />
+                <Setter Property="Margin" Value="2, 2, 2, 2"/> <!--left, top, right, bottom-->
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Fill" Value="LightGray" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Vertical" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="15, 2, 15, 2"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="90" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Horizontal" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Left_12m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -20.5, 2, -20.5"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Left_Last_12m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -20.5, 2, 2"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Right_12m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -20.5, 2, -20.5"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="-45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Right_Last_12m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -20.5, 2, 2"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="-45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+                        <Style x:Key="VehicleSlot_Angle_Left_18m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -35, 2, -35"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Left_Last_18m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -35, 2, 2"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Right_18m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -35, 2, -35"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="-45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="VehicleSlot_Angle_Right_Last_18m" TargetType="Rectangle" BasedOn="{StaticResource VehicleSlot}">
+                <Setter Property="Margin" Value="2, -35, 2, 2"/> <!--left, top, right, bottom-->
+                <Setter Property="LayoutTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="-45" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="TitleLabel" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="FontWeight" Value="Bold" />
+            </Style>
+
+            <Style x:Key="DescriptionLabel" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Bottom"/>
+                <Setter Property="Margin" Value="0"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="5" />
+            <ColumnDefinition Width="300" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition Height="*"  />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="120" />
+        </Grid.RowDefinitions>
+        <GridSplitter Grid.Row="2" Height="5" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" />
+        <GridSplitter Name="GSMain" Grid.Row="1" Grid.Column="1" Width="5" Grid.RowSpan="2" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+
+        <Menu Padding="5" Grid.ColumnSpan="3">
+            <MenuItem Header="_Application">
+                <MenuItem Header="_Start Simulation" Name="MbnStartSimulation"/>
+                <Separator Margin="10" />
+                <MenuItem Header="_Close" Name="MbnClose"/>
+            </MenuItem>
+            <MenuItem Name="MbnView" Header="_View">
+                <MenuItem Header="_Show Properties Inspector" Name="MbnShowProperties" IsCheckable="true" IsChecked="True" />
+                <MenuItem Header="_Show Timetable" Name="MbnShowTimeTable" IsCheckable="true" IsChecked="False"/>
+            </MenuItem>
+            <MenuItem Header="_Depot" Name="MbnDepot">
+                <MenuItem Header="_Add Depot Area..." Name="MbnAddArea" IsEnabled="False"/>
+                <MenuItem Header="_Depot Settings..." Name="MbnSettings"/>
+                <MenuItem Header="_Reset Depot" Name="MbnResetDepot"/>
+            </MenuItem>
+            <MenuItem Name="MbnAnalysis" Header="_Analysis" IsEnabled="False">
+                <MenuItem Header="_Export Simulation Analysis..." Name="MbnExportAnalysis"/>
+            </MenuItem>
+            <MenuItem Header="_Debugging" Height="20" Name="MbnDebugging" Visibility="Collapsed">
+                <MenuItem Header="_Show TimeTable Queue" Name="MbnTest1"/>
+                <MenuItem Header="_Test2" Name="MbnTest2" Visibility="Collapsed"/>
+                <MenuItem Header="_Test3" Name="MbnTest3" Visibility="Collapsed"/>
+            </MenuItem>
+        </Menu>
+        <Border Name="BrdMain" BorderThickness="1" BorderBrush="Gray" CornerRadius="5" Margin="5" Grid.Row="1">
+            <ScrollViewer Margin="5" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <Canvas Name="VisualizationArea" />
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="1" Grid.Column="2" Margin="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height=".6*" />
+                <RowDefinition Height="5" />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <GridSplitter Name="GSDetailsH" Grid.ColumnSpan="3" Grid.Row="1" Height="5" HorizontalAlignment="Stretch" />
+            <GridSplitter Name="GSDetailsV" Grid.Column="1" Width="5" Grid.RowSpan="3" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Visibility="Collapsed" />
+
+            <GroupBox Name="GbxDepotProperties" Header="Depot Properties" Grid.ColumnSpan="3">
+                <ListView Name="LvDepotProperties">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding [0]}" Width="160" />
+                            <GridViewColumn Header="Value" DisplayMemberBinding="{Binding [1]}" Width="80" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </GroupBox>
+            <GroupBox Name="GbxItemProperties" Header="Object Properties"  Grid.Row="2" Grid.ColumnSpan="3">
+                <ListView Name="LvItemProperties">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding [0]}" Width="160" />
+                            <GridViewColumn Header="Value" DisplayMemberBinding="{Binding [1]}" Width="80" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </GroupBox>
+
+            <GroupBox Name="GbxTimeTable" Header="Timetable (debug info)" Grid.Column="2" Grid.RowSpan="3" Visibility="Collapsed">
+                <ListView Name="LvTimeTable">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="ID" DisplayMemberBinding="{Binding [0]}" Width="100" />
+                            <GridViewColumn Header="Type" DisplayMemberBinding="{Binding [1]}" Width="60" />
+                            <GridViewColumn Header="std" DisplayMemberBinding="{Binding [2]}" Width="60" />
+                            <GridViewColumn Header="atd" DisplayMemberBinding="{Binding [3]}" Width="60" />
+                            <GridViewColumn Header="overdue" DisplayMemberBinding="{Binding [4]}" Width="60" />
+                            <GridViewColumn Header="vehicle" DisplayMemberBinding="{Binding [5]}" Width="60" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </GroupBox>
+        </Grid>
+
+        <ListView Name="LvLog" Margin="3" Grid.Row="3" Grid.ColumnSpan="2">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="System Time" DisplayMemberBinding="{Binding [0]}" Width="130" />
+                    <GridViewColumn Header="Sim Time" DisplayMemberBinding="{Binding [1]}" Width="130" />
+                    <GridViewColumn Header="Sim DayTime" DisplayMemberBinding="{Binding [2]}" Width="130" />
+                    <GridViewColumn Header="Level" DisplayMemberBinding="{Binding [3]}" Width="80" />
+                    <GridViewColumn Header="Event" DisplayMemberBinding="{Binding [4]}" Width="440" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <Grid Grid.Row="3" Grid.Column="2" Margin="4">
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Button Name="BtnStart" Content="Start" Margin="10" />
+            <Button Grid.Column="1"  Name="BtnReset" Content="Stop / Reset" Margin="10" IsEnabled="False" />
+            <GroupBox Grid.Row="1" Grid.ColumnSpan="2"  Name="GbxDeceleration"  Header="Simulation Deceleration: 100ms / step" Margin="2">
+                <Slider Name="SldDeceleration" Margin="2" Minimum="0" Maximum="1000" Value="100" IsSnapToTickEnabled="True" TickFrequency="100" />
+            </GroupBox>
+            <StackPanel Name="PnlSimEnd" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.RowSpan="2" Grid.ColumnSpan="2" Visibility="Collapsed">
+                <Label HorizontalAlignment="Center" VerticalAlignment="Center" Content="Simulation has ended." />
+                <Label HorizontalAlignment="Center" VerticalAlignment="Center" Content="Analysis available for export." />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

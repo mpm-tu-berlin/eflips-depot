@@ -1,0 +1,96 @@
+{
+    "general": {
+        "SIMULATION_TIME": 259200,
+        "START_DAY": 86400,
+        "AMBIENT_TEMPERATURE": -10,
+        "AMBIENT_HUMIDITY": 0.4,
+        "LOG_ATTRIBUTES": true,
+        "LOG_CONTINUOUSLY": false,
+        "LOG_SPECIFIC_STEPS": true,
+        "LOG_COPIES": false,
+        "DEFAULT_PLOT_SIZE": [
+            15,
+            9
+        ],
+        "FLEXPRINT_SWITCHES": {
+            "operations": false,
+            "dispatch": false,
+            "objID": false,
+            "timetable": false,
+            "dispatch2": false,
+            "processes": false,
+            "res_break": false,
+            "parking_full": false,
+            "departure_before_fully_charged": false,
+            "departure_before_fully_charged_2": false,
+            "departure_before_fully_charged_3": false,
+            "vehicle_reconsideration": false,
+            "vehicle_reassignment": true
+        }
+    },
+    "network": {
+        "PASSENGER_WEIGHT": 68,
+        "DELAY_MODE": "delaydata",
+        "RANDOM_DELAY_MIN": -10,
+        "RANDOM_DELAY_MAX": 20,
+        "WAIT_FOR_CHARGING": false,
+        "SKIP_CHARGING_WHEN_OCCUPIED": true,
+        "CHARGING_SLOT_TIMEOUT": 10,
+        "DEBUG_MSGS": true
+    },
+    "depot": {
+        "vehicle_types": {
+
+        },
+        "substitutable_types": [
+
+        ],
+        "vehicle_count": {
+
+        },
+        "consumption_calc_mode": "soc_given",
+        "prioritize_init_store": false,
+        "allow_negative_soc": false,
+        "reset_negative_soc_to": 0.5,
+        "energy_reserve": 0,
+        "log_sl": false,
+        "sl_period": 1800,
+        "lead_time_match": 3600,
+        "path_results": "..\\eflips\\depot\\results\\",
+        "log_cm_data": false,
+        "dispatch_retrigger_interval": null,
+        "gui": {
+            "line_break": 1300,
+            "show_occupancy_rate": true,
+            "offset_line_break": [false,0],
+            "first_parking_area": "",
+            "slot_length": {
+                "default": 50
+            },
+        "blocks": [-1],
+        "distances_between_areas": 5,
+        "special_position_areas": {
+            },
+        "special_orientation_areas": {
+            }
+        },
+        "smart_charging": {
+            "start_date": [2019,6,3],
+            "power_limit_grid": 6000,
+            "accuracy": 5
+        }
+    },
+    "rcParams": {
+        "font.family": "sans-serif",
+        "font.sans-serif": "Liberation Sans, Arial, Helvetica, DejaVu Sans",
+        "axes.labelsize": 10,
+        "axes.titleweight": "normal",
+        "axes.titlesize": 10,
+        "legend.fontsize": 10,
+        "legend.frameon": true,
+        "figure.autolayout": true,
+        "figure.dpi": 150
+    },
+    "evaluationSets": {},
+    "evaluationScheme": {}
+}

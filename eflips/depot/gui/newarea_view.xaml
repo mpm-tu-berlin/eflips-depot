@@ -1,0 +1,198 @@
+<!--
+    author: B.Bober
+    -->
+    <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:eflips"
+        WindowStartupLocation="CenterScreen"
+        Title="Depot GUI - Add new depot area" Height="600" Width="800" Name="Window">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="40" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition  Width=".42*" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <GroupBox Grid.Column="1" Header="Properties">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Grid.Resources>
+                    <Style TargetType="GroupBox">
+                        <Setter Property= "Margin" Value="4"/>
+                    </Style>
+                    <Style TargetType="DockPanel">
+                        <Setter Property= "Margin" Value="4"/>
+                    </Style>
+                    <Style TargetType="Label">
+                        <Setter Property="Width" Value="100"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalAlignment" Value="Stretch"/>
+                    </Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalAlignment" Value="Stretch"/>
+                    </Style>
+                </Grid.Resources>
+                <StackPanel>
+
+                    <GroupBox Header="General Properties">
+                        <StackPanel>
+                            <DockPanel>
+                                <Label Content="Area Name:" />
+                                <TextBox Name="TxtAreaName" Text="new depotarea" />
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Short Name (3):" FontStyle="Italic" />
+                                <TextBox Name="TxtShortName" Text="" MaxLength="3" />
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="# Slots:" />
+                                <TextBox Name="TxtNoVehicleSlots" Text="2" />
+                            </DockPanel>
+                            <DockPanel Margin="4" Visibility="Collapsed">
+                                <Label Content="# Workers:" />
+                                <TextBox Name="TxtNoWorkers" Text="2" />
+                            </DockPanel>
+                            <GroupBox Margin="4">
+                                <GroupBox.Header>
+                                    <CheckBox Name="ChkVehicleType" Content="EntryCondition: Vehicle Type" />
+                                </GroupBox.Header>
+                                <Grid Margin="2" IsEnabled="{Binding Path=IsChecked, ElementName=ChkVehicleType}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Name="ChkVehicleType_DL" Margin="2, 8, 2, 2" Content="DL" HorizontalAlignment="Center" />
+                                    <CheckBox Name="ChkVehicleType_EN" Margin="2, 8, 2, 2" Content="EN" Grid.Column="1" HorizontalAlignment="Center" />
+                                    <CheckBox Name="ChkVehicleType_GN" Margin="2, 8, 2, 2" Content="GN" Grid.Column="2" HorizontalAlignment="Center" />
+                                </Grid>
+                            </GroupBox>
+                            
+                            <CheckBox Name="ChkStandbyArrival" Content="Vehicle standby after arrival" Margin="12, 8" />
+                            <CheckBox Name="ChkStandbyDeparture" Content="Vehicle standby for departure" Margin="12, 8" />
+                            
+                            <CheckBox Name="ChkIsShunt" Content="is shunt"  Margin="7, 8, 4, 4" Visibility="Collapsed">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, ElementName=ChkIsSink}" Value="True">
+                                                <Setter Property="IsChecked" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>                            
+                        </StackPanel>                        
+                    </GroupBox>
+
+
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <CheckBox Name="ChkIsSink" Content="Parking Lot (isSink)"  Margin="4" />
+                        </GroupBox.Header>
+                        <StackPanel IsEnabled="{Binding Path=IsChecked, ElementName=ChkIsSink}">
+                            <DockPanel>
+                                <Label Content="Orientation:" />
+                                <ComboBox Name="CboParkingOrientation" DisplayMemberPath="[1]" />
+                            </DockPanel>
+                            <DockPanel Visibility="Collapsed">
+                                <Label Content="Access Mode:" />
+                                <ComboBox Name="CboAccessMode" DisplayMemberPath="[1]" />
+                            </DockPanel>
+                            <DockPanel Visibility="Collapsed">
+                                <Label Content="Charging type*:" />
+                                <ComboBox Name="CboChargingType" DisplayMemberPath="[1]" />
+                            </DockPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <CheckBox Name="ChkChargingModule" Content="Charging Module" Margin="4" />
+                        </GroupBox.Header>
+                        <StackPanel IsEnabled="{Binding Path=IsChecked, ElementName=ChkChargingModule}">
+                            <CheckBox Name="ChkCharging_Mandatory" Content="mandatory" Margin="7, 8, 4, 4" />
+                            <DockPanel>
+                                <Label Content="Plug Slots:" />
+                                <TextBox Name="TxtNoChargingSlots_Plug" Text="10" />
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Induction Slots:" />
+                                <TextBox Name="TxtNoChargingSlots_Induction" Text="10" />
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Overhead Slots:" />
+                                <TextBox Name="TxtNoChargingSlots_Overhead" Text="10" />
+                            </DockPanel>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <CheckBox Name="ChkMaintenanceModule" Content="Maintenance Module" Margin="4" />
+                        </GroupBox.Header>
+                        <StackPanel IsEnabled="{Binding Path=IsChecked, ElementName=ChkMaintenanceModule}">
+                            <CheckBox Name="ChkMaintenance_Mandatory" Content="mandatory" Margin="7, 8, 4, 4" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <CheckBox Name="ChkRepairModule" Content="Repair Module" Margin="4" />
+                        </GroupBox.Header>
+                        <StackPanel IsEnabled="{Binding Path=IsChecked, ElementName=ChkRepairModule}">
+                            <CheckBox Name="ChkRepair_Mandatory" Content="mandatory" Margin="7, 8, 4, 4" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <CheckBox Name="ChkServiceModule" Content="Service Module" Margin="4" />
+                        </GroupBox.Header>
+                        <StackPanel IsEnabled="{Binding Path=IsChecked, ElementName=ChkServiceModule}">
+                            <CheckBox Name="ChkService_Mandatory" Content="mandatory" Margin="7, 8, 4, 4" />
+                        </StackPanel>
+                    </GroupBox>
+                    
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Templates">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition Height="40" />
+                </Grid.RowDefinitions>
+                <ListBox Name="LbTemplates" Margin="4"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                    <Button Name="BtnSave" Content="Save Current..." Width="100" Height="30" Margin="5" />
+                    <Button Name="BtnRemove" Content="Remove" Width="100" Height="30" Margin="5">
+                        <Button.Style>
+                            <Style>
+                                <Style.Triggers>
+                                    <DataTrigger Binding ="{Binding ElementName=LbTemplates, Path=SelectedIndex}" Value="-1">
+                                        <Setter Property="Button.IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        <StackPanel Grid.ColumnSpan="2" Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+            <Button Name="BtnOk" Content="Add" Width="100" Height="30" Margin="5" />
+            <Button Content="Cancel" Width="100" Height="30" Margin="5" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>
