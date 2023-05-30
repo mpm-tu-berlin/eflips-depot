@@ -116,8 +116,8 @@ class SimulationHost:
         the depot simulation).
         """
         eflips.load_settings(filename)
-        eflips.check_gc_validity()
-        eflips.complete_gc()
+        eflips.depot.settings_config.check_gc_validity()
+        eflips.depot.settings_config.complete_gc()
 
     def load_timetable(self, filename):
         """Load timetable data from excel and init a timetable.
