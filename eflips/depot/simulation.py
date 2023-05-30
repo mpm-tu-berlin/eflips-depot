@@ -3,12 +3,14 @@
 Initialization and hosting of a depot simulation.
 
 """
+import copy
+from abc import ABC, abstractmethod
 from collections import namedtuple
+
+import simpy
+
 import eflips
 from eflips.helperFunctions import load_json, save_json, set_by_path
-import copy
-import simpy
-from abc import ABC, abstractmethod
 
 
 class DepotHost:
@@ -78,7 +80,7 @@ class SimulationHost:
             raise ValueError('Currently, only one depot can be simulated in a '
                              'simulation run.')
 
-        self.tictoc = eflips.Tictoc(print_timestamps, tictocname)
+        self.tictoc = eflips.helperFunctions.Tictoc(print_timestamps, tictocname)
         self.tictoc.tic()
         self.run_progressbar = run_progressbar
 
@@ -150,7 +152,7 @@ class SimulationHost:
         self.env.process(self.timetable.run(self.depots))
 
         if self.run_progressbar:
-            self.env.process(eflips.progressbar(
+            self.env.process(eflips.helperFunctions.progressbar(
                 self.env,
                 eflips.settings.globalConstants['general']['SIMULATION_TIME'],
                 step=10,

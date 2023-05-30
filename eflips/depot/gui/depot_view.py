@@ -23,8 +23,6 @@ Additional important information:
 # Python imports
 import datetime
 import os
-import subprocess
-import sys
 import traceback
 
 # .NET framework (C#/WPF suppport)
@@ -33,11 +31,11 @@ import traceback
 # 2) python package: pythonnet ("pip install pythonnet")
 # 3) python package: sometimes the clr-package needs to be installed and deinstalled after. reasons unknown.
 import clr
+
 clr.AddReference("PresentationFramework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
 
 # C#/WPF imports (requires .NET framework, GUI related)
 import System
-from Microsoft.Win32 import OpenFileDialog
 from System import *
 from System.Drawing import Point
 from System.IO import StreamReader
@@ -51,7 +49,6 @@ from System.Windows.Input import MouseButtonState
 from System.Windows.Markup import XamlReader
 from System.Windows.Media import *
 from System.Windows.Media.Effects import *
-from System.Windows.Shapes import Rectangle
 from System.Threading import *
 
 # project imports
@@ -346,7 +343,7 @@ class DepotView(Window):
                 if success:
                     MessageBox.Show(
                         "Vehicle event and trip data exported to %s."
-                        % (self.path_results + rv + '.xlsx'),
+                        % (self.path_results + rv + '.xls'),
                         "Depot GUI - Depot Analysis", MessageBoxButton.OK,
                         MessageBoxImage.Information)
                 else:

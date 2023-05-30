@@ -7,6 +7,7 @@ Created on Tue Oct 13 10:55:00 2020
 Execute this script to run the depot simulation.
 
 """
+import os
 
 import eflips
 
@@ -19,15 +20,18 @@ simulate_with_smart_charging = False
 ######## SETTINGS, SCHEDULE AND TEMPLATE FOR DEPOT LAYOUT #####
 # DEFAULT = EXAMPLE DISSERTATION E.LAUTH, https://depositonce.tu-berlin.de/items/f47662f7-c9ae-4fbf-9e9c-bcd307b73aa7)
 
-filename_eflips_settings = '..\\bus_depot\\eflips_settings\\kls_diss_settings_210219'
-filename_schedule = '..\\bus_depot\\schedules\\schedule_kls_diss_scenario1_SB_DC_AB_OC_210203'
-filename_template = '..\\bus_depot\\templates\\diss_kls_6xS, 94x150kW_SB, 147x75kW_AB, shunting+precond+chargeequationsteps'
+absolute_path = os.path.dirname(__file__)
+filename_eflips_settings = os.path.join(absolute_path, 'eflips_settings/kls_diss_settings_210219')
+filename_schedule = os.path.join(absolute_path, 'schedules/schedule_kls_diss_scenario1_SB_DC_AB_OC_210203')
+filename_template = os.path.join(absolute_path,
+                                 'templates/diss_kls_6xS, 94x150kW_SB, 147x75kW_AB, shunting+precond+chargeequationsteps')
 
 if __name__ == "__main__":
 
     if simulate_with_gui:
         # GUI creates and runs a SimulationHost
-        from eflips.depot.gui.depot_view import main_view
+        from eflips import main_view
+
         if main_view is None:
             eflips.depot.gui.depot_view.start(
                 filename_eflips_settings=filename_eflips_settings,

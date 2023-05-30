@@ -6,17 +6,19 @@ Created on Fri Jan  26 14:54:23 2018
 
 all helpers should be placed here
 """
-import itertools
-from eflips.misc import ArgumentError
-import time
-import sys
-from simpy.core import Environment
-import operator
 import datetime
+import itertools
 import json
+import operator
+import sys
+import time
+from collections.abc import Mapping
 from functools import reduce
-import collections
+
+from simpy.core import Environment
+
 import eflips
+from eflips.misc import ArgumentError
 
 
 class Stopwatch:
@@ -508,7 +510,7 @@ def deep_merge(d, u):
     while stack:
         d, u = stack.pop(0)
         for k, v in u.items():
-            if not isinstance(v, collections.Mapping):
+            if not isinstance(v, Mapping):
                 # u[k] is not a dict, nothing to merge, so just set it,
                 # regardless if d[k] *was* a dict
                 d[k] = v
@@ -519,7 +521,7 @@ def deep_merge(d, u):
                 # exist
                 dv = d.setdefault(k, {})
 
-                if not isinstance(dv, collections.Mapping):
+                if not isinstance(dv, Mapping):
                     # d[k] is not a dict, so just set it to u[k],
                     # overriding whatever it was
                     d[k] = v
