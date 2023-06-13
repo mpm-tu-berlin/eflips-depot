@@ -5,7 +5,6 @@ description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>"]
 license = "AGPLv3"
 readme = "README.md"
-packages = [{ include = "eflips_depot" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
