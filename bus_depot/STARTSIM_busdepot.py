@@ -10,6 +10,7 @@ Execute this script to run the depot simulation.
 import os
 
 import eflips
+import eflips.depot
 
 # Switch for simulation with GUI
 simulate_with_gui = False

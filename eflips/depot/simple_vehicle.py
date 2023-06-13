@@ -10,7 +10,7 @@ Vehicle components for the depot simulation.
 from eflips.helperFunctions import flexprint
 from eflips.settings import globalConstants
 from eflips.evaluation import DataLogger
-from eflips.depot import DepotWorkingData
+from eflips.depot.depot import DepotWorkingData
 from eflips.depot.evaluation import BatteryLog
 
 

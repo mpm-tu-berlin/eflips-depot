@@ -1,3 +1,11 @@
+
+# 1st: Namespaced Package Compat., see https://packaging.python.org/en/latest/guides/packaging-namespace-packages/
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)
+
+
+# 2nd: Importing of the eflips modules -> TODO Cleanups here to avoid all those imports
+
+
 import eflips.depot.gui
 import eflips.depot.layout_opt
 import eflips.depot.settings_config
