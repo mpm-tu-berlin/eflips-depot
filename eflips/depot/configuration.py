@@ -8,9 +8,11 @@ Components for the configuration of a depot.
 
 """
 import eflips
-from eflips.depot import Depot, VehicleFilter, DepotResource, \
-    DepotChargingInterface, ResourceSwitch, LineArea, ParkingAreaGroup, \
-    ChargeSteps, SpecificActivityPlan
+from eflips.depot.depot import Depot, LineArea, ParkingAreaGroup, SpecificActivityPlan
+from eflips.depot.filters import VehicleFilter
+from eflips.depot.resources import DepotResource, DepotChargingInterface, \
+    ResourceSwitch
+from eflips.depot.processes import ChargeSteps
 from eflips.evaluation import DataLogger
 from eflips.helperFunctions import load_json, save_json
 
