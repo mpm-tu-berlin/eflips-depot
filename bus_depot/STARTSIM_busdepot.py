@@ -13,7 +13,7 @@ import eflips
 import eflips.depot
 
 # Switch for simulation with GUI
-simulate_with_gui = False
+simulate_with_gui = True
 
 # Switch for simulation with smart charging
 simulate_with_smart_charging = False
@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     if simulate_with_gui:
         # GUI creates and runs a SimulationHost
-        from eflips import main_view
+        from eflips.depot.gui.depot_view import main_view
 
         if main_view is None:
             eflips.depot.gui.depot_view.start(

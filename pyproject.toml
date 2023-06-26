@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{ include = "eflips/depot" }]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 simpy = "^4.0.1"
 matplotlib = "^3.7.1"
 xlsxwriter = "^3.1.1"
@@ -16,6 +16,7 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
+pythonnet = { version = '^3.0.1', platform = 'win32' }
 
 
 [build-system]
