@@ -13,7 +13,7 @@ import eflips
 import eflips.depot
 
 # Switch for simulation with smart charging
-simulate_with_smart_charging = True
+simulate_with_smart_charging = False
 
 ######## SETTINGS, SCHEDULE AND TEMPLATE FOR DEPOT LAYOUT #####
 # DEFAULT = EXAMPLE DISSERTATION E.LAUTH, https://depositonce.tu-berlin.de/items/f47662f7-c9ae-4fbf-9e9c-bcd307b73aa7)
