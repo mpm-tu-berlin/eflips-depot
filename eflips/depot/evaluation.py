@@ -25,6 +25,7 @@ import os
 import pprint as pp
 import traceback
 from collections import OrderedDict, Counter
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import reduce
 
@@ -35,6 +36,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import xlsxwriter
+from eflips.helperFunctions import cm2in
 from eflips.helperFunctions import cm2in
 from eflips.settings import globalConstants
 from matplotlib.font_manager import FontProperties
@@ -2781,6 +2783,31 @@ class DepotEvaluation:
             if i != 0:
                 energy += (list_power_logs[i][0] - list_power_logs[i-1][0]) * list_power_logs[i-1][1]
         print(energy/60/60)
+
+    def output_to_simba(self):
+        """Output data to simBA. Working in Progress"""
+        # TODO: use dataclass
+        output_data = []
+        for trip_i in self.timetable.trips_issued:
+            if '_r1' in trip_i.ID:
+                data_unit = SimBaOutputFormat(trip_i.ID_orig, trip_i.vehicle.ID, trip_i.start_soc)
+                output_data.append(data_unit)
+
+        return output_data
+
+
+@dataclass
+class SimBaOutputFormat:
+    """Class output format for SimBa """
+    Trip_ID: int
+    Vehicle_ID: str
+    SoC_Departure: float
+
+    def __init__(self, t_id, v_id, start_soc):
+        self.Trip_ID = t_id
+        self.Vehicle_ID = v_id
+        self.SoC_Departure = start_soc
+
 
 def baseplot(show, figsize=None):
     """Return new fig and ax after setting interactive mode based on *show*
