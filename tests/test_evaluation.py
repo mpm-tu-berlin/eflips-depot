@@ -66,19 +66,19 @@ class TestDepotEvaluation:
             assert simba_output is not None
             assert isinstance(simba_output, eflips.depot.evaluation.SimBaOutputFormat)
 
-            assert simba_output.Trip_ID is not None
-            assert isinstance(simba_output.Trip_ID, int)
+            assert simba_output.rotation_id is not None
+            assert isinstance(simba_output.rotation_id, int)
 
-            assert simba_output.Vehicle_ID is not None
-            assert isinstance(simba_output.Vehicle_ID, int) or isinstance(simba_output.Vehicle_ID, str)
+            assert simba_output.vehicle_id is not None
+            assert isinstance(simba_output.vehicle_id, int) or isinstance(simba_output.vehicle_id, str)
 
-            assert simba_output.SoC_Departure is not None
-            assert isinstance(simba_output.SoC_Departure, float)
-            assert 0 <= simba_output.SoC_Departure <= 1
+            assert simba_output.soc_departure is not None
+            assert isinstance(simba_output.soc_departure, float)
+            assert 0 <= simba_output.soc_departure <= 1
 
         # We have a lot of trips in evaluation.timetable.trips_issued.
         # But the simba_outputs should only contain the trips that we also git as an input
         # Our Trip_IDs should be all the IDs from evaluation.timetable.trips
         input_trip_ids = [int(float(trip.ID)) for trip in depot_evaluation.timetable.trips]
-        output_trip_ids = [simba_output.Trip_ID for simba_output in simba_outputs]
+        output_trip_ids = [simba_output.rotation_id for simba_output in simba_outputs]
         assert set(input_trip_ids) == set(output_trip_ids)

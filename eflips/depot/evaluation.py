@@ -2786,11 +2786,12 @@ class DepotEvaluation:
 
     def output_to_simba(self):
         """Output data to simBA. Working in Progress"""
-        # TODO: use dataclass
         output_data = []
         for trip_i in self.timetable.trips_issued:
             if '_r1' in trip_i.ID:
-                data_unit = SimBaOutputFormat(int(float(trip_i.ID_orig)), trip_i.vehicle.ID, trip_i.start_soc)
+                data_unit = SimBaOutputFormat(int(float(trip_i.ID_orig)),  # Slightly ugly, but we need to return an int
+                                              trip_i.vehicle.ID,
+                                              trip_i.start_soc)
                 output_data.append(data_unit)
 
         return output_data
@@ -2799,14 +2800,14 @@ class DepotEvaluation:
 @dataclass
 class SimBaOutputFormat:
     """Class output format for SimBa """
-    Trip_ID: int
-    Vehicle_ID: str
-    SoC_Departure: float
+    rotation_id: int
+    vehicle_id: str
+    soc_departure: float
 
     def __init__(self, t_id, v_id, start_soc):
-        self.Trip_ID = t_id
-        self.Vehicle_ID = v_id
-        self.SoC_Departure = start_soc
+        self.rotation_id = t_id
+        self.vehicle_id = v_id
+        self.soc_departure = start_soc
 
 
 def baseplot(show, figsize=None):
