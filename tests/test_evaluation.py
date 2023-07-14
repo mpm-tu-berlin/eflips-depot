@@ -57,3 +57,28 @@ class TestDepotEvaluation:
 
         assert os.path.isfile(os.path.join(tmp_path, 'vehicle_periods.png'))
         assert os.stat(os.path.join(tmp_path, 'vehicle_periods.png')).st_size > 0
+
+    def test_simba_output(self, depot_evaluation: DepotEvaluation):
+        # Create a list of SimBaOutputFormat objects
+        simba_outputs = depot_evaluation.output_to_simba()
+
+        for simba_output in simba_outputs:
+            assert simba_output is not None
+            assert isinstance(simba_output, eflips.depot.evaluation.SimBaOutputFormat)
+
+            assert simba_output.Trip_ID is not None
+            assert isinstance(simba_output.Trip_ID, int)
+
+            assert simba_output.Vehicle_ID is not None
+            assert isinstance(simba_output.Vehicle_ID, int) or isinstance(simba_output.Vehicle_ID, str)
+
+            assert simba_output.SoC_Departure is not None
+            assert isinstance(simba_output.SoC_Departure, float)
+            assert 0 <= simba_output.SoC_Departure <= 1
+
+        # We have a lot of trips in evaluation.timetable.trips_issued.
+        # But the simba_outputs should only contain the trips that we also git as an input
+        # Our Trip_IDs should be all the IDs from evaluation.timetable.trips
+        input_trip_ids = [int(float(trip.ID)) for trip in depot_evaluation.timetable.trips]
+        output_trip_ids = [simba_output.Trip_ID for simba_output in simba_outputs]
+        assert set(input_trip_ids) == set(output_trip_ids)
