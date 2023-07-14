@@ -20,31 +20,31 @@ The repository contains an example for the simulation and planning of an elecric
     - The suggested Python version os 3.11.*, it may work with other versions, but this is not tested.
     - The supported platforms are macOS and Windows, Linux should work, but is not tested.
     - Using the [poetry](https://python-poetry.org/) package manager is recommended. It can be installed accoring to the instructions listed [here](https://python-poetry.org/docs/#installing-with-the-official-installer).
-   ```bash
-   poetry env use 3.11
-   poetry install
+    ```bash
+    poetry env use 3.11
+    poetry install
     ```
 
 3. To start a simulation, the script `STARTSIM_busdepot.py` needs to be executed. This loads the 3 necessary files for settings, schedule and template for depot layout. After the execution, all relevant results are in the `ev` variable in the workspace (if the script is run with a "keep python running after last statement" option) . To analyse or plot results the example calls for the console in eflips/depot/plots.py can be used.
-   ```python
-   import os
-   os.chdir('bus_depot') # Optional, if not already in the bus_depot folder
-   exec(open(os.path.join('STARTSIM_busdepot.py')).read())
-   
-   ev.sl_all() # For example to plot a result
-   ```
-   
+    ```python
+    import os
+    os.chdir('bus_depot') # Optional, if not already in the bus_depot folder
+    exec(open(os.path.join('STARTSIM_busdepot.py')).read())
+    
+    ev.sl_all() # For example to plot a result
+    ```
+
 ## Testing
 
 *There is no real testing yet. We are moving towards using [pytest](https://docs.pytest.org/) for testing, but this is not yet complete.*
 
 ## Documentation
 
-*There is no real documentation yet. We are moving towards using [pdoc3](https://pdoc3.github.io/pdoc/) for documentation, but this is not yet complete.*
+*There is no real documentation yet. We are moving towards using [sphinx](https://www.sphinx-doc.org/en/master/) for documentation, but this is not yet complete.*
 
 ## Development
 
-We utilize the [GitHub Flow](https://docs.github.com/get-started/quickstart/github-flow) branching structure. This means that the `main` branch is always deployable and that all development happens in feature branches. The feature branches are merged into `main` via pull requests. 
+We utilize the [GitHub Flow](https://docs.github.com/get-started/quickstart/github-flow) branching structure. This means that the `main` branch is always deployable and that all development happens in feature branches. The feature branches are merged into `main` via pull requests.
 
 ## License
 
