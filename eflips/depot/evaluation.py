@@ -18,28 +18,30 @@ https://intellij-support.jetbrains.com/hc/en-us/community/posts/115000736584-
 SciView-in-PyCharm-2017-3-reduces-functionality-of-Matplotlib
 
 """
-from openpyxl import Workbook
-import xlsxwriter
 import itertools
-from collections import OrderedDict, Counter
-import collections
-import operator
-from functools import reduce
-from datetime import datetime, timedelta
-import traceback
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatch
-import matplotlib.ticker as ticker
-from matplotlib.font_manager import FontProperties
-import matplotlib.patches as mpatches
-import pandas as pd
-import numpy as np
-import pprint as pp
-from simpy.resources.store import StorePut, StoreGet
-from eflips.settings import globalConstants
-import eflips
-from eflips.helperFunctions import cm2in
 import locale
+import operator
+import os
+import pprint as pp
+import traceback
+from collections import OrderedDict, Counter
+from datetime import datetime, timedelta
+from functools import reduce
+
+import matplotlib.patches as mpatch
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+import xlsxwriter
+from eflips.helperFunctions import cm2in
+from eflips.settings import globalConstants
+from matplotlib.font_manager import FontProperties
+from openpyxl import Workbook
+from simpy.resources.store import StorePut, StoreGet
+
+import eflips
 
 # Settings for dates on x axis
 abs_time_fmt = '%'
@@ -904,7 +906,7 @@ class DepotEvaluation:
                 # Set resolution to a default
                 dpi = fig.get_dpi()
                 fig.set_size_inches(1920.0 / float(dpi), 948.0 / float(dpi))
-                filename = self.path_results + basefilename
+                filename = os.path.join(self.path_results, basefilename)
                 savefig(fig, filename, formats=formats, dpi='figure')
             if not show:
                 plt.close(fig)
