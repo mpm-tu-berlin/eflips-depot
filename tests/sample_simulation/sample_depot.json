@@ -1,0 +1,1805 @@
+{
+    "templatename_display": "Depot KLS - 6xS, 94x150kW_SB, 147x75kW_AB, shunting, precond",
+    "general": {
+        "depotID": "KLS",
+        "dispatch_strategy_name": "SMART"
+    },
+    "resources": {
+        "workers_service": {
+            "typename": "DepotResource",
+            "capacity": 6
+        },
+        "shunting_service": {
+            "typename": "DepotResource",
+            "capacity": 8
+        },
+        "ci_1": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_2": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_3": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_4": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_5": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_6": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_7": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_8": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_9": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_10": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_11": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_12": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_13": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_14": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_15": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_16": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_17": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_18": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_19": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_20": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_21": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_22": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_23": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_24": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_25": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_26": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_27": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_28": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_29": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_30": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_31": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_32": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_33": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_34": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_35": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_36": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_37": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_38": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_39": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_40": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_41": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_42": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_43": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_44": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_45": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_46": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_47": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_48": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_49": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_50": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_51": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_52": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_53": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_54": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_55": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_56": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_57": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_58": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_59": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_60": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_61": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_62": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_63": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_64": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_65": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_66": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_67": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_68": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_69": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_70": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_71": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_72": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_73": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_74": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_75": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_76": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_77": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_78": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_79": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_80": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_81": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_82": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_83": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_84": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_85": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_86": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_87": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_88": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_89": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_90": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_91": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_92": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_93": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_94": {
+            "typename": "DepotChargingInterface",
+            "max_power": 150
+        },
+        "ci_200": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_201": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_202": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_203": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_204": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_205": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_206": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_207": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_208": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_209": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_210": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_211": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_212": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_213": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_214": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_215": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_216": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_217": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_218": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_219": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_220": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_221": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_222": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_223": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_224": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_225": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_226": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_227": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_228": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_229": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_230": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_231": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_232": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_233": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_234": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_235": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_236": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_237": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_238": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_239": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_240": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_241": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_242": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_243": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_244": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_245": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_246": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_247": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_248": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_249": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_250": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_251": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_252": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_253": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_254": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_255": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_256": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_257": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_258": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_259": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_260": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_261": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_262": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_263": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_264": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_265": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_266": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_267": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_268": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_269": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_270": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_271": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_272": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_273": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_274": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_275": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_276": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_277": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_278": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_279": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_280": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_281": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_282": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_283": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_284": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_285": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_286": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_287": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_288": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_289": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_290": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_291": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_292": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_293": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_294": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_295": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_296": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_297": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_298": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_299": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_300": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_301": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_302": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_303": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_304": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_305": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_306": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_307": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_308": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_309": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_310": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_311": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_312": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_313": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_314": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_315": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_316": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_317": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_318": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_319": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_320": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_321": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_322": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_323": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_324": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_325": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_326": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_327": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_328": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_329": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_330": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_331": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_332": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_333": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_334": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_335": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_336": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_337": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_338": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_339": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_340": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_341": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_342": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_343": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_344": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_345": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        },
+        "ci_346": {
+            "typename": "DepotChargingInterface",
+            "max_power": 75
+        }
+    },
+    "resource_switches": {
+        "service_switch": {
+            "resource": "workers_service",
+            "breaks": [
+                [
+                    21600,
+                    64800
+                ]
+            ],
+            "preempt": true,
+            "strength": "full"
+        }
+    },
+    "processes": {
+        "charge_dc": {
+            "typename": "ChargeEquationSteps",
+            "ismandatory": false,
+            "vehicle_filter": {
+                "filter_names": [
+                    "vehicle_type",
+                    "soc_lower_than"
+                ],
+                "vehicle_types": ["SB_DC"],
+                "soc": 0.9
+            },
+            "cancellable_for_dispatch": false,
+            "peq_name":  "exponential_power",
+            "peq_params": {
+                "x": 0.8
+            },
+            "precision": 0.001,
+            "soc_target": 0.9,
+            "efficiency": 0.95
+        },
+        "charge_oc": {
+            "typename": "ChargeEquationSteps",
+            "ismandatory": false,
+            "vehicle_filter": {
+                "filter_names": [
+                    "vehicle_type",
+                    "soc_lower_than"
+                ],
+                "vehicle_types": ["AB_OC"],
+                "soc": 0.95
+            },
+            "cancellable_for_dispatch": false,
+            "peq_name":  "exponential_power",
+            "peq_params": {
+                "x": 0.8
+            },
+            "precision": 0.001,
+            "soc_target": 0.95,
+            "efficiency": 0.95
+        },
+        "serve_supply_clean_daily": {
+            "typename": "Serve",
+            "dur": 240,
+            "ismandatory": false,
+            "vehicle_filter": {
+                "filter_names": [
+                    "in_period"
+                ],
+                "period": [
+                    64800,
+                    20700
+                ]
+            },
+            "required_resources": [
+                "workers_service"
+            ],
+            "cancellable_for_dispatch": false
+        },
+        "serve_clean_ext": {
+            "typename": "Serve",
+            "dur": 240,
+            "ismandatory": false,
+            "vehicle_filter": {
+                "filter_names": [
+                    "in_period",
+                    "in_period_days"
+                ],
+                "period": [
+                    64800,
+                    20700
+                ],
+                "after_day": 3
+            },
+            "required_resources": [],
+            "cancellable_for_dispatch": false
+        },
+        "standby_arr": {
+            "typename": "Standby",
+            "dur": 600,
+            "ismandatory": true,
+            "vehicle_filter": null,
+            "required_resources": [],
+            "cancellable_for_dispatch": false
+        },
+        "standby_dep": {
+            "typename": "Standby",
+            "dur": 600,
+            "ismandatory": true,
+            "vehicle_filter": null,
+            "required_resources": [],
+            "cancellable_for_dispatch": false
+        },
+        "shunting": {
+            "typename": "Standby",
+            "dur": 120,
+            "ismandatory": true,
+            "vehicle_filter": null,
+            "required_resources": ["shunting_service"],
+            "cancellable_for_dispatch": false
+        },
+        "precondition": {
+            "typename": "Precondition",
+            "dur": 1800,
+            "ismandatory": false,
+            "required_resources": [],
+            "cancellable_for_dispatch": false,
+            "efficiency": 1,
+            "power": 20
+        }
+    },
+    "areas": {
+        "S_1": {
+            "typename": "DirectArea",
+            "capacity": 12,
+            "available_processes": [
+                "standby_arr"
+            ],
+            "issink": false,
+            "entry_filter": null
+        },
+        "S_2": {
+            "typename": "DirectArea",
+            "capacity": 12,
+            "available_processes": [
+                "standby_arr"
+            ],
+            "issink": false,
+            "entry_filter": null
+        },
+        "Rangierflaeche_1": {
+            "typename": "DirectArea",
+            "capacity": 4,
+            "available_processes": [
+                "shunting"
+            ],
+            "issink": false,
+            "entry_filter": {
+            }
+        },
+         "Rangierflaeche_2": {
+            "typename": "DirectArea",
+            "capacity": 4,
+            "available_processes": [
+                "shunting"
+            ],
+            "issink": false,
+            "entry_filter": {
+                "filter_names": ["dwd_previous_area"],
+                "none_of_previous_areas": ["Rangierflaeche_1"]
+            }
+        },
+        "R_1": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+        },
+        "R_2": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+         },
+        "R_3": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+         },
+        "R_4": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+         },
+        "R_5": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+         },
+        "R_6": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_supply_clean_daily"
+            ],
+            "issink": false,
+            "entry_filter": null
+         },
+         "W_1": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_clean_ext"
+            ],
+            "issink": false,
+            "entry_filter": null
+        },
+        "W_2": {
+            "typename": "DirectArea",
+            "capacity": 1,
+            "available_processes": [
+                "serve_clean_ext"
+            ],
+            "issink": false,
+            "entry_filter": null
+        },
+        "-01-": {
+            "typename": "DirectArea",
+            "amount": 1,
+            "capacity": 33,
+            "charging_interfaces": [
+                "ci_200",
+                "ci_201",
+                "ci_202",
+                "ci_203",
+                "ci_204",
+                "ci_205",
+                "ci_206",
+                "ci_207",
+                "ci_208",
+                "ci_209",
+                "ci_210",
+                "ci_211",
+                "ci_212",
+                "ci_213",
+                "ci_214",
+                "ci_215",
+                "ci_216",
+                "ci_217",
+                "ci_218",
+                "ci_219",
+                "ci_220",
+                "ci_221",
+                "ci_222",
+                "ci_223",
+                "ci_224",
+                "ci_225",
+                "ci_226",
+                "ci_227",
+                "ci_228",
+                "ci_229",
+                "ci_230",
+                "ci_231",
+                "ci_232"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            }
+        },
+        "-02-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_233",
+                "ci_234",
+                "ci_235",
+                "ci_236",
+                "ci_237",
+                "ci_238",
+                "ci_239",
+                "ci_240",
+                "ci_241"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-03-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_242",
+                "ci_243",
+                "ci_244",
+                "ci_245",
+                "ci_246",
+                "ci_247",
+                "ci_248",
+                "ci_249",
+                "ci_250"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-04-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_251",
+                "ci_252",
+                "ci_253",
+                "ci_254",
+                "ci_255",
+                "ci_256",
+                "ci_257",
+                "ci_258",
+                "ci_259"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-05-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_260",
+                "ci_261",
+                "ci_262",
+                "ci_263",
+                "ci_264",
+                "ci_265",
+                "ci_266",
+                "ci_267",
+                "ci_268"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-06-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_269",
+                "ci_270",
+                "ci_271",
+                "ci_272",
+                "ci_273",
+                "ci_274",
+                "ci_275",
+                "ci_276",
+                "ci_277"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-07-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_278",
+                "ci_279",
+                "ci_280",
+                "ci_281",
+                "ci_282",
+                "ci_283",
+                "ci_284",
+                "ci_285",
+                "ci_286"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-08-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_287",
+                "ci_288",
+                "ci_289",
+                "ci_290",
+                "ci_291",
+                "ci_292",
+                "ci_293",
+                "ci_294",
+                "ci_295"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-09-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_296",
+                "ci_297",
+                "ci_298",
+                "ci_299",
+                "ci_300",
+                "ci_301",
+                "ci_302",
+                "ci_303",
+                "ci_304"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-10-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 9,
+            "charging_interfaces": [
+                "ci_305",
+                "ci_306",
+                "ci_307",
+                "ci_308",
+                "ci_309",
+                "ci_310",
+                "ci_311",
+                "ci_312",
+                "ci_313"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-11-": {
+            "typename": "DirectArea",
+            "amount": 1,
+            "capacity": 33,
+            "charging_interfaces": [
+                "ci_314",
+                "ci_315",
+                "ci_316",
+                "ci_317",
+                "ci_318",
+                "ci_319",
+                "ci_320",
+                "ci_321",
+                "ci_322",
+                "ci_323",
+                "ci_324",
+                "ci_325",
+                "ci_326",
+                "ci_327",
+                "ci_328",
+                "ci_329",
+                "ci_330",
+                "ci_331",
+                "ci_332",
+                "ci_333",
+                "ci_334",
+                "ci_335",
+                "ci_336",
+                "ci_337",
+                "ci_338",
+                "ci_339",
+                "ci_340",
+                "ci_341",
+                "ci_342",
+                "ci_343",
+                "ci_344",
+                "ci_345",
+                "ci_346"
+            ],
+            "available_processes": [
+                "charge_oc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["AB_OC"]
+            }
+        },
+        "-12-": {
+            "typename": "DirectArea",
+            "amount": 1,
+            "capacity": 34,
+            "charging_interfaces": [
+                "ci_1",
+                "ci_2",
+                "ci_3",
+                "ci_4",
+                "ci_5",
+                "ci_6",
+                "ci_7",
+                "ci_8",
+                "ci_9",
+                "ci_10",
+                "ci_11",
+                "ci_12",
+                 "ci_13",
+                 "ci_14",
+                 "ci_15",
+                 "ci_16",
+                 "ci_17",
+                 "ci_18",
+                 "ci_19",
+                 "ci_20",
+                 "ci_21",
+                 "ci_22",
+                 "ci_23",
+                 "ci_24",
+                 "ci_25",
+                 "ci_26",
+                 "ci_27",
+                 "ci_28",
+                 "ci_29",
+                 "ci_30",
+                 "ci_31",
+                 "ci_32",
+                 "ci_33",
+                 "ci_34"
+            ],
+            "available_processes": [
+                "charge_dc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["SB_DC"]
+            }
+        },
+        "-13-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 13,
+            "charging_interfaces": [
+                 "ci_35",
+                 "ci_36",
+                 "ci_37",
+                 "ci_38",
+                 "ci_39",
+                 "ci_40",
+                 "ci_41",
+                 "ci_42",
+                 "ci_43",
+                 "ci_44",
+                 "ci_45",
+                 "ci_46",
+                 "ci_47"
+            ],
+            "available_processes": [
+                "charge_dc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["SB_DC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-14-": {
+            "typename": "LineArea",
+            "amount": 1,
+            "capacity": 13,
+            "charging_interfaces": [
+                  "ci_48",
+                  "ci_49",
+                  "ci_50",
+                  "ci_51",
+                  "ci_52",
+                  "ci_53",
+                  "ci_54",
+                  "ci_55",
+                  "ci_56",
+                  "ci_57",
+                  "ci_58",
+                  "ci_59",
+                  "ci_60"
+            ],
+            "available_processes": [
+                "charge_dc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["SB_DC"]
+            },
+            "side_put_default": "front",
+            "side_get_default": "back"
+        },
+        "-15-": {
+            "typename": "DirectArea",
+            "amount": 1,
+            "capacity": 34,
+            "charging_interfaces": [
+                  "ci_61",
+                  "ci_62",
+                  "ci_63",
+                  "ci_64",
+                  "ci_65",
+                  "ci_66",
+                  "ci_67",
+                  "ci_68",
+                  "ci_69",
+                  "ci_70",
+                  "ci_71",
+                  "ci_72",
+                  "ci_73",
+                  "ci_74",
+                  "ci_75",
+                  "ci_76",
+                  "ci_77",
+                  "ci_78",
+                  "ci_79",
+                  "ci_80",
+                  "ci_81",
+                  "ci_82",
+                  "ci_83",
+                  "ci_84",
+                  "ci_85",
+                  "ci_86",
+                  "ci_87",
+                  "ci_88",
+                  "ci_89",
+                  "ci_90",
+                  "ci_91",
+                  "ci_92",
+                  "ci_93",
+                  "ci_94"
+            ],
+            "available_processes": [
+                "charge_dc",
+                "standby_dep",
+                "precondition"
+            ],
+            "issink": true,
+            "entry_filter": {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": ["SB_DC"]
+            }
+        }
+    },
+    "groups": {
+        "Parking_AB_group": {
+            "typename": "ParkingAreaGroup",
+            "stores": [
+                "-01-",
+                "-02-",
+                "-03-",
+                "-04-",
+                "-05-",
+                "-06-",
+                "-07-",
+                "-08-",
+                "-09-",
+                "-10-",
+                "-11-"
+            ],
+            "parking_strategy_name": "SMART2"
+        },
+        "Parking_SB_group": {
+            "typename": "ParkingAreaGroup",
+            "stores": [
+                "-12-",
+                "-13-",
+                "-14-",
+                "-15-"
+            ],
+            "parking_strategy_name": "SMART2"
+        },
+        "Reinigung_group": {
+            "typename": "AreaGroup",
+            "stores": [
+                "R_1",
+                "R_2",
+                "R_3",
+                "R_4",
+                "R_5",
+                "R_6"
+            ]
+        },
+        "Waschanlage_group": {
+            "typename": "AreaGroup",
+            "stores": [
+                "W_1",
+                "W_2"
+            ]
+        },
+        "Stauflaeche_group": {
+            "typename": "AreaGroup",
+            "stores": [
+                "S_1",
+                "S_2"
+            ]
+        }
+    },
+    "plans": {
+        "default": {
+            "typename": "DefaultActivityPlan",
+            "locations": [
+                "Stauflaeche_group",
+                "Rangierflaeche_1",
+                "Reinigung_group",
+                "Waschanlage_group",
+                "Rangierflaeche_2",
+                "Parking_AB_group",
+                "Parking_SB_group"
+            ]
+        }
+    }
+}

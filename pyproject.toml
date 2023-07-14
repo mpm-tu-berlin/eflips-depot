@@ -17,7 +17,10 @@ openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
 
-
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
