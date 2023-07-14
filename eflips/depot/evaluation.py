@@ -2790,7 +2790,7 @@ class DepotEvaluation:
         output_data = []
         for trip_i in self.timetable.trips_issued:
             if '_r1' in trip_i.ID:
-                data_unit = SimBaOutputFormat(trip_i.ID_orig, trip_i.vehicle.ID, trip_i.start_soc)
+                data_unit = SimBaOutputFormat(int(float(trip_i.ID_orig)), trip_i.vehicle.ID, trip_i.start_soc)
                 output_data.append(data_unit)
 
         return output_data
