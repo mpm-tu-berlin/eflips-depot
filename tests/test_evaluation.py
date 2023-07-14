@@ -1,4 +1,6 @@
+import json
 import os
+from dataclasses import asdict
 
 import pytest
 
@@ -82,3 +84,18 @@ class TestDepotEvaluation:
         input_trip_ids = [int(float(trip.ID)) for trip in depot_evaluation.timetable.trips]
         output_trip_ids = [simba_output.rotation_id for simba_output in simba_outputs]
         assert set(input_trip_ids) == set(output_trip_ids)
+
+    def test_json_serialization(self, depot_evaluation: DepotEvaluation):
+        # Create a list of SimBaOutputFormat objects
+        simba_outputs = depot_evaluation.output_to_simba()
+
+        simba_output_as_dicts = [asdict(s) for s in simba_outputs]
+        jsonified = json.dumps(simba_output_as_dicts)
+
+        # Re-create the output list
+        new_simba_output_dict = json.loads(jsonified)
+        new_simba_outputs = [eflips.depot.evaluation.SimBaOutputFormat(**kwargs) for kwargs in new_simba_output_dict]
+
+        # Check equality
+        for old, new in zip(simba_outputs, new_simba_outputs):
+            assert old == new
