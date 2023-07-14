@@ -12,8 +12,8 @@ PENALTY_DELTA = 0
 # Load eflips.globalConstants once for all simulation runs
 filename_eflips_settings = OC['scenario']['filename_eflips_settings']
 eflips.load_settings(filename_eflips_settings)
-eflips.check_gc_validity()
-eflips.complete_gc()
+eflips.depot.settings_config.check_gc_validity()
+eflips.depot.settings_config.complete_gc()
 GC = eflips.globalConstants
 SIM_TIME = GC['general']['SIMULATION_TIME']
 
@@ -46,7 +46,7 @@ def estimate_max_total_delay(ttd):
                 estimate += SIM_TIME - std
                 count += 1
             else:
-                # Skip the first n_vehicles trips because they will be served
+                # Skip the first n_vehicles trips
                 # by vehicles from the init store and therefore cannot be
                 # delayed
                 count_skipped += 1

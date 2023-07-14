@@ -3,9 +3,11 @@
 Example plot calls and evaluation after(!) simulation.
 For plot details see evaluation.py.
 """
+import json
 
 # Plots and results for evaluation of depot layout
 
+## run this code after a successful simulation
 ev.vehicle_periods(
     periods={'depot general': 'darkgray',
              'park': 'lightgray',
@@ -15,6 +17,7 @@ ev.vehicle_periods(
              'charge_oc': 'forestgreen',
              'precondition': 'black'},
     save=True, show=True, formats=('pdf', 'png',), show_total_power=True, show_annotates=True)
+##
 
 ev.nvehicles_used(save=True, show=True)
 ev.departure_delay_vt(save=True, show=True)
@@ -64,3 +67,11 @@ ev.vehicle_periods(periods={'depot general': 'darkgray',
 
 smart_charging.results()
 smart_charging.plot_results()
+
+
+# output data to json test
+
+
+output_data = ev.output_to_simba()
+
+
