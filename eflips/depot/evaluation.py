@@ -2804,10 +2804,6 @@ class SimBaOutputFormat:
     vehicle_id: str
     soc_departure: float
 
-    def __init__(self, t_id, v_id, start_soc):
-        self.rotation_id = t_id
-        self.vehicle_id = v_id
-        self.soc_departure = start_soc
 
 
 def baseplot(show, figsize=None):
