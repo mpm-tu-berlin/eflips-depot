@@ -2785,10 +2785,10 @@ class DepotEvaluation:
         print(energy/60/60)
 
     def output_to_simba(self):
-        """Output data to simBA. Working in Progress"""
+        """Output data to simBA."""
         output_data = []
         for trip_i in self.timetable.trips_issued:
-            if '_r1' in trip_i.ID:
+            if '_r1' in trip_i.ID:    # _r1: repetition 1 of all rotations
                 data_unit = SimBaOutputFormat(int(float(trip_i.ID_orig)),  # Slightly ugly, but we need to return an int
                                               trip_i.vehicle.ID,
                                               trip_i.start_soc)
