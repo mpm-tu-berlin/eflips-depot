@@ -8,7 +8,7 @@ if __name__ == '__main__':
         settings.configure(default_settings=busmodel.settings)
 
     django.setup()
-# Now this script or any imported module can use any part of Django it needs.
+
 
 from busmodel.models import VehicleType
 
