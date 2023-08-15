@@ -46,6 +46,10 @@ class TestAccessingSimBaModels:
         return scenario
 
     def fill_db_with_input_files(self, cleaned_data):
+        """
+        Variant of ebustoolbox.tasks.fill_db_with_input_files that does not use Django forms.
+        """
+
         django_scenario = self.scenario_to_db(cleaned_data)
         original_args = get_args(django_scenario)
         simba_schedule, new_args = get_schedule_from_args(original_args)
@@ -64,7 +68,7 @@ class TestAccessingSimBaModels:
         This method calls Django-Simba using the sample files in order to create the input files for eFlips.
 
         Returns:
-            A tupple of pathlib.Path objects containing the absolute paths to the created files.
+            A pathlib.Path object containing the absolute paths to the created files.
         """
 
         # Find the absolute path to the test folder (the folder this file is in)
@@ -124,7 +128,7 @@ class TestAccessingSimBaModels:
         This method tests for the presence and validity of the simBA output file.
 
         Args:
-            eflips_input_paths: A tupple of pathlib.Path objects containing the absolute paths to the created files.
+            eflips_input_path: A pathlib.Path object containing the absolute paths to the created files.
         """
 
         eflips_input_path
