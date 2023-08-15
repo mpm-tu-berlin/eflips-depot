@@ -16,8 +16,7 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
-sphinx-autoapi = "^2.1.1"
-black = "^23.7.0"
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", branch = "feature/spatialite-and-poetry" }
 
 [tool.pytest.ini_options]
 addopts = [
@@ -27,6 +26,8 @@ addopts = [
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 sphinx = "^7.0.1"
+sphinx-autoapi = "^2.1.1"
+black = "^23.7.0"
 
 [build-system]
 requires = ["poetry-core"]
