@@ -1,0 +1,19 @@
+:py:mod:`depot.plots`
+=====================
+
+.. py:module:: depot.plots
+
+.. autoapi-nested-parse::
+
+   Example plot calls and evaluation after(!) simulation.
+   For plot details see evaluation.py.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: ci_no_str
+
+   
+

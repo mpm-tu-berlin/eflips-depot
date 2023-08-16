@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.processes &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.rating" href="../rating/index.html" />
+    <link rel="prev" title="depot.plots" href="../plots/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.processes">
+<span id="depot-processes"></span><h1><a class="reference internal" href="#module-depot.processes" title="depot.processes"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.processes</span></code></a><a class="headerlink" href="#module-depot.processes" title="Permalink to this heading">¶</a></h1>
+<p>Components for processes in a depot.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.ProcessStatus" title="depot.processes.ProcessStatus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ProcessStatus</span></code></a></p></td>
+<td><p>Status codes for depot processes.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.EstimateValue" title="depot.processes.EstimateValue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EstimateValue</span></code></a></p></td>
+<td><p>Values for process completion time estimates in addition to an int</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.BaseDepotProcess" title="depot.processes.BaseDepotProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseDepotProcess</span></code></a></p></td>
+<td><p>Base class for processes in a depot. Core functionalities are:</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p></td>
+<td><p>Base class for processes specific for vehicles at areas.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.Serve" title="depot.processes.Serve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Serve</span></code></a></p></td>
+<td><p>Process of serving a vehicle such as cleaning.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.ChargeAbstract" title="depot.processes.ChargeAbstract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeAbstract</span></code></a></p></td>
+<td><p>Base class for charging of vehicles at a depot area.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.Charge" title="depot.processes.Charge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Charge</span></code></a></p></td>
+<td><p>Process of charging a vehicle's battery. Charging is constant during the</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.ChargeSteps" title="depot.processes.ChargeSteps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeSteps</span></code></a></p></td>
+<td><p>Process of charging a vehicle's battery in linear power steps.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.ChargeEquationSteps" title="depot.processes.ChargeEquationSteps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeEquationSteps</span></code></a></p></td>
+<td><p>Process of charging a vehicle's battery based on a linearized function</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.Standby" title="depot.processes.Standby"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Standby</span></code></a></p></td>
+<td><p>Process of mandatory waiting such as standby times.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.Repair" title="depot.processes.Repair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Repair</span></code></a></p></td>
+<td><p>Process of repairing a vehicle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.processes.Maintain" title="depot.processes.Maintain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Maintain</span></code></a></p></td>
+<td><p>Process of maintaining a vehicle.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.Precondition" title="depot.processes.Precondition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Precondition</span></code></a></p></td>
+<td><p>Preconditioning for a vehicle.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.processes.exponential_power" title="depot.processes.exponential_power"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exponential_power</span></code></a>(vehicle, charging_interface, ...)</p></td>
+<td><p>Return power in kW for the use with ChargeEquationSteps.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">ProcessStatus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ProcessStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">enum.Enum</span></code></p>
+<p>Status codes for depot processes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus.NOT_STARTED">
+<span class="sig-name descname"><span class="pre">NOT_STARTED</span></span><a class="headerlink" href="#depot.processes.ProcessStatus.NOT_STARTED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus.WAITING">
+<span class="sig-name descname"><span class="pre">WAITING</span></span><a class="headerlink" href="#depot.processes.ProcessStatus.WAITING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus.IN_PROGRESS">
+<span class="sig-name descname"><span class="pre">IN_PROGRESS</span></span><a class="headerlink" href="#depot.processes.ProcessStatus.IN_PROGRESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus.COMPLETED">
+<span class="sig-name descname"><span class="pre">COMPLETED</span></span><a class="headerlink" href="#depot.processes.ProcessStatus.COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.ProcessStatus.CANCELLED">
+<span class="sig-name descname"><span class="pre">CANCELLED</span></span><a class="headerlink" href="#depot.processes.ProcessStatus.CANCELLED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.EstimateValue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">EstimateValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.EstimateValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">enum.Enum</span></code></p>
+<p>Values for process completion time estimates in addition to an int
+value.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.EstimateValue.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><a class="headerlink" href="#depot.processes.EstimateValue.UNKNOWN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.EstimateValue.COMPLETED">
+<span class="sig-name descname"><span class="pre">COMPLETED</span></span><a class="headerlink" href="#depot.processes.EstimateValue.COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">BaseDepotProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur_predefined</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<dl class="simple">
+<dt>Base class for processes in a depot. Core functionalities are:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>wrapping the execution of a simpy process and handling of required</dt><dd><p>resources,</p>
+</dd>
+</dl>
+</li>
+<li><p>providing the option to resume the process after interruption.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Implements __call__ to make an instance directly callable through
+env.process(BaseDepotProcessSubclass(…)).</p>
+<p>An instance is not reusable, meaning a new object should be instantiated
+for every execution (except resumption).</p>
+<p>A new subclass must be added to configuration.map_process_cls_refs.</p>
+<p>Parameters:
+ID: [str] unique name of the process, such as “serve_default”. Subclasses</p>
+<blockquote>
+<div><p>instances may use the same ID.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>dur: [int or None] Duration of the execution in seconds. Can be left None</dt><dd><p>upon instantiation (e.g. if the duration is calculated directly before
+execution).</p>
+</dd>
+<dt>required_resources: [list] of DepotResource or subclass objects. May be</dt><dd><p>empty. Before the actual process begins, the execution waits for
+requests to all of those resources to succeed.</p>
+</dd>
+<dt>resume: [bool] If True, an interrupted process is resumed for the remaining</dt><dd><p>duration.</p>
+</dd>
+</dl>
+<p>priority: [int] priority* for requests to resources in required_resources.
+recall_priority: [int] priority* for re-requests to resources after</p>
+<blockquote>
+<div><p>interruption.</p>
+</div></blockquote>
+<dl class="simple">
+<dt><a href="#id1"><span class="problematic" id="id2">*</span></a>Note that custom values for priority and recall_priority should be higher</dt><dd><p>than simpyExt.ResourceSwitch.priority for Resourceswitch to keep
+its priority (lower value means higher priority).</p>
+</dd>
+<dt>preempt: [bool] Argument for requests to resources in required_resources.</dt><dd><p>See class DepotResourceRequest and SimPy-doc for details.</p>
+</dd>
+<dt>dur_predefined: [bool] True if parameter <em>dur</em> is defined before (re)start</dt><dd><p>of this process. Set to False if the duration is calculated after
+restarting the process (such as for Charge).</p>
+</dd>
+</dl>
+<p>Attributes:
+starts: [list] of points of time [int] when the process has (re-)started.
+proc: [simpy.Process] processing self._pem.
+requests: [list] of DepotResourceRequest objects for the current process</p>
+<blockquote>
+<div><p>execution.</p>
+</div></blockquote>
+<p>status: [ProcessStatus] member.
+finished: [simpy.Event] succeeds when the process is completed or cancelled</p>
+<blockquote>
+<div><p>and won’t be resumed, resulting in self.__call__ to proceed.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>etc: [int or EstimateValue] estimated simulation time of completion. See</dt><dd><p>method self._estimate_time_of_completion for details.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.resIDs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resIDs</span></span><a class="headerlink" href="#depot.processes.BaseDepotProcess.resIDs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of IDs of self.required_resources</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.status">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status</span></span><a class="headerlink" href="#depot.processes.BaseDepotProcess.status" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._estimate_time_of_completion">
+<span class="sig-name descname"><span class="pre">_estimate_time_of_completion</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._estimate_time_of_completion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate self.etc based on the current status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._action">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.estimate_duration">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._pre">
+<span class="sig-name descname"><span class="pre">_pre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._pre" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions before calling self._pem that may not be possible
+upon init.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._post">
+<span class="sig-name descname"><span class="pre">_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions after finishing self._pem.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator that starts the execution of this process.
+Note that all parameters required by self._action() have to be passed
+as keyword arguments.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._pem">
+<span class="sig-name descname"><span class="pre">_pem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._pem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process execution method (pem) that wraps waiting for required
+resources (if any) and self._action in a single generator. Is called
+again for the remaining duration after interruption if self.resume is
+True.</p>
+<dl class="simple">
+<dt>recall: [bool] False for the first call to this method, which uses</dt><dd><p>self.priority and self.dur. For a recall, self.recall_priority and
+overwritten self.dur are used.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._request_resources">
+<span class="sig-name descname"><span class="pre">_request_resources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prio</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._request_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Issue requests to required resources, if any.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._release_resources">
+<span class="sig-name descname"><span class="pre">_release_resources</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._release_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release occupied resource slots and open requests.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._cleanup">
+<span class="sig-name descname"><span class="pre">_cleanup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._cleanup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actions after process execution regardless of its success.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.cancel">
+<span class="sig-name descname"><span class="pre">cancel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Immediately stop the current process execution. No restart is
+scheduled, even if self.resume was set to True before.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess._cleanup_after_cancel">
+<span class="sig-name descname"><span class="pre">_cleanup_after_cancel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess._cleanup_after_cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Do general and cancel-specific cleanup.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.BaseDepotProcess.interrupt">
+<span class="sig-name descname"><span class="pre">interrupt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.BaseDepotProcess.interrupt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Immediately stop the current process execution. If self.resume is
+True, a restart is scheduled and may be successful immediately if
+required resources are available. If self.resume is False, same effect
+as self.cancel.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.VehicleProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">VehicleProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur_predefined</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.VehicleProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.BaseDepotProcess" title="depot.processes.BaseDepotProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseDepotProcess</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for processes specific for vehicles at areas.</p>
+<p>Parameters:
+ismandatory: [bool] True if the process is mandatory for vehicles. False if</p>
+<blockquote>
+<div><p>the process is optional. If optional, set vehicle_filter for further
+decision.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>vehicle_filter: [VehicleFilter] object for determining if the process</dt><dd><p>should be executed for a vehicle on the area. If left None, all
+vehicles are permitted.</p>
+</dd>
+<dt>cancellable_for_dispatch: [bool]: if True, the process may be cancelled for</dt><dd><p>dispatching the vehicle.</p>
+</dd>
+</dl>
+<p>Attributes:
+request_immediately: [bool] if True, a vehicle will request this process to</p>
+<blockquote>
+<div><p>start immediately after entering the area this process is available at.
+There might still be waiting time due to resource requirements.</p>
+</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.VehicleProcess.request_immediately">
+<span class="sig-name descname"><span class="pre">request_immediately</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#depot.processes.VehicleProcess.request_immediately" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.VehicleProcess._pre">
+<span class="sig-name descname"><span class="pre">_pre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.VehicleProcess._pre" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions before calling self._pem that may not be possible
+upon init.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.VehicleProcess._post">
+<span class="sig-name descname"><span class="pre">_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.VehicleProcess._post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions after finishing self._pem.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.VehicleProcess.notify_assignment">
+<span class="sig-name descname"><span class="pre">notify_assignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.VehicleProcess.notify_assignment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trigger dispatch process if there is a relevant update.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Serve">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Serve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Serve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p>
+<p>Process of serving a vehicle such as cleaning.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Serve._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Serve._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Serve.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Serve.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.ChargeAbstract">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">ChargeAbstract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeAbstract" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for charging of vehicles at a depot area.</p>
+<p>Parameters:
+dur: is None because the duration is set during charging.
+required_resources: doesn’t need to contain the charging interface because</p>
+<blockquote>
+<div><p>it’s detected automatically.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>efficiency: [int or float] efficiency of charging process. Value higher</dt><dd><p>than 0, max 1.</p>
+</dd>
+</dl>
+<p>Attributes:
+last_update: [int] time of last call to self.update_battery.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeAbstract._pre">
+<span class="sig-name descname"><span class="pre">_pre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeAbstract._pre" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions before calling self._pem that may not be possible
+upon init.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeAbstract._request_resources">
+<span class="sig-name descname"><span class="pre">_request_resources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prio</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeAbstract._request_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the charging interface at the vehicle’s current slot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeAbstract.get_chargedata">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_chargedata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeAbstract.get_chargedata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data for charging process of class <em>cls</em>. Not robust if there
+are multiple data sets using <em>cls</em> with different parameters and
+vehicle filters that can return True for the same vehicle.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeAbstract.update_battery">
+<span class="sig-name descname"><span class="pre">update_battery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeAbstract.update_battery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the energy level of self.vehicle.battery. Can be called
+during the execution of the process to provide an interim update.</p>
+<p>Parameters:
+event_name: [str] for BatteryLog
+amount: [None or float] amount of energy to add to the battery. Must be</p>
+<blockquote>
+<div><p>passed if amount might be so small that t_elapsed would be 0 (i.e.
+if called by Charge(sub-)-classes). Leave None for update requests
+from outside the process.</p>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Charge">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Charge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Charge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.ChargeAbstract" title="depot.processes.ChargeAbstract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeAbstract</span></code></a></p>
+<p>Process of charging a vehicle’s battery. Charging is constant during the
+whole charging process with maximum power provided by the charging
+interface.</p>
+<p>Parameters:
+soc_target: [int or float or str] the charging process will stop at this</p>
+<blockquote>
+<div><p>soc. Must be 0 &lt; soc_target &lt;= 1 or ‘soc_max’. For soc_max,
+vehicle.battery.soc_max will be used as soc_target.</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.processes.Charge.power">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">power</span></span><a class="headerlink" href="#depot.processes.Charge.power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Charge._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Charge._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Charge.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charging_interface</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Charge.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a duration estimate [int] assuming constant charging at
+maximum power until soc_target is reached.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Charge.check_soc_target">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_soc_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">soc_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Charge.check_soc_target" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.ChargeSteps">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">ChargeSteps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeSteps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.ChargeAbstract" title="depot.processes.ChargeAbstract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeAbstract</span></code></a></p>
+<p>Process of charging a vehicle’s battery in linear power steps.</p>
+<p>Parameters:
+steps: [list] of lists or tuples that contain pairs of SoC and power.</p>
+<blockquote>
+<div><p>Example: [(0.8, 150), (1, 20)]
+The pairs define the power for charging a battery until the
+corresponding SoC value is reached. The above example states: “Charge
+at 150 kW until SoC=0.8, then reduce to 20 kW until the SoC=1”.
+The process starts at the correct SoC value in steps, meaning that if
+in the example a vehicle that already has an SoC of 0.81 starts
+charging will start to charge with 20 kW.
+steps must contain at least one pair and must be sorted by SoC values
+in ascending order. Charging stops when the highest SoC value is
+reached, meaning that for steps=[(0.8, 50), (0.9, 150)] charging will
+stop at SoC=0.9. This functionality replaces the parameter ‘soc_target’
+from the class ChargeAbstract/Charge.
+Note that the power values must not be higher than the maximum power of
+the charging interface.</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.processes.ChargeSteps.power">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">power</span></span><a class="headerlink" href="#depot.processes.ChargeSteps.power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeSteps._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeSteps._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeSteps.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeSteps.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a duration estimate [int] respecting steps.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeSteps.check_steps">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_steps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">steps</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeSteps.check_steps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check <em>steps</em> for validity.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.ChargeEquationSteps">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">ChargeEquationSteps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peq_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peq_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeEquationSteps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.ChargeAbstract" title="depot.processes.ChargeAbstract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeAbstract</span></code></a></p>
+<p>Process of charging a vehicle’s battery based on a linearized function
+for power.</p>
+<p>Parameters:
+peq_name: [str] name of equation that returns power based on the current</p>
+<blockquote>
+<div><p>situation. Must be in module eflips.depot.processes.
+Example: ‘exponential_power’</p>
+</div></blockquote>
+<dl class="simple">
+<dt>peq_params: {dict} of parameters that peq requires in addition to what is</dt><dd><p>accessible via arguments.</p>
+</dd>
+<dt>precision: [float] SoC invervals to call peq at while charging. Must</dt><dd><p>be &gt; 0 and &lt; 1. Lower value means higher precision. High precision can
+significantly increase simulation runtime. Precision is capped to
+intervals resulting in step durations &gt;= 1 second.</p>
+</dd>
+</dl>
+<p>soc_target: same as for class Charge</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.processes.ChargeEquationSteps.power">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">power</span></span><a class="headerlink" href="#depot.processes.ChargeEquationSteps.power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeEquationSteps._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeEquationSteps._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.ChargeEquationSteps.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charging_interface</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.ChargeEquationSteps.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a duration estimate [int] respecting steps.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.processes.exponential_power">
+<span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">exponential_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charging_interface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peq_params</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.exponential_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return power in kW for the use with ChargeEquationSteps.</p>
+<p>Parameters:
+vehicle: [SimpleVehicle]
+charging_interface: [DepotChargingInterface]
+peq_params: [dict] with parameters for this function in addition to what is</p>
+<blockquote>
+<div><p>accessible via vehicle and charging_interface</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Standby">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Standby</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Standby" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p>
+<p>Process of mandatory waiting such as standby times.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Standby._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Standby._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Standby.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Standby.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Repair">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Repair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Repair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p>
+<p>Process of repairing a vehicle.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Repair._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Repair._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Repair.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Repair.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Maintain">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Maintain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Maintain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p>
+<p>Process of maintaining a vehicle.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Maintain._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Maintain._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Maintain.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Maintain.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.processes.Precondition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.processes.</span></span><span class="sig-name descname"><span class="pre">Precondition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ismandatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancellable_for_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Precondition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.processes.VehicleProcess" title="depot.processes.VehicleProcess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleProcess</span></code></a></p>
+<p>Preconditioning for a vehicle.</p>
+<p>Parameters:
+required_resources: doesn’t need to contain the charging interface because</p>
+<blockquote>
+<div><p>it’s detected automatically.</p>
+</div></blockquote>
+<p>power: in kW.</p>
+<p>Attributes:
+request_immediately: is False for this class because preconditioning is</p>
+<blockquote>
+<div><p>scheduled depending on departure time instead of entry time at an area.</p>
+</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.processes.Precondition.request_immediately">
+<span class="sig-name descname"><span class="pre">request_immediately</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#depot.processes.Precondition.request_immediately" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Precondition._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Precondition._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Precondition._pre">
+<span class="sig-name descname"><span class="pre">_pre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Precondition._pre" title="Permalink to this definition">¶</a></dt>
+<dd><p>Space for actions before calling self._pem that may not be possible
+upon init.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.processes.Precondition.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.processes.Precondition.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../plots/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.plots</span></code></a></li>
+      <li>Next: <a href="../rating/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.rating</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/processes/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

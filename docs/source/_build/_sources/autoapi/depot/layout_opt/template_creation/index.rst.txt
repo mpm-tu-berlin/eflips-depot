@@ -1,0 +1,86 @@
+:py:mod:`depot.layout_opt.template_creation`
+============================================
+
+.. py:module:: depot.layout_opt.template_creation
+
+.. autoapi-nested-parse::
+
+   Utilities for converting config data, config names, templates and visu.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.template_creation.save_json
+   depot.layout_opt.template_creation.name_from_config
+   depot.layout_opt.template_creation.config_from_name
+   depot.layout_opt.template_creation.config_from_name_3a
+   depot.layout_opt.template_creation.template_from_config
+   depot.layout_opt.template_creation.visu_from_config
+   depot.layout_opt.template_creation.ind_from_config
+   depot.layout_opt.template_creation.template_from_name
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.template_creation.power
+
+
+.. py:function:: save_json(obj, filename)
+
+   Write python object *obj* to a json file. Overwrite file if it already
+   exists (without comfirmation prompt).
+   filename: [str] excluding file extension
+
+
+.. py:function:: name_from_config(area_config)
+
+   Create a name [str] from area_config [dict].
+
+
+.. py:function:: config_from_name(name)
+
+   Create an area config [dict] from name [str].
+
+
+.. py:function:: config_from_name_3a(name)
+
+   Create an area config [dict] from name [str] where types are DDR, DSR, DSR_90
+   L.
+
+
+.. py:function:: template_from_config(area_config)
+
+
+.. py:function:: visu_from_config(area_config, a, b)
+
+   Only works for config with visu keys listed below.
+
+
+.. py:function:: ind_from_config(area_config, creator)
+
+   Create an individual [DepotPrototype] from area_config [dict].
+   Requires a the deap creator to be setup. Depot a and b are taken from
+   depot_layout_opt.settings.OPT_CONSTANTS (needs to be loaded before calling
+   this function).
+
+
+.. py:function:: template_from_name(name)
+
+
+.. py:data:: power
+   :value: 150
+
+   
+

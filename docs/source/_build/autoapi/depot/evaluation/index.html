@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.evaluation &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.filters" href="../filters/index.html" />
+    <link rel="prev" title="depot.depot" href="../depot/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.evaluation">
+<span id="depot-evaluation"></span><h1><a class="reference internal" href="#module-depot.evaluation" title="depot.evaluation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.evaluation</span></code></a><a class="headerlink" href="#module-depot.evaluation" title="Permalink to this heading">¶</a></h1>
+<p>Evaluation, plots and exports for after the simulation.</p>
+<p>Requires Matplotlib version 3+</p>
+<p>Plot by directly calling a method of DepotEvaluation after running the
+simulation with data logging. Example call in the console or a script:</p>
+<blockquote>
+<div><p>simulation_host.depot_hosts[0].evaluation.nvehicles_total()</p>
+</div></blockquote>
+<p>If a plot opens in PyCharm’s SciView and is not displayed properly, then go to
+Settings -&gt; Tools -&gt; Python Scientific -&gt; uncheck “Show plots in toolwindow”,
+rerun the simulation, execute:
+“&gt;&gt;&gt; import matplotlib”
+“&gt;&gt;&gt; matplotlib.use(‘Qt5Agg’)”
+and plot again. Plots are now displayed in a separate window.
+Source:
+<a class="reference external" href="https://intellij-support.jetbrains.com/hc/en-us/community/posts/115000736584">https://intellij-support.jetbrains.com/hc/en-us/community/posts/115000736584</a>-
+SciView-in-PyCharm-2017-3-reduces-functionality-of-Matplotlib</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.ArrivalLog" title="depot.evaluation.ArrivalLog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArrivalLog</span></code></a></p></td>
+<td><p>Container for data to be logged when a vehicle arrives at a depot.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.BatteryLog" title="depot.evaluation.BatteryLog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BatteryLog</span></code></a></p></td>
+<td><p>Container for logging data related to charging. Independent from the</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.DepotEvaluation" title="depot.evaluation.DepotEvaluation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotEvaluation</span></code></a></p></td>
+<td><p>Container for data of one depot simulation run to be accessible after</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.Report" title="depot.evaluation.Report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Report</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.DepotAnalysis" title="depot.evaluation.DepotAnalysis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotAnalysis</span></code></a></p></td>
+<td><p>Class for vehicle movement analysis inside the depot. Provides excel exports.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.DepotLog" title="depot.evaluation.DepotLog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotLog</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.ChargeStart" title="depot.evaluation.ChargeStart"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ChargeStart</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.FullyCharged" title="depot.evaluation.FullyCharged"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FullyCharged</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.ProcessFinished" title="depot.evaluation.ProcessFinished"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ProcessFinished</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.ProcessCalled" title="depot.evaluation.ProcessCalled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ProcessCalled</span></code></a></p></td>
+<td><p>Lo for time, when vehicle would like to proceed to next area. Needed for congestion calculation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.Departure" title="depot.evaluation.Departure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Departure</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.baseplot" title="depot.evaluation.baseplot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">baseplot</span></code></a>(show[, figsize])</p></td>
+<td><p>Return new fig and ax after setting interactive mode based on <em>show</em></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.setting_language" title="depot.evaluation.setting_language"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setting_language</span></code></a>(language)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.intersection" title="depot.evaluation.intersection"><code class="xref py py-obj docutils literal notranslate"><span class="pre">intersection</span></code></a>(interval_a, interval_b)</p></td>
+<td><p><dl class="field-list simple">
+<dt class="field-odd">param interval_a<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of two numbers</p>
+</dd>
+</dl>
+</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.savefig" title="depot.evaluation.savefig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">savefig</span></code></a>(fig, filename[, formats, confirm, dpi])</p></td>
+<td><p>filename: [str] including path, excluding extension.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.abs_time" title="depot.evaluation.abs_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abs_time</span></code></a>(s)</p></td>
+<td><p>Return an absolute amount of seconds as hh:mm string.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.as_text" title="depot.evaluation.as_text"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_text</span></code></a>(value)</p></td>
+<td><p>Return <em>value</em> as str, except if <em>value</em> is None, in which case an empty</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.adjust_column_width" title="depot.evaluation.adjust_column_width"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adjust_column_width</span></code></a>(ws)</p></td>
+<td><p>Set column widths in worksheet <em>ws</em> of class</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.to_prev_values" title="depot.evaluation.to_prev_values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_prev_values</span></code></a>(vector[, to_replace, first])</p></td>
+<td><p>Replace values identical with <em>to_replace</em> in a list by previous value</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.discrete2continuous_logs" title="depot.evaluation.discrete2continuous_logs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">discrete2continuous_logs</span></code></a>(data_dict[, first, subkeys])</p></td>
+<td><p>Take a dict of discrete timestep logs and return a list with values of</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.seconds2date" title="depot.evaluation.seconds2date"><code class="xref py py-obj docutils literal notranslate"><span class="pre">seconds2date</span></code></a>(si[, datefmt])</p></td>
+<td><p>Convert a second to a date based on base_date being equivalent to 0.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.seconds2date_major" title="depot.evaluation.seconds2date_major"><code class="xref py py-obj docutils literal notranslate"><span class="pre">seconds2date_major</span></code></a>(si, *args)</p></td>
+<td><p>Convert a second to a date based on base_date being equivalent to 0.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.seconds2date_major2" title="depot.evaluation.seconds2date_major2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">seconds2date_major2</span></code></a>(si, *args)</p></td>
+<td><p>Convert a second to a date based on base_date being equivalent to 0.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.seconds2date_minor" title="depot.evaluation.seconds2date_minor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">seconds2date_minor</span></code></a>(si, *args)</p></td>
+<td><p>Convert a second to a date based on base_date being equivalent to 0.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.to_dateaxis" title="depot.evaluation.to_dateaxis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_dateaxis</span></code></a>(ax)</p></td>
+<td><p>Format a date x axis. Set base_date, datefmt and byhour at the top of</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.adjust_plt" title="depot.evaluation.adjust_plt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adjust_plt</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.adjust_plt_hist" title="depot.evaluation.adjust_plt_hist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adjust_plt_hist</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.make_patch_spines_invisible" title="depot.evaluation.make_patch_spines_invisible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_patch_spines_invisible</span></code></a>(ax)</p></td>
+<td><p>Helper function for a third or following y axis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.align_yaxis" title="depot.evaluation.align_yaxis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">align_yaxis</span></code></a>(ax1, v1, ax2, v2)</p></td>
+<td><p>Adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.calc_descr_stats" title="depot.evaluation.calc_descr_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calc_descr_stats</span></code></a>(d, key)</p></td>
+<td><p>Update dict <em>d</em> by some descriptive statistics based on values in list</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.abs_time_fmt" title="depot.evaluation.abs_time_fmt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abs_time_fmt</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.base_date" title="depot.evaluation.base_date"><code class="xref py py-obj docutils literal notranslate"><span class="pre">base_date</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.datefmt_general" title="depot.evaluation.datefmt_general"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datefmt_general</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.datefmt_major" title="depot.evaluation.datefmt_major"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datefmt_major</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.datefmt_major2" title="depot.evaluation.datefmt_major2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datefmt_major2</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.datefmt_minor" title="depot.evaluation.datefmt_minor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datefmt_minor</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.xdatespacing_major" title="depot.evaluation.xdatespacing_major"><code class="xref py py-obj docutils literal notranslate"><span class="pre">xdatespacing_major</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.evaluation.minor_intervals_per_major_tick" title="depot.evaluation.minor_intervals_per_major_tick"><code class="xref py py-obj docutils literal notranslate"><span class="pre">minor_intervals_per_major_tick</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.evaluation.color_bvg_yellow" title="depot.evaluation.color_bvg_yellow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">color_bvg_yellow</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.abs_time_fmt">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">abs_time_fmt</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'%'</span></em><a class="headerlink" href="#depot.evaluation.abs_time_fmt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.base_date">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">base_date</span></span><a class="headerlink" href="#depot.evaluation.base_date" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.datefmt_general">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">datefmt_general</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'%a</span> <span class="pre">%H:%M'</span></em><a class="headerlink" href="#depot.evaluation.datefmt_general" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.datefmt_major">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">datefmt_major</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'%a'</span></em><a class="headerlink" href="#depot.evaluation.datefmt_major" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.datefmt_major2">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">datefmt_major2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Multiline-String</span></em><a class="headerlink" href="#depot.evaluation.datefmt_major2" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><details><summary>Show Value</summary><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;%H:%M</span>
+<span class="sd">%a&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</details></div></blockquote>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.datefmt_minor">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">datefmt_minor</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'%H:%M'</span></em><a class="headerlink" href="#depot.evaluation.datefmt_minor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.xdatespacing_major">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">xdatespacing_major</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">86400</span></em><a class="headerlink" href="#depot.evaluation.xdatespacing_major" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.minor_intervals_per_major_tick">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">minor_intervals_per_major_tick</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#depot.evaluation.minor_intervals_per_major_tick" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.evaluation.color_bvg_yellow">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">color_bvg_yellow</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'#f0d722'</span></em><a class="headerlink" href="#depot.evaluation.color_bvg_yellow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.ArrivalLog">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">ArrivalLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.ArrivalLog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container for data to be logged when a vehicle arrives at a depot.
+Independent from the DataLogger. Temporary, may be replaced by a DataLogger
+rework.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.BatteryLog">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">BatteryLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.BatteryLog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container for logging data related to charging. Independent from the
+DataLogger. Temporary, may be replaced by a DataLogger rework.</p>
+<p>Parameters:
+event_name: [str]</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">DepotEvaluation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depotsim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container for data of one depot simulation run to be accessible after
+the simulation. Provides tools for evaluating and exporting data.</p>
+<p>Parameters:
+depotsim: [DepotSimulation] instance</p>
+<p>Attributes:
+results: [dict] storing results of evaluation after the simulation
+xlim: [tuple] of x axis limits for some plots and calculations. Default is</p>
+<blockquote>
+<div><p>(0, self.SIM_TIME)</p>
+</div></blockquote>
+<p>arrival_logs: [list] of ArrivalLog objects
+sl_logs: [dict] with logged stress level values (by self.calculate_sl)
+cm_report: [DepotAnalysis]</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.now_repr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">now_repr</span></span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.now_repr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the current system date and time as formatted string.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.current_sl">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">current_sl</span></span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.current_sl" title="Permalink to this definition">¶</a></dt>
+<dd><p>The stress level [int] describes the current planning situation of
+dispatch for one vehicle type or vehicle type group.
+<em>sl_period</em> in globalConstants defines how far in the
+future from now trips and vehicles are considered.
+stress level = - number of trips that have no vehicle assigned</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>number of vehicles that have no trip assigned</p></li>
+</ul>
+</div></blockquote>
+<p>Both summands are calculated for now + sl_period.
+One of or both summands for the same vehicle type or type group are
+always 0 since they describe excesses that are matched against each
+other.</p>
+<p>Return only the data required for calculating sl to reduce the effort
+during the simulation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.complete">
+<span class="sig-name descname"><span class="pre">complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Complete the initialization by creating references that were not
+accessible during init. Must be called before simulation start.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.log_arrival">
+<span class="sig-name descname"><span class="pre">log_arrival</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.log_arrival" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.log_sl">
+<span class="sig-name descname"><span class="pre">log_sl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.log_sl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.excel_report_full">
+<span class="sig-name descname"><span class="pre">excel_report_full</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.excel_report_full" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_initstore">
+<span class="sig-name descname"><span class="pre">nvehicles_initstore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_initstore'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_initstore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vehicle count over time in the depot’s init_store. Plot as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_initstore_end">
+<span class="sig-name descname"><span class="pre">nvehicles_initstore_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_initstore_end'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_initstore_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vehicle count per type in the depot’s init_store at the end of
+the simulation. Plot in a histogram.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_used_calculation">
+<span class="sig-name descname"><span class="pre">nvehicles_used_calculation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_used_calculation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of vehicles that were used by type</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_used">
+<span class="sig-name descname"><span class="pre">nvehicles_used</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_required'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_used" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of vehicles that were used by type. Plot in a bar chart.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_total">
+<span class="sig-name descname"><span class="pre">nvehicles_total</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_total'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total vehicle count over time in the depot in total. Plot as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.arrival_soc">
+<span class="sig-name descname"><span class="pre">arrival_soc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'arrival_soc'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.arrival_soc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the SoC of vehicles upon arrival at the depot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.departure_soc">
+<span class="sig-name descname"><span class="pre">departure_soc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'departure_soc'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.departure_soc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the SoC of vehicles upon departure from the depot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.get_periods">
+<span class="sig-name descname"><span class="pre">get_periods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_no</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">periods</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.get_periods" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for self.vehicle_periods.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.vehicle_periods">
+<span class="sig-name descname"><span class="pre">vehicle_periods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">periods</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'vehicle_periods'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('pdf',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_vehicle_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_count_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#1f77b4'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_total_power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_power_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#d62728'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_annotates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_ID</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smart_charging</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smart_charging_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'forestgreen'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.vehicle_periods" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the period history of all vehicles in a horizontal broken bar
+chart with one y tick per vehicle.</p>
+<p>periods: [dict] of process name and color as key-value pairs.
+vehicle_ID: [str] Possibility to filter periods to plot by vehicle ID. Does NOT work with smart charging.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Examples:</dt><dd><p>‘all’: show all vehicles
+‘EN_DC 20’: show only the specific vehicle with ID ‘EN_DC 20’
+‘EN’: show all vehicles with IDs containing ‘EN’</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>smart_charging: [SmartCharging] if an proper object is given, the charging data from smart_charging will be ploted</p>
+<p>See eflips.depot.plots for an example call of this function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.idle_time_dist">
+<span class="sig-name descname"><span class="pre">idle_time_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">charge_IDs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('charge',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle_time_dist'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#1f77b4'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.idle_time_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Length of parking time after the end of charging until departure.
+Data of the first simulation day is excluded.</p>
+<p>charge_IDs: [tuple] IDs of the charge processes
+vehicle_types: The vehicle types to calculate the idle time for. Must</p>
+<blockquote>
+<div><p>be ‘all’ [str] to include all types or an iterable of vehicle type
+IDs as str (e.g. [‘EN’, ‘GN’]).</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.total_power">
+<span class="sig-name descname"><span class="pre">total_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'total_power'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.total_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the total power in the depot over time as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.ci_power">
+<span class="sig-name descname"><span class="pre">ci_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'total_power'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.ci_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the total power over time as line of charging infrastructures (cis).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.calculate_sl">
+<span class="sig-name descname"><span class="pre">calculate_sl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.calculate_sl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculation of stress level (sl) values after the simulation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.calculate_sl_single">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calculate_sl_single</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.calculate_sl_single" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate sl for a single log.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.sl_single">
+<span class="sig-name descname"><span class="pre">sl_single</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_type_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'stress_level'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('pdf',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.sl_single" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the stress level of <em>vehicle_type_ID</em> and its calculation
+parameters over time as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.sl_all">
+<span class="sig-name descname"><span class="pre">sl_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'stress_level'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('pdf',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.sl_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the stress level of all vehicle types/ vehicle type
+groups over time as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.calc_count_rfd_unblocked_total">
+<span class="sig-name descname"><span class="pre">calc_count_rfd_unblocked_total</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.calc_count_rfd_unblocked_total" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.count_rfd_unblocked_total">
+<span class="sig-name descname"><span class="pre">count_rfd_unblocked_total</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'count_rfd_unblocked_total'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.count_rfd_unblocked_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the total number of ready for departure, unblocked vehicles at
+parking areas over time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_area">
+<span class="sig-name descname"><span class="pre">nvehicles_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_area'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot vehicle count over time on the area with <em>area_ID</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_group">
+<span class="sig-name descname"><span class="pre">nvehicles_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">group_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_group'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot vehicle count over time on the area with <em>area_ID</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.count_rfd_unblocked">
+<span class="sig-name descname"><span class="pre">count_rfd_unblocked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'count_rfd_unblocked'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.count_rfd_unblocked" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the number of ready for departure, unblocked vehicles at area
+with <em>area_ID</em> over time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.nvehicles_generated">
+<span class="sig-name descname"><span class="pre">nvehicles_generated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nvehicles_generated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.nvehicles_generated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot vehicles generated over time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.std_line">
+<span class="sig-name descname"><span class="pre">std_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'std_line'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.std_line" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot target departure times of trips (without repetition) as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.tripattr_scatter">
+<span class="sig-name descname"><span class="pre">tripattr_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_title</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.tripattr_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generic scatter plot for attribute <em>attr</em> of class SimpleTrip.
+Without repetition, meaning only trips for which sta is lower than
+timetable.interval_covered are included. <em>attr</em> is intended to be a
+time-related integer such as ‘std’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.std_scatter">
+<span class="sig-name descname"><span class="pre">std_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'std_scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.std_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot SimpleTrip.std as scatter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.sta_scatter">
+<span class="sig-name descname"><span class="pre">sta_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sta_scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.sta_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot SimpleTrip.sta as scatter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.ata_scatter">
+<span class="sig-name descname"><span class="pre">ata_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ata_scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.ata_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot SimpleTrip.ata as scatter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.lead_time_match_scatter">
+<span class="sig-name descname"><span class="pre">lead_time_match_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lead_time_match_scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.lead_time_match_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot SimpleTrip.lead_time_match as scatter.
+Only includes trips that were successfully matched by the dispatch,
+therefore trips that got a vehicle from a depot’s init store are not
+included.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.lead_time_match_dist">
+<span class="sig-name descname"><span class="pre">lead_time_match_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lead_time_match_dist'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.lead_time_match_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the distribution of SimpleTrip.lead_time_match_dist.
+Only includes trips that were successfully matched by the dispatch,
+therefore trips that got a vehicle from a depot’s init store are not
+included.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.trip_distances_scatter">
+<span class="sig-name descname"><span class="pre">trip_distances_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_distances_scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.trip_distances_scatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot trip (without repetition) distance vs departure time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.trip_distances_dist_bins">
+<span class="sig-name descname"><span class="pre">trip_distances_dist_bins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">150</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_distance_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.trip_distances_dist_bins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot trip (without repetition) distance in a histogram.</p>
+<p>bins: [int] number of bins for the histogram; matplotlib parameter.
+distance_limit: [int] in km. The number of trips with higher distance</p>
+<blockquote>
+<div><p>is printed.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.trip_distances_dist">
+<span class="sig-name descname"><span class="pre">trip_distances_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_distance_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.trip_distances_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot trip (without repetition) distance in a histogram.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.target_vehicle_types_dist">
+<span class="sig-name descname"><span class="pre">target_vehicle_types_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'target_vehicle_types_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.target_vehicle_types_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the distribution of vehicle_types of trips (without
+repetition) in a histogram.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.departure_delay_vt_calculation">
+<span class="sig-name descname"><span class="pre">departure_delay_vt_calculation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.departure_delay_vt_calculation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.departure_delay_vt">
+<span class="sig-name descname"><span class="pre">departure_delay_vt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'departure_delay_vt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.departure_delay_vt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delay of trips (with repetition) upon sim time end for selected
+target vehicle types, for all depots. Plot as scatter. Includes
+finished trips only!</p>
+<dl class="simple">
+<dt>vehicle_types: [list] of vehicle type IDs. If None, evaluate for all</dt><dd><p>types.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.total_delay">
+<span class="sig-name descname"><span class="pre">total_delay</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.total_delay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the total delay sum of all trips that were due until sim time
+end.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.area_history">
+<span class="sig-name descname"><span class="pre">area_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'area_history'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.area_history" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot a vehicle’s location history on depot areas similar to a gantt
+chart. Includes used processes only.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.vehicle_type_dist">
+<span class="sig-name descname"><span class="pre">vehicle_type_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'vehicle_type_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.vehicle_type_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the distribution of vehicle types in a histogram.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.processhistory_single_vehicle_separate">
+<span class="sig-name descname"><span class="pre">processhistory_single_vehicle_separate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'processhistory_single_vehicle_separate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.processhistory_single_vehicle_separate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the usage history of processes by a vehicle in a horizontal
+broken bar chart. Includes only used processes on the y axis. Process
+times exclude potential waiting for resources.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.process_intervals">
+<span class="sig-name descname"><span class="pre">process_intervals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">process_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crit_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">86400</span> <span class="pre">*</span> <span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'process_intervals'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.process_intervals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Distribution of time intervals between the application of process
+with ID <em>process_ID</em> on vehicles.</p>
+<p>bins: [int] number of bins for the histogram; matplotlib parameter.
+The interval from 0 to the first appearance is skipped.
+Prints appearances if &gt; <em>crit_value</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.battery_level">
+<span class="sig-name descname"><span class="pre">battery_level</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'battery_level'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.battery_level" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot a vehicle’s battery level over time as a line.
+Assume that all charging and discharging activities are linear. Might
+be inaccurate if multiple charging/discharging processes were active at
+the same time on the same vehicle.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.vehicle_power">
+<span class="sig-name descname"><span class="pre">vehicle_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'vehicle_power'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.vehicle_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the power for a vehicle at charging interfaces during charging
+and preconditioning over time as line.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.usage_history">
+<span class="sig-name descname"><span class="pre">usage_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'usage_history'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.usage_history" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the usage history of a resource..</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.congestion_calulation">
+<span class="sig-name descname"><span class="pre">congestion_calulation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.congestion_calulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the congestion in the depot.
+return: WATCH out times are in hours</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.congestion">
+<span class="sig-name descname"><span class="pre">congestion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename_vehicle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'congestion_by_vehicle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename_vehicle_sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'congestion_by_vehicle_sort'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename_area_caused</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'congestion_by_area_caused'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename_area_stands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'congestion_by_area_stands'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.congestion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the congestion in the depot. Congestion is the time between an vehicle wants to go to an area
+and when does it arrives
+:param show:
+:param save:
+:param basefilename_vehicle:
+:param basefilename_area_caused:
+:param basefilename_area_stands:
+:param formats:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.total_parking_congestion">
+<span class="sig-name descname"><span class="pre">total_parking_congestion</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.total_parking_congestion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate and save the total time of successful and pending put
+requests to parking area groups.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.occupancy_rate_calculation">
+<span class="sig-name descname"><span class="pre">occupancy_rate_calculation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.occupancy_rate_calculation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the occupancy rate for each slot.
+:return: dict with occupancy rates in seconds</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.occupancy_rate">
+<span class="sig-name descname"><span class="pre">occupancy_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'occupancy_rate.xlsx'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.occupancy_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes everything in an excel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.blocked_slots">
+<span class="sig-name descname"><span class="pre">blocked_slots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'blocked_slots'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.blocked_slots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the blocked slots on LineAreas
+:param show:
+:param save:
+:param basefilename:
+:param formats:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.number_of_resources_calculation">
+<span class="sig-name descname"><span class="pre">number_of_resources_calculation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.number_of_resources_calculation" title="Permalink to this definition">¶</a></dt>
+<dd><p>return: dict with number of charging interfaces and the sum of the capacity of other resources</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.pssmart2_ratings">
+<span class="sig-name descname"><span class="pre">pssmart2_ratings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basefilename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pssmart2_ratings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.pssmart2_ratings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot logged ratings of PSSmart2 put requests as scatter and print
+some results.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotEvaluation.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotEvaluation.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculation of the energy required in the depot in various ways. Work in progress</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.baseplot">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">baseplot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.baseplot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return new fig and ax after setting interactive mode based on <em>show</em>
+[bool].
+figsize: [None or tuple] figure size in cm (not inches)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.setting_language">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">setting_language</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">language</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.setting_language" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.intersection">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interval_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval_b</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.intersection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interval_a</strong> – list of two numbers</p></li>
+<li><p><strong>interval_b</strong> – list of two numbers</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the intersection of the two intervalls or False if no intersection is there</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.savefig">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">savefig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('png',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.savefig" title="Permalink to this definition">¶</a></dt>
+<dd><p>filename: [str] including path, excluding extension.</p>
+<p>formats: [tuple] of file extensions [str]
+dpi: Parameter of fig.savefig()</p>
+<p>Accepts other arguments of fig.savefig as kwargs
+(example: bbox_inches=’tight’).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.abs_time">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">abs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.abs_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an absolute amount of seconds as hh:mm string.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.as_text">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">as_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.as_text" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return <em>value</em> as str, except if <em>value</em> is None, in which case an empty
+string is returned.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.adjust_column_width">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">adjust_column_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ws</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.adjust_column_width" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set column widths in worksheet <em>ws</em> of class
+openpyxl.worksheet.worksheet.Worksheet to max length of cell contents.
+Is exact when using a monospace font in excel (not by default), but also
+provides a decent estimation without.
+From: <a class="reference external" href="https://stackoverflow.com/questions/13197574/openpyxl-adjust-column-width-size">https://stackoverflow.com/questions/13197574/openpyxl-adjust-column-width-size</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.to_prev_values">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">to_prev_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_replace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.to_prev_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace values identical with <em>to_replace</em> in a list by previous value
+that is not <em>to_replace</em>. If the first value is <em>to_replace</em>, <em>first</em> is
+set as first value.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.discrete2continuous_logs">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">discrete2continuous_logs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subkeys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.discrete2continuous_logs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take a dict of discrete timestep logs and return a list with values of
+every timestep.
+<em>first</em> is the parameter for function to_prev_values.
+<em>subkeys</em> is a list of strings that may be supplied if values in
+<em>data_dict</em> are subdicts, optionally further nested. Values for the return
+list are then extracted from the subdict with all keys.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.seconds2date">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">seconds2date</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">si</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datefmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">datefmt_general</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.seconds2date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a second to a date based on base_date being equivalent to 0.
+Return a str of <em>datefmt</em>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.seconds2date_major">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">seconds2date_major</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">si</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.seconds2date_major" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a second to a date based on base_date being equivalent to 0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.seconds2date_major2">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">seconds2date_major2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">si</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.seconds2date_major2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a second to a date based on base_date being equivalent to 0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.seconds2date_minor">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">seconds2date_minor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">si</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.seconds2date_minor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a second to a date based on base_date being equivalent to 0.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.to_dateaxis">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">to_dateaxis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.to_dateaxis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format a date x axis. Set base_date, datefmt and byhour at the top of
+the script. Assumes that one step equals one second.</p>
+<p>ax: [Axes]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.adjust_plt">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">adjust_plt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.adjust_plt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.adjust_plt_hist">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">adjust_plt_hist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.adjust_plt_hist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.make_patch_spines_invisible">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">make_patch_spines_invisible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.make_patch_spines_invisible" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for a third or following y axis.
+From: <a class="reference external" href="https://matplotlib.org/gallery/ticks_and_spines/multiple_yaxis_with_spines.html">https://matplotlib.org/gallery/ticks_and_spines/multiple_yaxis_with_spines.html</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.align_yaxis">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">align_yaxis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.align_yaxis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1.
+Modified; from: <a class="reference external" href="https://stackoverflow.com/questions/10481990/matplotlib-axis-with-two-scales-shared-origin">https://stackoverflow.com/questions/10481990/matplotlib-axis-with-two-scales-shared-origin</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.evaluation.calc_descr_stats">
+<span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">calc_descr_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.calc_descr_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update dict <em>d</em> by some descriptive statistics based on values in list
+<em>d*[*key</em>].</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.Report">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">Report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depotsim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.Report" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.Report.get_depot_logs">
+<span class="sig-name descname"><span class="pre">get_depot_logs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.Report.get_depot_logs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.Report.append_tripdata">
+<span class="sig-name descname"><span class="pre">append_tripdata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wb</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.Report.append_tripdata" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.Report.export_to_excel">
+<span class="sig-name descname"><span class="pre">export_to_excel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.Report.export_to_excel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">DepotAnalysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depotsim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotAnalysis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for vehicle movement analysis inside the depot. Provides excel exports.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.defaultname">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">defaultname</span></span><a class="headerlink" href="#depot.evaluation.DepotAnalysis.defaultname" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a filename for export excluding file extension.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_POP_PARK">
+<span class="sig-name descname"><span class="pre">ACTION_POP_PARK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_POP_PARK'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_POP_PARK" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_POP_UNPARK">
+<span class="sig-name descname"><span class="pre">ACTION_POP_UNPARK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_POP_UNPARK'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_POP_UNPARK" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_POP_DEPART">
+<span class="sig-name descname"><span class="pre">ACTION_POP_DEPART</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_POP_DEPART'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_POP_DEPART" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_CHARGE_START">
+<span class="sig-name descname"><span class="pre">ACTION_CHARGE_START</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_CHARGE_START'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_CHARGE_START" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_CHARGE_FULL">
+<span class="sig-name descname"><span class="pre">ACTION_CHARGE_FULL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_CHARGE_FULL'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_CHARGE_FULL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_PROCESS_FINISHED">
+<span class="sig-name descname"><span class="pre">ACTION_PROCESS_FINISHED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_PROCESS_FINISHED'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_PROCESS_FINISHED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.ACTION_PROCESS_CALLED">
+<span class="sig-name descname"><span class="pre">ACTION_PROCESS_CALLED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_PROCESS_CALLED'</span></em><a class="headerlink" href="#depot.evaluation.DepotAnalysis.ACTION_PROCESS_CALLED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.log">
+<span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotAnalysis.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.export_logs">
+<span class="sig-name descname"><span class="pre">export_logs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotAnalysis.export_logs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exports the list of logs into an Excel file located at [filename].</p>
+<p>filename: [str] excluding path and file extension</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.export_logs_smart_charging">
+<span class="sig-name descname"><span class="pre">export_logs_smart_charging</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotAnalysis.export_logs_smart_charging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exports the list of logs into pd_frame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd_frame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.evaluation.DepotAnalysis.append_tripdata">
+<span class="sig-name descname"><span class="pre">append_tripdata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wb</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotAnalysis.append_tripdata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extend wb by trip data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.DepotLog">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">DepotLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simTime</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.DepotLog" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.ChargeStart">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">ChargeStart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.ChargeStart" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.ChargeStart.eventname">
+<span class="sig-name descname"><span class="pre">eventname</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_CHARGE_START'</span></em><a class="headerlink" href="#depot.evaluation.ChargeStart.eventname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.FullyCharged">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">FullyCharged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.FullyCharged" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.FullyCharged.eventname">
+<span class="sig-name descname"><span class="pre">eventname</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_CHARGE_FULL'</span></em><a class="headerlink" href="#depot.evaluation.FullyCharged.eventname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.ProcessFinished">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">ProcessFinished</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.ProcessFinished" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.ProcessFinished.eventname">
+<span class="sig-name descname"><span class="pre">eventname</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_PROCESS_FINISHED'</span></em><a class="headerlink" href="#depot.evaluation.ProcessFinished.eventname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.ProcessCalled">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">ProcessCalled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.ProcessCalled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lo for time, when vehicle would like to proceed to next area. Needed for congestion calculation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.ProcessCalled.eventname">
+<span class="sig-name descname"><span class="pre">eventname</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_PROCESS_CALLED'</span></em><a class="headerlink" href="#depot.evaluation.ProcessCalled.eventname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.evaluation.Departure">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.evaluation.</span></span><span class="sig-name descname"><span class="pre">Departure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.evaluation.Departure" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="depot.evaluation.Departure.eventname">
+<span class="sig-name descname"><span class="pre">eventname</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ACTION_POP_DEPART'</span></em><a class="headerlink" href="#depot.evaluation.Departure.eventname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../depot/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.depot</span></code></a></li>
+      <li>Next: <a href="../filters/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.filters</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/evaluation/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

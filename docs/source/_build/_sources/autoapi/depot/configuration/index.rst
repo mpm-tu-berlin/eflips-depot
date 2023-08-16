@@ -1,0 +1,263 @@
+:py:mod:`depot.configuration`
+=============================
+
+.. py:module:: depot.configuration
+
+.. autoapi-nested-parse::
+
+   Created on Thu Sep  7 09:31:54 2017
+
+   @author: e.lauth, p.mundt
+
+   Components for the configuration of a depot.
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   depot.configuration.DepotConfigurator
+
+
+
+
+.. py:class:: DepotConfigurator(env)
+
+
+   Utilities to:
+   - create a depot
+   - add/remove resources, resource switches, processes, areas, groups and
+       plans to/from a depot
+   - load and save a json depot template
+   before simulation start.
+   Before env.run is called, complete() must be called.
+
+   Configuration-related errors are not raised. Instead, the current action is
+   cancelled and a prepared error message is returned to enable the sender to
+   decide on further actions (e.g. show an info popup in GUI).
+
+   To add/remove areas to/from groups, use AreaGroup or ParkingAreaGroup
+   methods.
+
+   Attributes:
+   filename_loaded: [None or str] filename of the imported template. None 
+       until loading. Stays the same even if templatename changes.
+   templatename: [str] filename of the imported template, excluding the path.
+       May be changed manually. Used to create export filenames.
+   templatename_display: [str] "pretty" version of templatename.
+   multiplied_areas: Map for connecting area IDs added with 'amount' with
+       their resulting areas.
+
+
+   .. py:property:: isvalid
+
+      Check if the current depot configuration is valid.
+      Return (True, None) if valid, otherwise (False, errormsg).
+
+
+   .. py:attribute:: basemsg_invalid
+      :value: 'Invalid depot configuration.'
+
+      
+
+   .. py:method:: reset()
+
+      Reset all depot configuration variables.
+      Guarantees stable references for dicts and lists, e.g. a dict is
+      cleared instead of being overwritten with an empty one.
+
+      [untested, perhaps incomplete]
+
+
+   .. py:method:: add_resource(typename, **kwargs)
+
+      Instantiate a DepotResource object and add it to self.depot. All
+      required parameters have to be passed as keyword arguments (see class
+      definition for documentation).
+      Return (resource object, None) if successful, otherwise (None,
+      errormsg).
+
+
+   .. py:method:: remove_resource(ID)
+
+      Remove resource with *ID*.
+      Return removed_from_special [list], containing processes that the
+      resource was removed from.
+
+
+   .. py:method:: export_resource(resource)
+      :staticmethod:
+
+      Return a dict that represents the configuration of *resource*.
+
+
+   .. py:method:: add_resource_switch(**kwargs)
+
+      Instantiate a ResourceSwitch object and add it to self.depot. All
+      required parameters have to be passed as keyword arguments (see class
+      definition for documentation).
+      Parameter "resource" must be a string. The reference is resolved here.
+      Return (resource_switch object, None) if successful, otherwise (None,
+      errormsg).
+
+
+   .. py:method:: remove_resource_switch(ID)
+
+      Remove resource_switch with *ID*. A related resource is not deleted.
+              
+
+
+   .. py:method:: export_resource_switch(resource_switch)
+      :staticmethod:
+
+      Return a dict that represents the configuration of *resource_switch*.
+              
+
+
+   .. py:method:: add_process(typename, **kwargs)
+
+      Prepare process data for instantiation, which happens during
+      simulation.
+      *typename* must be a key in eflips.depot.processes.
+      Return (process data dict, None) if successful, otherwise (None,
+      errormsg).
+
+
+   .. py:method:: remove_process(ID)
+
+      Remove process with *ID*. A related resource is not deleted.
+
+
+   .. py:method:: export_process(procdata)
+
+      Return procdata in an export format.
+
+
+   .. py:method:: add_area(typename, **kwargs)
+
+      Call self._add_area once if kwargs['amount'] is 1 or missing.
+      If amount > 1, create sub-IDs and call self._add_area amount number of
+      times. amount is removed from kwargs.
+      Return (added_areas, None) if successful, otherwise (None, errormsg).
+      added_areas is a list that contains all added areas from this method
+      call.
+
+
+   .. py:method:: _add_area(typename, **kwargs)
+
+      Instantiate a DirectArea or LineArea object and add it to
+      self.depot. All required parameters have to be passed as keyword
+      arguments (see class definition for documentation).
+      Parameter 'available_processes' must be a list of str.
+      Return (area, None) if successful, otherwise (None, errormsg).
+
+      Should only be called through self.add_area.
+
+
+   .. py:method:: remove_area(ID)
+
+      Remove area with *ID*.
+      Return removed_from_special [list], containing groups and plans
+      the area was removed from (excluding departure_areas and
+      multiplied_areas because they are background activities).
+      Related processes are not deleted.
+
+
+   .. py:method:: export_area(area)
+
+      Return a dict that represents the configuration of *area*.
+
+
+   .. py:method:: add_group(typename, **kwargs)
+
+      Instantiate an AreaGroup object and add it to self.depot. All
+      required parameters have to be passed as keyword arguments (see class
+      definition for documentation).
+      Parameter stores must be a list of str.
+      Return (group object, None) if successful, otherwise (None, errormsg).
+
+
+   .. py:method:: check_area_for_group(area, groupID)
+      :staticmethod:
+
+      Do checks on the validity of areas in parking area groups. Helper
+      function for self.add_group.
+      Return (True, None) if successful, otherwise (False, errormsg).
+
+
+   .. py:method:: remove_group(ID)
+
+      Remove group with *ID*.
+      Return removed_from_special [list], containing plans the group
+      was removed from. Related areas are not deleted.
+
+
+   .. py:method:: export_group(group)
+      :staticmethod:
+
+      Return a dict that represents the configuration of *group*.
+
+
+   .. py:method:: add_plan(typename, **kwargs)
+
+      Instantiate an AreaGroup (or subclass) object and add it to
+      self.depot. All required parameters have to be passed as keyword
+      arguments (see class definition for documentation).
+      Return (plan object, None) if successful, otherwise (None, errormsg).
+
+
+   .. py:method:: get_locations(IDs)
+
+      Compose a list of areas and groups based on IDs. Helper function for
+      self.add_plan.
+
+
+   .. py:method:: remove_plan(ID)
+
+      Remove plan with *ID* from default or specific plans.
+      Related areas and groups are not deleted.
+
+
+   .. py:method:: export_plan(plan)
+
+      Return a dict that represents the configuration of *plan*.
+
+
+   .. py:method:: export_vehicle_filter(vf)
+      :staticmethod:
+
+      Return a dict that represents the configuration of *vf*. Return None
+      if all vehicles are permitted.
+
+
+   .. py:method:: load(filename)
+
+      Reset current depot and load a template from a json file.
+      Return (True, None) if successful, otherwise (False, errormsg).
+      *filename* must be suitable for eflips.settings.load_json (including
+      path, excluding extension).
+
+
+   .. py:method:: save(filename)
+
+      Save current configuration as a json template. The configuration
+      must be valid.
+      *filename* must be suitable for eflips.settings.save_json.
+      Return (True, None) if successful, otherwise (False, errormsg).
+
+
+   .. py:method:: complete()
+
+      Actions that must take place before the simulation starts, but may
+      not be possible upon initial creation of the depot since the
+      possibility to create an empty depot is required.
+      Return (True, None) if successful, otherwise (False, errormsg).
+      May be called only once before simulation start.
+
+
+

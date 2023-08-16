@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.rating &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.resources" href="../resources/index.html" />
+    <link rel="prev" title="depot.processes" href="../processes/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.rating">
+<span id="depot-rating"></span><h1><a class="reference internal" href="#module-depot.rating" title="depot.rating"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.rating</span></code></a><a class="headerlink" href="#module-depot.rating" title="Permalink to this heading">¶</a></h1>
+<p>Components to model multi criteria decision problems. Application for park- and
+dispatch strategies.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.Rating" title="depot.rating.Rating"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rating</span></code></a></p></td>
+<td><p>Data container with methods to solve multi criteria decision problems.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p></td>
+<td><p>Base class for a criterion.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.BufferPark" title="depot.rating.BufferPark"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BufferPark</span></code></a></p></td>
+<td><p>Criterion for ParkRating.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.TypestackPark" title="depot.rating.TypestackPark"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TypestackPark</span></code></a></p></td>
+<td><p>Criterion for ParkRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.RfdDiffPark" title="depot.rating.RfdDiffPark"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RfdDiffPark</span></code></a></p></td>
+<td><p>Criterion for ParkRating.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.AvailablePower" title="depot.rating.AvailablePower"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AvailablePower</span></code></a></p></td>
+<td><p>Criterion for ParkRating and DispatchRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.EmptySlotsExitPark" title="depot.rating.EmptySlotsExitPark"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EmptySlotsExitPark</span></code></a></p></td>
+<td><p>Criterion for ParkRating.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.SlotAlternative" title="depot.rating.SlotAlternative"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SlotAlternative</span></code></a></p></td>
+<td><p>Summary of criteria for one slot for ParkRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.ParkRating" title="depot.rating.ParkRating"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParkRating</span></code></a></p></td>
+<td><p>alternatives_obj: [list] of SlotAlternative instances</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.BufferDispatch" title="depot.rating.BufferDispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BufferDispatch</span></code></a></p></td>
+<td><p>Criterion for DispatchRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.TypestackDispatch" title="depot.rating.TypestackDispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TypestackDispatch</span></code></a></p></td>
+<td><p>Criterion for DispatchRating.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.RfdDiffDispatch" title="depot.rating.RfdDiffDispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RfdDiffDispatch</span></code></a></p></td>
+<td><p>Criterion for DispatchRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.EmptySlotsExitDispatch" title="depot.rating.EmptySlotsExitDispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EmptySlotsExitDispatch</span></code></a></p></td>
+<td><p>Criterion for DispatchRating.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.VehicleAlternative" title="depot.rating.VehicleAlternative"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleAlternative</span></code></a></p></td>
+<td><p>Summary of criteria for one vehicle for DispatchRating.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.DispatchRating" title="depot.rating.DispatchRating"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DispatchRating</span></code></a></p></td>
+<td><p>alternatives_obj: [list] of VehicleAlternative instances</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.rfd_diff_park_lower_bound" title="depot.rating.rfd_diff_park_lower_bound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rfd_diff_park_lower_bound</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.rfd_diff_park_upper_bound" title="depot.rating.rfd_diff_park_upper_bound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rfd_diff_park_upper_bound</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.park_rating_weights" title="depot.rating.park_rating_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">park_rating_weights</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.rating.rfd_diff_dispatch_upper_bound" title="depot.rating.rfd_diff_dispatch_upper_bound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rfd_diff_dispatch_upper_bound</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.rating.dispatch_rating_weights" title="depot.rating.dispatch_rating_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_rating_weights</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.rating.rfd_diff_park_lower_bound">
+<span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">rfd_diff_park_lower_bound</span></span><a class="headerlink" href="#depot.rating.rfd_diff_park_lower_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.rating.rfd_diff_park_upper_bound">
+<span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">rfd_diff_park_upper_bound</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7200</span></em><a class="headerlink" href="#depot.rating.rfd_diff_park_upper_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.rating.park_rating_weights">
+<span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">park_rating_weights</span></span><a class="headerlink" href="#depot.rating.park_rating_weights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.rating.rfd_diff_dispatch_upper_bound">
+<span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">rfd_diff_dispatch_upper_bound</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10800</span></em><a class="headerlink" href="#depot.rating.rfd_diff_dispatch_upper_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.rating.dispatch_rating_weights">
+<span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">dispatch_rating_weights</span></span><a class="headerlink" href="#depot.rating.dispatch_rating_weights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.Rating">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">Rating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alternatives</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.Rating" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data container with methods to solve multi criteria decision problems.</p>
+<p>Parameters:
+alternatives: [list or 2D numpy.ndarray] of lists that represent an</p>
+<blockquote>
+<div><p>alternative. Alternatives must contain numerical data and have the same
+length. Is converted to a 2D numpy.ndarray during init.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>weights: [list or 1D numpy.ndarray or None] of factors for weighting values</dt><dd><p>of an alternative. Is converted to a 1D numpy.ndarray during init.</p>
+</dd>
+</dl>
+<p>Attributes:
+best_value: [int or float] the best value after solving.
+best_alternative_nos: [tuple] from np.where with the row indices of the</p>
+<blockquote>
+<div><p>best alternatives in alternatives. E.g.: (array([2], dtype=int64),)</p>
+</div></blockquote>
+<p>best_alternatives: [list] of the best alternatives.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.Rating.check_input">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alternatives</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.Rating.check_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check alternatives and weights for validity.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.Rating.weighted_sum">
+<span class="sig-name descname"><span class="pre">weighted_sum</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.Rating.weighted_sum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Locate the maximum weighted sums in self.alternatives.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.BaseCriterion">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">BaseCriterion</span></span><a class="headerlink" href="#depot.rating.BaseCriterion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for a criterion.
+Subclasses must implement attibute ‘value’ and method ‘calculate’.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.BaseCriterion.calculate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.BaseCriterion.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.BufferPark">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">BufferPark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.BufferPark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for ParkRating.
+Exclusive for Direct areas. Value is 0 for Line.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.BufferPark.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.BufferPark.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.TypestackPark">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">TypestackPark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.TypestackPark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for ParkRating.
+Exclusive for Line areas. Value is 0 for Direct.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.TypestackPark.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.TypestackPark.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffPark">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">RfdDiffPark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.RfdDiffPark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for ParkRating.
+Exclusive for Line areas where <em>vehicle</em> would be blocked. Value is 0 for
+Direct.</p>
+<p>slot: [tuple] with items (area, index of slot)</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffPark.lower_bound">
+<span class="sig-name descname"><span class="pre">lower_bound</span></span><a class="headerlink" href="#depot.rating.RfdDiffPark.lower_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffPark.upper_bound">
+<span class="sig-name descname"><span class="pre">upper_bound</span></span><a class="headerlink" href="#depot.rating.RfdDiffPark.upper_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffPark.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.RfdDiffPark.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.AvailablePower">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">AvailablePower</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.AvailablePower" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for ParkRating and DispatchRating.
+For both Direct and Line areas.</p>
+<p>slot: [tuple] with items (area, index of slot)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.AvailablePower.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.AvailablePower.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.EmptySlotsExitPark">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">EmptySlotsExitPark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.EmptySlotsExitPark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for ParkRating.
+Exclusive for Line areas. Value is 0 for Direct.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.EmptySlotsExitPark.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.EmptySlotsExitPark.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.SlotAlternative">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">SlotAlternative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.SlotAlternative" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summary of criteria for one slot for ParkRating.</p>
+<p>slot: [tuple] with items (area, index of slot)
+vehicle: [SimpleVehicle]
+max_power: [int] maximum power in kW of all charging interfaces at parking</p>
+<blockquote>
+<div><p>areas</p>
+</div></blockquote>
+<p>max_capacity_line: [int or None] max capacity of Line parking areas</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.ParkRating">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">ParkRating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alternatives_obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.ParkRating" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.Rating" title="depot.rating.Rating"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rating</span></code></a></p>
+<p>alternatives_obj: [list] of SlotAlternative instances</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.rating.ParkRating.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><a class="headerlink" href="#depot.rating.ParkRating.weights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.BufferDispatch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">BufferDispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.BufferDispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for DispatchRating.
+Exclusive for Direct areas. Value is 0 for Line.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.BufferDispatch.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.BufferDispatch.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.TypestackDispatch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">TypestackDispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.TypestackDispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for DispatchRating.
+Exclusive for Line areas. Value is 0 for Direct.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.TypestackDispatch.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.TypestackDispatch.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffDispatch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">RfdDiffDispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.RfdDiffDispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Criterion for DispatchRating.
+Exclusive for Line areas. Value is 0 for Direct.</p>
+<dl class="simple">
+<dt>slot: [tuple] with items (area, index of slot). Must contain a vehicle that</dt><dd><p>is ready for departure, i.e. dwd.etc_processes returns
+eflips.EstimateValue.COMPLETED.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffDispatch.upper_bound">
+<span class="sig-name descname"><span class="pre">upper_bound</span></span><a class="headerlink" href="#depot.rating.RfdDiffDispatch.upper_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffDispatch.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.RfdDiffDispatch.calculate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.RfdDiffDispatch.get_max_diff">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_max_diff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.RfdDiffDispatch.get_max_diff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the maximum of all etcs (estimated time of completion) of all
+vehicles at the area of <em>slot</em> and return it as [int].</p>
+<p>slot: [tuple] with items (area, index of slot)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.EmptySlotsExitDispatch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">EmptySlotsExitDispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.EmptySlotsExitDispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.BaseCriterion" title="depot.rating.BaseCriterion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseCriterion</span></code></a></p>
+<p>Criterion for DispatchRating.
+Exclusive for Line areas. Value is 0 for Direct.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.rating.EmptySlotsExitDispatch.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.EmptySlotsExitDispatch.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine self.value from inputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.VehicleAlternative">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">VehicleAlternative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity_line</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.VehicleAlternative" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summary of criteria for one vehicle for DispatchRating.</p>
+<p>slot: [tuple] with items (area, index of vehicle’s slot)
+vehicle: [SimpleVehicle]
+max_power: [int] maximum power in kW of all charging interfaces at parking</p>
+<blockquote>
+<div><p>areas</p>
+</div></blockquote>
+<p>max_capacity_line: [int or None] max capacity of Line parking areas</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.rating.DispatchRating">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.rating.</span></span><span class="sig-name descname"><span class="pre">DispatchRating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alternatives_obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.rating.DispatchRating" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.rating.Rating" title="depot.rating.Rating"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rating</span></code></a></p>
+<p>alternatives_obj: [list] of VehicleAlternative instances</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.rating.DispatchRating.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><a class="headerlink" href="#depot.rating.DispatchRating.weights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../processes/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.processes</span></code></a></li>
+      <li>Next: <a href="../resources/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.resources</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/rating/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

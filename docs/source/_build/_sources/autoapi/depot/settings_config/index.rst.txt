@@ -1,0 +1,41 @@
+:py:mod:`depot.settings_config`
+===============================
+
+.. py:module:: depot.settings_config
+
+.. autoapi-nested-parse::
+
+   Methods to check and modify eflips settings.
+
+   Separate from eflips.settings.py as preparation for making settings
+   modifications possible through a GUI, similar as with
+   eflips.depot.configuration.py.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.settings_config.check_gc_validity
+   depot.settings_config.complete_gc
+
+
+
+.. py:function:: check_gc_validity()
+
+   Checks of globalConstants that raise an error if not passed.
+
+
+.. py:function:: complete_gc()
+
+   Actions that must take place before simulation start, but may not
+   be possible during the configuration phase.
+
+
+

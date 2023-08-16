@@ -1,0 +1,74 @@
+:py:mod:`depot.validation`
+==========================
+
+.. py:module:: depot.validation
+
+.. autoapi-nested-parse::
+
+   Validation tests for after executing the depot simulation.
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   depot.validation.Validator
+
+
+
+
+.. py:class:: Validator(ev)
+
+
+   ev: [DepotEvaluation]
+
+   .. py:property:: valid
+
+
+   .. py:method:: all_periods(periods_map)
+
+      Prepare and call all periods-related tests.
+
+      periods_map: [dict] of period key and their template-specific name as
+      str. For the charging process, the value is a list.
+          E.g.:
+          {'depot general': 'depot general',
+          'park': 'park',
+          'serve': 'serve',
+          'charge': ['charge_dc', 'charge_oc']}
+
+
+   .. py:method:: _park_inside_depot(vehicledata, name_general, name_park)
+
+      Check if all parking periods are inside general depot periods.
+
+
+   .. py:method:: _charge_inside_park(vehicledata, name_park, names_charge)
+
+      Check if all charging periods are inside parking periods.
+
+      names_charge relies on vehicles only having one type of charging
+      process (e.g. charge_fc or charge_oc, but not both)
+
+
+   .. py:method:: _service_outside_park(vehicledata, name_park, name_serve)
+
+      Check if all service periods are outside parking periods.
+
+
+   .. py:method:: _trip_outside_depot(vehicledata, name_general)
+
+      Check if all trip periods are outside general depot periods.
+
+
+   .. py:method:: single_matches()
+
+      Check if trips are assigned only to one vehicle each.
+
+
+

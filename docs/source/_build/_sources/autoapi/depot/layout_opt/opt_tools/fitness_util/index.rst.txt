@@ -1,0 +1,54 @@
+:py:mod:`depot.layout_opt.opt_tools.fitness_util`
+=================================================
+
+.. py:module:: depot.layout_opt.opt_tools.fitness_util
+
+.. autoapi-nested-parse::
+
+   Basic utilities for the determination of fitness and feasibility of
+   individuals.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.fitness_util.memorize
+   depot.layout_opt.opt_tools.fitness_util.lookup
+   depot.layout_opt.opt_tools.fitness_util.simulate
+   depot.layout_opt.opt_tools.fitness_util.prototype_to_template
+
+
+
+.. py:function:: memorize(ind, memory)
+
+   Register and individual in memory. Must be unknown.
+
+
+.. py:function:: lookup(ind, memory)
+
+   Assign results from memory to an individual if it's known already.
+   An unkown individual is left unchanged.
+
+
+.. py:function:: simulate(ind, timetabledata, print_timestamps=False)
+
+   Set up a simulation based on *ind* and run.
+   Return the SimulationHost if simulated, else None.
+
+
+.. py:function:: prototype_to_template(dp, simulation_host)
+
+   Use eflips.depot.DepotConfigurator to turn *dp* into a proper template,
+   ready to use for simulation.
+   All data is added to *simulation_host*, return None.
+
+   dp: [DepotPrototype]
+
+

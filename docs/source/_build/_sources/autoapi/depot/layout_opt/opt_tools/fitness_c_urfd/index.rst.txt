@@ -1,0 +1,174 @@
+:py:mod:`depot.layout_opt.opt_tools.fitness_c_urfd`
+===================================================
+
+.. py:module:: depot.layout_opt.opt_tools.fitness_c_urfd
+
+.. autoapi-nested-parse::
+
+   Determination of fitness and feasibility of individuals specific for an
+   optimization scenario with objectives c and urfd.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_delay
+   depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_congestion
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_single
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_capacity
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_urfd
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_delay
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_congestion
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible_capacity
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible_delay
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible_congestion
+   depot.layout_opt.opt_tools.fitness_c_urfd.distance_capacity
+   depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_simulation
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr
+   depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.fitness_c_urfd.PENALTY_DELTA
+   depot.layout_opt.opt_tools.fitness_c_urfd.filename_eflips_settings
+   depot.layout_opt.opt_tools.fitness_c_urfd.GC
+   depot.layout_opt.opt_tools.fitness_c_urfd.SIM_TIME
+   depot.layout_opt.opt_tools.fitness_c_urfd.filename_timetable
+   depot.layout_opt.opt_tools.fitness_c_urfd.timetabledata
+
+
+.. py:data:: PENALTY_DELTA
+   :value: 0
+
+   
+
+.. py:data:: filename_eflips_settings
+
+   
+
+.. py:data:: GC
+
+   
+
+.. py:data:: SIM_TIME
+
+   
+
+.. py:data:: filename_timetable
+
+   
+
+.. py:data:: timetabledata
+
+   
+
+.. py:function:: estimate_max_total_delay(ttd)
+
+   Return an estimate of the maximum total delay that is possible until
+   sim time end. SIM_TIME should be a multiple of 86400 (defining full days).
+
+   ttd: [eflips.depot.standalone.ExcelSheetData]
+
+
+.. py:function:: estimate_max_total_congestion(ttd)
+
+   Return an estimate of the maximum total congestion time that is possible
+   until sim time end. SIM_TIME should be a multiple of 86400 (defining full
+   days).
+
+   ttd: [eflips.depot.standalone.ExcelSheetData]
+
+
+.. py:function:: evaluate(ind)
+
+   Return the fitness tuple capacity, urfd for an individual.
+   Caution: Returns other results in addition to fitness to not lose them with
+   multiprocessing.
+
+
+.. py:function:: evaluate_single(ind)
+
+   Return the capacity fitness as tuple (for single objective).
+
+
+.. py:function:: evaluate_capacity(ind)
+
+   Return the objective function value for capacity.
+
+
+.. py:function:: evaluate_urfd(ind)
+
+   Objective function value for number of unblocked rfd vehicles.
+
+
+.. py:function:: evaluate_delay(ind)
+
+   Evaluate the delay (result in hours!).
+
+
+.. py:function:: evaluate_congestion(ind)
+
+   Evaluate the congestion (result in hours!).
+
+
+.. py:function:: feasible_capacity(ind)
+
+   Do the packing test and return its result.
+
+
+.. py:function:: feasible_delay(ind)
+
+   Return True if *ind* is feasible in terms of delay, i.e. there was none.
+       
+
+
+.. py:function:: feasible_congestion(ind)
+
+   Return True if *ind* is feasible in terms of congestion, i.e. there was
+   none.
+
+
+.. py:function:: distance_capacity(ind)
+
+   Return an estimate of how far away *ind* is from the feasible region in
+   terms of capacity.
+
+
+.. py:function:: evaluate_simulation(ind)
+
+   Simulate and evaluate the results.
+
+   Delay and congestion values are converted to hours.
+
+
+.. py:function:: feasible(ind)
+
+   Return True if *ind* is feasible. *ind* must be evaluated first.
+
+
+.. py:function:: feasible_fr(results)
+
+   Return True if *ind* is feasible. *results* is an attribute of *ind*.
+   *ind* must be evaluated first.
+
+
+.. py:function:: feasible_fr_vec(results)
+
+   Return a feasibility vector based on the evaluation results of an
+   individual.
+
+

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.resources &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.settings_config" href="../settings_config/index.html" />
+    <link rel="prev" title="depot.rating" href="../rating/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.resources">
+<span id="depot-resources"></span><h1><a class="reference internal" href="#module-depot.resources" title="depot.resources"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.resources</span></code></a><a class="headerlink" href="#module-depot.resources" title="Permalink to this heading">¶</a></h1>
+<p>Resources for the depot simulation.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.resources.DepotResourceRequest" title="depot.resources.DepotResourceRequest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotResourceRequest</span></code></a></p></td>
+<td><p>Request event for DepotResource. Subclass of simpy.resources.resource.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.resources.DepotResourceRelease" title="depot.resources.DepotResourceRelease"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotResourceRelease</span></code></a></p></td>
+<td><p>Release event for DepotResource. Subclass of simpy.resources.resource.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.resources.DepotResource" title="depot.resources.DepotResource"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotResource</span></code></a></p></td>
+<td><p>Extension of simpy PreemptiveResource. For representing resources such</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.resources.DepotChargingInterface" title="depot.resources.DepotChargingInterface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotChargingInterface</span></code></a></p></td>
+<td><p>Parameters:</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.resources.ResourceBreak" title="depot.resources.ResourceBreak"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResourceBreak</span></code></a></p></td>
+<td><p>Process used by ResourceSwitch to occupy resources.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.resources.ResourceSwitch" title="depot.resources.ResourceSwitch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResourceSwitch</span></code></a></p></td>
+<td><p>User that occupies a DepotResource object on a predefined regular</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.DepotResourceRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">DepotResourceRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">caller</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.DepotResourceRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">simpy.resources.resource.PriorityRequest</span></code></p>
+<p>Request event for DepotResource. Subclass of simpy.resources.resource.
+PriorityRequest, for providing an interface for customization.</p>
+<dl class="simple">
+<dt>caller: object that issued the request. Must have attribute ‘ID’</dt><dd><p>(e.g. ‘serve’).</p>
+</dd>
+<dt>preempt: [bool] switch for preemption. Same behaviour as in class</dt><dd><p>PriorityRequest. Only set to False if it is certain that this request
+is not used with simpy.AllOf alongside other requests to avoid a
+potential locked resource case (currently done so in
+DepotControl.run_processes). See depot_simulation_tests_depotprocess.py
+for explanation and demo.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.DepotResourceRelease">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">DepotResourceRelease</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.DepotResourceRelease" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">simpy.resources.resource.Release</span></code></p>
+<p>Release event for DepotResource. Subclass of simpy.resources.resource.
+Release, for providing an interface for customization.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.DepotResource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">DepotResource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.DepotResource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">simpy.PreemptiveResource</span></code></p>
+<p>Extension of simpy PreemptiveResource. For representing resources such
+as workers and charging interfaces that are required for a DepotProcess.
+Can be switched on/off using simpyExt.ResourceSwitch.</p>
+<p>Parameters:
+depot: [Depot] instance</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.resources.DepotResource.user_count">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">user_count</span></span><a class="headerlink" href="#depot.resources.DepotResource.user_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that contains the number of current users.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.resources.DepotResource.request">
+<span class="sig-name descname"><span class="pre">request</span></span><a class="headerlink" href="#depot.resources.DepotResource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.resources.DepotResource.release">
+<span class="sig-name descname"><span class="pre">release</span></span><a class="headerlink" href="#depot.resources.DepotResource.release" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.DepotChargingInterface">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">DepotChargingInterface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.DepotChargingInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.resources.DepotResource" title="depot.resources.DepotResource"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotResource</span></code></a></p>
+<p>Parameters:
+max_power: [int or float] in kW</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.resources.DepotChargingInterface.current_power">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">current_power</span></span><a class="headerlink" href="#depot.resources.DepotChargingInterface.current_power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.ResourceBreak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">ResourceBreak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_resources</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recall_priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dur_predefined</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceBreak" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">eflips.depot.processes.BaseDepotProcess</span></code></p>
+<p>Process used by ResourceSwitch to occupy resources.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.resources.ResourceBreak._action">
+<span class="sig-name descname"><span class="pre">_action</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceBreak._action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator function that characterizes the process. Subclasses must
+implement this method. It must catch the exception simpy.Interrupt and
+let it pass or implement custom follow-ups. If this method yields a
+timeout, the duration must be set as self.dur before the yield
+statement due to the determination of self.etc.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.resources.ResourceBreak.estimate_duration">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dur</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceBreak.estimate_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the process duration in seconds based on given
+parameters as as if it could start immediately. Must be int, not float.
+Possible waiting time for resources are not considered. Therefore the
+estimate is reliable only if the process is started immediately. Static
+to be callable before instantiation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.resources.</span></span><span class="sig-name descname"><span class="pre">ResourceSwitch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">breaks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preempt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strength</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'full'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceSwitch" title="Permalink to this definition">¶</a></dt>
+<dd><p>User that occupies a DepotResource object on a predefined regular
+basis, claiming priority over other users and optionally interrupting them.
+For representing cycles that reduce a resource’s capacity such as break
+times for workers.
+Must be activated with ‘env.process(run_break_cycle())’ before simulation
+start.</p>
+<p>Attributes:
+resource: [DepotResource] or subclass object. Can be None before simulation</p>
+<blockquote>
+<div><p>start.</p>
+</div></blockquote>
+<dl>
+<dt>breaks: [list] of tuples defining phases during which <em>resource</em> is</dt><dd><p>unavailable. The tuples must contain two values: first is the starting
+time of the unavailability-phase and second is the end time. The times
+are defined as total seconds since 0:00 on the starting day. <em>breaks</em>
+is repeated until the simulation end.
+The usual case is defining the rhythm of one day. Example:</p>
+<blockquote>
+<div><p>breaks = [(12*3600, 13*3600), (18*3600, 20*3600)]
+-&gt; The resource is unavailable from 12:00 until 13:00 and from
+18:00 until 20:00.</p>
+</div></blockquote>
+<p>The definition can include rythms of more than one day. The base-
+timevalue stays at 0:00 on the first day:</p>
+<blockquote>
+<div><p>breaks = [(12*3600, 13*3600), (36*3600, 38*3600)]
+-&gt; The resource is unavailable from 12:00 until 13:00 on the first
+day and from 12:00 until 14:00 on the next day.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>An unavailability-phase during the night:</dt><dd><p>breaks = [(16.5*3600), (32*3600)]
+-&gt; The resource is only available from 8:00 until 16:30.</p>
+</dd>
+</dl>
+<p>Important: Phases of unavailability must not overlap.</p>
+</dd>
+<dt>preempt: [bool] Set to True if a current user’s process should be strictly</dt><dd><p>interrupted when a break begins. After the end of a break preempted
+requests are not resumed by default. If needed, the request executing
+instance has to implement resuming. Set to False if the process should
+be permitted to finish before the break starts. The end time of the
+break is not postponed, meaning that the break duration might be cut.</p>
+</dd>
+<dt>strength: [int or str] of resource.capacity that is unavailable during</dt><dd><p>breaks of this user. Set to resource.capacity or ‘full’ if resource
+should be fully unavailable. Set to between 0 and resource.capacity to
+only partly switch it off.</p>
+</dd>
+<dt>priority [int or float]: Priority of break-requests to <em>resource</em>. Lower</dt><dd><p>number means higher priority. Fixed value of -3. Requests by regular
+users should have a priority &gt; -3 (the default priority for regular
+users is 0). User priority of &lt;= -3 is possible, but can result in
+delayed or never even happening breaks.</p>
+</dd>
+<dt>resume: [bool] If True, an interrupted break is resumed for the remaining</dt><dd><p>duration.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.breaks">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">breaks</span></span><a class="headerlink" href="#depot.resources.ResourceSwitch.breaks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.resource">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resource</span></span><a class="headerlink" href="#depot.resources.ResourceSwitch.resource" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.strength">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">strength</span></span><a class="headerlink" href="#depot.resources.ResourceSwitch.strength" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return None or the current resource.capacity or the custom value
+self._strength.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.check_breaks">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_breaks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">breaks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceSwitch.check_breaks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Do essential validity checks on ResourceSwitch parameter <em>break</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.run_break_cycle">
+<span class="sig-name descname"><span class="pre">run_break_cycle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceSwitch.run_break_cycle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infinitely loop through self.breaks and occupy self.resource
+accordingly.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.resources.ResourceSwitch.take_break">
+<span class="sig-name descname"><span class="pre">take_break</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.resources.ResourceSwitch.take_break" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request one slot at self.resource and hold it for <em>duration</em>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../rating/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.rating</span></code></a></li>
+      <li>Next: <a href="../settings_config/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.settings_config</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/resources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

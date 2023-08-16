@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.layout_opt.opt_tools.fitness_c_urfd &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    <script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script src="../../../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="depot.layout_opt.opt_tools.fitness_util" href="../fitness_util/index.html" />
+    <link rel="prev" title="depot.layout_opt.opt_tools.crossover" href="../crossover/index.html" />
+   
+  <link rel="stylesheet" href="../../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.layout_opt.opt_tools.fitness_c_urfd">
+<span id="depot-layout-opt-opt-tools-fitness-c-urfd"></span><h1><a class="reference internal" href="#module-depot.layout_opt.opt_tools.fitness_c_urfd" title="depot.layout_opt.opt_tools.fitness_c_urfd"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd</span></code></a><a class="headerlink" href="#module-depot.layout_opt.opt_tools.fitness_c_urfd" title="Permalink to this heading">¶</a></h1>
+<p>Determination of fitness and feasibility of individuals specific for an
+optimization scenario with objectives c and urfd.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_delay" title="depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_max_total_delay</span></code></a>(ttd)</p></td>
+<td><p>Return an estimate of the maximum total delay that is possible until</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_congestion" title="depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_congestion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimate_max_total_congestion</span></code></a>(ttd)</p></td>
+<td><p>Return an estimate of the maximum total congestion time that is possible</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate</span></code></a>(ind)</p></td>
+<td><p>Return the fitness tuple capacity, urfd for an individual.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_single" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_single"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_single</span></code></a>(ind)</p></td>
+<td><p>Return the capacity fitness as tuple (for single objective).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_capacity" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_capacity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_capacity</span></code></a>(ind)</p></td>
+<td><p>Return the objective function value for capacity.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_urfd" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_urfd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_urfd</span></code></a>(ind)</p></td>
+<td><p>Objective function value for number of unblocked rfd vehicles.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_delay" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_delay</span></code></a>(ind)</p></td>
+<td><p>Evaluate the delay (result in hours!).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_congestion" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_congestion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_congestion</span></code></a>(ind)</p></td>
+<td><p>Evaluate the congestion (result in hours!).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_capacity" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_capacity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible_capacity</span></code></a>(ind)</p></td>
+<td><p>Do the packing test and return its result.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_delay" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible_delay</span></code></a>(ind)</p></td>
+<td><p>Return True if <em>ind</em> is feasible in terms of delay, i.e. there was none.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_congestion" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_congestion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible_congestion</span></code></a>(ind)</p></td>
+<td><p>Return True if <em>ind</em> is feasible in terms of congestion, i.e. there was</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.distance_capacity" title="depot.layout_opt.opt_tools.fitness_c_urfd.distance_capacity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance_capacity</span></code></a>(ind)</p></td>
+<td><p>Return an estimate of how far away <em>ind</em> is from the feasible region in</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_simulation" title="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_simulation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_simulation</span></code></a>(ind)</p></td>
+<td><p>Simulate and evaluate the results.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible</span></code></a>(ind)</p></td>
+<td><p>Return True if <em>ind</em> is feasible. <em>ind</em> must be evaluated first.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible_fr</span></code></a>(results)</p></td>
+<td><p>Return True if <em>ind</em> is feasible. <em>results</em> is an attribute of <em>ind</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec" title="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feasible_fr_vec</span></code></a>(results)</p></td>
+<td><p>Return a feasibility vector based on the evaluation results of an</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.PENALTY_DELTA" title="depot.layout_opt.opt_tools.fitness_c_urfd.PENALTY_DELTA"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PENALTY_DELTA</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.filename_eflips_settings" title="depot.layout_opt.opt_tools.fitness_c_urfd.filename_eflips_settings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filename_eflips_settings</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.GC" title="depot.layout_opt.opt_tools.fitness_c_urfd.GC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GC</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.SIM_TIME" title="depot.layout_opt.opt_tools.fitness_c_urfd.SIM_TIME"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SIM_TIME</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.filename_timetable" title="depot.layout_opt.opt_tools.fitness_c_urfd.filename_timetable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filename_timetable</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.fitness_c_urfd.timetabledata" title="depot.layout_opt.opt_tools.fitness_c_urfd.timetabledata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timetabledata</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.PENALTY_DELTA">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">PENALTY_DELTA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.PENALTY_DELTA" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.filename_eflips_settings">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">filename_eflips_settings</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.filename_eflips_settings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.GC">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">GC</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.GC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.SIM_TIME">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">SIM_TIME</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.SIM_TIME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.filename_timetable">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">filename_timetable</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.filename_timetable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.timetabledata">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">timetabledata</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.timetabledata" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_delay">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">estimate_max_total_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ttd</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_delay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the maximum total delay that is possible until
+sim time end. SIM_TIME should be a multiple of 86400 (defining full days).</p>
+<p>ttd: [eflips.depot.standalone.ExcelSheetData]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_congestion">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">estimate_max_total_congestion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ttd</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.estimate_max_total_congestion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of the maximum total congestion time that is possible
+until sim time end. SIM_TIME should be a multiple of 86400 (defining full
+days).</p>
+<p>ttd: [eflips.depot.standalone.ExcelSheetData]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the fitness tuple capacity, urfd for an individual.
+Caution: Returns other results in addition to fitness to not lose them with
+multiprocessing.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_single">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_single</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_single" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the capacity fitness as tuple (for single objective).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_capacity">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_capacity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the objective function value for capacity.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_urfd">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_urfd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_urfd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Objective function value for number of unblocked rfd vehicles.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_delay">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_delay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the delay (result in hours!).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_congestion">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_congestion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_congestion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the congestion (result in hours!).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_capacity">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible_capacity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Do the packing test and return its result.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_delay">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_delay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>ind</em> is feasible in terms of delay, i.e. there was none.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_congestion">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible_congestion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_congestion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>ind</em> is feasible in terms of congestion, i.e. there was
+none.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.distance_capacity">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">distance_capacity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.distance_capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an estimate of how far away <em>ind</em> is from the feasible region in
+terms of capacity.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_simulation">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">evaluate_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.evaluate_simulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate and evaluate the results.</p>
+<p>Delay and congestion values are converted to hours.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>ind</em> is feasible. <em>ind</em> must be evaluated first.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible_fr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>ind</em> is feasible. <em>results</em> is an attribute of <em>ind</em>.
+<em>ind</em> must be evaluated first.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.fitness_c_urfd.</span></span><span class="sig-name descname"><span class="pre">feasible_fr_vec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a feasibility vector based on the evaluation results of an
+individual.</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../../index.html">API Reference</a><ul>
+  <li><a href="../../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+  <li><a href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt</span></code></a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools</span></code></a><ul>
+      <li>Previous: <a href="../crossover/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.crossover</span></code></a></li>
+      <li>Next: <a href="../fitness_util/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.fitness_util</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../../../_sources/autoapi/depot/layout_opt/opt_tools/fitness_c_urfd/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

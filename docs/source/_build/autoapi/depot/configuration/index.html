@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.configuration &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.depot" href="../depot/index.html" />
+    <link rel="prev" title="depot.layout_opt.util" href="../layout_opt/util/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.configuration">
+<span id="depot-configuration"></span><h1><a class="reference internal" href="#module-depot.configuration" title="depot.configuration"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.configuration</span></code></a><a class="headerlink" href="#module-depot.configuration" title="Permalink to this heading">¶</a></h1>
+<p>Created on Thu Sep  7 09:31:54 2017</p>
+<p>&#64;author: e.lauth, p.mundt</p>
+<p>Components for the configuration of a depot.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.configuration.DepotConfigurator" title="depot.configuration.DepotConfigurator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotConfigurator</span></code></a></p></td>
+<td><p>Utilities to:</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.configuration.</span></span><span class="sig-name descname"><span class="pre">DepotConfigurator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utilities to:
+- create a depot
+- add/remove resources, resource switches, processes, areas, groups and</p>
+<blockquote>
+<div><p>plans to/from a depot</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>load and save a json depot template</p></li>
+</ul>
+<p>before simulation start.
+Before env.run is called, complete() must be called.</p>
+<p>Configuration-related errors are not raised. Instead, the current action is
+cancelled and a prepared error message is returned to enable the sender to
+decide on further actions (e.g. show an info popup in GUI).</p>
+<p>To add/remove areas to/from groups, use AreaGroup or ParkingAreaGroup
+methods.</p>
+<p>Attributes:
+filename_loaded: [None or str] filename of the imported template. None</p>
+<blockquote>
+<div><p>until loading. Stays the same even if templatename changes.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>templatename: [str] filename of the imported template, excluding the path.</dt><dd><p>May be changed manually. Used to create export filenames.</p>
+</dd>
+</dl>
+<p>templatename_display: [str] “pretty” version of templatename.
+multiplied_areas: Map for connecting area IDs added with ‘amount’ with</p>
+<blockquote>
+<div><p>their resulting areas.</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.isvalid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">isvalid</span></span><a class="headerlink" href="#depot.configuration.DepotConfigurator.isvalid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the current depot configuration is valid.
+Return (True, None) if valid, otherwise (False, errormsg).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.basemsg_invalid">
+<span class="sig-name descname"><span class="pre">basemsg_invalid</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Invalid</span> <span class="pre">depot</span> <span class="pre">configuration.'</span></em><a class="headerlink" href="#depot.configuration.DepotConfigurator.basemsg_invalid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset all depot configuration variables.
+Guarantees stable references for dicts and lists, e.g. a dict is
+cleared instead of being overwritten with an empty one.</p>
+<p>[untested, perhaps incomplete]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_resource">
+<span class="sig-name descname"><span class="pre">add_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate a DepotResource object and add it to self.depot. All
+required parameters have to be passed as keyword arguments (see class
+definition for documentation).
+Return (resource object, None) if successful, otherwise (None,
+errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_resource">
+<span class="sig-name descname"><span class="pre">remove_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove resource with <em>ID</em>.
+Return removed_from_special [list], containing processes that the
+resource was removed from.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_resource">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>resource</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_resource_switch">
+<span class="sig-name descname"><span class="pre">add_resource_switch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_resource_switch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate a ResourceSwitch object and add it to self.depot. All
+required parameters have to be passed as keyword arguments (see class
+definition for documentation).
+Parameter “resource” must be a string. The reference is resolved here.
+Return (resource_switch object, None) if successful, otherwise (None,
+errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_resource_switch">
+<span class="sig-name descname"><span class="pre">remove_resource_switch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_resource_switch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove resource_switch with <em>ID</em>. A related resource is not deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_resource_switch">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_resource_switch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_switch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_resource_switch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>resource_switch</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_process">
+<span class="sig-name descname"><span class="pre">add_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare process data for instantiation, which happens during
+simulation.
+<em>typename</em> must be a key in eflips.depot.processes.
+Return (process data dict, None) if successful, otherwise (None,
+errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_process">
+<span class="sig-name descname"><span class="pre">remove_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove process with <em>ID</em>. A related resource is not deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_process">
+<span class="sig-name descname"><span class="pre">export_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">procdata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return procdata in an export format.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_area">
+<span class="sig-name descname"><span class="pre">add_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call self._add_area once if kwargs[‘amount’] is 1 or missing.
+If amount &gt; 1, create sub-IDs and call self._add_area amount number of
+times. amount is removed from kwargs.
+Return (added_areas, None) if successful, otherwise (None, errormsg).
+added_areas is a list that contains all added areas from this method
+call.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator._add_area">
+<span class="sig-name descname"><span class="pre">_add_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator._add_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate a DirectArea or LineArea object and add it to
+self.depot. All required parameters have to be passed as keyword
+arguments (see class definition for documentation).
+Parameter ‘available_processes’ must be a list of str.
+Return (area, None) if successful, otherwise (None, errormsg).</p>
+<p>Should only be called through self.add_area.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_area">
+<span class="sig-name descname"><span class="pre">remove_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove area with <em>ID</em>.
+Return removed_from_special [list], containing groups and plans
+the area was removed from (excluding departure_areas and
+multiplied_areas because they are background activities).
+Related processes are not deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_area">
+<span class="sig-name descname"><span class="pre">export_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>area</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_group">
+<span class="sig-name descname"><span class="pre">add_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate an AreaGroup object and add it to self.depot. All
+required parameters have to be passed as keyword arguments (see class
+definition for documentation).
+Parameter stores must be a list of str.
+Return (group object, None) if successful, otherwise (None, errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.check_area_for_group">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_area_for_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.check_area_for_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Do checks on the validity of areas in parking area groups. Helper
+function for self.add_group.
+Return (True, None) if successful, otherwise (False, errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_group">
+<span class="sig-name descname"><span class="pre">remove_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove group with <em>ID</em>.
+Return removed_from_special [list], containing plans the group
+was removed from. Related areas are not deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_group">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">group</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>group</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.add_plan">
+<span class="sig-name descname"><span class="pre">add_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">typename</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.add_plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate an AreaGroup (or subclass) object and add it to
+self.depot. All required parameters have to be passed as keyword
+arguments (see class definition for documentation).
+Return (plan object, None) if successful, otherwise (None, errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.get_locations">
+<span class="sig-name descname"><span class="pre">get_locations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IDs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.get_locations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compose a list of areas and groups based on IDs. Helper function for
+self.add_plan.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.remove_plan">
+<span class="sig-name descname"><span class="pre">remove_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.remove_plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove plan with <em>ID</em> from default or specific plans.
+Related areas and groups are not deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_plan">
+<span class="sig-name descname"><span class="pre">export_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>plan</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.export_vehicle_filter">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_vehicle_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vf</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.export_vehicle_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict that represents the configuration of <em>vf</em>. Return None
+if all vehicles are permitted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset current depot and load a template from a json file.
+Return (True, None) if successful, otherwise (False, errormsg).
+<em>filename</em> must be suitable for eflips.settings.load_json (including
+path, excluding extension).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save current configuration as a json template. The configuration
+must be valid.
+<em>filename</em> must be suitable for eflips.settings.save_json.
+Return (True, None) if successful, otherwise (False, errormsg).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.configuration.DepotConfigurator.complete">
+<span class="sig-name descname"><span class="pre">complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.configuration.DepotConfigurator.complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actions that must take place before the simulation starts, but may
+not be possible upon initial creation of the depot since the
+possibility to create an empty depot is required.
+Return (True, None) if successful, otherwise (False, errormsg).
+May be called only once before simulation start.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../layout_opt/util/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.util</span></code></a></li>
+      <li>Next: <a href="../depot/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.depot</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/configuration/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

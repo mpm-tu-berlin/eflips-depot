@@ -1,0 +1,806 @@
+:py:mod:`depot.evaluation`
+==========================
+
+.. py:module:: depot.evaluation
+
+.. autoapi-nested-parse::
+
+   Evaluation, plots and exports for after the simulation.
+
+   Requires Matplotlib version 3+
+
+   Plot by directly calling a method of DepotEvaluation after running the
+   simulation with data logging. Example call in the console or a script:
+       simulation_host.depot_hosts[0].evaluation.nvehicles_total()
+
+   If a plot opens in PyCharm's SciView and is not displayed properly, then go to
+   Settings -> Tools -> Python Scientific -> uncheck "Show plots in toolwindow",
+   rerun the simulation, execute:
+   ">>> import matplotlib"
+   ">>> matplotlib.use('Qt5Agg')"
+   and plot again. Plots are now displayed in a separate window.
+   Source:
+   https://intellij-support.jetbrains.com/hc/en-us/community/posts/115000736584-
+   SciView-in-PyCharm-2017-3-reduces-functionality-of-Matplotlib
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   depot.evaluation.ArrivalLog
+   depot.evaluation.BatteryLog
+   depot.evaluation.DepotEvaluation
+   depot.evaluation.Report
+   depot.evaluation.DepotAnalysis
+   depot.evaluation.DepotLog
+   depot.evaluation.ChargeStart
+   depot.evaluation.FullyCharged
+   depot.evaluation.ProcessFinished
+   depot.evaluation.ProcessCalled
+   depot.evaluation.Departure
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.evaluation.baseplot
+   depot.evaluation.setting_language
+   depot.evaluation.intersection
+   depot.evaluation.savefig
+   depot.evaluation.abs_time
+   depot.evaluation.as_text
+   depot.evaluation.adjust_column_width
+   depot.evaluation.to_prev_values
+   depot.evaluation.discrete2continuous_logs
+   depot.evaluation.seconds2date
+   depot.evaluation.seconds2date_major
+   depot.evaluation.seconds2date_major2
+   depot.evaluation.seconds2date_minor
+   depot.evaluation.to_dateaxis
+   depot.evaluation.adjust_plt
+   depot.evaluation.adjust_plt_hist
+   depot.evaluation.make_patch_spines_invisible
+   depot.evaluation.align_yaxis
+   depot.evaluation.calc_descr_stats
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.evaluation.abs_time_fmt
+   depot.evaluation.base_date
+   depot.evaluation.datefmt_general
+   depot.evaluation.datefmt_major
+   depot.evaluation.datefmt_major2
+   depot.evaluation.datefmt_minor
+   depot.evaluation.xdatespacing_major
+   depot.evaluation.minor_intervals_per_major_tick
+   depot.evaluation.color_bvg_yellow
+
+
+.. py:data:: abs_time_fmt
+   :value: '%'
+
+   
+
+.. py:data:: base_date
+
+   
+
+.. py:data:: datefmt_general
+   :value: '%a %H:%M'
+
+   
+
+.. py:data:: datefmt_major
+   :value: '%a'
+
+   
+
+.. py:data:: datefmt_major2
+   :value: Multiline-String
+
+    .. raw:: html
+
+        <details><summary>Show Value</summary>
+
+    .. code-block:: python
+
+        """%H:%M
+        %a"""
+
+    .. raw:: html
+
+        </details>
+
+   
+
+.. py:data:: datefmt_minor
+   :value: '%H:%M'
+
+   
+
+.. py:data:: xdatespacing_major
+   :value: 86400
+
+   
+
+.. py:data:: minor_intervals_per_major_tick
+   :value: 4
+
+   
+
+.. py:data:: color_bvg_yellow
+   :value: '#f0d722'
+
+   
+
+.. py:class:: ArrivalLog(t, vehicle)
+
+
+   Container for data to be logged when a vehicle arrives at a depot.
+   Independent from the DataLogger. Temporary, may be replaced by a DataLogger
+   rework.
+
+
+.. py:class:: BatteryLog(t, vehicle, event_name)
+
+
+   Container for logging data related to charging. Independent from the
+   DataLogger. Temporary, may be replaced by a DataLogger rework.
+
+   Parameters:
+   event_name: [str]
+
+
+.. py:class:: DepotEvaluation(depotsim)
+
+
+   Container for data of one depot simulation run to be accessible after
+   the simulation. Provides tools for evaluating and exporting data.
+
+   Parameters:
+   depotsim: [DepotSimulation] instance
+
+   Attributes:
+   results: [dict] storing results of evaluation after the simulation
+   xlim: [tuple] of x axis limits for some plots and calculations. Default is
+       (0, self.SIM_TIME)
+   arrival_logs: [list] of ArrivalLog objects
+   sl_logs: [dict] with logged stress level values (by self.calculate_sl)
+   cm_report: [DepotAnalysis]
+
+
+   .. py:property:: now_repr
+
+      Return the current system date and time as formatted string.
+
+
+   .. py:property:: current_sl
+
+      The stress level [int] describes the current planning situation of
+      dispatch for one vehicle type or vehicle type group.
+      *sl_period* in globalConstants defines how far in the
+      future from now trips and vehicles are considered.
+      stress level = - number of trips that have no vehicle assigned
+              + number of vehicles that have no trip assigned
+      Both summands are calculated for now + sl_period.
+      One of or both summands for the same vehicle type or type group are
+      always 0 since they describe excesses that are matched against each
+      other.
+
+      Return only the data required for calculating sl to reduce the effort
+      during the simulation.
+
+
+   .. py:method:: complete()
+
+      Complete the initialization by creating references that were not
+      accessible during init. Must be called before simulation start.
+
+
+   .. py:method:: log_arrival(vehicle)
+
+
+   .. py:method:: log_sl(*args, **kwargs)
+
+
+   .. py:method:: excel_report_full()
+
+
+   .. py:method:: nvehicles_initstore(show=True, save=False, basefilename='nvehicles_initstore', formats=('png', ))
+
+      Vehicle count over time in the depot's init_store. Plot as line.
+
+
+   .. py:method:: nvehicles_initstore_end(show=True, save=False, basefilename='nvehicles_initstore_end', formats=('png', ))
+
+      Vehicle count per type in the depot's init_store at the end of
+      the simulation. Plot in a histogram.
+
+
+   .. py:method:: nvehicles_used_calculation()
+
+      Number of vehicles that were used by type
+
+
+   .. py:method:: nvehicles_used(show=True, save=False, basefilename='nvehicles_required', formats=('png', ), language='eng')
+
+      Number of vehicles that were used by type. Plot in a bar chart.
+
+
+   .. py:method:: nvehicles_total(show=True, save=False, basefilename='nvehicles_total', formats=('png', ))
+
+      Total vehicle count over time in the depot in total. Plot as line.
+              
+
+
+   .. py:method:: arrival_soc(typs={}, show=True, save=False, basefilename='arrival_soc', formats=('png', ), language='eng')
+
+      Plot the SoC of vehicles upon arrival at the depot.
+
+
+   .. py:method:: departure_soc(typs={}, show=True, save=False, basefilename='departure_soc', formats=('png', ), language='eng')
+
+      Plot the SoC of vehicles upon departure from the depot.
+
+
+   .. py:method:: get_periods(vehicle, vehicle_no, periods)
+
+      Helper function for self.vehicle_periods.
+
+
+   .. py:method:: vehicle_periods(periods=None, show=True, save=False, basefilename='vehicle_periods', formats=('pdf', ), show_vehicle_count=True, vehicle_count_color='#1f77b4', show_total_power=True, total_power_color='#d62728', show_annotates=True, vehicle_ID='all', smart_charging=None, smart_charging_color='forestgreen')
+
+      Plot the period history of all vehicles in a horizontal broken bar
+      chart with one y tick per vehicle.
+
+
+      periods: [dict] of process name and color as key-value pairs.
+      vehicle_ID: [str] Possibility to filter periods to plot by vehicle ID. Does NOT work with smart charging.
+          Examples:
+              'all': show all vehicles
+              'EN_DC 20': show only the specific vehicle with ID 'EN_DC 20'
+              'EN': show all vehicles with IDs containing 'EN'
+      smart_charging: [SmartCharging] if an proper object is given, the charging data from smart_charging will be ploted
+
+      See eflips.depot.plots for an example call of this function.
+
+
+   .. py:method:: idle_time_dist(charge_IDs=('charge', ), vehicle_types='all', show=True, save=False, basefilename='idle_time_dist', formats=('png', ), bins=100, color='#1f77b4')
+
+      Length of parking time after the end of charging until departure.
+      Data of the first simulation day is excluded.
+
+      charge_IDs: [tuple] IDs of the charge processes
+      vehicle_types: The vehicle types to calculate the idle time for. Must
+          be 'all' [str] to include all types or an iterable of vehicle type
+          IDs as str (e.g. ['EN', 'GN']).
+
+
+   .. py:method:: total_power(show=True, save=False, basefilename='total_power', formats=('png', ))
+
+      Plot the total power in the depot over time as line.
+
+
+   .. py:method:: ci_power(cis=[1, 1], show=True, save=False, basefilename='total_power', formats=('png', ), language='eng')
+
+      Plot the total power over time as line of charging infrastructures (cis).
+
+
+   .. py:method:: calculate_sl()
+
+      Calculation of stress level (sl) values after the simulation.
+
+
+   .. py:method:: calculate_sl_single(log)
+      :staticmethod:
+
+      Calculate sl for a single log.
+
+
+   .. py:method:: sl_single(vehicle_type_ID, show=True, save=False, basefilename='stress_level', formats=('pdf', ))
+
+      Plot the stress level of *vehicle_type_ID* and its calculation
+      parameters over time as line.
+
+
+   .. py:method:: sl_all(show=True, save=False, basefilename='stress_level', formats=('pdf', ))
+
+      Plot the stress level of all vehicle types/ vehicle type
+      groups over time as line.
+
+
+   .. py:method:: calc_count_rfd_unblocked_total()
+
+
+   .. py:method:: count_rfd_unblocked_total(show=True, save=False, basefilename='count_rfd_unblocked_total', formats=('png', ))
+
+      Plot the total number of ready for departure, unblocked vehicles at
+      parking areas over time.
+
+
+   .. py:method:: nvehicles_area(area_ID, show=True, save=False, basefilename='nvehicles_area', formats=('png', ), language='eng')
+
+      Plot vehicle count over time on the area with *area_ID*.
+
+
+   .. py:method:: nvehicles_group(group_ID, show=True, save=False, basefilename='nvehicles_group', formats=('png', ), language='eng')
+
+      Plot vehicle count over time on the area with *area_ID*.
+
+
+   .. py:method:: count_rfd_unblocked(area_ID, show=True, save=False, basefilename='count_rfd_unblocked', formats=('png', ))
+
+      Plot the number of ready for departure, unblocked vehicles at area
+      with *area_ID* over time.
+
+
+   .. py:method:: nvehicles_generated(show=True, save=False, basefilename='nvehicles_generated', formats=('png', ))
+
+      Plot vehicles generated over time.
+
+
+   .. py:method:: std_line(show=True, save=False, basefilename='std_line', formats=('png', ))
+
+      Plot target departure times of trips (without repetition) as line.
+              
+
+
+   .. py:method:: tripattr_scatter(attr, plot_title, basefilename, show=True, save=False, formats=('png', ))
+
+      Generic scatter plot for attribute *attr* of class SimpleTrip.
+      Without repetition, meaning only trips for which sta is lower than
+      timetable.interval_covered are included. *attr* is intended to be a
+      time-related integer such as 'std'.
+
+
+   .. py:method:: std_scatter(show=True, save=False, basefilename='std_scatter', formats=('png', ))
+
+      Plot SimpleTrip.std as scatter.
+
+
+   .. py:method:: sta_scatter(show=True, save=False, basefilename='sta_scatter', formats=('png', ))
+
+      Plot SimpleTrip.sta as scatter.
+
+
+   .. py:method:: ata_scatter(show=True, save=False, basefilename='ata_scatter', formats=('png', ))
+
+      Plot SimpleTrip.ata as scatter.
+
+
+   .. py:method:: lead_time_match_scatter(show=True, save=False, basefilename='lead_time_match_scatter', formats=('png', ), language='eng')
+
+      Plot SimpleTrip.lead_time_match as scatter.
+      Only includes trips that were successfully matched by the dispatch,
+      therefore trips that got a vehicle from a depot's init store are not
+      included.
+
+
+   .. py:method:: lead_time_match_dist(show=True, save=False, basefilename='lead_time_match_dist', formats=('png', ), language='eng')
+
+      Plot the distribution of SimpleTrip.lead_time_match_dist.
+      Only includes trips that were successfully matched by the dispatch,
+      therefore trips that got a vehicle from a depot's init store are not
+      included.
+
+
+   .. py:method:: trip_distances_scatter(show=True, save=False, basefilename='trip_distances_scatter', formats=('png', ))
+
+      Plot trip (without repetition) distance vs departure time.
+
+
+   .. py:method:: trip_distances_dist_bins(bins=15, distance_limit=150, show=True, save=False, basefilename='trip_distance_distribution', formats=('png', ))
+
+      Plot trip (without repetition) distance in a histogram.
+
+      bins: [int] number of bins for the histogram; matplotlib parameter.
+      distance_limit: [int] in km. The number of trips with higher distance
+          is printed.
+
+
+   .. py:method:: trip_distances_dist(show=True, save=False, basefilename='trip_distance_distribution', formats=('png', ), language='eng')
+
+      Plot trip (without repetition) distance in a histogram.
+
+              
+
+
+   .. py:method:: target_vehicle_types_dist(show=True, save=False, basefilename='target_vehicle_types_distribution', formats=('png', ))
+
+      Plot the distribution of vehicle_types of trips (without
+      repetition) in a histogram.
+
+
+   .. py:method:: departure_delay_vt_calculation(vehicle_types=None)
+
+
+   .. py:method:: departure_delay_vt(vehicle_types=None, show=True, save=False, basefilename='departure_delay_vt', formats=('png', ))
+
+      Delay of trips (with repetition) upon sim time end for selected
+      target vehicle types, for all depots. Plot as scatter. Includes
+      finished trips only!
+
+      vehicle_types: [list] of vehicle type IDs. If None, evaluate for all
+          types.
+
+
+   .. py:method:: total_delay()
+
+      Save the total delay sum of all trips that were due until sim time
+      end.
+
+
+   .. py:method:: area_history(vehicle_ID, show=True, save=False, basefilename='area_history', formats=('png', ))
+
+      Plot a vehicle's location history on depot areas similar to a gantt
+      chart. Includes used processes only.
+
+
+   .. py:method:: vehicle_type_dist(show=True, save=False, basefilename='vehicle_type_distribution', formats=('png', ))
+
+      Plot the distribution of vehicle types in a histogram.
+
+
+   .. py:method:: processhistory_single_vehicle_separate(vehicle_ID, show=True, save=False, basefilename='processhistory_single_vehicle_separate', formats=('png', ))
+
+      Plot the usage history of processes by a vehicle in a horizontal
+      broken bar chart. Includes only used processes on the y axis. Process
+      times exclude potential waiting for resources.
+
+
+   .. py:method:: process_intervals(process_ID, crit_value=86400 * 2, bins=15, show=True, save=False, basefilename='process_intervals', formats=('png', ))
+
+      Distribution of time intervals between the application of process 
+      with ID *process_ID* on vehicles.
+
+      bins: [int] number of bins for the histogram; matplotlib parameter.
+      The interval from 0 to the first appearance is skipped.
+      Prints appearances if > *crit_value*.
+
+
+   .. py:method:: battery_level(vehicle_ID, show=True, save=False, basefilename='battery_level', formats=('png', ))
+
+      Plot a vehicle's battery level over time as a line.
+      Assume that all charging and discharging activities are linear. Might
+      be inaccurate if multiple charging/discharging processes were active at
+      the same time on the same vehicle.
+
+
+   .. py:method:: vehicle_power(vehicle_ID, show=True, save=False, basefilename='vehicle_power', formats=('png', ))
+
+      Plot the power for a vehicle at charging interfaces during charging
+      and preconditioning over time as line.
+
+
+   .. py:method:: usage_history(resource_ID, show=True, save=False, basefilename='usage_history', formats=('png', ))
+
+      Plot the usage history of a resource..
+
+
+   .. py:method:: congestion_calulation()
+
+      Calculates the congestion in the depot.
+      return: WATCH out times are in hours
+
+
+   .. py:method:: congestion(show=True, save=False, basefilename_vehicle='congestion_by_vehicle', basefilename_vehicle_sort='congestion_by_vehicle_sort', basefilename_area_caused='congestion_by_area_caused', basefilename_area_stands='congestion_by_area_stands', formats=('png', ), language='eng')
+
+      Calculates the congestion in the depot. Congestion is the time between an vehicle wants to go to an area
+      and when does it arrives
+      :param show:
+      :param save:
+      :param basefilename_vehicle:
+      :param basefilename_area_caused:
+      :param basefilename_area_stands:
+      :param formats:
+      :return:
+
+
+   .. py:method:: total_parking_congestion()
+
+      Calculate and save the total time of successful and pending put
+      requests to parking area groups.
+
+
+   .. py:method:: occupancy_rate_calculation()
+
+      Calculates the occupancy rate for each slot.
+      :return: dict with occupancy rates in seconds
+
+
+   .. py:method:: occupancy_rate(basefilename='occupancy_rate.xlsx')
+
+      Writes everything in an excel.
+
+
+   .. py:method:: blocked_slots(show=True, save=False, basefilename='blocked_slots', formats=('png', ))
+
+      Calculates the blocked slots on LineAreas
+      :param show:
+      :param save:
+      :param basefilename:
+      :param formats:
+      :return:
+
+
+   .. py:method:: number_of_resources_calculation()
+
+      return: dict with number of charging interfaces and the sum of the capacity of other resources
+
+
+   .. py:method:: pssmart2_ratings(show=True, save=False, basefilename='pssmart2_ratings', formats=('png', ))
+
+      Plot logged ratings of PSSmart2 put requests as scatter and print
+      some results.
+
+
+   .. py:method:: validate()
+
+      Calculation of the energy required in the depot in various ways. Work in progress
+
+
+
+.. py:function:: baseplot(show, figsize=None)
+
+   Return new fig and ax after setting interactive mode based on *show*
+   [bool].
+   figsize: [None or tuple] figure size in cm (not inches)
+
+
+.. py:function:: setting_language(language)
+
+
+.. py:function:: intersection(interval_a, interval_b)
+
+   :param interval_a: list of two numbers
+   :param interval_b: list of two numbers
+   :return: the intersection of the two intervalls or False if no intersection is there
+
+
+.. py:function:: savefig(fig, filename, formats=('png', ), confirm=True, dpi=None, **kwargs)
+
+   filename: [str] including path, excluding extension.
+
+   formats: [tuple] of file extensions [str]
+   dpi: Parameter of fig.savefig()
+
+   Accepts other arguments of fig.savefig as kwargs
+   (example: bbox_inches='tight').
+
+
+.. py:function:: abs_time(s: int)
+
+   Return an absolute amount of seconds as hh:mm string.
+
+
+.. py:function:: as_text(value)
+
+   Return *value* as str, except if *value* is None, in which case an empty
+   string is returned.
+
+
+.. py:function:: adjust_column_width(ws)
+
+   Set column widths in worksheet *ws* of class
+   openpyxl.worksheet.worksheet.Worksheet to max length of cell contents.
+   Is exact when using a monospace font in excel (not by default), but also
+   provides a decent estimation without.
+   From: https://stackoverflow.com/questions/13197574/openpyxl-adjust-column-width-size
+
+
+.. py:function:: to_prev_values(vector, to_replace=None, first=0)
+
+   Replace values identical with *to_replace* in a list by previous value
+   that is not *to_replace*. If the first value is *to_replace*, *first* is
+   set as first value.
+
+
+.. py:function:: discrete2continuous_logs(data_dict, first=0, subkeys=None)
+
+   Take a dict of discrete timestep logs and return a list with values of
+   every timestep.
+   *first* is the parameter for function to_prev_values.
+   *subkeys* is a list of strings that may be supplied if values in
+   *data_dict* are subdicts, optionally further nested. Values for the return
+   list are then extracted from the subdict with all keys.
+
+
+.. py:function:: seconds2date(si, datefmt=datefmt_general, *args)
+
+   Convert a second to a date based on base_date being equivalent to 0.
+   Return a str of *datefmt*.
+
+
+.. py:function:: seconds2date_major(si, *args)
+
+   Convert a second to a date based on base_date being equivalent to 0.
+
+
+.. py:function:: seconds2date_major2(si, *args)
+
+   Convert a second to a date based on base_date being equivalent to 0.
+
+
+.. py:function:: seconds2date_minor(si, *args)
+
+   Convert a second to a date based on base_date being equivalent to 0.
+
+
+.. py:function:: to_dateaxis(ax)
+
+   Format a date x axis. Set base_date, datefmt and byhour at the top of
+   the script. Assumes that one step equals one second.
+
+   ax: [Axes]
+
+
+.. py:function:: adjust_plt()
+
+
+.. py:function:: adjust_plt_hist()
+
+
+.. py:function:: make_patch_spines_invisible(ax)
+
+   Helper function for a third or following y axis.
+   From: https://matplotlib.org/gallery/ticks_and_spines/multiple_yaxis_with_spines.html
+
+
+.. py:function:: align_yaxis(ax1, v1, ax2, v2)
+
+   Adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1.
+   Modified; from: https://stackoverflow.com/questions/10481990/matplotlib-axis-with-two-scales-shared-origin
+
+
+.. py:function:: calc_descr_stats(d, key)
+
+   Update dict *d* by some descriptive statistics based on values in list
+   *d*[*key*].
+
+
+.. py:class:: Report(depotsim)
+
+
+   .. py:method:: get_depot_logs()
+
+
+   .. py:method:: append_tripdata(wb)
+
+
+   .. py:method:: export_to_excel()
+
+
+
+.. py:class:: DepotAnalysis(depotsim)
+
+
+   Class for vehicle movement analysis inside the depot. Provides excel exports.
+
+   .. py:property:: defaultname
+
+      Return a filename for export excluding file extension.
+
+
+   .. py:attribute:: ACTION_POP_PARK
+      :value: 'ACTION_POP_PARK'
+
+      
+
+   .. py:attribute:: ACTION_POP_UNPARK
+      :value: 'ACTION_POP_UNPARK'
+
+      
+
+   .. py:attribute:: ACTION_POP_DEPART
+      :value: 'ACTION_POP_DEPART'
+
+      
+
+   .. py:attribute:: ACTION_CHARGE_START
+      :value: 'ACTION_CHARGE_START'
+
+      
+
+   .. py:attribute:: ACTION_CHARGE_FULL
+      :value: 'ACTION_CHARGE_FULL'
+
+      
+
+   .. py:attribute:: ACTION_PROCESS_FINISHED
+      :value: 'ACTION_PROCESS_FINISHED'
+
+      
+
+   .. py:attribute:: ACTION_PROCESS_CALLED
+      :value: 'ACTION_PROCESS_CALLED'
+
+      
+
+   .. py:method:: log(event=None)
+
+
+   .. py:method:: export_logs(filename)
+
+      Exports the list of logs into an Excel file located at [filename].
+
+      filename: [str] excluding path and file extension
+
+
+   .. py:method:: export_logs_smart_charging()
+
+      Exports the list of logs into pd_frame.
+
+      :return: pd_frame
+
+
+   .. py:method:: append_tripdata(wb)
+
+      Extend wb by trip data.
+
+
+
+.. py:class:: DepotLog(simTime, action, event)
+
+
+
+.. py:class:: ChargeStart(env, item)
+
+
+   .. py:attribute:: eventname
+      :value: 'ACTION_CHARGE_START'
+
+      
+
+
+.. py:class:: FullyCharged(env, item)
+
+
+   .. py:attribute:: eventname
+      :value: 'ACTION_CHARGE_FULL'
+
+      
+
+
+.. py:class:: ProcessFinished(env, item)
+
+
+   .. py:attribute:: eventname
+      :value: 'ACTION_PROCESS_FINISHED'
+
+      
+
+
+.. py:class:: ProcessCalled(env, item)
+
+
+   Lo for time, when vehicle would like to proceed to next area. Needed for congestion calculation.
+
+   .. py:attribute:: eventname
+      :value: 'ACTION_PROCESS_CALLED'
+
+      
+
+
+.. py:class:: Departure(env, item)
+
+
+   .. py:attribute:: eventname
+      :value: 'ACTION_POP_DEPART'
+
+      
+
+

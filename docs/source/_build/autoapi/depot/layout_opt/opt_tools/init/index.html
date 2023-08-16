@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.layout_opt.opt_tools.init &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    <script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script src="../../../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="depot.layout_opt.opt_tools.mutation" href="../mutation/index.html" />
+    <link rel="prev" title="depot.layout_opt.opt_tools.fitness_util" href="../fitness_util/index.html" />
+   
+  <link rel="stylesheet" href="../../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.layout_opt.opt_tools.init">
+<span id="depot-layout-opt-opt-tools-init"></span><h1><a class="reference internal" href="#module-depot.layout_opt.opt_tools.init" title="depot.layout_opt.opt_tools.init"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.init</span></code></a><a class="headerlink" href="#module-depot.layout_opt.opt_tools.init" title="Permalink to this heading">¶</a></h1>
+<p>Initializers for population and attributes. Related helpers and constraints.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="depot.layout_opt.opt_tools.init.AreaPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AreaPrototype</span></code></a></p></td>
+<td><p>Abstract base class for a simple area representation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.DSRPrototype" title="depot.layout_opt.opt_tools.init.DSRPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DSRPrototype</span></code></a></p></td>
+<td><p>Class for a simple DSR area representation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype" title="depot.layout_opt.opt_tools.init.DSR_90Prototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DSR_90Prototype</span></code></a></p></td>
+<td><p>Class for a simple DSR_90 area representation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.DDRPrototype" title="depot.layout_opt.opt_tools.init.DDRPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DDRPrototype</span></code></a></p></td>
+<td><p>Class for a simple DDR area representation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.LinePrototype" title="depot.layout_opt.opt_tools.init.LinePrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinePrototype</span></code></a></p></td>
+<td><p>Class for a simple Line area representation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.DepotPrototype" title="depot.layout_opt.opt_tools.init.DepotPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DepotPrototype</span></code></a></p></td>
+<td><p>Very basic depot representation.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.get_capacity_max" title="depot.layout_opt.opt_tools.init.get_capacity_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_capacity_max</span></code></a>(visu_class, capacity_min[, limit])</p></td>
+<td><p>Determine an area type's maximum capacity within DEPOT_A, DEPOT_B (the</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.get_count_max" title="depot.layout_opt.opt_tools.init.get_count_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_count_max</span></code></a>(visu_class, capacity)</p></td>
+<td><p>Determine the maximum number of areas of <em>visu_class</em> with <em>capacity</em></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.get_count_max_with_capacity_max" title="depot.layout_opt.opt_tools.init.get_count_max_with_capacity_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_count_max_with_capacity_max</span></code></a>(visu_class, capacity_min)</p></td>
+<td><p>Determine the maximum number of areas of <em>visu_class</em> with maximum</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.get_count_max_with_capacity_min" title="depot.layout_opt.opt_tools.init.get_count_max_with_capacity_min"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_count_max_with_capacity_min</span></code></a>(visu_class, capacity_min)</p></td>
+<td><p>Determine the maximum number of areas of <em>visu_class</em> with minimum</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.print_area_precomps" title="depot.layout_opt.opt_tools.init.print_area_precomps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_area_precomps</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.init_random_area" title="depot.layout_opt.opt_tools.init.init_random_area"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_random_area</span></code></a>()</p></td>
+<td><p>Return a new area prototype of random type with random capacity within</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.clone_depot" title="depot.layout_opt.opt_tools.init.clone_depot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clone_depot</span></code></a>(ind)</p></td>
+<td><p>Return a new DepotPrototype instance with cloned areas.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.init_random_depot" title="depot.layout_opt.opt_tools.init.init_random_depot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_random_depot</span></code></a>(dcls)</p></td>
+<td><p>Return a new DepotPrototype instance with a random amount of areas</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init._instantiate_areas" title="depot.layout_opt.opt_tools.init._instantiate_areas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">_instantiate_areas</span></code></a>()</p></td>
+<td><p>Instantiate all possible areas within slot capacity bounds.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.OTHER_AREA_TYPES" title="depot.layout_opt.opt_tools.init.OTHER_AREA_TYPES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OTHER_AREA_TYPES</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.CAPACITY_MAX" title="depot.layout_opt.opt_tools.init.CAPACITY_MAX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CAPACITY_MAX</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.COUNT_MAX" title="depot.layout_opt.opt_tools.init.COUNT_MAX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">COUNT_MAX</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.opt_tools.init.COUNT_MIN" title="depot.layout_opt.opt_tools.init.COUNT_MIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">COUNT_MIN</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.get_capacity_max">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">get_capacity_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visu_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.get_capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine an area type’s maximum capacity within DEPOT_A, DEPOT_B (the
+b-dimension). Uses BinWithDistances.try_put as a lightweight packing test.
+Return the capacity [int] or None if not even the minimum fits.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.get_count_max">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">get_count_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visu_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.get_count_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the maximum number of areas of <em>visu_class</em> with <em>capacity</em>
+within DEPOT_A, DEPOT_B. Return the count [int] or None if not even one
+area fits and the BinWithDistances object populated with the max count.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.get_count_max_with_capacity_max">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">get_count_max_with_capacity_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visu_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity_min</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.get_count_max_with_capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the maximum number of areas of <em>visu_class</em> with maximum
+capacity within DEPOT_A, DEPOT_B (the a-dimension). Return the count [int]
+or None if not even one area fits and the BinWithDistances object populated
+with the max count.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.get_count_max_with_capacity_min">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">get_count_max_with_capacity_min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visu_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity_min</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.get_count_max_with_capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the maximum number of areas of <em>visu_class</em> with minimum
+capacity within DEPOT_A, DEPOT_B. Return the count [int] or None if not
+even one area fits and the BinWithDistances object populated with the max
+count.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">AreaPrototype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Abstract base class for a simple area representation.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.visu">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">visu</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.visu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.capacity_min">
+<span class="sig-name descname"><span class="pre">capacity_min</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.capacity_max">
+<span class="sig-name descname"><span class="pre">capacity_max</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.typename">
+<span class="sig-name descname"><span class="pre">typename</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.typename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.visu_class">
+<span class="sig-name descname"><span class="pre">visu_class</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.visu_class" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return repr(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.to_other_type">
+<span class="sig-name descname"><span class="pre">to_other_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.to_other_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split self. into the least amount of area prototype objects of
+<em>other_type</em> with a total capacity of at least self.capacity. Return a
+list of the generated objects.</p>
+<p>other_type: type of other area prototype</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.AreaPrototype.clone">
+<span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.AreaPrototype.clone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new instance with same capacity and no visu.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSRPrototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">DSRPrototype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSRPrototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="depot.layout_opt.opt_tools.init.AreaPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AreaPrototype</span></code></a></p>
+<p>Class for a simple DSR area representation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSRPrototype.capacity_min">
+<span class="sig-name descname"><span class="pre">capacity_min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSRPrototype.capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSRPrototype.capacity_max">
+<span class="sig-name descname"><span class="pre">capacity_max</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSRPrototype.capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSRPrototype.typename">
+<span class="sig-name descname"><span class="pre">typename</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DSR'</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSRPrototype.typename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSRPrototype.visu_class">
+<span class="sig-name descname"><span class="pre">visu_class</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSRPrototype.visu_class" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSR_90Prototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">DSR_90Prototype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="depot.layout_opt.opt_tools.init.AreaPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AreaPrototype</span></code></a></p>
+<p>Class for a simple DSR_90 area representation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSR_90Prototype.capacity_min">
+<span class="sig-name descname"><span class="pre">capacity_min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype.capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSR_90Prototype.capacity_max">
+<span class="sig-name descname"><span class="pre">capacity_max</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype.capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSR_90Prototype.typename">
+<span class="sig-name descname"><span class="pre">typename</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DSR_90'</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype.typename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DSR_90Prototype.visu_class">
+<span class="sig-name descname"><span class="pre">visu_class</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DSR_90Prototype.visu_class" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DDRPrototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">DDRPrototype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DDRPrototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="depot.layout_opt.opt_tools.init.AreaPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AreaPrototype</span></code></a></p>
+<p>Class for a simple DDR area representation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DDRPrototype.capacity_min">
+<span class="sig-name descname"><span class="pre">capacity_min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DDRPrototype.capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DDRPrototype.capacity_max">
+<span class="sig-name descname"><span class="pre">capacity_max</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DDRPrototype.capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DDRPrototype.typename">
+<span class="sig-name descname"><span class="pre">typename</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DDR'</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DDRPrototype.typename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DDRPrototype.visu_class">
+<span class="sig-name descname"><span class="pre">visu_class</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DDRPrototype.visu_class" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.LinePrototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">LinePrototype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capacity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.LinePrototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.opt_tools.init.AreaPrototype" title="depot.layout_opt.opt_tools.init.AreaPrototype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AreaPrototype</span></code></a></p>
+<p>Class for a simple Line area representation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.LinePrototype.capacity_min">
+<span class="sig-name descname"><span class="pre">capacity_min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.LinePrototype.capacity_min" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.LinePrototype.capacity_max">
+<span class="sig-name descname"><span class="pre">capacity_max</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.LinePrototype.capacity_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.LinePrototype.typename">
+<span class="sig-name descname"><span class="pre">typename</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'L'</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.LinePrototype.typename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.LinePrototype.visu_class">
+<span class="sig-name descname"><span class="pre">visu_class</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.LinePrototype.visu_class" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.OTHER_AREA_TYPES">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">OTHER_AREA_TYPES</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.OTHER_AREA_TYPES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.CAPACITY_MAX">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">CAPACITY_MAX</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.CAPACITY_MAX" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.COUNT_MAX">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">COUNT_MAX</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.COUNT_MAX" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.COUNT_MIN">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">COUNT_MIN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#depot.layout_opt.opt_tools.init.COUNT_MIN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.print_area_precomps">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">print_area_precomps</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.print_area_precomps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.init_random_area">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">init_random_area</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.init_random_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new area prototype of random type with random capacity within
+bounds.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">DepotPrototype</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Very basic depot representation.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.visu">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">visu</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.visu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.capacity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total parking area capacity.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.ID">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ID</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.ID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Automatic ID based on self.areas.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.ID_dm">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ID_dm</span></span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.ID_dm" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID with DSR and DDR merged.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.generate_ID">
+<span class="sig-name descname"><span class="pre">generate_ID</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.generate_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.generate_ID_dm">
+<span class="sig-name descname"><span class="pre">generate_ID_dm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.generate_ID_dm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.sort_areas">
+<span class="sig-name descname"><span class="pre">sort_areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.sort_areas" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.reset_results">
+<span class="sig-name descname"><span class="pre">reset_results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.reset_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset of evaluation results that is required after changes such as
+crossover and mutation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.DepotPrototype.__eq__">
+<span class="sig-name descname"><span class="pre">__eq__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.DepotPrototype.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if DepotPrototype objects <em>self</em> and <em>other</em> have the
+same areas.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.clone_depot">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">clone_depot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ind</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.clone_depot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new DepotPrototype instance with cloned areas.
+As function and not method to be applicable with map.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init.init_random_depot">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">init_random_depot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dcls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init.init_random_depot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new DepotPrototype instance with a random amount of areas
+within bounds.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.opt_tools.init._instantiate_areas">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.opt_tools.init.</span></span><span class="sig-name descname"><span class="pre">_instantiate_areas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.opt_tools.init._instantiate_areas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate all possible areas within slot capacity bounds.</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../../index.html">API Reference</a><ul>
+  <li><a href="../../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+  <li><a href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt</span></code></a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools</span></code></a><ul>
+      <li>Previous: <a href="../fitness_util/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.fitness_util</span></code></a></li>
+      <li>Next: <a href="../mutation/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.opt_tools.mutation</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../../../_sources/autoapi/depot/layout_opt/opt_tools/init/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

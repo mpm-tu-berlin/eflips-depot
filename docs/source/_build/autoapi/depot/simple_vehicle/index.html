@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.simple_vehicle &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.simulation" href="../simulation/index.html" />
+    <link rel="prev" title="depot.settings_config" href="../settings_config/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.simple_vehicle">
+<span id="depot-simple-vehicle"></span><h1><a class="reference internal" href="#module-depot.simple_vehicle" title="depot.simple_vehicle"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.simple_vehicle</span></code></a><a class="headerlink" href="#module-depot.simple_vehicle" title="Permalink to this heading">¶</a></h1>
+<p>Created on Fri Oct 13 11:16:58 2017</p>
+<p>&#64;author: P.Mundt</p>
+<p>Vehicle components for the depot simulation.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.simple_vehicle.VehicleType" title="depot.simple_vehicle.VehicleType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleType</span></code></a></p></td>
+<td><p>Definition of a vehicle type. Instantiated once per type. Vehicles of</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.simple_vehicle.VehicleTypeGroup" title="depot.simple_vehicle.VehicleTypeGroup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleTypeGroup</span></code></a></p></td>
+<td><p>Hashable identifier for a list of vehicle types that are mutually</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.simple_vehicle.SimpleVehicle" title="depot.simple_vehicle.SimpleVehicle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleVehicle</span></code></a></p></td>
+<td><p>Vehicle for the depot simulation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.simple_vehicle.SimpleBattery" title="depot.simple_vehicle.SimpleBattery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleBattery</span></code></a></p></td>
+<td><p>Battery for a vehicle.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.simple_vehicle.soc_input_valid" title="depot.simple_vehicle.soc_input_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">soc_input_valid</span></code></a>(soc)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.simple_vehicle.VehicleType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.simple_vehicle.</span></span><span class="sig-name descname"><span class="pre">VehicleType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">battery_capacity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">CR</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.VehicleType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Definition of a vehicle type. Instantiated once per type. Vehicles of
+the same type hold references to the same VehicleType instance.</p>
+<p>Parameters:
+ID: [str]
+battery_capacity: [int or float] energy_nominal of battery.</p>
+<blockquote>
+<div><p>See SimpleBattery for info about other battery attributes.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>CR: [int or float] consumption rate of energy from the battery. kWh/km if</dt><dd><p>distance-based or kW if time-based. eflips.settings.globalConstants[
+‘depot’][‘consumption_calc_mode’] must be set accordingly. May be
+omitted if consumption calculation is not CR-based.</p>
+</dd>
+</dl>
+<p>Attributes:
+group: [VehicleTypeGroup or None] that the vehicle type is part of, if any.
+count: {dict} key: depot, value: number of vehicles with this type by</p>
+<blockquote>
+<div><p>depot</p>
+</div></blockquote>
+<dl class="simple">
+<dt>share: {dict} key: depot, value: share of vehicles with this type by</dt><dd><p>depot</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.simple_vehicle.VehicleType.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.VehicleType.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return repr(self).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.simple_vehicle.VehicleTypeGroup">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.simple_vehicle.</span></span><span class="sig-name descname"><span class="pre">VehicleTypeGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.VehicleTypeGroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hashable identifier for a list of vehicle types that are mutually
+substitutable on trips.</p>
+<p>Parameters:
+types: [list] of VehicleType objects. Can be empty upon instantiation.</p>
+<p>Attributes:
+count: {dict} key: depot, value: number of vehicles with this group by</p>
+<blockquote>
+<div><p>depot</p>
+</div></blockquote>
+<dl class="simple">
+<dt>share: {dict} key: depot, value: share of vehicles with this group by</dt><dd><p>depot</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.VehicleTypeGroup.vehicle_types_joinedstr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vehicle_types_joinedstr</span></span><a class="headerlink" href="#depot.simple_vehicle.VehicleTypeGroup.vehicle_types_joinedstr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the IDs of self.types comma-separated in a single string.
+Example returns:
+[‘EN’] -&gt; ‘EN’
+[‘EN’, ‘DL’] -&gt; ‘EN, DL’</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleVehicle">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.simple_vehicle.</span></span><span class="sig-name descname"><span class="pre">SimpleVehicle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vehicle_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">home_depot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleVehicle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vehicle for the depot simulation.</p>
+<p>Parameters:
+env: [simpy.Environment]
+ID: [str] unique identifier such as vehicle number
+vehicle_type: [VehicleType]</p>
+<p>Attributes:
+trip: [SimpleTrip] current trip of the vehicle. None inside the depot.
+system_entry: [bool] False as long as the vehicle has not been used. True</p>
+<blockquote>
+<div><p>after.</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleVehicle.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleVehicle.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return repr(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleVehicle.drive">
+<span class="sig-name descname"><span class="pre">drive</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleVehicle.drive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process one trip.
+Simplifies everything that happens outside of the depot to consuming
+energy and letting time pass if the depot simulations runs on its own.
+Ends by calling checkin when arriving at the depot at the end of a
+trip.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.simple_vehicle.</span></span><span class="sig-name descname"><span class="pre">SimpleBattery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_nominal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soc_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soh</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Battery for a vehicle.</p>
+<p>Parameters:
+energy_nominal = [float or int: kWh] nominal energy capacity. constant
+soc_min, soc_max: [float] usable energy range. 0…1
+soc_init: [float] initial state of charge within usage energy range</p>
+<blockquote>
+<div><p>(energy_real). 0…1</p>
+</div></blockquote>
+<p>soh: [float] state of health. 0…1</p>
+<p>Attributes:
+n_charges: number of times the battery has been charged
+active_processes: [list] of BaseDepotProcess or subclass objects that are</p>
+<blockquote>
+<div><p>currently modifying energy. These objects must implement and update
+method that modifies energy early.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>last_update: [int] sim time log to prevent recursion when retrieving energy</dt><dd><p>and unnecessary updates.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return current energy level. Ask active processes for updates first.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.energy_real">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy_real</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.energy_real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return current real energy capacity.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.soc">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">soc</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.soc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return current state of charge with regard to energy_real.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.energy_max">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy_max</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.energy_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return maximum usable energy.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.energy_min">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy_min</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.energy_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return minimum usable energy.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.energy_remaining">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy_remaining</span></span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.energy_remaining" title="Permalink to this definition">¶</a></dt>
+<dd><p>Effective amount of energy usable by vehicle at the current state
+of charge.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subtract <em>amount</em> from self.energy.
+If energy would become negative and negativity is not allowed, set it
+to a given positive percentage of self.energy_real. Simple imitation of
+opportunity charging.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.simple_vehicle.SimpleBattery.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.SimpleBattery.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add <em>amount</em> to self.energy.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.simple_vehicle.soc_input_valid">
+<span class="sig-prename descclassname"><span class="pre">depot.simple_vehicle.</span></span><span class="sig-name descname"><span class="pre">soc_input_valid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">soc</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.simple_vehicle.soc_input_valid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../settings_config/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.settings_config</span></code></a></li>
+      <li>Next: <a href="../simulation/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.simulation</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/simple_vehicle/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

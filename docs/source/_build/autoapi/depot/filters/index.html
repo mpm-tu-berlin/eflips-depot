@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.filters &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.input_epex_power_price" href="../input_epex_power_price/index.html" />
+    <link rel="prev" title="depot.evaluation" href="../evaluation/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.filters">
+<span id="depot-filters"></span><h1><a class="reference internal" href="#module-depot.filters" title="depot.filters"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.filters</span></code></a><a class="headerlink" href="#module-depot.filters" title="Permalink to this heading">¶</a></h1>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.filters.VehicleFilter" title="depot.filters.VehicleFilter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VehicleFilter</span></code></a></p></td>
+<td><p>Class to build and apply filters for vehicles. Designed to work with</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.filters.</span></span><span class="sig-name descname"><span class="pre">VehicleFilter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to build and apply filters for vehicles. Designed to work with
+simpy FilterStore and subclasses in the depot simulation: Implements
+__call__ to make an instance directly callable and return the all()-result
+of the criteria. Can be recalled. Usable e.g. for simpyExt.FilterStoreExt
+that needs the store item as single positional argument for the filter
+function. Filter criteria are prepared in class methods and can be selected
+and combined before application.</p>
+<p>Parameters:
+filter_names: [list or None] of filter method names (as strings, ‘<a href="#id1"><span class="problematic" id="id2">filter_</span></a>’</p>
+<blockquote>
+<div><p>omitted) of this class that should be applied on a vehicle. If left
+None, the VehicleFilter returns True.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>All other parameters that are required by selected filter methods must be</dt><dd><p>added as keyword arguments during init (see method descriptions).</p>
+</dd>
+</dl>
+<p>Attributes:
+filters: [list] of one or more <a href="#id3"><span class="problematic" id="id4">VehicleFilter.filter_</span></a>… methods or other</p>
+<blockquote>
+<div><p>valid callables. Filled automatically from <em>filter_names</em>. Can be None
+or empty, in which case the VehicleFilter returns True. Entries can be
+added during definition (see filter_names) and afterwards (see
+VehicleFilter.append).</p>
+</div></blockquote>
+<dl>
+<dt>Usage:</dt><dd><p>Instantiate a VehicleFilter object. Pass arguments required for the
+checks, such as filter_names upon instantiation as kwargs or add them
+later.
+Example:</p>
+<blockquote>
+<div><p>vf = VehicleFilter(filter_names=[‘service_need’], env=env)
+trueorfalse = vf(vehicle)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Static methods may be called without instantiation. Example:</dt><dd><p>trueorfalse = VehicleFilter.filter_no_active_processes(vehicle)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>When adding a new filter method:
+- The method name must be preceeded by ‘<a href="#id5"><span class="problematic" id="id6">filter_</span></a>’.
+- ‘vehicle’ must be the only method parameter. Additional parameters can be</p>
+<blockquote>
+<div><p>accessed via the VehicleFilter object attributes. Passing all those
+parameters as keyword arguments during init adds them automatically as
+attribute of the VehicleFilter. Alternatively, attributes might be
+added after init, before calling the filter.</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method that actually applies filters. Return True if all of
+self.filter return True or self.filters is empty.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.any">
+<span class="sig-name descname"><span class="pre">any</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.any" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if any of the filters in self.filters is True or
+self.filters is empty. Optional method in addition to the standard
+usage with logical all which is implemented in __call__.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filters_from_names">
+<span class="sig-name descname"><span class="pre">filters_from_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filters_from_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append references to methods specified in filter_names to
+self.filters. Extends the given strings by ‘<a href="#id7"><span class="problematic" id="id8">filter_</span></a>’ at the beginning,
+so that part does not have to be passed during instantiation.
+Filters can alternatively be added after instantiation using append().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.append" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append <em>filter</em> to self.filters. Filter must be a callable accepting
+vehicle as argument and returning a boolean value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_vehicle_type">
+<span class="sig-name descname"><span class="pre">filter_vehicle_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_vehicle_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle type matches ANY item in
+self.vehicle_types.</p>
+<p>Attributes required in self:
+vehicle_types: [list] of eflips.depot.simple_vehicle.VehicleType</p>
+<blockquote>
+<div><p>objects</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.get_vt_objects">
+<span class="sig-name descname"><span class="pre">get_vt_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.get_vt_objects" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for filter methods using self.vehicle_types. Get objects for
+strings in self.vehicle_types.
+If <em>force</em> is False and self.vehicle_types_converted is True, the
+conversion is skipped (useful for reusing the filter object with the
+same parameters). If <em>force</em> is true, the conversion is done even if
+self.vehicle_types_converted is True (useful for reusing the filter
+object with new parameters).</p>
+<p>Attributes required in self:
+vehicle_types: [list] of vehicle type IDs as strings or</p>
+<blockquote>
+<div><p>eflips.depot.simple_vehicle.VehicleType objects</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_trip_vehicle_match">
+<span class="sig-name descname"><span class="pre">filter_trip_vehicle_match</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_trip_vehicle_match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if vehicle is suitable for self.trip (for vehicles that
+have not entered the system yet) or if vehicle and self.trip were
+matched by the dispatching.</p>
+<p>Attributes required in self:
+trip: eflips.depot.standalone.SimpleTrip object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_no_active_processes">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_no_active_processes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_no_active_processes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle has no active processes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_no_active_uncancellable_processes">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_no_active_uncancellable_processes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_no_active_uncancellable_processes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle has no active processes or only those
+that can be cancelled for dispatch.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_bat_full">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_bat_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_bat_full" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle’s battery is full.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_min_energy">
+<span class="sig-name descname"><span class="pre">filter_min_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_min_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the remaining energy of the vehicle’s battery is at
+least self.min_energy.</p>
+<p>Attributes required in self:
+min_energy: [int] minimum battery level</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_sufficient_energy">
+<span class="sig-name descname"><span class="pre">filter_sufficient_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_sufficient_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the remaining energy of the vehicle’s battery plus a
+reserve is sufficient for the trip.</p>
+<p>Attributes required in self:
+trip: eflips.depot.standalone.SimpleTrip object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_soc_lower_than">
+<span class="sig-name descname"><span class="pre">filter_soc_lower_than</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_soc_lower_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the soc of the vehicle’s battery is lower than
+self.soc.</p>
+<p>Attributes required in self:
+soc: [float]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_service_need">
+<span class="sig-name descname"><span class="pre">filter_service_need</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_service_need" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle needs service, i.e. the cumulated trip
+time since last service is greater than self.service_need_td or the
+elapsed time since last service is greater than
+self.service_need_t_elapsed.
+This filter is one option to check the service need. An independent
+alternative is filter_in_period.</p>
+<p>Attributes required in self:
+env: simpy.Environment object
+service_need_td: [int] amount of driving time [seconds] since last</p>
+<blockquote>
+<div><p>service from which service_need will be set to True when exceeded.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>service_need_t_elapsed: [int] amount of elapsed time [seconds] since</dt><dd><p>last service from which service_need will be set to True when
+exceeded.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_repair_need">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_repair_need</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_repair_need" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle needs repair.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_maintenance_need">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_maintenance_need</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_maintenance_need" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the vehicle needs maintenance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_in_period">
+<span class="sig-name descname"><span class="pre">filter_in_period</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_in_period" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if self.now as a daytime is in self.period.</p>
+<p>Attributes required in self:
+env: simpy.Environment object
+period: [tuple or list] daytime period (t0, t1) for</p>
+<blockquote>
+<div><p>filter_in_period. t0 and t1 are seconds with 0 &lt; t &lt; 86400. t1 may
+be lower than t0 to specify periods including midnight. t0 and t1
+cannot be equal. (reason for list is enabling direct json input)</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_in_period_days">
+<span class="sig-name descname"><span class="pre">filter_in_period_days</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_in_period_days" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the time is in period and it is the third, fourth,
+… day.</p>
+<p>Attributes required in self:
+env: simpy.Environment object
+after_day: [int] determines in how many days a service has to be</p>
+<blockquote>
+<div><p>done. For example every third day.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_isunblocked">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_isunblocked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_isunblocked" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_not_on_hold">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_not_on_hold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_not_on_hold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>vehicle</em> is not marked to be on hold.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_dwd_previous_area">
+<span class="sig-name descname"><span class="pre">filter_dwd_previous_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_dwd_previous_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if current area is in none_of_previous_areas.</p>
+<p>Attributes required in self:
+none_of_previous_areas: [list] Skip current area if previous</p>
+<blockquote>
+<div><p>area in none_of_previous_areas.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.filters.VehicleFilter.filter_false">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_false</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.filters.VehicleFilter.filter_false" title="Permalink to this definition">¶</a></dt>
+<dd><p>Always return False.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../evaluation/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.evaluation</span></code></a></li>
+      <li>Next: <a href="../input_epex_power_price/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.input_epex_power_price</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/filters/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

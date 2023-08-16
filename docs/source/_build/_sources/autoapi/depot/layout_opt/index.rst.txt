@@ -1,0 +1,30 @@
+:py:mod:`depot.layout_opt`
+==========================
+
+.. py:module:: depot.layout_opt
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   doc/index.rst
+   opt_tools/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   evaluation/index.rst
+   optimize_c_urfd/index.rst
+   packing/index.rst
+   settings/index.rst
+   template_creation/index.rst
+   util/index.rst
+
+

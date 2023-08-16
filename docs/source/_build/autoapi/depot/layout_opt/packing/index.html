@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.layout_opt.packing &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="depot.layout_opt.settings" href="../settings/index.html" />
+    <link rel="prev" title="depot.layout_opt.optimize_c_urfd" href="../optimize_c_urfd/index.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.layout_opt.packing">
+<span id="depot-layout-opt-packing"></span><h1><a class="reference internal" href="#module-depot.layout_opt.packing" title="depot.layout_opt.packing"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.packing</span></code></a><a class="headerlink" href="#module-depot.layout_opt.packing" title="Permalink to this heading">¶</a></h1>
+<p>Utilities for defining a depot layout as a packing problem and solving it.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p></td>
+<td><p>Rectangle representation as basis for subclasses.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.RectangleWithInner" title="depot.layout_opt.packing.RectangleWithInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithInner</span></code></a></p></td>
+<td><p>Rectangle containing two or more identical rectangles.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.RectangleWithRotatableInner" title="depot.layout_opt.packing.RectangleWithRotatableInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithRotatableInner</span></code></a></p></td>
+<td><p>Rectangle containing one or more identical rotatable rectangles.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner" title="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithRotatedDoubleRowInner</span></code></a></p></td>
+<td><p>Rectangle containing two or more identical sized rectangles that</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.Available" title="depot.layout_opt.packing.Available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Available</span></code></a></p></td>
+<td><p>Rectangle with default parameters to represent available space in</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.Bin" title="depot.layout_opt.packing.Bin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Bin</span></code></a></p></td>
+<td><p>Rectangular container with best-fit-decreasing algorithm for rectangle</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DistanceRectangle" title="depot.layout_opt.packing.DistanceRectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRectangle</span></code></a></p></td>
+<td><p>Rectangle with default parameters to represent a buffer distance in</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.BinWithDistances" title="depot.layout_opt.packing.BinWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BinWithDistances</span></code></a></p></td>
+<td><p>Rectangular container with best-fit-decreasing-algorithm for rectangle</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DistanceLeft" title="depot.layout_opt.packing.DistanceLeft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceLeft</span></code></a></p></td>
+<td><p>Buffer rectangle on the outer left side of the <em>item</em> rectangle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DistanceBottom" title="depot.layout_opt.packing.DistanceBottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceBottom</span></code></a></p></td>
+<td><p>Buffer rectangle on the outer bottom side of the <em>item</em> rectangle.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DistanceRight" title="depot.layout_opt.packing.DistanceRight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRight</span></code></a></p></td>
+<td><p>Buffer rectangle on the outer right side of the <em>item</em> rectangle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DistanceTop" title="depot.layout_opt.packing.DistanceTop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceTop</span></code></a></p></td>
+<td><p>Buffer rectangle on the outer top side of the <em>item</em> rectangle.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.RectangleWithDistances" title="depot.layout_opt.packing.RectangleWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithDistances</span></code></a></p></td>
+<td><p>A rectangle that may have a buffer distance at each side. Without</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.VisuDataLine" title="depot.layout_opt.packing.VisuDataLine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisuDataLine</span></code></a></p></td>
+<td><p>Representation of a Line area.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.VisuDataDirectSingleRow" title="depot.layout_opt.packing.VisuDataDirectSingleRow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisuDataDirectSingleRow</span></code></a></p></td>
+<td><p>Representation of a single row direct area.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.VisuDataDirectSingleRow_90" title="depot.layout_opt.packing.VisuDataDirectSingleRow_90"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisuDataDirectSingleRow_90</span></code></a></p></td>
+<td><p>Representation of a single row direct area.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.VisuDataDirectDoubleRow" title="depot.layout_opt.packing.VisuDataDirectDoubleRow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisuDataDirectDoubleRow</span></code></a></p></td>
+<td><p>Representation of a double row direct area.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.Progressprinter" title="depot.layout_opt.packing.Progressprinter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Progressprinter</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.fits_into" title="depot.layout_opt.packing.fits_into"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fits_into</span></code></a>(r1, r2)</p></td>
+<td><p>Return True if rectangle r1 is smaller or equal than rectangle r2 in</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.xintersect" title="depot.layout_opt.packing.xintersect"><code class="xref py py-obj docutils literal notranslate"><span class="pre">xintersect</span></code></a>(r1, r2)</p></td>
+<td><p>Return True if unrotated rectangles r1 and r2 intersect in x direction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.yintersect" title="depot.layout_opt.packing.yintersect"><code class="xref py py-obj docutils literal notranslate"><span class="pre">yintersect</span></code></a>(r1, r2)</p></td>
+<td><p>Return True if unrotated rectangles r1 and r2 intersect in y direction.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.intersect" title="depot.layout_opt.packing.intersect"><code class="xref py py-obj docutils literal notranslate"><span class="pre">intersect</span></code></a>(r1, r2)</p></td>
+<td><p>Return True if unrotated rectangles r1 and r2 intersect. Same value is</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.contains" title="depot.layout_opt.packing.contains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code></a>(r1, r2)</p></td>
+<td><p>Return True if rectangle r1 completely encloses rectangle r2. Must be</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.contains_point" title="depot.layout_opt.packing.contains_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains_point</span></code></a>(r, p)</p></td>
+<td><p>Return True if rectangle r contains point p. Must be unrotated.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.alab_arib" title="depot.layout_opt.packing.alab_arib"><code class="xref py py-obj docutils literal notranslate"><span class="pre">alab_arib</span></code></a>(av, item)</p></td>
+<td><p>Return a new [Available] spanning from (av.x_left, av.y_bottom) to</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.alit_arat" title="depot.layout_opt.packing.alit_arat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">alit_arat</span></code></a>(av, item)</p></td>
+<td><p>Return a new [Available] spanning from (av.x_left, item.y_top) to</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.alab_ilat" title="depot.layout_opt.packing.alab_ilat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">alab_ilat</span></code></a>(av, item)</p></td>
+<td><p>Return a new [Available] spanning from (av.x_left, av.y_bottom) to</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.irab_arat" title="depot.layout_opt.packing.irab_arat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">irab_arat</span></code></a>(av, item)</p></td>
+<td><p>Return a new [Available] spanning from (item.x_right, av.y_bottom) to</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.draw_rectangles" title="depot.layout_opt.packing.draw_rectangles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_rectangles</span></code></a>(rectangles[, draw_distances])</p></td>
+<td><p>rectangles: [iterable] of Rectangle oder subclass objects.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.draw_rectangles_newplot" title="depot.layout_opt.packing.draw_rectangles_newplot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_rectangles_newplot</span></code></a>(rectangles[, xlim, ylim, ...])</p></td>
+<td><p>Initialize a new plot and draw rectangles.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.packem" title="depot.layout_opt.packing.packem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">packem</span></code></a>([n])</p></td>
+<td><p>Demo for packing without distances.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.packem_with_distances" title="depot.layout_opt.packing.packem_with_distances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">packem_with_distances</span></code></a>([n])</p></td>
+<td><p>Demo for packing with distances.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.test_packing" title="depot.layout_opt.packing.test_packing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_packing</span></code></a>([tries, nmax])</p></td>
+<td><p>Test for packing without distances.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.test_packing_with_distances" title="depot.layout_opt.packing.test_packing_with_distances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_packing_with_distances</span></code></a>([tries, nmax])</p></td>
+<td><p>Test for packing with distances.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.tl" title="depot.layout_opt.packing.tl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tl</span></code></a>(text)</p></td>
+<td><p>Translate <em>text</em> using lang_dict.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.language" title="depot.layout_opt.packing.language"><code class="xref py py-obj docutils literal notranslate"><span class="pre">language</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.WIDTH" title="depot.layout_opt.packing.WIDTH"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WIDTH</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.LENGTH" title="depot.layout_opt.packing.LENGTH"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LENGTH</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.WIDTH_SAFE" title="depot.layout_opt.packing.WIDTH_SAFE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WIDTH_SAFE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.LENGTH_SAFE" title="depot.layout_opt.packing.LENGTH_SAFE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LENGTH_SAFE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.ANGLE_DIRECT" title="depot.layout_opt.packing.ANGLE_DIRECT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ANGLE_DIRECT</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DIRECT_DISTANCE_A" title="depot.layout_opt.packing.DIRECT_DISTANCE_A"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIRECT_DISTANCE_A</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.DIRECT_DISTANCE_B" title="depot.layout_opt.packing.DIRECT_DISTANCE_B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIRECT_DISTANCE_B</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.LINE_DISTANCE_A" title="depot.layout_opt.packing.LINE_DISTANCE_A"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LINE_DISTANCE_A</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.LINE_DISTANCE_B" title="depot.layout_opt.packing.LINE_DISTANCE_B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LINE_DISTANCE_B</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.EDGE_DISTANCE_A" title="depot.layout_opt.packing.EDGE_DISTANCE_A"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_DISTANCE_A</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.packing.EDGE_DISTANCE_B" title="depot.layout_opt.packing.EDGE_DISTANCE_B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_DISTANCE_B</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.packing.lang_dict" title="depot.layout_opt.packing.lang_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lang_dict</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.language">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">language</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'de'</span></em><a class="headerlink" href="#depot.layout_opt.packing.language" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.WIDTH">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">WIDTH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2.55</span></em><a class="headerlink" href="#depot.layout_opt.packing.WIDTH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.LENGTH">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">LENGTH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">12</span></em><a class="headerlink" href="#depot.layout_opt.packing.LENGTH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.WIDTH_SAFE">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">WIDTH_SAFE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.55</span></em><a class="headerlink" href="#depot.layout_opt.packing.WIDTH_SAFE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.LENGTH_SAFE">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">LENGTH_SAFE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">12.5</span></em><a class="headerlink" href="#depot.layout_opt.packing.LENGTH_SAFE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.ANGLE_DIRECT">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">ANGLE_DIRECT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">45</span></em><a class="headerlink" href="#depot.layout_opt.packing.ANGLE_DIRECT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DIRECT_DISTANCE_A">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DIRECT_DISTANCE_A</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#depot.layout_opt.packing.DIRECT_DISTANCE_A" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DIRECT_DISTANCE_B">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DIRECT_DISTANCE_B</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#depot.layout_opt.packing.DIRECT_DISTANCE_B" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.LINE_DISTANCE_A">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">LINE_DISTANCE_A</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#depot.layout_opt.packing.LINE_DISTANCE_A" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.LINE_DISTANCE_B">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">LINE_DISTANCE_B</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">19.25</span></em><a class="headerlink" href="#depot.layout_opt.packing.LINE_DISTANCE_B" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.EDGE_DISTANCE_A">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">EDGE_DISTANCE_A</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#depot.layout_opt.packing.EDGE_DISTANCE_A" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.EDGE_DISTANCE_B">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">EDGE_DISTANCE_B</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">15</span></em><a class="headerlink" href="#depot.layout_opt.packing.EDGE_DISTANCE_B" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.ValidationError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">ValidationError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.ValidationError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Common base class for all non-exit exceptions.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">Rectangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'black'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linestyle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'-'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rectangle representation as basis for subclasses.</p>
+<p>a and b: width and height
+x and y: coordinates of bottom left corner</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.A">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.A" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_left">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_left</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_left" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the left side. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_right">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_right</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_right" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the right side. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_top">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_top</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_top" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the top side. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_bottom">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_bottom</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_bottom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the bottom side. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_tr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_tr</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_tr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the top right corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_tr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_tr</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_tr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the top right corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_tl">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_tl</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_tl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the top left corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_tl">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_tl</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_tl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the top left corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_br">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_br</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_br" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the bottom right corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_br">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_br</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_br" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the bottom right corner. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.x_center">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_center</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.x_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return x of the center. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.y_center">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_center</span></span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.y_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return y of the center. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Rectangle.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Rectangle.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return repr(self).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.fits_into">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">fits_into</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.fits_into" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if rectangle r1 is smaller or equal than rectangle r2 in
+both dimensions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.xintersect">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">xintersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.xintersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if unrotated rectangles r1 and r2 intersect in x direction.
+Same value is not considered intersection.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.yintersect">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">yintersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.yintersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if unrotated rectangles r1 and r2 intersect in y direction.
+Same value is not considered intersection.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.intersect">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">intersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.intersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if unrotated rectangles r1 and r2 intersect. Same value is
+not considered intersection.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.contains">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">contains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.contains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if rectangle r1 completely encloses rectangle r2. Must be
+unrotated.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.contains_point">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">contains_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.contains_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if rectangle r contains point p. Must be unrotated.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">RectangleWithInner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_inner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangle containing two or more identical rectangles.
+Inner rectangles are stacked in the direction of increasing y.</p>
+<p>m, n: [int or float] a, b of the inner rectangles</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.A_inner">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_inner</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.A_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total space of inner rectangles.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.util_rate">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.util_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.x_inner">
+<span class="sig-name descname"><span class="pre">x_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.x_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the x coordinate of inner rectangles (same for all).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithInner.y_inner">
+<span class="sig-name descname"><span class="pre">y_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithInner.y_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the y coordinate of the inner rectangle with <em>index</em>
+(starting at 0).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">RectangleWithRotatableInner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_inner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle_inner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">45</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangle containing one or more identical rotatable rectangles.
+Inner rectangles are stacked in the direction of increasing y.</p>
+<p>Parameters:
+m, n: [int or float] a, b of the inner rectangles</p>
+<p>Attributes:
+inner: [Rectangle] bottom inner rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.A_inner">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_inner</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.A_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total space of inner rectangles.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.util_rate">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.util_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.rotate_inner">
+<span class="sig-name descname"><span class="pre">rotate_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.rotate_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the rotation of the inner rectangles and update the parameters
+of self.</p>
+<p>A reference drawing for names used in this method such as m, AQ is
+located at depot_layout_opt/doc/direct_details.pdf.</p>
+<p>angle: [int or float] value between -75 and 75</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.x_inner">
+<span class="sig-name descname"><span class="pre">x_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.x_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the x coordinate of inner rectangles (same for all).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatableInner.y_inner">
+<span class="sig-name descname"><span class="pre">y_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatableInner.y_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the y coordinate of the inner rectangle with <em>index</em>
+(starting at 0).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">RectangleWithRotatedDoubleRowInner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_inner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangle containing two or more identical sized rectangles that
+are rotated by 45° and arranged in a double row.</p>
+<p>Parameters:
+m, n: [int or float] a, b of the inner rectangles</p>
+<p>Attributes:
+inner: [Rectangle] bottom inner rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.A_inner">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_inner</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.A_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total space of inner rectangles.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.util_rate">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.util_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.x_inner">
+<span class="sig-name descname"><span class="pre">x_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.x_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the x coordinate of inner rectangle with <em>index</em>. Indexing
+starts at zero, alternating left and right from the bottom left towards
+the top.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.y_inner">
+<span class="sig-name descname"><span class="pre">y_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner.y_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the y coordinate of inner rectangle with <em>index</em>. Indexing
+starts at zero, alternating left and right from the bottom left towards
+the top.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Available">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">Available</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'black'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linestyle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'--'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Available" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangle with default parameters to represent available space in
+a bin.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.alab_arib">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">alab_arib</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.alab_arib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new [Available] spanning from (av.x_left, av.y_bottom) to
+(av.x_right, item.y_bottom).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.alit_arat">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">alit_arat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.alit_arat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new [Available] spanning from (av.x_left, item.y_top) to
+(av.x_right, av.y_top).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.alab_ilat">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">alab_ilat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.alab_ilat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new [Available] spanning from (av.x_left, av.y_bottom) to
+(item.x_left, av.y_top).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.irab_arat">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">irab_arat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.irab_arat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new [Available] spanning from (item.x_right, av.y_bottom) to
+(av.x_right, av.y_top).</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">Bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_history</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangular container with best-fit-decreasing algorithm for rectangle
+packing.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.valid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">valid</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.valid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if none of the rectangles in self.packed_items
+intersect, else return False.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.feasible">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">feasible</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.feasible" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the result of the packing attempt as boolean. None until
+self.pack is called.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.count_inner">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">count_inner</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.count_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of inner rectangles of items.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.A_inner">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_inner</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.A_inner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total space of items in unpacked state. Excludes space
+for distances (if applicable).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.util_rate">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.util_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Percentage of the total bin space occupied by packed items.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.precheck_passed">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">precheck_passed</span></span><a class="headerlink" href="#depot.layout_opt.packing.Bin.precheck_passed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the result of the precheck as boolean. None until
+self.precheck is called.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.precheck">
+<span class="sig-name descname"><span class="pre">precheck</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.precheck" title="Permalink to this definition">¶</a></dt>
+<dd><p>Quick checks applicable before packing to detect if items fit.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.pack">
+<span class="sig-name descname"><span class="pre">pack</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to distribute all items into self so that none intersect and
+return True if successful, else return False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call try_put to determine if item fits into self. If successful,
+execute the action and return True, else False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.try_put">
+<span class="sig-name descname"><span class="pre">try_put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.try_put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine if there is valid available space for item. Return (True,
+the available space rectangle) if yes, else (False, None). x and y of
+item may be manipulated regardless of the
+result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.update_availables">
+<span class="sig-name descname"><span class="pre">update_availables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.update_availables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update availables after packing <em>item</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_1">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Case 1 of splitting av into smaller rectangles.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_2">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_3">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_4">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_5">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_5" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_6">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_6</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_6" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_7">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_7</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_7" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_8">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_8</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_8" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_9">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_9</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_9" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_10">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_10</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_10" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_11">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_11</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_11" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_12">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_12</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_12" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_13">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_13</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_13" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_14">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_14</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_14" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_15">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_15</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_15" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.case_16">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.case_16" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.repack">
+<span class="sig-name descname"><span class="pre">repack</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.repack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset packing values and pack again.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.draw">
+<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot self.packed_items.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.save_drawing">
+<span class="sig-name descname"><span class="pre">save_drawing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('pdf',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.save_drawing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save what self.draw shows.</p>
+<dl class="simple">
+<dt>filename: [str] including path, excluding extension. Existing files</dt><dd><p>with the same name are overwritten without confirmation prompt.</p>
+</dd>
+</dl>
+<p>formats: [tuple] of file extensions [str]
+dpi: Parameter of plt.savefig()
+show: [bool] if False, the fig is closed automatically</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.animate">
+<span class="sig-name descname"><span class="pre">animate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.animate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin._animate">
+<span class="sig-name descname"><span class="pre">_animate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">draw_distances</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin._animate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Based on <a class="reference external" href="https://stackoverflow.com/a/49382421">https://stackoverflow.com/a/49382421</a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Bin.save_animation">
+<span class="sig-name descname"><span class="pre">save_animation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confirm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bitrate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1800</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Bin.save_animation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save what self.animate shows as .mp4.</p>
+<dl class="simple">
+<dt>filename: [str] including path, excluding extension. Existing files</dt><dd><p>with the same name are overwritten without confirmation prompt.</p>
+</dd>
+</dl>
+<p>Accepts arguments for ffmpeg writer init and FuncAnimation.save as
+kwargs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceRectangle">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DistanceRectangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'grey'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linestyle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">':'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.DistanceRectangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>Rectangle with default parameters to represent a buffer distance in
+packing with distances.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.BinWithDistances">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">BinWithDistances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_history</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.BinWithDistances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Bin" title="depot.layout_opt.packing.Bin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Bin</span></code></a></p>
+<p>Rectangular container with best-fit-decreasing-algorithm for rectangle
+packing with optional buffer distances between items as well as between
+items and the container edges.</p>
+<p>Distance handling based on <a class="reference external" href="https://doi.org/10.1051/ro/2012007">https://doi.org/10.1051/ro/2012007</a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.BinWithDistances.try_put">
+<span class="sig-name descname"><span class="pre">try_put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.BinWithDistances.try_put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine if there is valid available space with respect to buffer
+distances for item. Return (True, the Available rectangle) if
+yes, else (False, None). x and y of item may be manipulated regardless
+of the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.BinWithDistances.case_16">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">av</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.BinWithDistances.case_16" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.BinWithDistances.draw">
+<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.BinWithDistances.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot self.packed_items and the distances.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.BinWithDistances.animate">
+<span class="sig-name descname"><span class="pre">animate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.BinWithDistances.animate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceLeft">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DistanceLeft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.DistanceLeft" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.DistanceRectangle" title="depot.layout_opt.packing.DistanceRectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRectangle</span></code></a></p>
+<p>Buffer rectangle on the outer left side of the <em>item</em> rectangle.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceLeft.b">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">b</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceLeft.b" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceLeft.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceLeft.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceLeft.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceLeft.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceBottom">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DistanceBottom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.DistanceBottom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.DistanceRectangle" title="depot.layout_opt.packing.DistanceRectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRectangle</span></code></a></p>
+<p>Buffer rectangle on the outer bottom side of the <em>item</em> rectangle.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceBottom.a">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">a</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceBottom.a" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceBottom.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceBottom.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceBottom.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceBottom.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceRight">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DistanceRight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.DistanceRight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.DistanceRectangle" title="depot.layout_opt.packing.DistanceRectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRectangle</span></code></a></p>
+<p>Buffer rectangle on the outer right side of the <em>item</em> rectangle.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceRight.b">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">b</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceRight.b" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceRight.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceRight.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceRight.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceRight.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceTop">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">DistanceTop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.DistanceTop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.DistanceRectangle" title="depot.layout_opt.packing.DistanceRectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DistanceRectangle</span></code></a></p>
+<p>Buffer rectangle on the outer top side of the <em>item</em> rectangle.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceTop.a">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">a</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceTop.a" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceTop.x">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceTop.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.DistanceTop.y">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#depot.layout_opt.packing.DistanceTop.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">RectangleWithDistances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.Rectangle" title="depot.layout_opt.packing.Rectangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rectangle</span></code></a></p>
+<p>A rectangle that may have a buffer distance at each side. Without
+rotation.</p>
+<p>Parameters:
+d_l, d_b, d_r, d_t: [int or float] buffer distance at left, bottom, right</p>
+<blockquote>
+<div><p>and top sides.</p>
+</div></blockquote>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.a_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">a_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.a_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.b_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">b_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.b_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.x_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">x_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.x_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>When in combination with y_with_distances: this point may intersect
+another shape.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.y_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">y_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.y_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>When in combination with x_with_distances: this point may intersect
+another shape.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.A_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.A_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the area covered by distances.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.RectangleWithDistances.A_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">A_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.RectangleWithDistances.A_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total area including distances.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataLine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">VisuDataLine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WIDTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LENGTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LINE_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LINE_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LINE_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LINE_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataLine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithDistances" title="depot.layout_opt.packing.RectangleWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithDistances</span></code></a>, <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithInner" title="depot.layout_opt.packing.RectangleWithInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithInner</span></code></a></p>
+<p>Representation of a Line area.</p>
+<p>text: [str] to draw in the center of the rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataLine.capacity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataLine.capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of self.count_inner.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataLine.util_rate_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataLine.util_rate_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataLine.conflict_category">
+<span class="sig-name descname"><span class="pre">conflict_category</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#depot.layout_opt.packing.VisuDataLine.conflict_category" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">VisuDataDirectSingleRow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LENGTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WIDTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle_inner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">45</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithDistances" title="depot.layout_opt.packing.RectangleWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithDistances</span></code></a>, <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithRotatableInner" title="depot.layout_opt.packing.RectangleWithRotatableInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithRotatableInner</span></code></a></p>
+<p>Representation of a single row direct area.</p>
+<p>angle_inner: makes sense until max. 75 degrees (with 12.5x3.5 slots)
+text: [str] to draw in the center of the rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow.capacity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow.capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of self.count_inner.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow.util_rate_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow.util_rate_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow.conflict_category">
+<span class="sig-name descname"><span class="pre">conflict_category</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow.conflict_category" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow_90">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">VisuDataDirectSingleRow_90</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LENGTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WIDTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle_inner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-45</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow_90" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithDistances" title="depot.layout_opt.packing.RectangleWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithDistances</span></code></a>, <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithRotatableInner" title="depot.layout_opt.packing.RectangleWithRotatableInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithRotatableInner</span></code></a></p>
+<p>Representation of a single row direct area.</p>
+<p>angle_inner: makes sense until max. 75 degrees (with 12.5x3.5 slots)
+text: [str] to draw in the center of the rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow_90.capacity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow_90.capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of self.count_inner.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow_90.util_rate_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow_90.util_rate_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectSingleRow_90.conflict_category">
+<span class="sig-name descname"><span class="pre">conflict_category</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectSingleRow_90.conflict_category" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectDoubleRow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">VisuDataDirectDoubleRow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LENGTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WIDTH_SAFE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">DIRECT_DISTANCE_B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectDoubleRow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithDistances" title="depot.layout_opt.packing.RectangleWithDistances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithDistances</span></code></a>, <a class="reference internal" href="#depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner" title="depot.layout_opt.packing.RectangleWithRotatedDoubleRowInner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RectangleWithRotatedDoubleRowInner</span></code></a></p>
+<p>Representation of a double row direct area.</p>
+<p>text: [str] to draw in the center of the rectangle</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectDoubleRow.capacity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectDoubleRow.capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of self.count_inner.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectDoubleRow.util_rate_with_distances">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">util_rate_with_distances</span></span><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectDoubleRow.util_rate_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.VisuDataDirectDoubleRow.conflict_category">
+<span class="sig-name descname"><span class="pre">conflict_category</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#depot.layout_opt.packing.VisuDataDirectDoubleRow.conflict_category" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.draw_rectangles">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">draw_rectangles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rectangles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">draw_distances</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.draw_rectangles" title="Permalink to this definition">¶</a></dt>
+<dd><p>rectangles: [iterable] of Rectangle oder subclass objects.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.draw_rectangles_newplot">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">draw_rectangles_newplot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rectangles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">100)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">100)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">draw_distances</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.draw_rectangles_newplot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a new plot and draw rectangles.</p>
+<p>rectangles: sequence of Rectangle oder subclass objects
+xlim: [tuple] of x min and max
+ylim: [tuple] of y min and max</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.packem">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">packem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.packem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Demo for packing without distances.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.packem_with_distances">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">packem_with_distances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.packem_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Demo for packing with distances.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Progressprinter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">Progressprinter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">until</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Progressprinter" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.Progressprinter.notify">
+<span class="sig-name descname"><span class="pre">notify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">now</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.Progressprinter.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.test_packing">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">test_packing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">250</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.test_packing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test for packing without distances.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.test_packing_with_distances">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">test_packing_with_distances</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">250</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.test_packing_with_distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test for packing with distances.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.lang_dict">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">lang_dict</span></span><a class="headerlink" href="#depot.layout_opt.packing.lang_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.packing.tl">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.packing.</span></span><span class="sig-name descname"><span class="pre">tl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.packing.tl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Translate <em>text</em> using lang_dict.</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">API Reference</a><ul>
+  <li><a href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt</span></code></a><ul>
+      <li>Previous: <a href="../optimize_c_urfd/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.optimize_c_urfd</span></code></a></li>
+      <li>Next: <a href="../settings/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.settings</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../../_sources/autoapi/depot/layout_opt/packing/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.smart_charging &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="depot.standalone" href="../standalone/index.html" />
+    <link rel="prev" title="depot.simulation" href="../simulation/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.smart_charging">
+<span id="depot-smart-charging"></span><h1><a class="reference internal" href="#module-depot.smart_charging" title="depot.smart_charging"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.smart_charging</span></code></a><a class="headerlink" href="#module-depot.smart_charging" title="Permalink to this heading">¶</a></h1>
+<p>Smart charging algorithm.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.smart_charging.SmartCharging" title="depot.smart_charging.SmartCharging"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SmartCharging</span></code></a></p></td>
+<td><p>Class which implements the smart charging algorithm for depot charged vehicles of Lauth, Mundt,</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.smart_charging.ControlSmartCharging" title="depot.smart_charging.ControlSmartCharging"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ControlSmartCharging</span></code></a></p></td>
+<td><p>Some control units for the Smart Charging class. Does multiple runs with the same basic settings.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.smart_charging.</span></span><span class="sig-name descname"><span class="pre">SmartCharging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_data_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_limit_grid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class which implements the smart charging algorithm for depot charged vehicles of Lauth, Mundt,
+Göhlich.
+In the eflips_setiings [depot][log_cm_data] has to be True</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.add_power_limit_grid_to_power">
+<span class="sig-name descname"><span class="pre">add_power_limit_grid_to_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.add_power_limit_grid_to_power" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.schedule_method">
+<span class="sig-name descname"><span class="pre">schedule_method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ev</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.schedule_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterates over the process list. And generates the Precon and normal schedule
+:param ev: has to be type DepotEvaluation
+:return: prober schedule and a schdule with all incomplet depot stays</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.calc_charging_time">
+<span class="sig-name descname"><span class="pre">calc_charging_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.calc_charging_time" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> – a list of all start times</p></li>
+<li><p><strong>end</strong> – a list of all end times</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>total duration of charging</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.set_power">
+<span class="sig-name descname"><span class="pre">set_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.set_power" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>power</strong> – a pd_frame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.max_simulation_time">
+<span class="sig-name descname"><span class="pre">max_simulation_time</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.max_simulation_time" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The maximum time.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.construct_pd_frame_charging_history_energy">
+<span class="sig-name descname"><span class="pre">construct_pd_frame_charging_history_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.construct_pd_frame_charging_history_energy" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>empty pd Frame with time as index and bus stops in depot as columns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.construct_empty_dict_charging_log">
+<span class="sig-name descname"><span class="pre">construct_empty_dict_charging_log</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.construct_empty_dict_charging_log" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a dict, in which al the charging intervalles of the vehicles will be stored</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.smart_charging_algorithm">
+<span class="sig-name descname"><span class="pre">smart_charging_algorithm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.smart_charging_algorithm" title="Permalink to this definition">¶</a></dt>
+<dd><p>needs self.schedule, self.power_price (start_time, end_time, price), power_limi_grid. Implements the algorithm of Lauth, Mundt,
+Göhlich.
+:return: False if smart charging is not possible, a pd Frame with the time intervalls and the charging power, if smart charging was possible</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.energy_calculation_smart">
+<span class="sig-name descname"><span class="pre">energy_calculation_smart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_rest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.energy_calculation_smart" title="Permalink to this definition">¶</a></dt>
+<dd><p>For outsource some of the stuff of smart_charging_algorithm
+:param start_time:
+:param end_time:
+:param row_bus:
+:param ID_power:
+:param power_rest:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.smart_charging_algorithm_even">
+<span class="sig-name descname"><span class="pre">smart_charging_algorithm_even</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.smart_charging_algorithm_even" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same power curve, just buses will always be charged.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.energy_calculation_smart_even">
+<span class="sig-name descname"><span class="pre">energy_calculation_smart_even</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.energy_calculation_smart_even" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.smart_even_upscalinig">
+<span class="sig-name descname"><span class="pre">smart_even_upscalinig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling_quotients</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.smart_even_upscalinig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales the power for a specific intervall by scaling quotinet up. Also starts the proces to substract the power from an other power intervall.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.substract_power_most_expensive">
+<span class="sig-name descname"><span class="pre">substract_power_most_expensive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.substract_power_most_expensive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Substracts the power from an other power intervall.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.smart_even_downscalinig">
+<span class="sig-name descname"><span class="pre">smart_even_downscalinig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling_quotients</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.smart_even_downscalinig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales the power for a specific intervall by scaling quotinet down. Also starts the proces to add the power from an other power intervall.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.add_power_less_expensive">
+<span class="sig-name descname"><span class="pre">add_power_less_expensive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.add_power_less_expensive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.immediately_charging">
+<span class="sig-name descname"><span class="pre">immediately_charging</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.immediately_charging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Charges the buses immediatley after the parked. No charging eqauation steps.
+:return: pd Frame</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.energy_calculation_immediately">
+<span class="sig-name descname"><span class="pre">energy_calculation_immediately</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.energy_calculation_immediately" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper
+:param start_time:
+:param end_time:
+:param row_bus:
+:param row_power:
+:param ID_power:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.intersection">
+<span class="sig-name descname"><span class="pre">intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interval_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval_b</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.intersection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interval_a</strong> – list of two numbers</p></li>
+<li><p><strong>interval_b</strong> – list of two numbers</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the intersection of the two intervalls or False if no intersection is there</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.in_period">
+<span class="sig-name descname"><span class="pre">in_period</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.in_period" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if time is in interval.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.compensate_to_energy_real">
+<span class="sig-name descname"><span class="pre">compensate_to_energy_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ID_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_bus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charging_log</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_of_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.compensate_to_energy_real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes the correct adjustments, so charg_eqaution_steps can be implemented.
+:param energy_delta: differnce between energy and energy_real
+:param ID_bus:
+:param row_bus:
+:param charging_log: the charging log the function should use
+type_of_power: “used_power_smart” or “used_power_immediately”
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.precondition">
+<span class="sig-name descname"><span class="pre">precondition</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.precondition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes only the power in the power DF not in the charging logs. Writes the power always in all three charging type columns</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.plot_results">
+<span class="sig-name descname"><span class="pre">plot_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eng'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.plot_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the results
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.plot_charging_intervalls_smart">
+<span class="sig-name descname"><span class="pre">plot_charging_intervalls_smart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.plot_charging_intervalls_smart" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.plot_charging_intervalls_smart_even">
+<span class="sig-name descname"><span class="pre">plot_charging_intervalls_smart_even</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.plot_charging_intervalls_smart_even" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.plot_charging_intervalls">
+<span class="sig-name descname"><span class="pre">plot_charging_intervalls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_charging_logs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.plot_charging_intervalls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots a figure, where you can see the stress of the battries.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.results">
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates some results and prints them.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.period_of_use">
+<span class="sig-name descname"><span class="pre">period_of_use</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.period_of_use" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the time [minutes] which the grid infrastructure is used.
+:param type:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.export_for_vehicle_periods_smart">
+<span class="sig-name descname"><span class="pre">export_for_vehicle_periods_smart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.export_for_vehicle_periods_smart" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.export_for_vehicle_periods_smart_even">
+<span class="sig-name descname"><span class="pre">export_for_vehicle_periods_smart_even</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.export_for_vehicle_periods_smart_even" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.export_for_vehicle_periods">
+<span class="sig-name descname"><span class="pre">export_for_vehicle_periods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_charging_logs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.export_for_vehicle_periods" title="Permalink to this definition">¶</a></dt>
+<dd><p>Brings the data to an format, evalutatio.DepotEvaluation.vehicle_periods can work with.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.SmartCharging.validation">
+<span class="sig-name descname"><span class="pre">validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.SmartCharging.validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validates some values, and prints weired occurrences, which might be checked by the user</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.smart_charging.ControlSmartCharging">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.smart_charging.</span></span><span class="sig-name descname"><span class="pre">ControlSmartCharging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_data_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_limit_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charging_efficiency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.ControlSmartCharging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Some control units for the Smart Charging class. Does multiple runs with the same basic settings.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.smart_charging.ControlSmartCharging.lowest_power">
+<span class="sig-name descname"><span class="pre">lowest_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">accuracy</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.smart_charging.ControlSmartCharging.lowest_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses as the first upper boundary the max power of immediately charging, if no power_limit_grid is given, only works if the power_limit_grid is an int
+:param accuracy: in percent
+:return: results of the last succesful power run, power_lower_boundary and power_upper_boundary</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+      <li>Previous: <a href="../simulation/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.simulation</span></code></a></li>
+      <li>Next: <a href="../standalone/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.standalone</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/depot/smart_charging/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.layout_opt.optimize_c_urfd &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="depot.layout_opt.packing" href="../packing/index.html" />
+    <link rel="prev" title="depot.layout_opt.evaluation" href="../evaluation/index.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.layout_opt.optimize_c_urfd">
+<span id="depot-layout-opt-optimize-c-urfd"></span><h1><a class="reference internal" href="#module-depot.layout_opt.optimize_c_urfd" title="depot.layout_opt.optimize_c_urfd"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.optimize_c_urfd</span></code></a><a class="headerlink" href="#module-depot.layout_opt.optimize_c_urfd" title="Permalink to this heading">¶</a></h1>
+<p>Script for executing the depot layout optimization with two objectives:
+- max capacity (c)
+- max mean of unblocked ready for departure vehicles (urfd).</p>
+<p>Uses the DEAP evolutionary computation framework.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.main" title="depot.layout_opt.optimize_c_urfd.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">main</span></code></a>()</p></td>
+<td><p>Execute the given optimization setup.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.filename_opt_settings" title="depot.layout_opt.optimize_c_urfd.filename_opt_settings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filename_opt_settings</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.POP_SIZE" title="depot.layout_opt.optimize_c_urfd.POP_SIZE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">POP_SIZE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.CXPB" title="depot.layout_opt.optimize_c_urfd.CXPB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CXPB</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTPB" title="depot.layout_opt.optimize_c_urfd.MUTPB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTPB</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_COUNT" title="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_COUNT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTPB_AREA_COUNT</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_COUNT" title="depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_COUNT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTSIGMA_AREA_COUNT</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_TYPE" title="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_TYPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTPB_AREA_TYPE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_CAPACITY" title="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_CAPACITY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTPB_AREA_CAPACITY</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_CAPACITY" title="depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_CAPACITY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MUTSIGMA_AREA_CAPACITY</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.NGEN" title="depot.layout_opt.optimize_c_urfd.NGEN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NGEN</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.toolbox" title="depot.layout_opt.optimize_c_urfd.toolbox"><code class="xref py py-obj docutils literal notranslate"><span class="pre">toolbox</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.optimize_c_urfd.n_processes" title="depot.layout_opt.optimize_c_urfd.n_processes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_processes</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.filename_opt_settings">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">filename_opt_settings</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'..\\..\\..\\bus_depot\\opt_settings\\diss_kls'</span></em><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.filename_opt_settings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.POP_SIZE">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">POP_SIZE</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.POP_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.CXPB">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">CXPB</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.CXPB" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTPB">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTPB</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTPB" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_COUNT">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTPB_AREA_COUNT</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_COUNT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_COUNT">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTSIGMA_AREA_COUNT</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_COUNT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_TYPE">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTPB_AREA_TYPE</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_TYPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTPB_AREA_CAPACITY">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTPB_AREA_CAPACITY</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTPB_AREA_CAPACITY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_CAPACITY">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">MUTSIGMA_AREA_CAPACITY</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.MUTSIGMA_AREA_CAPACITY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.NGEN">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">NGEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1000</span></em><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.NGEN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.toolbox">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">toolbox</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.toolbox" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.main">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the given optimization setup.
+Return the final population and statistics.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="depot.layout_opt.optimize_c_urfd.n_processes">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.optimize_c_urfd.</span></span><span class="sig-name descname"><span class="pre">n_processes</span></span><a class="headerlink" href="#depot.layout_opt.optimize_c_urfd.n_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">API Reference</a><ul>
+  <li><a href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt</span></code></a><ul>
+      <li>Previous: <a href="../evaluation/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.evaluation</span></code></a></li>
+      <li>Next: <a href="../packing/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.packing</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../../_sources/autoapi/depot/layout_opt/optimize_c_urfd/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,19 @@
+:py:mod:`depot.layout_opt.opt_tools`
+====================================
+
+.. py:module:: depot.layout_opt.opt_tools
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   crossover/index.rst
+   fitness_c_urfd/index.rst
+   fitness_util/index.rst
+   init/index.rst
+   mutation/index.rst
+
+

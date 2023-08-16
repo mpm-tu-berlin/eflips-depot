@@ -1,0 +1,45 @@
+:py:mod:`depot`
+===============
+
+.. py:module:: depot
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   layout_opt/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   configuration/index.rst
+   depot/index.rst
+   evaluation/index.rst
+   filters/index.rst
+   input_epex_power_price/index.rst
+   plots/index.rst
+   processes/index.rst
+   rating/index.rst
+   resources/index.rst
+   settings_config/index.rst
+   simple_vehicle/index.rst
+   simulation/index.rst
+   smart_charging/index.rst
+   standalone/index.rst
+   validation/index.rst
+
+
+Package Contents
+----------------
+
+.. py:data:: __path__
+
+   
+

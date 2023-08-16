@@ -1,0 +1,41 @@
+:py:mod:`depot.layout_opt.opt_tools.crossover`
+==============================================
+
+.. py:module:: depot.layout_opt.opt_tools.crossover
+
+.. autoapi-nested-parse::
+
+   Crossover operators for DepotPrototype.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.crossover.cxOnePoint_depot
+   depot.layout_opt.opt_tools.crossover.cxTwoPoint_depot
+   depot.layout_opt.opt_tools.crossover.cxMessyOnePoint_depot
+
+
+
+.. py:function:: cxOnePoint_depot(ind1, ind2)
+
+   Apply tools.cxOnePoint to the areas of the depot individuals.
+
+
+.. py:function:: cxTwoPoint_depot(ind1, ind2)
+
+   Apply tools.cxTwoPoint to the areas of the depot individuals.
+
+
+.. py:function:: cxMessyOnePoint_depot(ind1, ind2)
+
+   Apply tools.cxMessyOnePoint to the areas of the depot individuals.
+
+

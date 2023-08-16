@@ -1,0 +1,205 @@
+:py:mod:`depot.resources`
+=========================
+
+.. py:module:: depot.resources
+
+.. autoapi-nested-parse::
+
+   Resources for the depot simulation.
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   depot.resources.DepotResourceRequest
+   depot.resources.DepotResourceRelease
+   depot.resources.DepotResource
+   depot.resources.DepotChargingInterface
+   depot.resources.ResourceBreak
+   depot.resources.ResourceSwitch
+
+
+
+
+.. py:class:: DepotResourceRequest(resource, caller, priority=0, preempt=True)
+
+
+   Bases: :py:obj:`simpy.resources.resource.PriorityRequest`
+
+   Request event for DepotResource. Subclass of simpy.resources.resource.
+   PriorityRequest, for providing an interface for customization.
+
+   caller: object that issued the request. Must have attribute 'ID'
+       (e.g. 'serve').
+   preempt: [bool] switch for preemption. Same behaviour as in class
+       PriorityRequest. Only set to False if it is certain that this request
+       is not used with simpy.AllOf alongside other requests to avoid a
+       potential locked resource case (currently done so in
+       DepotControl.run_processes). See depot_simulation_tests_depotprocess.py
+       for explanation and demo.
+
+
+
+.. py:class:: DepotResourceRelease(resource, request)
+
+
+   Bases: :py:obj:`simpy.resources.resource.Release`
+
+   Release event for DepotResource. Subclass of simpy.resources.resource.
+   Release, for providing an interface for customization.
+
+
+
+.. py:class:: DepotResource(env, ID, depot, capacity=1)
+
+
+   Bases: :py:obj:`simpy.PreemptiveResource`
+
+   Extension of simpy PreemptiveResource. For representing resources such
+   as workers and charging interfaces that are required for a DepotProcess.
+   Can be switched on/off using simpyExt.ResourceSwitch.
+
+   Parameters:
+   depot: [Depot] instance
+
+
+   .. py:property:: user_count
+
+      Return a dict that contains the number of current users.
+
+
+   .. py:attribute:: request
+
+      
+
+   .. py:attribute:: release
+
+      
+
+
+.. py:class:: DepotChargingInterface(env, ID, depot, max_power)
+
+
+   Bases: :py:obj:`DepotResource`
+
+   Parameters:
+   max_power: [int or float] in kW
+
+
+   .. py:property:: current_power
+
+
+
+.. py:class:: ResourceBreak(env, ID, dur, required_resources=None, resume=False, priority=-3, recall_priority=-3, preempt=True, dur_predefined=True)
+
+
+   Bases: :py:obj:`eflips.depot.processes.BaseDepotProcess`
+
+   Process used by ResourceSwitch to occupy resources.
+
+   .. py:method:: _action()
+
+      Generator function that characterizes the process. Subclasses must
+      implement this method. It must catch the exception simpy.Interrupt and
+      let it pass or implement custom follow-ups. If this method yields a
+      timeout, the duration must be set as self.dur before the yield
+      statement due to the determination of self.etc.
+
+
+   .. py:method:: estimate_duration(dur, *args, **kwargs)
+      :staticmethod:
+
+      Return an estimate of the process duration in seconds based on given
+      parameters as as if it could start immediately. Must be int, not float.
+      Possible waiting time for resources are not considered. Therefore the
+      estimate is reliable only if the process is started immediately. Static
+      to be callable before instantiation.
+
+
+
+.. py:class:: ResourceSwitch(env, ID, resource, breaks, preempt=True, strength='full', resume=False)
+
+
+   User that occupies a DepotResource object on a predefined regular
+   basis, claiming priority over other users and optionally interrupting them.
+   For representing cycles that reduce a resource's capacity such as break
+   times for workers.
+   Must be activated with 'env.process(run_break_cycle())' before simulation
+   start.
+
+   Attributes:
+   resource: [DepotResource] or subclass object. Can be None before simulation
+       start.
+   breaks: [list] of tuples defining phases during which *resource* is
+       unavailable. The tuples must contain two values: first is the starting
+       time of the unavailability-phase and second is the end time. The times
+       are defined as total seconds since 0:00 on the starting day. *breaks*
+       is repeated until the simulation end.
+       The usual case is defining the rhythm of one day. Example:
+           breaks = [(12*3600, 13*3600), (18*3600, 20*3600)]
+           -> The resource is unavailable from 12:00 until 13:00 and from
+           18:00 until 20:00.
+       The definition can include rythms of more than one day. The base-
+       timevalue stays at 0:00 on the first day:
+           breaks = [(12*3600, 13*3600), (36*3600, 38*3600)]
+           -> The resource is unavailable from 12:00 until 13:00 on the first
+           day and from 12:00 until 14:00 on the next day.
+       An unavailability-phase during the night:
+           breaks = [(16.5*3600), (32*3600)]
+           -> The resource is only available from 8:00 until 16:30.
+       Important: Phases of unavailability must not overlap.
+   preempt: [bool] Set to True if a current user's process should be strictly
+       interrupted when a break begins. After the end of a break preempted
+       requests are not resumed by default. If needed, the request executing
+       instance has to implement resuming. Set to False if the process should
+       be permitted to finish before the break starts. The end time of the
+       break is not postponed, meaning that the break duration might be cut.
+   strength: [int or str] of resource.capacity that is unavailable during
+       breaks of this user. Set to resource.capacity or 'full' if resource
+       should be fully unavailable. Set to between 0 and resource.capacity to
+       only partly switch it off.
+   priority [int or float]: Priority of break-requests to *resource*. Lower
+       number means higher priority. Fixed value of -3. Requests by regular
+       users should have a priority > -3 (the default priority for regular
+       users is 0). User priority of <= -3 is possible, but can result in
+       delayed or never even happening breaks.
+   resume: [bool] If True, an interrupted break is resumed for the remaining
+       duration.
+
+
+   .. py:property:: breaks
+
+
+   .. py:property:: resource
+
+
+   .. py:property:: strength
+
+      Return None or the current resource.capacity or the custom value
+      self._strength.
+
+
+   .. py:method:: check_breaks(breaks)
+      :staticmethod:
+
+      Do essential validity checks on ResourceSwitch parameter *break*.
+
+
+   .. py:method:: run_break_cycle()
+
+      Infinitely loop through self.breaks and occupy self.resource
+      accordingly.
+
+
+   .. py:method:: take_break(duration)
+
+      Request one slot at self.resource and hold it for *duration*.
+
+
+

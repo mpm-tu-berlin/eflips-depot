@@ -1,0 +1,128 @@
+:py:mod:`depot.layout_opt.opt_tools.mutation`
+=============================================
+
+.. py:module:: depot.layout_opt.opt_tools.mutation
+
+.. autoapi-nested-parse::
+
+   Mutation operators for DepotPrototype.
+
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.mutation.mutgaussian_area_count_crop
+   depot.layout_opt.opt_tools.mutation.mutgaussian_area_count_rnd
+   depot.layout_opt.opt_tools.mutation.mutuniform_area_count_crop
+   depot.layout_opt.opt_tools.mutation.mutuniform_area_count_rnd
+   depot.layout_opt.opt_tools.mutation.mutgaussian_area_capacity
+   depot.layout_opt.opt_tools.mutation.mutuniform_area_capacity
+   depot.layout_opt.opt_tools.mutation.mut_area_to_other_type
+   depot.layout_opt.opt_tools.mutation.mut_combine_two_areas
+   depot.layout_opt.opt_tools.mutation.mutgaussian_depot_and
+   depot.layout_opt.opt_tools.mutation.mutgaussian_depot_or_partial
+   depot.layout_opt.opt_tools.mutation.mutgaussian_depot_or
+   depot.layout_opt.opt_tools.mutation.mutuniform_depot_or_partial
+   depot.layout_opt.opt_tools.mutation.mutuniform_depot_or
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   depot.layout_opt.opt_tools.mutation.mutations
+
+
+.. py:data:: mutations
+   :value: []
+
+   
+
+.. py:function:: mutgaussian_area_count_crop(depot, mu, sigma)
+
+   Random gaussian mutation of area count.
+   If less than before, the area list is cropped on the right. If higher than
+   before, new areas with random init values are appended to the right.
+
+
+.. py:function:: mutgaussian_area_count_rnd(depot, mu, sigma)
+
+   Random gaussian mutation of area count.
+   If less than before, random areas are removed. If higher than before, new
+   areas with random capacities are appended to the right.
+
+
+.. py:function:: mutuniform_area_count_crop(depot, a, b)
+
+   Random uniform mutation of area count.
+   If less than before, the area list is cropped on the right. If higher than
+   before, new areas with random init values are appended to the right.
+
+
+.. py:function:: mutuniform_area_count_rnd(depot, a, b)
+
+   Random uniform mutation of area count.
+   If less than before, the area list is cropped on the right. If higher than
+   before, new areas with random init values are appended to the right.
+
+
+.. py:function:: mutgaussian_area_capacity(area, mu, sigma)
+
+   Random gaussian mutation of area capacity.
+
+
+.. py:function:: mutuniform_area_capacity(area, a, b)
+
+   Random uniform mutation of area capacity.
+
+
+.. py:function:: mut_area_to_other_type(area, depot)
+
+   Select a random area and convert it to one or more areas of another
+   type, keeping the capacity.
+
+
+.. py:function:: mut_combine_two_areas(depot)
+
+   Select two random areas and try to combine them.
+
+
+.. py:function:: mutgaussian_depot_and(depot, mutsigma_area_count, mutpb_area_count, mutpb_area_type, mutsigma_area_capacity, mutpb_area_capacity)
+
+   Wrapper for mutations of a depot individual where area count, type and
+   capacity might be mutated.
+
+
+.. py:function:: mutgaussian_depot_or_partial(depot, mutsigma_area_count, mutpb_area_count, mutpb_area_type, mutsigma_area_capacity, mutpb_area_capacity)
+
+   Wrapper for mutations of a depot individual where area count and either
+   type or capacity might be mutated.
+
+
+.. py:function:: mutgaussian_depot_or(depot, mutsigma_area_count, mutpb_area_count, mutpb_area_type, mutsigma_area_capacity, mutpb_area_capacity, splitpb)
+
+   Wrapper for mutations of a depot individual where either area count or
+   type or capacity of one area might be mutated.
+
+
+.. py:function:: mutuniform_depot_or_partial(depot, a_area_count, b_a_area_count, mutpb_area_count, mutpb_area_type, a_area_capacity, b_area_capacity, mutpb_area_capacity)
+
+   Wrapper for mutations of a depot individual where area count and either
+   type or capacity might be mutated.
+
+
+.. py:function:: mutuniform_depot_or(depot, a_area_count, b_a_area_count, mutpb_area_count, mutpb_area_type, a_area_capacity, b_area_capacity, mutpb_area_capacity)
+
+   Wrapper for mutations of a depot individual where area count and either
+   type or capacity might be mutated.
+
+

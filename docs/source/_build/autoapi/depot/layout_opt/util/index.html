@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>depot.layout_opt.util &#8212; eflips-depot  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="depot.configuration" href="../../configuration/index.html" />
+    <link rel="prev" title="depot.layout_opt.template_creation" href="../template_creation/index.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-depot.layout_opt.util">
+<span id="depot-layout-opt-util"></span><h1><a class="reference internal" href="#module-depot.layout_opt.util" title="depot.layout_opt.util"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.util</span></code></a><a class="headerlink" href="#module-depot.layout_opt.util" title="Permalink to this heading">¶</a></h1>
+<p>Utility functions.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.util.StoppingCriteria" title="depot.layout_opt.util.StoppingCriteria"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StoppingCriteria</span></code></a></p></td>
+<td><p>Stopping utilities for optimization loops of an evolutionary algorithm.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#depot.layout_opt.util.share_nonzero" title="depot.layout_opt.util.share_nonzero"><code class="xref py py-obj docutils literal notranslate"><span class="pre">share_nonzero</span></code></a>(arr)</p></td>
+<td><p>Share of elements that are unequal to zero in <em>arr</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#depot.layout_opt.util.attrbased_set" title="depot.layout_opt.util.attrbased_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">attrbased_set</span></code></a>(seq, attr)</p></td>
+<td><p>Determine unique and duplicate objects in <em>seq</em> based on the comparison</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.util.share_nonzero">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.util.</span></span><span class="sig-name descname"><span class="pre">share_nonzero</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.share_nonzero" title="Permalink to this definition">¶</a></dt>
+<dd><p>Share of elements that are unequal to zero in <em>arr</em>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">depot.layout_opt.util.</span></span><span class="sig-name descname"><span class="pre">StoppingCriteria</span></span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stopping utilities for optimization loops of an evolutionary algorithm.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.select">
+<span class="sig-name descname"><span class="pre">select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select the stopping criteria. Pass at least one stopping criteria
+method name as str. The same method cannot be selected twice.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.check">
+<span class="sig-name descname"><span class="pre">check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if any of the selected stopping criteria returns True.
+Pass parameters as kwargs based on stopping criteria requirements.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.max_gen_reached">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_gen_reached</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">g</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngen</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.max_gen_reached" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>g</em> is higher than or equal to <em>ngen</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.max_fit_reached">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_fit_reached</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hof</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxfitness</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.max_fit_reached" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>maxfitness</em> is reached.</p>
+<p>hof: [deap.tools.HallOfFame]
+maxfitness: [deap.creator.Fitness…]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.no_improvement">
+<span class="sig-name descname"><span class="pre">no_improvement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">g</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hof</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">improvement_interval</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.no_improvement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if there has been no fitness improvement for the last
+<em>improvement_interval</em> generations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.feasible_found">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">feasible_found</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feasible</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.feasible_found" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if there is a feasible individual in the current
+population.</p>
+<p>pop: [list] population
+feasible: [function] returning the feasibility of an individual</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="depot.layout_opt.util.StoppingCriteria.higher_than">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">higher_than</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.StoppingCriteria.higher_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if <em>value</em> is higher than <em>limit</em>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="depot.layout_opt.util.attrbased_set">
+<span class="sig-prename descclassname"><span class="pre">depot.layout_opt.util.</span></span><span class="sig-name descname"><span class="pre">attrbased_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#depot.layout_opt.util.attrbased_set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine unique and duplicate objects in <em>seq</em> based on the comparison
+of attribute <em>attr</em>.</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">eflips-depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html#indices-and-tables">Indices and tables</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">API Reference</a><ul>
+  <li><a href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot</span></code></a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt</span></code></a><ul>
+      <li>Previous: <a href="../template_creation/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.layout_opt.template_creation</span></code></a></li>
+      <li>Next: <a href="../../configuration/index.html" title="next chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">depot.configuration</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../../_sources/autoapi/depot/layout_opt/util/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
