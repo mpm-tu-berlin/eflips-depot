@@ -87,7 +87,7 @@ Classes
 
    .. py:method:: smart_charging_algorithm_even()
 
-      Same power curve, just buses will always be charged. 
+      Same power curve, just buses will always be charged.
 
 
    .. py:method:: energy_calculation_smart_even(start_time, end_time, row_bus, row_power, ID_power, ID_bus, constant_power)

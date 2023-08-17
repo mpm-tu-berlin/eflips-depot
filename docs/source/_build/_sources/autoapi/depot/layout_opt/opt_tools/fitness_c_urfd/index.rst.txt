@@ -133,7 +133,6 @@ Attributes
 .. py:function:: feasible_delay(ind)
 
    Return True if *ind* is feasible in terms of delay, i.e. there was none.
-       
 
 
 .. py:function:: feasible_congestion(ind)

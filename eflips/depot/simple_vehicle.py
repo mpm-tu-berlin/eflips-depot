@@ -35,8 +35,8 @@ class VehicleType:
         depot
 
     """
-    def __init__(self, ID, battery_capacity, soc_min, soc_max, soc_init, soh,
-                 CR=None):
+
+    def __init__(self, ID, battery_capacity, soc_min, soc_max, soc_init, soh, CR=None):
         self.ID = ID
         self.battery_capacity = battery_capacity
         self.soc_min = soc_min
@@ -50,7 +50,7 @@ class VehicleType:
         self.share = {}
 
     def __repr__(self):
-        return '{%s} %s' % (type(self).__name__, self.ID)
+        return "{%s} %s" % (type(self).__name__, self.ID)
 
 
 class VehicleTypeGroup:
@@ -67,6 +67,7 @@ class VehicleTypeGroup:
         depot
 
     """
+
     def __init__(self, types=None):
         self.types = types if types else []
 
@@ -80,12 +81,12 @@ class VehicleTypeGroup:
         ['EN'] -> 'EN'
         ['EN', 'DL'] -> 'EN, DL'
         """
-        return ', '.join(vt.ID for vt in self.types)
+        return ", ".join(vt.ID for vt in self.types)
 
 
 class SimpleVehicle:
     """Vehicle for the depot simulation.
-    
+
     Parameters:
     env: [simpy.Environment]
     ID: [str] unique identifier such as vehicle number
@@ -97,16 +98,19 @@ class SimpleVehicle:
         after.
 
     """
+
     def __init__(self, env, ID, vehicle_type, home_depot=None):
         self.env = env
         self.ID = ID
         self.vehicle_type = vehicle_type
-        self.battery = SimpleBattery(env,
-                                     vehicle_type.battery_capacity,
-                                     vehicle_type.soc_min,
-                                     vehicle_type.soc_max,
-                                     vehicle_type.soc_init,
-                                     vehicle_type.soh)
+        self.battery = SimpleBattery(
+            env,
+            vehicle_type.battery_capacity,
+            vehicle_type.soc_min,
+            vehicle_type.soc_max,
+            vehicle_type.soc_init,
+            vehicle_type.soh,
+        )
         self.mileage = 0
         self.dwd = DepotWorkingData(env, self, home_depot)
         self.trip = None
@@ -114,17 +118,17 @@ class SimpleVehicle:
         self.finished_trips = []
         self.system_entry = False
 
-        if globalConstants['general']['LOG_ATTRIBUTES']:
-            self.logger = DataLogger(env, self, 'VEHICLE')
-            self.logger.loggedData['area_waiting_time'] = {}
-            self.logger.loggedData['canceled_precondition'] = {}
+        if globalConstants["general"]["LOG_ATTRIBUTES"]:
+            self.logger = DataLogger(env, self, "VEHICLE")
+            self.logger.loggedData["area_waiting_time"] = {}
+            self.logger.loggedData["canceled_precondition"] = {}
 
         self.battery_logs = []  # Container for BatteryLog objects, temporary
-        self.power_logs = {0: 0}    # Container for power logs
+        self.power_logs = {0: 0}  # Container for power logs
 
     def __repr__(self):
-        return '{%s} %s' % (type(self).__name__, self.ID)
-        
+        return "{%s} %s" % (type(self).__name__, self.ID)
+
     def drive(self):
         """Process one trip.
         Simplifies everything that happens outside of the depot to consuming
@@ -132,32 +136,42 @@ class SimpleVehicle:
         Ends by calling checkin when arriving at the depot at the end of a
         trip.
         """
-        flexprint('t = %d: %s starting to drive with driving time = %d (= %f h) for distance = %d km'
-              % (self.env.now, self.ID, self.trip.duration, self.trip.duration / 3600,
-                 self.trip.distance), switch='operations')
+        flexprint(
+            "t = %d: %s starting to drive with driving time = %d (= %f h) for distance = %d km"
+            % (
+                self.env.now,
+                self.ID,
+                self.trip.duration,
+                self.trip.duration / 3600,
+                self.trip.distance,
+            ),
+            switch="operations",
+        )
 
-        self.battery_logs.append(BatteryLog(self.env.now, self,
-                                            'consume_start'))
+        self.battery_logs.append(BatteryLog(self.env.now, self, "consume_start"))
         yield self.env.timeout(self.trip.duration)
 
-        if globalConstants['depot']['consumption_calc_mode'] == 'CR_distance_based':
+        if globalConstants["depot"]["consumption_calc_mode"] == "CR_distance_based":
             amount = self.trip.distance * self.vehicle_type.CR
             self.battery.get(amount)
-        elif globalConstants['depot']['consumption_calc_mode'] == 'CR_time_based':
+        elif globalConstants["depot"]["consumption_calc_mode"] == "CR_time_based":
             amount = self.trip.duration / 3600 * self.vehicle_type.CR
             self.battery.get(amount)
-        elif globalConstants['depot']['consumption_calc_mode'] == 'soc_given':
+        elif globalConstants["depot"]["consumption_calc_mode"] == "soc_given":
             if self.trip.charge_on_track:
                 self.battery.energy = self.trip.end_soc * self.battery.energy_real
             else:
-                used_energy = (self.trip.start_soc - self.trip.end_soc) * self.battery.energy_real
+                used_energy = (
+                    self.trip.start_soc - self.trip.end_soc
+                ) * self.battery.energy_real
                 self.battery.energy -= used_energy
         else:
             raise ValueError(
                 "Invalid value %s for 'consumption_calc_mode' in globalConstants."
-                % globalConstants['depot']['consumption_calc_mode'])
+                % globalConstants["depot"]["consumption_calc_mode"]
+            )
 
-        self.battery_logs.append(BatteryLog(self.env.now, self, 'consume_end'))
+        self.battery_logs.append(BatteryLog(self.env.now, self, "consume_end"))
 
         # Driving time is over, now check in at the depot
         self.mileage += self.trip.distance
@@ -183,21 +197,24 @@ class SimpleBattery:
         and unnecessary updates.
 
     """
+
     def __init__(self, env, energy_nominal, soc_min, soc_max, soc_init, soh):
         if energy_nominal <= 0:
-            raise ValueError('energy_nominal cannot be <= 0')
-        if not soc_input_valid(soc_min) \
-                or not soc_input_valid(soc_min) \
-                or not soc_input_valid(soc_min) \
-                or not soc_input_valid(soc_min):
-            raise ValueError('soc values must be between 0 and 1')
+            raise ValueError("energy_nominal cannot be <= 0")
+        if (
+            not soc_input_valid(soc_min)
+            or not soc_input_valid(soc_min)
+            or not soc_input_valid(soc_min)
+            or not soc_input_valid(soc_min)
+        ):
+            raise ValueError("soc values must be between 0 and 1")
 
         self.env = env
         self.energy_nominal = energy_nominal
         self.soc_min = soc_min
         self.soc_max = soc_max
         self.soh = soh
-        
+
         self._energy = soc_init * self.energy_real
 
         self.n_charges = 0
@@ -207,12 +224,11 @@ class SimpleBattery:
 
     @property
     def energy(self):
-        """Return current energy level. Ask active processes for updates first.
-        """
+        """Return current energy level. Ask active processes for updates first."""
         if self.active_processes and self.last_update != self.env.now:
             self.last_update = self.env.now
             for process in self.active_processes:
-                process.update_battery('update')
+                process.update_battery("update")
 
         return self._energy
 
@@ -224,7 +240,7 @@ class SimpleBattery:
     def energy_real(self):
         """Return current real energy capacity."""
         return self.energy_nominal * self.soh
-    
+
     @property
     def soc(self):
         """Return current state of charge with regard to energy_real."""
@@ -248,14 +264,16 @@ class SimpleBattery:
 
     def get(self, amount):
         """Subtract *amount* from self.energy.
-        If energy would become negative and negativity is not allowed, set it 
+        If energy would become negative and negativity is not allowed, set it
         to a given positive percentage of self.energy_real. Simple imitation of
         opportunity charging.
         """
         self._energy -= amount
 
-        if self._energy < 0 and not globalConstants['depot']['allow_negative_soc']:
-            self._energy = globalConstants['depot']['reset_negative_soc_to'] * self.energy_real
+        if self._energy < 0 and not globalConstants["depot"]["allow_negative_soc"]:
+            self._energy = (
+                globalConstants["depot"]["reset_negative_soc_to"] * self.energy_real
+            )
 
     def put(self, amount):
         """Add *amount* to self.energy."""

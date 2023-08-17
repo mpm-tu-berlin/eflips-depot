@@ -76,7 +76,7 @@ Functions
    Attributes:
    plan: [ActivityPlan] List of DepotArea or AreaGroup objects that the
        vehicle will visit during the stay in a specific depot.
-   current_area: [BaseArea subclass] where the vehicle is located at inside 
+   current_area: [BaseArea subclass] where the vehicle is located at inside
        the depot. None outside.
    active_processes: [list] for statistics, contains BaseDepotProcess
        or subclass objects that are currently active and not on hold
@@ -209,7 +209,7 @@ Functions
 
    Representation of a depot. Owns all related objects such as areas
    and the DepotControl as attributes.
-   A depot must be created and configured using a DepotConfigurator and may 
+   A depot must be created and configured using a DepotConfigurator and may
    be empty upon instantation. Before simulation start, the validity of the
    configuration must be checked (DepotConfigurator.isvalid) and the depot
    init completed (DepotConfigurator.complete).
@@ -576,7 +576,6 @@ Functions
    .. py:method:: assign_plan(vehicle)
 
       Check what activity plan is suitable for the vehicle and assign it.
-              
 
 
    .. py:method:: proceed(vehicle)
@@ -635,7 +634,6 @@ Functions
    .. py:method:: schedule_for_matching(trip)
 
       Wait *delay* and then schedule *trip* for matching with a vehicle.
-              
 
 
    .. py:method:: process_request_prio_parking(trip, filter=lambda item: True)
@@ -1415,7 +1413,6 @@ Functions
    .. py:method:: copy()
 
       Return a new object with the same locations, ID and vehicle_filter.
-              
 
 
 
@@ -1431,7 +1428,6 @@ Functions
    .. py:method:: copy()
 
       Return a new object with the same locations, ID and vehicle_filter.
-              
 
 
 

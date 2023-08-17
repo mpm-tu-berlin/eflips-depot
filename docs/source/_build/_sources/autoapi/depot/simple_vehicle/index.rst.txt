@@ -146,7 +146,6 @@ Functions
    .. py:property:: energy
 
       Return current energy level. Ask active processes for updates first.
-              
 
 
    .. py:property:: energy_real
@@ -178,7 +177,7 @@ Functions
    .. py:method:: get(amount)
 
       Subtract *amount* from self.energy.
-      If energy would become negative and negativity is not allowed, set it 
+      If energy would become negative and negativity is not allowed, set it
       to a given positive percentage of self.energy_real. Simple imitation of
       opportunity charging.
 

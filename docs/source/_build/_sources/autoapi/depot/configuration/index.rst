@@ -30,11 +30,13 @@ Classes
 
 
    Utilities to:
+
    - create a depot
-   - add/remove resources, resource switches, processes, areas, groups and
-       plans to/from a depot
-   - load and save a json depot template
-   before simulation start.
+
+   - add/remove resources, resource switches, processes, areas, groups and plans to/from a depot
+
+   - load and save a json depot template before simulation start.
+
    Before env.run is called, complete() must be called.
 
    Configuration-related errors are not raised. Instead, the current action is
@@ -45,13 +47,11 @@ Classes
    methods.
 
    Attributes:
-   filename_loaded: [None or str] filename of the imported template. None 
-       until loading. Stays the same even if templatename changes.
-   templatename: [str] filename of the imported template, excluding the path.
-       May be changed manually. Used to create export filenames.
-   templatename_display: [str] "pretty" version of templatename.
-   multiplied_areas: Map for connecting area IDs added with 'amount' with
-       their resulting areas.
+
+   :param filename_loaded: [None or str] filename of the imported template. None until loading. Stays the same even if templatename changes.
+   :param templatename: [str] filename of the imported template, excluding the path. May be changed manually. Used to create export filenames.
+   :param templatename_display: [str] "pretty" version of templatename.
+   :param multiplied_areas: Map for connecting area IDs added with 'amount' with their resulting areas.
 
 
    .. py:property:: isvalid
@@ -109,14 +109,12 @@ Classes
    .. py:method:: remove_resource_switch(ID)
 
       Remove resource_switch with *ID*. A related resource is not deleted.
-              
 
 
    .. py:method:: export_resource_switch(resource_switch)
       :staticmethod:
 
       Return a dict that represents the configuration of *resource_switch*.
-              
 
 
    .. py:method:: add_process(typename, **kwargs)

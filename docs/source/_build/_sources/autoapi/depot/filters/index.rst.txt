@@ -55,9 +55,9 @@ Classes
    When adding a new filter method:
    - The method name must be preceeded by 'filter_'.
    - 'vehicle' must be the only method parameter. Additional parameters can be
-       accessed via the VehicleFilter object attributes. Passing all those 
-       parameters as keyword arguments during init adds them automatically as 
-       attribute of the VehicleFilter. Alternatively, attributes might be 
+       accessed via the VehicleFilter object attributes. Passing all those
+       parameters as keyword arguments during init adds them automatically as
+       attribute of the VehicleFilter. Alternatively, attributes might be
        added after init, before calling the filter.
 
 

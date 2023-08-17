@@ -13,7 +13,7 @@ from deap import base, creator, tools
 # Load opt settings before importing other parts of layout_opt
 import eflips.depot.layout_opt.settings
 
-filename_opt_settings = '..\\..\\..\\bus_depot\\opt_settings\\diss_kls'
+filename_opt_settings = "..\\..\\..\\bus_depot\\opt_settings\\diss_kls"
 
 eflips.depot.layout_opt.settings.load_settings(filename_opt_settings)
 from eflips.depot.layout_opt.settings import OPT_CONSTANTS as OC
@@ -27,16 +27,16 @@ from eflips.helperFunctions import Tictoc
 # GA-parameters
 
 # Load optimization settings
-POP_SIZE = OC['algorithm']['POP_SIZE']
+POP_SIZE = OC["algorithm"]["POP_SIZE"]
 
-CXPB = OC['algorithm']['CXPB']
+CXPB = OC["algorithm"]["CXPB"]
 
-MUTPB = OC['algorithm']['MUTPB']
-MUTPB_AREA_COUNT = OC['algorithm']['MUTPB_AREA_COUNT']
-MUTSIGMA_AREA_COUNT = OC['algorithm']['MUTSIGMA_AREA_COUNT']
-MUTPB_AREA_TYPE = OC['algorithm']['MUTPB_AREA_TYPE']
-MUTPB_AREA_CAPACITY = OC['algorithm']['MUTPB_AREA_CAPACITY']
-MUTSIGMA_AREA_CAPACITY = OC['algorithm']['MUTSIGMA_AREA_CAPACITY']
+MUTPB = OC["algorithm"]["MUTPB"]
+MUTPB_AREA_COUNT = OC["algorithm"]["MUTPB_AREA_COUNT"]
+MUTSIGMA_AREA_COUNT = OC["algorithm"]["MUTSIGMA_AREA_COUNT"]
+MUTPB_AREA_TYPE = OC["algorithm"]["MUTPB_AREA_TYPE"]
+MUTPB_AREA_CAPACITY = OC["algorithm"]["MUTPB_AREA_CAPACITY"]
+MUTSIGMA_AREA_CAPACITY = OC["algorithm"]["MUTSIGMA_AREA_CAPACITY"]
 
 # Set max. generations
 NGEN = 1000
@@ -47,29 +47,31 @@ creator.create("FitnessMulti", base.Fitness, weights=(1.0, 1.0))
 creator.create("Individual", opt_tools.DepotPrototype, fitness=creator.FitnessMulti)
 
 toolbox = base.Toolbox()
-toolbox.register('individual', opt_tools.init_random_depot, creator.Individual)
+toolbox.register("individual", opt_tools.init_random_depot, creator.Individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-toolbox.register('clone', opt_tools.clone_depot)
+toolbox.register("clone", opt_tools.clone_depot)
 
-toolbox.register('mate', opt_tools.cxOnePoint_depot)
-toolbox.register('mutate', opt_tools.mutgaussian_depot_or,
-                 mutsigma_area_count=MUTSIGMA_AREA_COUNT,
-                 mutpb_area_count=MUTPB_AREA_COUNT,
-                 mutpb_area_type=MUTPB_AREA_TYPE,
-                 mutsigma_area_capacity=MUTSIGMA_AREA_CAPACITY,
-                 mutpb_area_capacity=MUTPB_AREA_CAPACITY,
-                 splitpb=OC['algorithm']['SPLITPB']
-                 )
+toolbox.register("mate", opt_tools.cxOnePoint_depot)
+toolbox.register(
+    "mutate",
+    opt_tools.mutgaussian_depot_or,
+    mutsigma_area_count=MUTSIGMA_AREA_COUNT,
+    mutpb_area_count=MUTPB_AREA_COUNT,
+    mutpb_area_type=MUTPB_AREA_TYPE,
+    mutsigma_area_capacity=MUTSIGMA_AREA_CAPACITY,
+    mutpb_area_capacity=MUTPB_AREA_CAPACITY,
+    splitpb=OC["algorithm"]["SPLITPB"],
+)
 # toolbox.register('select', tools.selTournamentDCD)
-toolbox.register('select', tools.selNSGA2)
-toolbox.register('evaluate', opt_tools.fitness_c_urfd.evaluate)
+toolbox.register("select", tools.selNSGA2)
+toolbox.register("evaluate", opt_tools.fitness_c_urfd.evaluate)
 
 
 def main():
     """Execute the given optimization setup.
     Return the final population and statistics.
     """
-    g = 0   # generation counter
+    g = 0  # generation counter
 
     # Start time measurement
     tictoc = Tictoc(print_timestamps=False)
@@ -82,7 +84,7 @@ def main():
 
     # Split individuals into uniques and duplicates to lower the evaluation
     # effort
-    uniques, duplicates = util.attrbased_set(pop, 'ID')
+    uniques, duplicates = util.attrbased_set(pop, "ID")
     results = list(pool.map(toolbox.evaluate, uniques))
     # results = list(map(toolbox.evaluate, uniques))
     fitnesses = [result[:-1] for result in results]
@@ -98,26 +100,50 @@ def main():
 
     # Prepare logging and stats
     logbook = tools.Logbook()
-    logbook.header = 'gen', 'evals', 'duplicates_this_gen', 'looked_up', 'skipped', 'memorized', 'comptime', 'fitness'
-    logbook.chapters['fitness'].header = 'min', 'avg', 'max', 'std', 'feasible'
+    logbook.header = (
+        "gen",
+        "evals",
+        "duplicates_this_gen",
+        "looked_up",
+        "skipped",
+        "memorized",
+        "comptime",
+        "fitness",
+    )
+    logbook.chapters["fitness"].header = "min", "avg", "max", "std", "feasible"
     cx_this_gen = 0
     crossovers = []
     # Log stats
     record = mstats.compile(pop)
-    skipped = sum(ind.results['simtime'] == 0 for ind in pop)
-    feasible = sum(eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible(ind) for ind in pop) / len(pop)
-    logbook.record(gen=g, evals=len(pop), duplicates_this_gen=len(duplicates),
-                   looked_up=0, skipped=skipped, memorized=len(memory),
-                   comptime=tictoc.last_interval, feasible=feasible, **record)
+    skipped = sum(ind.results["simtime"] == 0 for ind in pop)
+    feasible = sum(
+        eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible(ind) for ind in pop
+    ) / len(pop)
+    logbook.record(
+        gen=g,
+        evals=len(pop),
+        duplicates_this_gen=len(duplicates),
+        looked_up=0,
+        skipped=skipped,
+        memorized=len(memory),
+        comptime=tictoc.last_interval,
+        feasible=feasible,
+        **record
+    )
     print()
-    print(logbook.stream)   # values of initial population
+    print(logbook.stream)  # values of initial population
     hof.update(pop)
     tictoc.toc()
 
     while not stopping_criteria.check(
-            g=g, ngen=NGEN, hof=hof, maxfitness=maxfitness_estimate,
-            improvement_interval=30, pop=pop,
-            feasible=eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible):
+        g=g,
+        ngen=NGEN,
+        hof=hof,
+        maxfitness=maxfitness_estimate,
+        improvement_interval=30,
+        pop=pop,
+        feasible=eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible,
+    ):
         g += 1
 
         # Clone the population to prepare the offspring
@@ -145,7 +171,7 @@ def main():
         modified_inds = [ind for ind in offspring if not ind.fitness.valid]
         # Split modified individuals into uniques and duplicates to lower the
         # evaluation effort
-        uniques, duplicates = util.attrbased_set(modified_inds, 'ID')
+        uniques, duplicates = util.attrbased_set(modified_inds, "ID")
         # Look up fitness for individuals that are memorized
         for ind in uniques:
             lookup(ind, memory)
@@ -165,7 +191,7 @@ def main():
             lookup(ind, memory)
 
         # Select the next generation individuals from pop and offspring
-        tools.emo.assignCrowdingDist(pop + offspring)   # required for selTournamentDCD
+        tools.emo.assignCrowdingDist(pop + offspring)  # required for selTournamentDCD
         pop[:] = toolbox.select(pop + offspring, POP_SIZE)
 
         # Log stats
@@ -173,41 +199,50 @@ def main():
         crossovers.append(cx_this_gen)
         cx_this_gen = 0
         record = mstats.compile(pop)
-        skipped = sum(ind.results['simtime'] == 0 for ind in new_inds)
-        feasible = sum(eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible(ind) for ind in pop) / len(pop)
+        skipped = sum(ind.results["simtime"] == 0 for ind in new_inds)
+        feasible = sum(
+            eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible(ind)
+            for ind in pop
+        ) / len(pop)
         logbook.record(
-            gen=g, evals=len(new_inds), duplicates_this_gen=len(duplicates),
-            looked_up=len(modified_inds) - len(new_inds), skipped=skipped,
-            memorized=len(memory), comptime=tictoc.last_interval,
-            feasible=feasible, **record)
+            gen=g,
+            evals=len(new_inds),
+            duplicates_this_gen=len(duplicates),
+            looked_up=len(modified_inds) - len(new_inds),
+            skipped=skipped,
+            memorized=len(memory),
+            comptime=tictoc.last_interval,
+            feasible=feasible,
+            **record
+        )
         print(logbook.stream)
         tictoc.toc()
 
     tictoc.print_timestamps = True
     tictoc.toc()
-    print('(%f s per toc)' % (tictoc.tlist[-1] / tictoc.nTocs - 1))
+    print("(%f s per toc)" % (tictoc.tlist[-1] / tictoc.nTocs - 1))
     print()
     return pop, logbook, crossovers
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opt_tools.init.print_area_precomps()
 
     # Set up multiprocessing (must be protected by "if __name__ == '__main__'")
-    n_processes = os.cpu_count() - 1    # os.cpu_count() is default
+    n_processes = os.cpu_count() - 1  # os.cpu_count() is default
     pool = Pool(n_processes, maxtasksperchild=100)
     # maxtasksperchild: renew processes after a certain amount of tasks (proved
     # to be critical for long optimization runs)
-    print('Multiprocessing with %d processes' % n_processes)
-    toolbox.register('map', pool.map)
+    print("Multiprocessing with %d processes" % n_processes)
+    toolbox.register("map", pool.map)
 
     # Prepare statistics
     fitness_stats = tools.Statistics(key=lambda ind: ind.fitness.values)
     mstats = tools.MultiStatistics(fitness=fitness_stats)
-    mstats.register('avg', np.mean, axis=0)
-    mstats.register('std', np.std, axis=0)
-    mstats.register('min', np.min, axis=0)
-    mstats.register('max', np.max, axis=0)
+    mstats.register("avg", np.mean, axis=0)
+    mstats.register("std", np.std, axis=0)
+    mstats.register("min", np.min, axis=0)
+    mstats.register("max", np.max, axis=0)
 
     hof = tools.ParetoFront()
 
@@ -220,7 +255,7 @@ if __name__ == '__main__':
     stopping_criteria = util.StoppingCriteria()
     # stopping_criteria.select('max_gen_reached', 'max_fit_reached', 'no_improvement')
     # stopping_criteria.select('no_improvement')
-    stopping_criteria.select('max_gen_reached')
+    stopping_criteria.select("max_gen_reached")
     # stopping_criteria.select('max_gen_reached', 'no_improvement')
     # stopping_criteria.select('max_fit_reached')
     # stopping_criteria.select('max_fit_reached', 'no_improvement')
@@ -228,14 +263,19 @@ if __name__ == '__main__':
     # stopping_criteria.select('feasible_found', 'max_gen_reached')
 
     # Run optimization
-    print('Estimated max fitness: %s' % maxfitness_estimate)
+    print("Estimated max fitness: %s" % maxfitness_estimate)
     pop, logbook, crossovers = main()
 
     # Gather data and do some evaluation
     ev = evaluation.OptEvaluation(
-        pop, logbook, hof, crossovers, eflips.depot.layout_opt.opt_tools.mutation.mutations,
-        memory, eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible,
-        eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec
+        pop,
+        logbook,
+        hof,
+        crossovers,
+        eflips.depot.layout_opt.opt_tools.mutation.mutations,
+        memory,
+        eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible,
+        eflips.depot.layout_opt.opt_tools.fitness_c_urfd.feasible_fr_vec,
     )
     ev.results_operators()
     ev.results_feasbility()

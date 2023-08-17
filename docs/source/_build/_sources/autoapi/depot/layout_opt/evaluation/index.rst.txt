@@ -39,7 +39,6 @@ Functions
    .. py:method:: _count_fitnesses()
 
       Gather fitness and feasibility data.
-              
 
 
    .. py:method:: results_operators()
@@ -117,7 +116,6 @@ Functions
    .. py:method:: ideas(show=True, save=False, formats=('pdf', ), basefilename='ideas', xlim=(0, 'max'))
 
       Number of individuals with new and looked up fitness by generation.
-              
 
 
    .. py:method:: save(filename=None)

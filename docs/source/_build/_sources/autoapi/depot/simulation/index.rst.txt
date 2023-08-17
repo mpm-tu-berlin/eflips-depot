@@ -58,7 +58,7 @@ Attributes
 
    .. py:method:: load_and_complete_template(filename_template)
 
-      Load depot template, validate and complete it. 
+      Load depot template, validate and complete it.
 
 
 
@@ -125,7 +125,6 @@ Attributes
    .. py:method:: run()
 
       Run the simulation. All depot configurations have to be complete.
-              
 
 
 

@@ -244,7 +244,6 @@ Attributes
    .. py:method:: nvehicles_total(show=True, save=False, basefilename='nvehicles_total', formats=('png', ))
 
       Total vehicle count over time in the depot in total. Plot as line.
-              
 
 
    .. py:method:: arrival_soc(typs={}, show=True, save=False, basefilename='arrival_soc', formats=('png', ), language='eng')
@@ -356,7 +355,6 @@ Attributes
    .. py:method:: std_line(show=True, save=False, basefilename='std_line', formats=('png', ))
 
       Plot target departure times of trips (without repetition) as line.
-              
 
 
    .. py:method:: tripattr_scatter(attr, plot_title, basefilename, show=True, save=False, formats=('png', ))
@@ -416,8 +414,6 @@ Attributes
 
       Plot trip (without repetition) distance in a histogram.
 
-              
-
 
    .. py:method:: target_vehicle_types_dist(show=True, save=False, basefilename='target_vehicle_types_distribution', formats=('png', ))
 
@@ -464,7 +460,7 @@ Attributes
 
    .. py:method:: process_intervals(process_ID, crit_value=86400 * 2, bins=15, show=True, save=False, basefilename='process_intervals', formats=('png', ))
 
-      Distribution of time intervals between the application of process 
+      Distribution of time intervals between the application of process
       with ID *process_ID* on vehicles.
 
       bins: [int] number of bins for the histogram; matplotlib parameter.

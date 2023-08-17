@@ -40,7 +40,6 @@ Functions
 
 
    Stopping utilities for optimization loops of an evolutionary algorithm.
-       
 
    .. py:method:: select(*args)
 
@@ -89,7 +88,6 @@ Functions
       :staticmethod:
 
       Return True if *value* is higher than *limit*.
-              
 
 
 

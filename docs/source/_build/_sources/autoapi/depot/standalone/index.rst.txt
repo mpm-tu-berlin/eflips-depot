@@ -254,7 +254,7 @@ Functions
    .. py:method:: issue_request(trip)
       :staticmethod:
 
-      Issue request for vehicle at the trip's departure depot. The vehicle 
+      Issue request for vehicle at the trip's departure depot. The vehicle
       has to match *filter*. Waiting time is possible. Called in run().
 
 

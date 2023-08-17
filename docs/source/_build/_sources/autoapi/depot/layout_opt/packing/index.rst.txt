@@ -242,25 +242,25 @@ Attributes
 
 .. py:function:: xintersect(r1, r2)
 
-   Return True if unrotated rectangles r1 and r2 intersect in x direction. 
+   Return True if unrotated rectangles r1 and r2 intersect in x direction.
    Same value is not considered intersection.
 
 
 .. py:function:: yintersect(r1, r2)
 
-   Return True if unrotated rectangles r1 and r2 intersect in y direction. 
+   Return True if unrotated rectangles r1 and r2 intersect in y direction.
    Same value is not considered intersection.
 
 
 .. py:function:: intersect(r1, r2)
 
-   Return True if unrotated rectangles r1 and r2 intersect. Same value is 
+   Return True if unrotated rectangles r1 and r2 intersect. Same value is
    not considered intersection.
 
 
 .. py:function:: contains(r1, r2)
 
-   Return True if rectangle r1 completely encloses rectangle r2. Must be 
+   Return True if rectangle r1 completely encloses rectangle r2. Must be
    unrotated.
 
 
@@ -677,7 +677,6 @@ Attributes
    Bases: :py:obj:`DistanceRectangle`
 
    Buffer rectangle on the outer bottom side of the *item* rectangle.
-       
 
    .. py:property:: a
 
@@ -728,11 +727,11 @@ Attributes
 
    Bases: :py:obj:`Rectangle`
 
-   A rectangle that may have a buffer distance at each side. Without 
+   A rectangle that may have a buffer distance at each side. Without
    rotation.
 
    Parameters:
-   d_l, d_b, d_r, d_t: [int or float] buffer distance at left, bottom, right 
+   d_l, d_b, d_r, d_t: [int or float] buffer distance at left, bottom, right
        and top sides.
 
    .. py:property:: a_with_distances
