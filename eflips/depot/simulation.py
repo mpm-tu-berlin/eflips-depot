@@ -36,10 +36,10 @@ class DepotHost:
         self.depot = self.configurator.depot
 
     def load_and_complete_template(self, filename_template):
-        """Load depot template, validate and complete it. """
+        """Load depot template, validate and complete it."""
         success, errormsg = self.configurator.load(filename_template)
         if not success:
-            raise ValueError('Error while loading template: ' + errormsg)
+            raise ValueError("Error while loading template: " + errormsg)
 
         success, errormsg = self.configurator.complete()
         if not success:
@@ -73,12 +73,14 @@ class SimulationHost:
     vg: [eflips.depot.standalone.VehicleGenerator]
     """
 
-    def __init__(self, to_simulate, run_progressbar=False,
-                 print_timestamps=True, tictocname=''):
+    def __init__(
+        self, to_simulate, run_progressbar=False, print_timestamps=True, tictocname=""
+    ):
         self.to_simulate = to_simulate
         if len(to_simulate) > 1:
-            raise ValueError('Currently, only one depot can be simulated in a '
-                             'simulation run.')
+            raise ValueError(
+                "Currently, only one depot can be simulated in a " "simulation run."
+            )
 
         self.tictoc = eflips.helperFunctions.Tictoc(print_timestamps, tictocname)
         self.tictoc.tic()
@@ -94,15 +96,12 @@ class SimulationHost:
         self.timetable = None
 
         # Instantiate depot host(s) with empty depots
-        self.depot_hosts = [
-            DepotHost(self.env, self) for _ in to_simulate
-        ]
+        self.depot_hosts = [DepotHost(self.env, self) for _ in to_simulate]
         self.depots = [dh.depot for dh in self.depot_hosts]
 
     @property
     def filename_eflips_settings(self):
-        return self.gc['FILENAME_SETTINGS'] \
-            if 'FILENAME_SETTINGS' in self.gc else None
+        return self.gc["FILENAME_SETTINGS"] if "FILENAME_SETTINGS" in self.gc else None
 
     def standard_setup(self, filename_eflips_settings, filename_timetable):
         """Standard simulation setup without gui."""
@@ -125,15 +124,15 @@ class SimulationHost:
         """Load timetable data from excel and init a timetable.
         load_eflips_settings() must be called before this.
         """
-        timetabledata = eflips.depot.standalone.timetabledata_from_excel(
-            filename)
+        timetabledata = eflips.depot.standalone.timetabledata_from_excel(filename)
         self.init_timetable(timetabledata)
 
     def init_timetable(self, timetabledata):
         """Use timetabledata to init a timetable."""
         self.timetable = eflips.depot.standalone.timetable_from_timetabledata(
-            self.env, timetabledata)
-        self.filename_timetable = timetabledata.filename.replace('.xlsx', '')
+            self.env, timetabledata
+        )
+        self.filename_timetable = timetabledata.filename.replace(".xlsx", "")
 
     def complete(self):
         """Complete the depot configuration phase. Must be called after
@@ -146,32 +145,34 @@ class SimulationHost:
             depot_host.evaluation.complete()
 
     def run(self):
-        """Run the simulation. All depot configurations have to be complete.
-        """
+        """Run the simulation. All depot configurations have to be complete."""
         self.vg.run(self.depots)
         self.env.process(self.timetable.run(self.depots))
 
         if self.run_progressbar:
-            self.env.process(eflips.helperFunctions.progressbar(
-                self.env,
-                eflips.settings.globalConstants['general']['SIMULATION_TIME'],
-                step=10,
-                step_unit='%')
+            self.env.process(
+                eflips.helperFunctions.progressbar(
+                    self.env,
+                    eflips.settings.globalConstants["general"]["SIMULATION_TIME"],
+                    step=10,
+                    step_unit="%",
+                )
             )
 
-        self.tictoc.toc('list')     # mark the end of the configuration phase
+        self.tictoc.toc("list")  # mark the end of the configuration phase
 
         # Run env
-        self.env.run(until=eflips.settings.globalConstants['general'][
-            'SIMULATION_TIME'])
+        self.env.run(
+            until=eflips.settings.globalConstants["general"]["SIMULATION_TIME"]
+        )
 
-        self.tictoc.toc('list')     # mark the end of the simulation phase
+        self.tictoc.toc("list")  # mark the end of the simulation phase
         if self.tictoc.print_timestamps:
-            self.tictoc.print_toclist('interval')
-            self.tictoc.print_toclist('cumulative')
+            self.tictoc.print_toclist("interval")
+            self.tictoc.print_toclist("cumulative")
 
 
-Depotinput = namedtuple('Depotinput', ['filename_template', 'show_gui'])
+Depotinput = namedtuple("Depotinput", ["filename_template", "show_gui"])
 """Container for parameters for SimulationHost"""
 
 
@@ -186,8 +187,8 @@ def create_alternatives(basefilename, keypath, values):
     for i, value in enumerate(values):
         data = copy.deepcopy(basedata)
         set_by_path(data, keypath, value)
-        save_json(data, basefilename + '_' + str(i))
-        print('Saved as %s' % basefilename + '_' + str(i))
+        save_json(data, basefilename + "_" + str(i))
+        print("Saved as %s" % basefilename + "_" + str(i))
 
 
 class BaseMultipleSimulationHost(ABC):
@@ -198,10 +199,17 @@ class BaseMultipleSimulationHost(ABC):
     history: [list] of tuples containing the filenames of the inputs of each
     simulation run.
     """
-    def __init__(self, basefilename_eflips_settings, basefilename_timetable,
-                 basefilename_template, print_timestamps_total=True,
-                 tictocname_total='', print_timestamps_each=True,
-                 tictocname_each=''):
+
+    def __init__(
+        self,
+        basefilename_eflips_settings,
+        basefilename_timetable,
+        basefilename_template,
+        print_timestamps_total=True,
+        tictocname_total="",
+        print_timestamps_each=True,
+        tictocname_each="",
+    ):
         self.tictoc = eflips.Tictoc(print_timestamps_total, tictocname_total)
         self.tictoc.tic()
         self.print_timestamps_each = print_timestamps_each
@@ -229,24 +237,28 @@ class BaseMultipleSimulationHost(ABC):
             self.evaluate(simulation_host.depot_hosts[0])
 
             done, fn_es, fn_ti, fn_te = self.next(
-                simulation_host.depot_hosts[0], fn_es, fn_ti, fn_te)
+                simulation_host.depot_hosts[0], fn_es, fn_ti, fn_te
+            )
 
-        self.tictoc.toc('list')
+        self.tictoc.toc("list")
         if self.tictoc.print_timestamps:
-            self.tictoc.print_toclist('cumulative')
+            self.tictoc.print_toclist("cumulative")
 
     def simulate(self, fn_es, fn_ti, fn_te):
         """Execute one simulation and return its SimulationHost instance."""
         simulation_host = eflips.depot.SimulationHost(
             [eflips.depot.Depotinput(filename_template=fn_te, show_gui=False)],
-            run_progressbar=False, print_timestamps=self.print_timestamps_each,
-            tictocname=self.tictocname_each
+            run_progressbar=False,
+            print_timestamps=self.print_timestamps_each,
+            tictocname=self.tictocname_each,
         )
         simulation_host.standard_setup(fn_es, fn_ti)
-        print('Simulating template %s.'
-              % simulation_host.depot_hosts[0].configurator.templatename)
+        print(
+            "Simulating template %s."
+            % simulation_host.depot_hosts[0].configurator.templatename
+        )
         simulation_host.run()
-        print('Completed simulation.')
+        print("Completed simulation.")
         self.history.append((fn_es, fn_ti, fn_te))
         return simulation_host
 
@@ -281,6 +293,7 @@ class BaseMultipleSimulationHost(ABC):
 
 class SimulationStop(simpy.Event):
     """Event for immediately terminating the simulation."""
+
     def __init__(self, env):
         super(SimulationStop, self).__init__(env)
         self.callbacks.append(simpy.core.StopSimulation.callback)
@@ -290,7 +303,7 @@ class SimulationStop(simpy.Event):
         Use value to e.g. supply a reason.
         """
         if self._value is not simpy.events.PENDING:
-            raise RuntimeError('%s has already been triggered' % self)
+            raise RuntimeError("%s has already been triggered" % self)
 
         self._ok = True
         self._value = value

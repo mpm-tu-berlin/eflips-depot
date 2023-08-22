@@ -12,25 +12,25 @@ import eflips
 # Settings
 
 # For ParkRating
-rfd_diff_park_lower_bound = -1200    # s
-rfd_diff_park_upper_bound = 7200     # s
+rfd_diff_park_lower_bound = -1200  # s
+rfd_diff_park_upper_bound = 7200  # s
 park_rating_weights = {
-    'buffer': 22/72,  # PM 7/22
-    'typestack': 13/72,  # PM 2/11
-    'rfd_diff_pos': 8/72,  # PM 7/66
-    'rfd_diff_neg': 29/144,  # PM 5/22
-    'available_power': 2/72,  # PM 1/66
-    'empty_slots_exit': 25/144  # PM5/33
+    "buffer": 22 / 72,  # PM 7/22
+    "typestack": 13 / 72,  # PM 2/11
+    "rfd_diff_pos": 8 / 72,  # PM 7/66
+    "rfd_diff_neg": 29 / 144,  # PM 5/22
+    "available_power": 2 / 72,  # PM 1/66
+    "empty_slots_exit": 25 / 144,  # PM5/33
 }
 
 # For DispatchRating
-rfd_diff_dispatch_upper_bound = 10800     # s
+rfd_diff_dispatch_upper_bound = 10800  # s
 dispatch_rating_weights = {
-    'buffer': 10/50,  # PM 1/5
-    'typestack': 16/50,  # PM 17/45
-    'rfd_diff': 25/100,  # PM 13/45
-    'available_power': 3/50,  # PM 1/45
-    'empty_slots_exit': 17/100  # PM 1/9
+    "buffer": 10 / 50,  # PM 1/5
+    "typestack": 16 / 50,  # PM 17/45
+    "rfd_diff": 25 / 100,  # PM 13/45
+    "available_power": 3 / 50,  # PM 1/45
+    "empty_slots_exit": 17 / 100,  # PM 1/9
 }
 
 
@@ -51,9 +51,9 @@ class Rating:
     best_alternatives: [list] of the best alternatives.
 
     """
+
     def __init__(self, alternatives, weights=None):
-        self.alternatives, self.weights = self.check_input(alternatives,
-                                                           weights)
+        self.alternatives, self.weights = self.check_input(alternatives, weights)
         self.weighted = None
         self.sums = None
         self.best_value = None
@@ -63,36 +63,38 @@ class Rating:
     @staticmethod
     def check_input(alternatives, weights):
         """Check alternatives and weights for validity."""
-        if not isinstance(alternatives, list)\
-                or not all(isinstance(alt, list) for alt in alternatives):
-            raise ValueError("Rating parameter 'alternatives' must be a list "
-                             "of lists.")
+        if not isinstance(alternatives, list) or not all(
+            isinstance(alt, list) for alt in alternatives
+        ):
+            raise ValueError(
+                "Rating parameter 'alternatives' must be a list " "of lists."
+            )
         if not alternatives:
-            raise ValueError("Rating parameter 'alternatives' cannot be "
-                             "empty.")
+            raise ValueError("Rating parameter 'alternatives' cannot be " "empty.")
         len_first = len(alternatives[0])
         if not all(len(i) == len_first for i in alternatives):
-            raise ValueError("Entries in Rating parameter 'alternatives' must"
-                             " have the same length.")
+            raise ValueError(
+                "Entries in Rating parameter 'alternatives' must"
+                " have the same length."
+            )
         if weights is not None:
-            if not isinstance(weights, list)\
-                    or not len(weights) == len_first:
+            if not isinstance(weights, list) or not len(weights) == len_first:
                 raise ValueError(
                     "Rating parameter 'weights' must be a list with the same "
-                    "length as entries in 'alternatives'.")
+                    "length as entries in 'alternatives'."
+                )
         return np.asarray(alternatives), np.asarray(weights)
 
     def weighted_sum(self):
         """Locate the maximum weighted sums in self.alternatives."""
         if self.weights is None:
-            raise ValueError('weights must be supplied for weighted_sum')
+            raise ValueError("weights must be supplied for weighted_sum")
 
         self.weighted = self.weights * self.alternatives
         self.sums = self.weighted.sum(axis=1)
         self.best_value = self.sums.max()
         self.best_alternative_nos = np.where(self.sums == self.best_value)
-        self.best_alternatives = self.alternatives[
-            self.best_alternative_nos].tolist()
+        self.best_alternatives = self.alternatives[self.best_alternative_nos].tolist()
 
 
 class BaseCriterion(ABC):
@@ -111,8 +113,8 @@ class BufferPark(BaseCriterion):
     Exclusive for Direct areas. Value is 0 for Line.
 
     """
-    def __init__(self, area, vehicle):
 
+    def __init__(self, area, vehicle):
         self.value = self.calculate(area, vehicle)
 
     def calculate(self, area, vehicle):
@@ -121,23 +123,29 @@ class BufferPark(BaseCriterion):
 
         # Check if Direct areas are all emtpy
         count_direct = sum(
-            sum(a.count for a in g.direct_areas)
-            for g in area.depot.parking_area_groups)
+            sum(a.count for a in g.direct_areas) for g in area.depot.parking_area_groups
+        )
         if count_direct == 0:
             return 1
 
         total_buffer_capacity = area.depot.parking_capacity_direct
 
         if vehicle.vehicle_type.group:
-            count = sum(sum(v.vehicle_type.group is vehicle.vehicle_type.group
-                            for v in a.items if v)
-                        for a in area.parking_area_group.direct_areas)
+            count = sum(
+                sum(
+                    v.vehicle_type.group is vehicle.vehicle_type.group
+                    for v in a.items
+                    if v
+                )
+                for a in area.parking_area_group.direct_areas
+            )
             share_target = vehicle.vehicle_type.group.share[area.depot]
             # print('group. count: %d, share_target: %f' % (count, share_target))
         else:
-            count = sum(sum(v.vehicle_type is vehicle.vehicle_type
-                            for v in a.items if v)
-                        for a in area.parking_area_group.direct_areas)
+            count = sum(
+                sum(v.vehicle_type is vehicle.vehicle_type for v in a.items if v)
+                for a in area.parking_area_group.direct_areas
+            )
             share_target = vehicle.vehicle_type.share[area.depot]
             # print('lone. count: %d, share_target: %f' % (count, share_target))
 
@@ -157,8 +165,8 @@ class TypestackPark(BaseCriterion):
     Exclusive for Line areas. Value is 0 for Direct.
 
     """
-    def __init__(self, area, vehicle):
 
+    def __init__(self, area, vehicle):
         self.value = self.calculate(area, vehicle)
 
     def calculate(self, area, vehicle):
@@ -182,11 +190,11 @@ class RfdDiffPark(BaseCriterion):
     slot: [tuple] with items (area, index of slot)
 
     """
+
     lower_bound = rfd_diff_park_lower_bound
     upper_bound = rfd_diff_park_upper_bound
 
     def __init__(self, slot, vehicle):
-
         self.value, self.diff = self.calculate(slot, vehicle)
 
     def calculate(self, slot, vehicle):
@@ -205,14 +213,16 @@ class RfdDiffPark(BaseCriterion):
         # Get the rfd-diff
         charge_proc = area.charge_proc  # type of charging process at the slot
         dur_est_blocked = charge_proc.estimate_duration(
-            vehicle, slot[0].charging_interfaces[slot[1]])
+            vehicle, slot[0].charging_interfaces[slot[1]]
+        )
         etc_blocking = blocking_vehicle.dwd.etc_processes
         diff = 0
         if isinstance(etc_blocking, int):
             diff = slot[0].env.now + dur_est_blocked - etc_blocking
         elif etc_blocking is eflips.depot.EstimateValue.UNKNOWN:
             diff = dur_est_blocked - charge_proc.estimate_duration(
-                blocking_vehicle, slot[0].charging_interfaces[index_blocking])
+                blocking_vehicle, slot[0].charging_interfaces[index_blocking]
+            )
         elif etc_blocking is eflips.depot.EstimateValue.COMPLETED:
             diff = dur_est_blocked
 
@@ -234,14 +244,13 @@ class AvailablePower(BaseCriterion):
     slot: [tuple] with items (area, index of slot)
 
     """
-    def __init__(self, slot, max_power):
 
+    def __init__(self, slot, max_power):
         self.value = self.calculate(slot, max_power)
 
     def calculate(self, slot, max_power):
         normalization_factor = 1 / max_power
-        return slot[0].charging_interfaces[slot[1]].max_power \
-            * normalization_factor
+        return slot[0].charging_interfaces[slot[1]].max_power * normalization_factor
 
 
 class EmptySlotsExitPark(BaseCriterion):
@@ -251,7 +260,6 @@ class EmptySlotsExitPark(BaseCriterion):
     """
 
     def __init__(self, area, max_capacity_line):
-
         self.value = self.calculate(area, max_capacity_line)
 
     def calculate(self, area, max_capacity_line):
@@ -277,6 +285,7 @@ class SlotAlternative:
     max_capacity_line: [int or None] max capacity of Line parking areas
 
     """
+
     def __init__(self, slot, vehicle, max_power, max_capacity_line):
         self.slot = slot
         self.vehicle = vehicle
@@ -316,13 +325,14 @@ class ParkRating(Rating):
     alternatives_obj: [list] of SlotAlternative instances
 
     """
+
     weights = [
-        park_rating_weights['buffer'],
-        park_rating_weights['typestack'],
-        park_rating_weights['rfd_diff_pos'],
-        park_rating_weights['rfd_diff_neg'],
-        park_rating_weights['available_power'],
-        park_rating_weights['empty_slots_exit']
+        park_rating_weights["buffer"],
+        park_rating_weights["typestack"],
+        park_rating_weights["rfd_diff_pos"],
+        park_rating_weights["rfd_diff_neg"],
+        park_rating_weights["available_power"],
+        park_rating_weights["empty_slots_exit"],
     ]
 
     def __init__(self, alternatives_obj):
@@ -339,8 +349,8 @@ class BufferDispatch(BaseCriterion):
     Exclusive for Direct areas. Value is 0 for Line.
 
     """
-    def __init__(self, area, vehicle):
 
+    def __init__(self, area, vehicle):
         self.value = self.calculate(area, vehicle)
 
     def calculate(self, area, vehicle):
@@ -355,8 +365,8 @@ class TypestackDispatch(BaseCriterion):
     Exclusive for Line areas. Value is 0 for Direct.
 
     """
-    def __init__(self, area):
 
+    def __init__(self, area):
         self.value = self.calculate(area)
 
     def calculate(self, area):
@@ -365,8 +375,10 @@ class TypestackDispatch(BaseCriterion):
 
         result, vtype = area.istypestack()
         if result is None:
-            raise RuntimeError('Area %s cannot be empty when applying the'
-                               'TypestackDispatch criterion.' % area.ID)
+            raise RuntimeError(
+                "Area %s cannot be empty when applying the"
+                "TypestackDispatch criterion." % area.ID
+            )
         elif result:
             # typestack
             return 0
@@ -384,6 +396,7 @@ class RfdDiffDispatch:
         eflips.EstimateValue.COMPLETED.
 
     """
+
     upper_bound = rfd_diff_dispatch_upper_bound
 
     def __init__(self, slot):
@@ -424,8 +437,8 @@ class RfdDiffDispatch:
             # Convert EstimateValue to numerical rfddiff
             elif etc is eflips.depot.EstimateValue.UNKNOWN:
                 diff = charge_proc.estimate_duration(
-                    vehicle,
-                    slot[0].charging_interfaces[area.items.index(vehicle)])
+                    vehicle, slot[0].charging_interfaces[area.items.index(vehicle)]
+                )
                 diffs.append(diff)
             elif etc is eflips.depot.EstimateValue.COMPLETED:
                 diff = 0
@@ -441,7 +454,6 @@ class EmptySlotsExitDispatch(BaseCriterion):
     """
 
     def __init__(self, area, max_capacity_line):
-
         self.value = self.calculate(area, max_capacity_line)
 
     def calculate(self, area, max_capacity_line):
@@ -462,6 +474,7 @@ class VehicleAlternative:
     max_capacity_line: [int or None] max capacity of Line parking areas
 
     """
+
     def __init__(self, slot, vehicle, max_power, max_capacity_line):
         self.slot = slot
         self.vehicle = vehicle
@@ -471,8 +484,7 @@ class VehicleAlternative:
         self.typestack = TypestackDispatch(slot[0])
         self.rfd_diff = RfdDiffDispatch(slot)
         self.available_power = AvailablePower(slot, max_power)
-        self.empty_slots_exit = EmptySlotsExitDispatch(slot[0],
-                                                       max_capacity_line)
+        self.empty_slots_exit = EmptySlotsExitDispatch(slot[0], max_capacity_line)
 
         # Get values suitable for rating
         self.values = [
@@ -490,12 +502,13 @@ class DispatchRating(Rating):
     alternatives_obj: [list] of VehicleAlternative instances
 
     """
+
     weights = [
-        dispatch_rating_weights['buffer'],
-        dispatch_rating_weights['typestack'],
-        dispatch_rating_weights['rfd_diff'],
-        dispatch_rating_weights['available_power'],
-        dispatch_rating_weights['empty_slots_exit']
+        dispatch_rating_weights["buffer"],
+        dispatch_rating_weights["typestack"],
+        dispatch_rating_weights["rfd_diff"],
+        dispatch_rating_weights["available_power"],
+        dispatch_rating_weights["empty_slots_exit"],
     ]
 
     def __init__(self, alternatives_obj):

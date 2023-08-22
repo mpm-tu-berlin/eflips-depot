@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.animation import FuncAnimation
 
-language = 'de'     # language for plots and animation, 'en' or 'de'
+language = "de"  # language for plots and animation, 'en' or 'de'
 
 
 # Definition of constant depot layout parameters. Unit is metres unless
@@ -22,9 +22,9 @@ language = 'de'     # language for plots and animation, 'en' or 'de'
 WIDTH = 2.55
 LENGTH = 12
 
-WIDTH_SAFE = 3.55   # n
+WIDTH_SAFE = 3.55  # n
 LENGTH_SAFE = 12.5  # m
-ANGLE_DIRECT = 45   # degrees (int between 0 and 75)
+ANGLE_DIRECT = 45  # degrees (int between 0 and 75)
 
 DIRECT_DISTANCE_A = 8
 DIRECT_DISTANCE_B = 0
@@ -54,6 +54,7 @@ EDGE_DISTANCE_B = 15
 # EDGE_DISTANCE_A = 8
 # EDGE_DISTANCE_B = 15
 
+
 class ValidationError(Exception):
     def __init__(self, message):
         self.message = message
@@ -65,8 +66,20 @@ class Rectangle:
     a and b: width and height
     x and y: coordinates of bottom left corner
     """
-    def __init__(self, a, b, angle=0, x=0, y=0, fill=True, color='black',
-                 alpha=1., linestyle='-', **kwargs):
+
+    def __init__(
+        self,
+        a,
+        b,
+        angle=0,
+        x=0,
+        y=0,
+        fill=True,
+        color="black",
+        alpha=1.0,
+        linestyle="-",
+        **kwargs
+    ):
         self.a = Decimal(str(a))
         self.b = Decimal(str(b))
         self.angle = int(angle)
@@ -79,8 +92,14 @@ class Rectangle:
         self.linestyle = linestyle
 
     def __repr__(self):
-        return '{%s} a=%s, b=%s, x=%s, y=%s, A=%s' % (
-            type(self).__name__, self.a, self.b, self.x, self.y, self.A)
+        return "{%s} a=%s, b=%s, x=%s, y=%s, A=%s" % (
+            type(self).__name__,
+            self.a,
+            self.b,
+            self.x,
+            self.y,
+            self.A,
+        )
 
     @property
     def x(self):
@@ -171,32 +190,38 @@ def fits_into(r1, r2):
 
 
 def xintersect(r1, r2):
-    """Return True if unrotated rectangles r1 and r2 intersect in x direction. 
+    """Return True if unrotated rectangles r1 and r2 intersect in x direction.
     Same value is not considered intersection.
     """
     return r1.x_left < r2.x_right and r1.x_right > r2.x_left
 
 
 def yintersect(r1, r2):
-    """Return True if unrotated rectangles r1 and r2 intersect in y direction. 
+    """Return True if unrotated rectangles r1 and r2 intersect in y direction.
     Same value is not considered intersection.
     """
     return r1.y_bottom < r2.y_top and r1.y_top > r2.y_bottom
 
 
 def intersect(r1, r2):
-    """Return True if unrotated rectangles r1 and r2 intersect. Same value is 
+    """Return True if unrotated rectangles r1 and r2 intersect. Same value is
     not considered intersection.
     """
     return xintersect(r1, r2) and yintersect(r1, r2)
 
 
 def contains(r1, r2):
-    """Return True if rectangle r1 completely encloses rectangle r2. Must be 
+    """Return True if rectangle r1 completely encloses rectangle r2. Must be
     unrotated.
     """
-    return all([r1.x_left <= r2.x_left, r1.y_bottom <= r2.y_bottom,
-                r1.x_right >= r2.x_right,  r1.y_top >= r2.y_top])
+    return all(
+        [
+            r1.x_left <= r2.x_left,
+            r1.y_bottom <= r2.y_bottom,
+            r1.x_right >= r2.x_right,
+            r1.y_top >= r2.y_top,
+        ]
+    )
 
 
 def contains_point(r, p):
@@ -210,14 +235,14 @@ class RectangleWithInner(Rectangle):
 
     m, n: [int or float] a, b of the inner rectangles
     """
+
     def __init__(self, m, n, count_inner, x=0, y=0, **kwargs):
         if not str(count_inner).isdigit() or count_inner < 2:
-            raise ValueError('count_inner must be a natural number > 1.')
+            raise ValueError("count_inner must be a natural number > 1.")
         self.count_inner = count_inner
-        self.inner = Rectangle(m, n, 0, x, y, color='cornflowerblue')
+        self.inner = Rectangle(m, n, 0, x, y, color="cornflowerblue")
 
-        super(RectangleWithInner, self).__init__(a=m, b=count_inner * n,
-                                                 x=x, y=y)
+        super(RectangleWithInner, self).__init__(a=m, b=count_inner * n, x=x, y=y)
 
         self.fill = False
 
@@ -272,10 +297,10 @@ class RectangleWithRotatableInner(Rectangle):
     inner: [Rectangle] bottom inner rectangle
 
     """
-    def __init__(self, m, n, count_inner=1, angle_inner=45, x=0, y=0,
-                 **kwargs):
+
+    def __init__(self, m, n, count_inner=1, angle_inner=45, x=0, y=0, **kwargs):
         self.h = Decimal(str(0))
-        self.inner = Rectangle(m, n, angle_inner, x, y, color='orange')
+        self.inner = Rectangle(m, n, angle_inner, x, y, color="orange")
         if not str(count_inner).isdigit() or count_inner < 1:
             raise ValueError("'count_inner' must be a natural number > 0.")
         self.count_inner = count_inner
@@ -325,17 +350,16 @@ class RectangleWithRotatableInner(Rectangle):
         angle: [int or float] value between -75 and 75
         """
         if not str(abs(angle)).isdigit() or not 0 <= abs(angle) <= 75:
-            raise ValueError('angle_inner must be between -75 '
-                             'and 75.')
+            raise ValueError("angle_inner must be between -75 " "and 75.")
         angle_rad = math.radians(angle)
         m = self.inner.a
         n = self.inner.b
-        PA = n * Decimal(str(math.sin(angle_rad)))   # line PA in drawing
-        AQ = m * Decimal(str(math.cos(angle_rad)))   # line AQ in drawing
+        PA = n * Decimal(str(math.sin(angle_rad)))  # line PA in drawing
+        AQ = m * Decimal(str(math.cos(angle_rad)))  # line AQ in drawing
 
         self.h = n / Decimal(str(math.cos(angle_rad)))
-        PD = n * Decimal(str(math.cos(angle_rad)))   # line PD in drawing
-        DS = m * Decimal(str(math.sin(angle_rad)))   # line DS in drawing
+        PD = n * Decimal(str(math.cos(angle_rad)))  # line PD in drawing
+        DS = m * Decimal(str(math.sin(angle_rad)))  # line DS in drawing
 
         self.inner.angle = angle
 
@@ -371,16 +395,16 @@ class RectangleWithRotatedDoubleRowInner(Rectangle):
     inner: [Rectangle] bottom inner rectangle
 
     """
+
     def __init__(self, m, n, count_inner=2, x=0, y=0, **kwargs):
         self.h = Decimal(str(0))
-        self.inner_left = Rectangle(m, n, 45, x, y, color='orange')
-        self.inner_right = Rectangle(m, n, 135, x, y, color='orange')
+        self.inner_left = Rectangle(m, n, 45, x, y, color="orange")
+        self.inner_right = Rectangle(m, n, 135, x, y, color="orange")
         if not str(count_inner).isdigit() or count_inner < 2:
             raise ValueError("'count_inner' must be a natural number > 1.")
         self.count_inner = count_inner
 
-        super(RectangleWithRotatedDoubleRowInner, self).__init__(a=0, b=0, x=x,
-                                                                 y=y)
+        super(RectangleWithRotatedDoubleRowInner, self).__init__(a=0, b=0, x=x, y=y)
         self.fill = False
 
         # Update values from rotating the inner rectangles to 45° for left
@@ -399,7 +423,9 @@ class RectangleWithRotatedDoubleRowInner(Rectangle):
         self.h = n / Decimal(str(math.cos(angle_rad)))
         PD = n * Decimal(str(math.cos(angle_rad)))  # line PD in drawing
         DS = m * Decimal(str(math.sin(angle_rad)))  # line DS in drawing
-        n_slots_left = Decimal(str(self.count_inner / 2)) + int(not uneven_count) * Decimal(str(0.5))
+        n_slots_left = Decimal(str(self.count_inner / 2)) + int(
+            not uneven_count
+        ) * Decimal(str(0.5))
         self.b = PD + DS + (n_slots_left - 1) * self.h + uneven_count * self.h / 2
 
         self.inner_left.x = self.x + PA
@@ -464,55 +490,67 @@ class Available(Rectangle):
     """Rectangle with default parameters to represent available space in
     a bin.
     """
-    def __init__(self, a, b, x=0, y=0, fill=False, color='black',
-                 alpha=0.7, linestyle='--'):
-        super(Available, self).__init__(a, b, 0, x, y, fill, color, alpha,
-                                        linestyle)
+
+    def __init__(
+        self, a, b, x=0, y=0, fill=False, color="black", alpha=0.7, linestyle="--"
+    ):
+        super(Available, self).__init__(a, b, 0, x, y, fill, color, alpha, linestyle)
 
 
 def alab_arib(av, item):
     """Return a new [Available] spanning from (av.x_left, av.y_bottom) to
     (av.x_right, item.y_bottom).
     """
-    return Available(a=av.x_right - av.x_left, b=item.y_bottom - av.y_bottom,
-                     x=av.x_left, y=av.y_bottom)
+    return Available(
+        a=av.x_right - av.x_left,
+        b=item.y_bottom - av.y_bottom,
+        x=av.x_left,
+        y=av.y_bottom,
+    )
 
 
 def alit_arat(av, item):
     """Return a new [Available] spanning from (av.x_left, item.y_top) to
-     (av.x_right, av.y_top).
+    (av.x_right, av.y_top).
     """
-    return Available(a=av.x_right - av.x_left, b=av.y_top - item.y_top,
-                     x=av.x_left, y=item.y_top)
+    return Available(
+        a=av.x_right - av.x_left, b=av.y_top - item.y_top, x=av.x_left, y=item.y_top
+    )
 
 
 def alab_ilat(av, item):
     """Return a new [Available] spanning from (av.x_left, av.y_bottom) to
     (item.x_left, av.y_top).
     """
-    return Available(a=item.x_left - av.x_left, b=av.y_top - av.y_bottom,
-                     x=av.x_left, y=av.y_bottom)
+    return Available(
+        a=item.x_left - av.x_left, b=av.y_top - av.y_bottom, x=av.x_left, y=av.y_bottom
+    )
 
 
 def irab_arat(av, item):
     """Return a new [Available] spanning from (item.x_right, av.y_bottom) to
     (av.x_right, av.y_top).
     """
-    return Available(a=av.x_right - item.x_right, b=av.y_top - av.y_bottom,
-                     x=item.x_right, y=av.y_bottom)
+    return Available(
+        a=av.x_right - item.x_right,
+        b=av.y_top - av.y_bottom,
+        x=item.x_right,
+        y=av.y_bottom,
+    )
 
 
 class Bin(Rectangle):
     """Rectangular container with best-fit-decreasing algorithm for rectangle
     packing.
     """
+
     def __init__(self, a, b, record_history=True, fill=False):
         super(Bin, self).__init__(a, b, fill=fill)
         self.items = []
         self.availables = []
         self.packed_items = []
         self.record_history = record_history
-        self.history = {'items': [], 'availables': []}
+        self.history = {"items": [], "availables": []}
         self._feasible = None
         self._precheck_passed = None
 
@@ -541,8 +579,9 @@ class Bin(Rectangle):
     @property
     def count_inner(self):
         """Return the total number of inner rectangles of items."""
-        return sum(pitem.count_inner for pitem in self.items
-                   if hasattr(pitem, 'count_inner'))
+        return sum(
+            pitem.count_inner for pitem in self.items if hasattr(pitem, "count_inner")
+        )
 
     @property
     def A_inner(self):
@@ -582,6 +621,7 @@ class Bin(Rectangle):
             return
 
         import itertools
+
         combos = itertools.combinations(self.items, 2)
         for i1, i2 in combos:
             assert i1 is not i2
@@ -593,9 +633,9 @@ class Bin(Rectangle):
         return True if successful, else return False.
         """
         if self.packed_items:
-            raise RuntimeError('Cannot pack again without reset.')
+            raise RuntimeError("Cannot pack again without reset.")
         if not self.items:
-            raise RuntimeError('Cannot pack because item list is emtpy.')
+            raise RuntimeError("Cannot pack because item list is emtpy.")
 
         self.precheck()
         if not self.precheck_passed:
@@ -605,12 +645,12 @@ class Bin(Rectangle):
         # Simplified sorting: Sort by 'a' (primary), then by 'b'.
         # 'conflict_category' is not necessary in the depot scenario as long as
         # 'a' yields the same result.
-        self.items.sort(key=attrgetter('conflict_category', 'a', 'b'), reverse=True)
+        self.items.sort(key=attrgetter("conflict_category", "a", "b"), reverse=True)
         # items.sort(key=attrgetter('conflict_category', 'a', 'b'), reverse=True)
 
         if self.record_history:
-            self.history['items'].append(self.packed_items.copy())
-            self.history['availables'].append(self.availables.copy())
+            self.history["items"].append(self.packed_items.copy())
+            self.history["availables"].append(self.availables.copy())
 
         for item in self.items:
             # print('Next item: %s' % item)
@@ -619,8 +659,8 @@ class Bin(Rectangle):
                 return
 
             if self.record_history:
-                self.history['items'].append(self.packed_items.copy())
-                self.history['availables'].append(self.availables.copy())
+                self.history["items"].append(self.packed_items.copy())
+                self.history["availables"].append(self.availables.copy())
 
         assert self.valid
         self._feasible = True
@@ -746,121 +786,79 @@ class Bin(Rectangle):
                 # if intersect(av, pitem):
                 #     raise ValidationError('Intersection of av: %s and item %s' % (av, pitem))
 
-        self.availables.sort(key=attrgetter('a'))
-        self.availables.sort(key=attrgetter('b'))
+        self.availables.sort(key=attrgetter("a"))
+        self.availables.sort(key=attrgetter("b"))
 
     @staticmethod
     def case_1(av, item):
         """Case 1 of splitting av into smaller rectangles."""
-        return [
-            alab_arib(av, item),
-            alit_arat(av, item),
-            irab_arat(av, item)
-        ]
+        return [alab_arib(av, item), alit_arat(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_2(av, item):
-        return [
-            alab_arib(av, item),
-            irab_arat(av, item)
-        ]
+        return [alab_arib(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_3(av, item):
-        return [
-            alab_arib(av, item),
-            alab_ilat(av, item),
-            irab_arat(av, item)
-        ]
+        return [alab_arib(av, item), alab_ilat(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_4(av, item):
-        return [
-            alab_arib(av, item),
-            alab_ilat(av, item)
-        ]
+        return [alab_arib(av, item), alab_ilat(av, item)]
 
     @staticmethod
     def case_5(av, item):
-        return [
-            alab_arib(av, item),
-            alit_arat(av, item),
-            alab_ilat(av, item)
-        ]
+        return [alab_arib(av, item), alit_arat(av, item), alab_ilat(av, item)]
 
     @staticmethod
     def case_6(av, item):
-        return [
-            alit_arat(av, item),
-            alab_ilat(av, item)
-        ]
+        return [alit_arat(av, item), alab_ilat(av, item)]
 
     @staticmethod
     def case_7(av, item):
-        return [
-            alit_arat(av, item),
-            alab_ilat(av, item),
-            irab_arat(av, item)
-        ]
+        return [alit_arat(av, item), alab_ilat(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_8(av, item):
-        return [
-            alit_arat(av, item),
-            irab_arat(av, item)
-        ]
+        return [alit_arat(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_9(av, item):
-        return [
-            alab_arib(av, item)
-        ]
+        return [alab_arib(av, item)]
 
     @staticmethod
     def case_10(av, item):
-        return [
-            alab_ilat(av, item)
-        ]
+        return [alab_ilat(av, item)]
 
     @staticmethod
     def case_11(av, item):
-        return [
-            alit_arat(av, item)
-        ]
+        return [alit_arat(av, item)]
 
     @staticmethod
     def case_12(av, item):
-        return [
-            irab_arat(av, item)
-        ]
+        return [irab_arat(av, item)]
 
     @staticmethod
     def case_13(av, item):
-        return [
-            alab_ilat(av, item),
-            irab_arat(av, item)
-        ]
+        return [alab_ilat(av, item), irab_arat(av, item)]
 
     @staticmethod
     def case_14(av, item):
-        return [
-            alab_arib(av, item),
-            alit_arat(av, item)
-        ]
+        return [alab_arib(av, item), alit_arat(av, item)]
 
     @staticmethod
     def case_15(av, item):
-        raise ValidationError('case 15 (ex)')
+        raise ValidationError("case 15 (ex)")
 
     @staticmethod
     def case_16(av, item):
-        raise ValidationError('case 16 (bo)')
+        raise ValidationError("case 16 (bo)")
 
     def repack(self):
         """Reset packing values and pack again."""
         self.availables = []
         self.packed_items = []
-        self.history = {'items': [], 'availables': []}
+        self.history = {"items": [], "availables": []}
         self._feasible = None
         self._precheck_passed = None
 
@@ -874,15 +872,16 @@ class Bin(Rectangle):
     def draw(self):
         """Plot self.packed_items."""
         if not self.packed_items:
-            print('No packed items to draw.')
+            print("No packed items to draw.")
         return draw_rectangles_newplot(
-            self.packed_items + [self], (0, float(self.a)), (0, float(self.b)),
-            False)
+            self.packed_items + [self], (0, float(self.a)), (0, float(self.b)), False
+        )
 
-    def save_drawing(self, filename, formats=('pdf',), confirm=True, dpi=None,
-                     show=False, **kwargs):
+    def save_drawing(
+        self, filename, formats=("pdf",), confirm=True, dpi=None, show=False, **kwargs
+    ):
         """Save what self.draw shows.
-        
+
         filename: [str] including path, excluding extension. Existing files
             with the same name are overwritten without confirmation prompt.
         formats: [tuple] of file extensions [str]
@@ -890,14 +889,14 @@ class Bin(Rectangle):
         show: [bool] if False, the fig is closed automatically
         """
         fig, ax = self.draw()
-        if 'png' in formats:
-            fig.savefig(filename + '.png', dpi=dpi, **kwargs)
+        if "png" in formats:
+            fig.savefig(filename + ".png", dpi=dpi, **kwargs)
             if confirm:
-                print('Saved %s.png' % filename)
-        if 'pdf' in formats:
-            fig.savefig(filename + '.pdf', dpi=dpi, **kwargs)
+                print("Saved %s.png" % filename)
+        if "pdf" in formats:
+            fig.savefig(filename + ".pdf", dpi=dpi, **kwargs)
             if confirm:
-                print('Saved %s.pdf' % filename)
+                print("Saved %s.pdf" % filename)
 
         if not show:
             plt.close(fig)
@@ -909,8 +908,10 @@ class Bin(Rectangle):
     def _animate(self, draw_distances):
         """Based on https://stackoverflow.com/a/49382421"""
         if not self.record_history or not self.history:
-            print('animate requires record_history to be be True and at least '
-                  'one entry in history.')
+            print(
+                "animate requires record_history to be be True and at least "
+                "one entry in history."
+            )
             return None
 
         def get_sub():
@@ -938,7 +939,7 @@ class Bin(Rectangle):
             """
             imax = len(anim.frame_seq_items) - 1
             anim.i = 0
-            plt.title(tl('Step') + ' ' + str(anim.i))
+            plt.title(tl("Step") + " " + str(anim.i))
             anim.subgen = get_sub()
 
             yield get_specific(anim.i)
@@ -952,7 +953,7 @@ class Bin(Rectangle):
                     anim.i = 0
                     plt.gca().texts.clear()
                 anim.subgen = get_sub()
-                plt.title(tl('Step') + ' ' + str(anim.i))
+                plt.title(tl("Step") + " " + str(anim.i))
 
                 yield get_specific(anim.i)
 
@@ -963,18 +964,18 @@ class Bin(Rectangle):
                     anim.event_source.stop()
                 else:
                     anim.event_source.start()
-                anim.running ^= True    # toggle through xor
-            elif event.key == 'left':
+                anim.running ^= True  # toggle through xor
+            elif event.key == "left":
                 anim.direction = -1
-            elif event.key == 'right':
+            elif event.key == "right":
                 anim.direction = +1
-            elif event.key == 'up':
+            elif event.key == "up":
                 anim.direction_sub = +1
-            elif event.key == 'down':
+            elif event.key == "down":
                 anim.direction_sub = -1
 
             # Manually update the plot
-            if event.key in ['left', 'right']:
+            if event.key in ["left", "right"]:
                 plt.gca().texts.clear()
                 rectangles = next(anim.frame_seq)
                 draw_rectangles(rectangles, draw_distances)
@@ -986,16 +987,26 @@ class Bin(Rectangle):
 
                 # save(plt.gcf(), tl('Step') + ' ' + str(anim.i) + ', _')
 
-            if not anim.running and event.key in ['up', 'down']:
+            if not anim.running and event.key in ["up", "down"]:
                 plt.gca().texts.clear()
                 rectangles = anim.frame_seq_items[anim.i].copy()
                 av = copy(next(anim.subgen))
                 av.fill = True
-                av.color = 'green'
+                av.color = "green"
                 av.alpha = 0.5
                 rectangles.append(av)
                 rectangles.extend(anim.frame_seq_subs[anim.i])
-                title = tl('Step') + ' ' + str(anim.i) + ', ' + tl('av') + ' ' + tl('no') + ' ' + str(anim.i_sub + 1)
+                title = (
+                    tl("Step")
+                    + " "
+                    + str(anim.i)
+                    + ", "
+                    + tl("av")
+                    + " "
+                    + tl("no")
+                    + " "
+                    + str(anim.i_sub + 1)
+                )
                 plt.title(title)
                 draw_rectangles(rectangles, draw_distances)
 
@@ -1007,26 +1018,32 @@ class Bin(Rectangle):
                 # save(plt.gcf(), title)
 
         fig, ax = plt.subplots()
-        fig.canvas.mpl_connect('key_press_event', on_press)
+        fig.canvas.mpl_connect("key_press_event", on_press)
         anim = FuncAnimation(
-            fig, draw_rectangles, frames=get_next, fargs=(draw_distances,),
-            interval=1000, repeat=True, save_count=len(self.history['items']))
+            fig,
+            draw_rectangles,
+            frames=get_next,
+            fargs=(draw_distances,),
+            interval=1000,
+            repeat=True,
+            save_count=len(self.history["items"]),
+        )
         anim.running = True
-        anim.direction = + 1
+        anim.direction = +1
         anim.i = 0
         anim.i_sub = 0
 
-        anim.frame_seq_items = self.history['items'].copy()
+        anim.frame_seq_items = self.history["items"].copy()
         # Add self to item history to also draw self (and the bin edge
         # distances for BinWithDistances) without manipulating the history.
         for entry in anim.frame_seq_items:
             entry.append(self)
 
-        anim.frame_seq_subs = self.history['availables']
+        anim.frame_seq_subs = self.history["availables"]
         anim.subgen = None
         anim.direction_sub = +1
 
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
         plt.xlim(0, float(self.a))
         plt.ylim(0, float(self.b))
 
@@ -1037,8 +1054,7 @@ class Bin(Rectangle):
 
         return anim
 
-    def save_animation(self, filename, confirm=True, fps=1.5, bitrate=1800,
-                       **kwargs):
+    def save_animation(self, filename, confirm=True, fps=1.5, bitrate=1800, **kwargs):
         """Save what self.animate shows as .mp4.
 
         filename: [str] including path, excluding extension. Existing files
@@ -1048,24 +1064,26 @@ class Bin(Rectangle):
         kwargs.
         """
         # Set up formatting for the movie files
-        Writer = matplotlib.animation.writers['ffmpeg']
-        writer = Writer(fps=fps, metadata=dict(artist='Me'), bitrate=bitrate,
-                        **kwargs)
+        Writer = matplotlib.animation.writers["ffmpeg"]
+        writer = Writer(fps=fps, metadata=dict(artist="Me"), bitrate=bitrate, **kwargs)
 
         anim = self.animate()
-        anim.save(filename + '.mp4', writer=writer, **kwargs)
+        anim.save(filename + ".mp4", writer=writer, **kwargs)
         if confirm:
-            print('Saved %s.mp4' % filename)
+            print("Saved %s.mp4" % filename)
 
 
 class DistanceRectangle(Rectangle):
     """Rectangle with default parameters to represent a buffer distance in
     packing with distances.
     """
-    def __init__(self, a, b, x=0, y=0, fill=True, color='grey', alpha=0.5,
-                 linestyle=':'):
-        super(DistanceRectangle, self).__init__(a, b, 0, x, y, fill, color,
-                                                alpha, linestyle)
+
+    def __init__(
+        self, a, b, x=0, y=0, fill=True, color="grey", alpha=0.5, linestyle=":"
+    ):
+        super(DistanceRectangle, self).__init__(
+            a, b, 0, x, y, fill, color, alpha, linestyle
+        )
 
 
 class BinWithDistances(Bin):
@@ -1075,19 +1093,18 @@ class BinWithDistances(Bin):
 
     Distance handling based on https://doi.org/10.1051/ro/2012007
     """
+
     def __init__(self, a, b, record_history=True):
         super(BinWithDistances, self).__init__(a, b, record_history)
 
-        self.distance_left_inner = DistanceRectangle(
-            EDGE_DISTANCE_A, b, x=0, y=0)
-        self.distance_bottom_inner = DistanceRectangle(
-            a, EDGE_DISTANCE_B, x=0, y=0)
+        self.distance_left_inner = DistanceRectangle(EDGE_DISTANCE_A, b, x=0, y=0)
+        self.distance_bottom_inner = DistanceRectangle(a, EDGE_DISTANCE_B, x=0, y=0)
         self.distance_right_inner = DistanceRectangle(
-            EDGE_DISTANCE_A, b, x=self.x_right - Decimal(str(EDGE_DISTANCE_A)),
-            y=0)
+            EDGE_DISTANCE_A, b, x=self.x_right - Decimal(str(EDGE_DISTANCE_A)), y=0
+        )
         self.distance_top_inner = DistanceRectangle(
-            a, EDGE_DISTANCE_B, x=0,
-            y=self.y_top - Decimal(str(EDGE_DISTANCE_B)))
+            a, EDGE_DISTANCE_B, x=0, y=self.y_top - Decimal(str(EDGE_DISTANCE_B))
+        )
 
     def try_put(self, item):
         """Determine if there is valid available space with respect to buffer
@@ -1103,7 +1120,9 @@ class BinWithDistances(Bin):
                 item.y = av.y
 
                 # Left bin edge
-                if item.distance_left.x_left < self.x_left or intersect(item, self.distance_left_inner):
+                if item.distance_left.x_left < self.x_left or intersect(
+                    item, self.distance_left_inner
+                ):
                     oldx = item.x
                     distance = max(item.distance_left.a, self.distance_left_inner.a)
                     item.x = self.x_left + distance
@@ -1112,7 +1131,9 @@ class BinWithDistances(Bin):
                         continue
 
                 # Bottom bin edge
-                if item.distance_bottom.y_bottom < self.y_bottom or intersect(item, self.distance_bottom_inner):
+                if item.distance_bottom.y_bottom < self.y_bottom or intersect(
+                    item, self.distance_bottom_inner
+                ):
                     oldy = item.y
                     distance = max(item.distance_bottom.b, self.distance_bottom_inner.b)
                     item.y = self.y_bottom + distance
@@ -1120,7 +1141,7 @@ class BinWithDistances(Bin):
                     if not contains(av, item):
                         continue
 
-                # Move item to the right and top until all buffer distance 
+                # Move item to the right and top until all buffer distance
                 # conflicts on the left and bottom of *item* are resolved. The
                 # validity is ignored here and checked later.
                 left_ok = False
@@ -1130,12 +1151,14 @@ class BinWithDistances(Bin):
                 while not (left_ok and bottom_ok):
                     i += 1
                     if i > 50:
-                        raise ValidationError('Feels like too many iterations')
+                        raise ValidationError("Feels like too many iterations")
                     # print(' ' * i + 'Checking left and right. Iteration=%s, item=%s. x=%s, y=%s' % (i, item.ID, item.x, item.y))
 
                     # Left
                     for pitem in self.packed_items:
-                        if intersect(item.distance_left, pitem) or intersect(item, pitem.distance_right):
+                        if intersect(item.distance_left, pitem) or intersect(
+                            item, pitem.distance_right
+                        ):
                             oldx = item.x
                             distance = max(item.distance_left.a, pitem.distance_right.a)
                             item.x = pitem.x_right + distance
@@ -1151,9 +1174,13 @@ class BinWithDistances(Bin):
                     # Bottom
                     if not bottom_ok:
                         for pitem in self.packed_items:
-                            if intersect(item.distance_bottom, pitem) or intersect(item, pitem.distance_top):
+                            if intersect(item.distance_bottom, pitem) or intersect(
+                                item, pitem.distance_top
+                            ):
                                 oldy = item.y
-                                distance = max(item.distance_bottom.b, pitem.distance_top.b)
+                                distance = max(
+                                    item.distance_bottom.b, pitem.distance_top.b
+                                )
                                 item.y = pitem.y_top + distance
 
                                 left_ok = False
@@ -1183,13 +1210,17 @@ class BinWithDistances(Bin):
                     continue
 
                 # Right bin edge
-                if item.distance_right.x_right > self.x_right or intersect(item, self.distance_right_inner):
+                if item.distance_right.x_right > self.x_right or intersect(
+                    item, self.distance_right_inner
+                ):
                     # print('Bin conflict on the right side.')
                     continue
 
                 # Right
                 for pitem in self.packed_items:
-                    if intersect(item.distance_right, pitem) or intersect(item, pitem.distance_left):
+                    if intersect(item.distance_right, pitem) or intersect(
+                        item, pitem.distance_left
+                    ):
                         # print('Item conflict on the right side.')
                         invalid = True
                         break
@@ -1197,13 +1228,17 @@ class BinWithDistances(Bin):
                     continue
 
                 # Top bin edge
-                if item.distance_top.y_top > self.y_top or intersect(item, self.distance_top_inner):
+                if item.distance_top.y_top > self.y_top or intersect(
+                    item, self.distance_top_inner
+                ):
                     # print('Bin conflict on the top side.')
                     continue
 
                 # Top
                 for pitem in self.packed_items:
-                    if intersect(item.distance_top, pitem) or intersect(item, pitem.distance_bottom):
+                    if intersect(item.distance_top, pitem) or intersect(
+                        item, pitem.distance_bottom
+                    ):
                         # print('Item conflict on the top side.')
                         invalid = True
                         break
@@ -1221,16 +1256,16 @@ class BinWithDistances(Bin):
             alab_arib(av, item),
             alit_arat(av, item),
             alab_ilat(av, item),
-            irab_arat(av, item)
+            irab_arat(av, item),
         ]
 
     def draw(self):
         """Plot self.packed_items and the distances."""
         if not self.packed_items:
-            print('No packed items to draw.')
+            print("No packed items to draw.")
         return draw_rectangles_newplot(
-            self.packed_items + [self], (0, float(self.a)), (0, float(self.b)),
-            True)
+            self.packed_items + [self], (0, float(self.a)), (0, float(self.b)), True
+        )
 
     def animate(self):
         anim = self._animate(draw_distances=True)
@@ -1239,6 +1274,7 @@ class BinWithDistances(Bin):
 
 class DistanceLeft(DistanceRectangle):
     """Buffer rectangle on the outer left side of the *item* rectangle."""
+
     def __init__(self, a, item):
         super(DistanceLeft, self).__init__(a, 0)
 
@@ -1258,7 +1294,7 @@ class DistanceLeft(DistanceRectangle):
 
     @x.setter
     def x(self, value):
-        raise RuntimeError('x of distance rectangle cannot be set directly.')
+        raise RuntimeError("x of distance rectangle cannot be set directly.")
 
     @property
     def y(self):
@@ -1266,12 +1302,12 @@ class DistanceLeft(DistanceRectangle):
 
     @y.setter
     def y(self, value):
-        raise RuntimeError('y of distance rectangle cannot be set directly.')
+        raise RuntimeError("y of distance rectangle cannot be set directly.")
 
 
 class DistanceBottom(DistanceRectangle):
-    """Buffer rectangle on the outer bottom side of the *item* rectangle.
-    """
+    """Buffer rectangle on the outer bottom side of the *item* rectangle."""
+
     def __init__(self, b, item):
         super(DistanceBottom, self).__init__(0, b)
 
@@ -1291,7 +1327,7 @@ class DistanceBottom(DistanceRectangle):
 
     @x.setter
     def x(self, value):
-        raise RuntimeError('x of distance rectangle cannot be set directly.')
+        raise RuntimeError("x of distance rectangle cannot be set directly.")
 
     @property
     def y(self):
@@ -1299,11 +1335,12 @@ class DistanceBottom(DistanceRectangle):
 
     @y.setter
     def y(self, value):
-        raise RuntimeError('y of distance rectangle cannot be set directly.')
+        raise RuntimeError("y of distance rectangle cannot be set directly.")
 
 
 class DistanceRight(DistanceRectangle):
     """Buffer rectangle on the outer right side of the *item* rectangle."""
+
     def __init__(self, a, item):
         super(DistanceRight, self).__init__(a, 0)
 
@@ -1323,7 +1360,7 @@ class DistanceRight(DistanceRectangle):
 
     @x.setter
     def x(self, value):
-        raise RuntimeError('x of distance rectangle cannot be set directly.')
+        raise RuntimeError("x of distance rectangle cannot be set directly.")
 
     @property
     def y(self):
@@ -1331,11 +1368,12 @@ class DistanceRight(DistanceRectangle):
 
     @y.setter
     def y(self, value):
-        raise RuntimeError('y of distance rectangle cannot be set directly.')
+        raise RuntimeError("y of distance rectangle cannot be set directly.")
 
 
 class DistanceTop(DistanceRectangle):
     """Buffer rectangle on the outer top side of the *item* rectangle."""
+
     def __init__(self, b, item):
         super(DistanceTop, self).__init__(0, b)
 
@@ -1355,7 +1393,7 @@ class DistanceTop(DistanceRectangle):
 
     @x.setter
     def x(self, value):
-        raise RuntimeError('x of distance rectangle cannot be set directly.')
+        raise RuntimeError("x of distance rectangle cannot be set directly.")
 
     @property
     def y(self):
@@ -1363,21 +1401,22 @@ class DistanceTop(DistanceRectangle):
 
     @y.setter
     def y(self, value):
-        raise RuntimeError('y of distance rectangle cannot be set directly.')
+        raise RuntimeError("y of distance rectangle cannot be set directly.")
 
 
 class RectangleWithDistances(Rectangle):
-    """A rectangle that may have a buffer distance at each side. Without 
+    """A rectangle that may have a buffer distance at each side. Without
     rotation.
 
     Parameters:
-    d_l, d_b, d_r, d_t: [int or float] buffer distance at left, bottom, right 
+    d_l, d_b, d_r, d_t: [int or float] buffer distance at left, bottom, right
         and top sides.
     """
-    def __init__(self, a=0, b=0, x=0, y=0, d_l=0, d_b=0, d_r=0, d_t=0, 
-                 **kwargs):
-        super(RectangleWithDistances, self).__init__(a=a, b=b, angle=0, x=x, 
-                                                     y=y, **kwargs)
+
+    def __init__(self, a=0, b=0, x=0, y=0, d_l=0, d_b=0, d_r=0, d_t=0, **kwargs):
+        super(RectangleWithDistances, self).__init__(
+            a=a, b=b, angle=0, x=x, y=y, **kwargs
+        )
 
         self.distance_left = DistanceLeft(d_l, self)
         self.distance_bottom = DistanceBottom(d_b, self)
@@ -1409,8 +1448,14 @@ class RectangleWithDistances(Rectangle):
     @property
     def A_distances(self):
         """Return the area covered by distances."""
-        return sum((self.distance_left.A, self.distance_bottom.A,
-                    self.distance_right.A, self.distance_top.A))
+        return sum(
+            (
+                self.distance_left.A,
+                self.distance_bottom.A,
+                self.distance_right.A,
+                self.distance_top.A,
+            )
+        )
 
     @property
     def A_with_distances(self):
@@ -1423,14 +1468,24 @@ class VisuDataLine(RectangleWithDistances, RectangleWithInner):
 
     text: [str] to draw in the center of the rectangle
     """
+
     conflict_category = 2
 
-    def __init__(self, m=WIDTH_SAFE, n=LENGTH_SAFE, capacity=2, x=0, y=0,
-                 d_l=LINE_DISTANCE_A, d_b=LINE_DISTANCE_B, d_r=LINE_DISTANCE_A,
-                 d_t=LINE_DISTANCE_B, text=''):
+    def __init__(
+        self,
+        m=WIDTH_SAFE,
+        n=LENGTH_SAFE,
+        capacity=2,
+        x=0,
+        y=0,
+        d_l=LINE_DISTANCE_A,
+        d_b=LINE_DISTANCE_B,
+        d_r=LINE_DISTANCE_A,
+        d_t=LINE_DISTANCE_B,
+        text="",
+    ):
         super(VisuDataLine, self).__init__(
-            m=m, n=n, count_inner=capacity, x=x, y=y,
-            d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
+            m=m, n=n, count_inner=capacity, x=x, y=y, d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
         )
         self.text = text
 
@@ -1444,22 +1499,40 @@ class VisuDataLine(RectangleWithDistances, RectangleWithInner):
         return self.inner.A * self.count_inner / self.A_with_distances
 
 
-class VisuDataDirectSingleRow(RectangleWithDistances,
-                              RectangleWithRotatableInner):
+class VisuDataDirectSingleRow(RectangleWithDistances, RectangleWithRotatableInner):
     """Representation of a single row direct area.
 
     angle_inner: makes sense until max. 75 degrees (with 12.5x3.5 slots)
     text: [str] to draw in the center of the rectangle
     """
+
     conflict_category = 3
 
-    def __init__(self, m=LENGTH_SAFE, n=WIDTH_SAFE, angle_inner=45, capacity=1,
-                 x=0, y=0,
-                 d_l=DIRECT_DISTANCE_A, d_b=DIRECT_DISTANCE_B,
-                 d_r=0, d_t=DIRECT_DISTANCE_B, text=''):
+    def __init__(
+        self,
+        m=LENGTH_SAFE,
+        n=WIDTH_SAFE,
+        angle_inner=45,
+        capacity=1,
+        x=0,
+        y=0,
+        d_l=DIRECT_DISTANCE_A,
+        d_b=DIRECT_DISTANCE_B,
+        d_r=0,
+        d_t=DIRECT_DISTANCE_B,
+        text="",
+    ):
         super(VisuDataDirectSingleRow, self).__init__(
-            m=m, n=n, count_inner=capacity, angle_inner=angle_inner, x=x, y=y,
-            d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
+            m=m,
+            n=n,
+            count_inner=capacity,
+            angle_inner=angle_inner,
+            x=x,
+            y=y,
+            d_l=d_l,
+            d_b=d_b,
+            d_r=d_r,
+            d_t=d_t,
         )
         self.text = text
 
@@ -1472,22 +1545,41 @@ class VisuDataDirectSingleRow(RectangleWithDistances,
     def util_rate_with_distances(self):
         return self.inner.A * self.count_inner / self.A_with_distances
 
-class VisuDataDirectSingleRow_90(RectangleWithDistances,
-                              RectangleWithRotatableInner):
+
+class VisuDataDirectSingleRow_90(RectangleWithDistances, RectangleWithRotatableInner):
     """Representation of a single row direct area.
 
     angle_inner: makes sense until max. 75 degrees (with 12.5x3.5 slots)
     text: [str] to draw in the center of the rectangle
     """
+
     conflict_category = 1
 
-    def __init__(self, m=LENGTH_SAFE, n=WIDTH_SAFE, angle_inner=-45, capacity=1,
-                 x=0, y=0,
-                 d_l=0, d_b=DIRECT_DISTANCE_B,
-                 d_r=DIRECT_DISTANCE_A, d_t=DIRECT_DISTANCE_B, text=''):
+    def __init__(
+        self,
+        m=LENGTH_SAFE,
+        n=WIDTH_SAFE,
+        angle_inner=-45,
+        capacity=1,
+        x=0,
+        y=0,
+        d_l=0,
+        d_b=DIRECT_DISTANCE_B,
+        d_r=DIRECT_DISTANCE_A,
+        d_t=DIRECT_DISTANCE_B,
+        text="",
+    ):
         super(VisuDataDirectSingleRow_90, self).__init__(
-            m=m, n=n, count_inner=capacity, angle_inner=angle_inner, x=x, y=y,
-            d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
+            m=m,
+            n=n,
+            count_inner=capacity,
+            angle_inner=angle_inner,
+            x=x,
+            y=y,
+            d_l=d_l,
+            d_b=d_b,
+            d_r=d_r,
+            d_t=d_t,
         )
         self.text = text
 
@@ -1500,20 +1592,32 @@ class VisuDataDirectSingleRow_90(RectangleWithDistances,
     def util_rate_with_distances(self):
         return self.inner.A * self.count_inner / self.A_with_distances
 
-class VisuDataDirectDoubleRow(RectangleWithDistances,
-                              RectangleWithRotatedDoubleRowInner):
+
+class VisuDataDirectDoubleRow(
+    RectangleWithDistances, RectangleWithRotatedDoubleRowInner
+):
     """Representation of a double row direct area.
 
     text: [str] to draw in the center of the rectangle
     """
+
     conflict_category = 4
 
-    def __init__(self, m=LENGTH_SAFE, n=WIDTH_SAFE, capacity=1, x=0, y=0,
-                 d_l=DIRECT_DISTANCE_A, d_b=DIRECT_DISTANCE_B,
-                 d_r=DIRECT_DISTANCE_A, d_t=DIRECT_DISTANCE_B, text=''):
+    def __init__(
+        self,
+        m=LENGTH_SAFE,
+        n=WIDTH_SAFE,
+        capacity=1,
+        x=0,
+        y=0,
+        d_l=DIRECT_DISTANCE_A,
+        d_b=DIRECT_DISTANCE_B,
+        d_r=DIRECT_DISTANCE_A,
+        d_t=DIRECT_DISTANCE_B,
+        text="",
+    ):
         super(VisuDataDirectDoubleRow, self).__init__(
-            m=m, n=n, count_inner=capacity, x=x, y=y,
-            d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
+            m=m, n=n, count_inner=capacity, x=x, y=y, d_l=d_l, d_b=d_b, d_r=d_r, d_t=d_t
         )
         self.text = text
 
@@ -1534,80 +1638,134 @@ def draw_rectangles(rectangles, draw_distances=True):
 
     [p.remove() for p in reversed(ax.patches)]
     for r in rectangles:
-
         if isinstance(r, RectangleWithInner) or isinstance(
-                r, RectangleWithRotatableInner):
-            ax.add_patch(patches.Rectangle(
-                (r.x, r.y), r.a, r.b, fill=r.fill, linestyle=r.linestyle)
+            r, RectangleWithRotatableInner
+        ):
+            ax.add_patch(
+                patches.Rectangle(
+                    (r.x, r.y), r.a, r.b, fill=r.fill, linestyle=r.linestyle
+                )
             )
             # Inner rectangles
             for i in range(r.count_inner):
-                ax.add_patch(patches.Rectangle(
-                    (r.x_inner(i), r.y_inner(i)), r.inner.a, r.inner.b,
-                    r.inner.angle, color=r.inner.color, alpha=0.4,
-                    fill=r.inner.fill, linestyle=r.inner.linestyle)
+                ax.add_patch(
+                    patches.Rectangle(
+                        (r.x_inner(i), r.y_inner(i)),
+                        r.inner.a,
+                        r.inner.b,
+                        r.inner.angle,
+                        color=r.inner.color,
+                        alpha=0.4,
+                        fill=r.inner.fill,
+                        linestyle=r.inner.linestyle,
+                    )
                 )
 
         if isinstance(r, RectangleWithRotatedDoubleRowInner):
-            ax.add_patch(patches.Rectangle(
-                (r.x, r.y), r.a, r.b, fill=r.fill, linestyle=r.linestyle)
+            ax.add_patch(
+                patches.Rectangle(
+                    (r.x, r.y), r.a, r.b, fill=r.fill, linestyle=r.linestyle
+                )
             )
             # Left inner rectangles
             for i in range(0, r.count_inner, 2):
-                ax.add_patch(patches.Rectangle(
-                    (r.x_inner(i), r.y_inner(i)), r.inner_left.a, r.inner_left.b,
-                    r.inner_left.angle, color=r.inner_left.color, alpha=0.4,
-                    fill=r.inner_left.fill, linestyle=r.inner_left.linestyle)
+                ax.add_patch(
+                    patches.Rectangle(
+                        (r.x_inner(i), r.y_inner(i)),
+                        r.inner_left.a,
+                        r.inner_left.b,
+                        r.inner_left.angle,
+                        color=r.inner_left.color,
+                        alpha=0.4,
+                        fill=r.inner_left.fill,
+                        linestyle=r.inner_left.linestyle,
+                    )
                 )
             # Right inner rectangles
             for i in range(1, r.count_inner, 2):
-                ax.add_patch(patches.Rectangle(
-                    (r.x_inner(i), r.y_inner(i)), r.inner_right.a, r.inner_right.b,
-                    r.inner_right.angle, color='red', alpha=0.4,
-                    fill=r.inner_right.fill, linestyle=r.inner_right.linestyle)
+                ax.add_patch(
+                    patches.Rectangle(
+                        (r.x_inner(i), r.y_inner(i)),
+                        r.inner_right.a,
+                        r.inner_right.b,
+                        r.inner_right.angle,
+                        color="red",
+                        alpha=0.4,
+                        fill=r.inner_right.fill,
+                        linestyle=r.inner_right.linestyle,
+                    )
                 )
 
         # Vanilla case
         elif isinstance(r, Rectangle):
-            ax.add_patch(patches.Rectangle(
-                (r.x, r.y), r.a, r.b, r.angle, color=r.color, fill=r.fill,
-                alpha=r.alpha, linestyle=r.linestyle)
+            ax.add_patch(
+                patches.Rectangle(
+                    (r.x, r.y),
+                    r.a,
+                    r.b,
+                    r.angle,
+                    color=r.color,
+                    fill=r.fill,
+                    alpha=r.alpha,
+                    linestyle=r.linestyle,
+                )
             )
 
         # Buffer distances
         if draw_distances and isinstance(r, RectangleWithDistances):
             for distance_rec in (
-                    r.distance_left, r.distance_bottom, r.distance_right,
-                    r.distance_top):
+                r.distance_left,
+                r.distance_bottom,
+                r.distance_right,
+                r.distance_top,
+            ):
                 if distance_rec.A > 0:
-                    ax.add_patch(patches.Rectangle(
-                        (distance_rec.x, distance_rec.y), distance_rec.a,
-                        distance_rec.b, fill=distance_rec.fill,
-                        color=distance_rec.color, alpha=distance_rec.alpha,
-                        linestyle=distance_rec.linestyle))
+                    ax.add_patch(
+                        patches.Rectangle(
+                            (distance_rec.x, distance_rec.y),
+                            distance_rec.a,
+                            distance_rec.b,
+                            fill=distance_rec.fill,
+                            color=distance_rec.color,
+                            alpha=distance_rec.alpha,
+                            linestyle=distance_rec.linestyle,
+                        )
+                    )
 
         # Distances of a BinWithDistances
         if draw_distances and isinstance(r, BinWithDistances):
             for distance_rec in (
-                    r.distance_left_inner, r.distance_bottom_inner,
-                    r.distance_right_inner, r.distance_top_inner):
+                r.distance_left_inner,
+                r.distance_bottom_inner,
+                r.distance_right_inner,
+                r.distance_top_inner,
+            ):
                 if distance_rec.A > 0:
-                    ax.add_patch(patches.Rectangle(
-                        (distance_rec.x, distance_rec.y), distance_rec.a,
-                        distance_rec.b, fill=distance_rec.fill,
-                        color=distance_rec.color, alpha=distance_rec.alpha,
-                        linestyle=distance_rec.linestyle))
+                    ax.add_patch(
+                        patches.Rectangle(
+                            (distance_rec.x, distance_rec.y),
+                            distance_rec.a,
+                            distance_rec.b,
+                            fill=distance_rec.fill,
+                            color=distance_rec.color,
+                            alpha=distance_rec.alpha,
+                            linestyle=distance_rec.linestyle,
+                        )
+                    )
 
         # Draw text if there is any
-        if hasattr(r, 'text') and r.text:
-            box_props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-            ax.text(r.x_center, r.y_center, r.text, ha='center', va='center', bbox=box_props)
+        if hasattr(r, "text") and r.text:
+            box_props = dict(boxstyle="round", facecolor="white", alpha=0.5)
+            ax.text(
+                r.x_center, r.y_center, r.text, ha="center", va="center", bbox=box_props
+            )
 
     plt.draw()
 
 
-def draw_rectangles_newplot(rectangles, xlim=(0, 100), ylim=(0, 100),
-                            draw_distances=True):
+def draw_rectangles_newplot(
+    rectangles, xlim=(0, 100), ylim=(0, 100), draw_distances=True
+):
     """Initialize a new plot and draw rectangles.
 
     rectangles: sequence of Rectangle oder subclass objects
@@ -1616,7 +1774,7 @@ def draw_rectangles_newplot(rectangles, xlim=(0, 100), ylim=(0, 100),
     """
     fig, ax = plt.subplots()
     draw_rectangles(rectangles, draw_distances)
-    ax.set_aspect('equal')
+    ax.set_aspect("equal")
     plt.xlim(*xlim)
     plt.ylim(*ylim)
     plt.show()
@@ -1627,10 +1785,8 @@ def packem(n=10):
     """Demo for packing without distances."""
     bin = Bin(150, 150)
     for ii in range(n):
-        bin.items.append(VisuDataDirectSingleRow(
-            capacity=randint(1, 5)))
-        bin.items.append(VisuDataLine(
-            capacity=randint(2, 4)))
+        bin.items.append(VisuDataDirectSingleRow(capacity=randint(1, 5)))
+        bin.items.append(VisuDataLine(capacity=randint(2, 4)))
 
     bin.pack()
     return bin
@@ -1640,12 +1796,9 @@ def packem_with_distances(n=5):
     """Demo for packing with distances."""
     bin = BinWithDistances(150, 150)
     for ii in range(n):
-        bin.items.append(VisuDataDirectSingleRow(
-            capacity=randint(1, 5)))
-        bin.items.append(VisuDataLine(
-            capacity=randint(2, 4)))
-        bin.items.append(VisuDataDirectDoubleRow(
-            capacity=randint(2, 5)))
+        bin.items.append(VisuDataDirectSingleRow(capacity=randint(1, 5)))
+        bin.items.append(VisuDataLine(capacity=randint(2, 4)))
+        bin.items.append(VisuDataDirectDoubleRow(capacity=randint(2, 5)))
 
     bin.pack()
     return bin
@@ -1660,7 +1813,7 @@ class Progressprinter:
 
     def notify(self, now):
         if self.next <= now:
-            print('Progress: %d (%d %%)' % (now, now / self.until * 100))
+            print("Progress: %d (%d %%)" % (now, now / self.until * 100))
             self.next += self.until * self.interval
 
 
@@ -1671,7 +1824,7 @@ def test_packing(tries=250, nmax=30):
         propri.notify(i)
 
         packem(randint(1, nmax))
-    print('No error encountered in %d tries.' % tries)
+    print("No error encountered in %d tries." % tries)
 
 
 def test_packing_with_distances(tries=250, nmax=15):
@@ -1681,23 +1834,19 @@ def test_packing_with_distances(tries=250, nmax=15):
         propri.notify(i)
 
         packem_with_distances(randint(1, nmax))
-    print('No error encountered in %d tries.' % tries)
+    print("No error encountered in %d tries." % tries)
 
 
-lang_dict = {
-    'Step': 'Schritt',
-    'av': 'V',
-    'no': 'Nr.'
-}
+lang_dict = {"Step": "Schritt", "av": "V", "no": "Nr."}
 
 
 def tl(text):
     """Translate *text* using lang_dict."""
-    if language == 'en':
+    if language == "en":
         return text
     else:
         return lang_dict[text]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

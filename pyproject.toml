@@ -15,7 +15,7 @@ xlsxwriter = "^3.1.1"
 pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
-eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
+eflips = { git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility" }
 
 [tool.pytest.ini_options]
 addopts = [

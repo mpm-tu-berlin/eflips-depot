@@ -27,14 +27,17 @@ class DepotResourceRequest(PriorityRequest):
         for explanation and demo.
 
     """
+
     def __init__(self, resource, caller, priority=0, preempt=True):
         super(DepotResourceRequest, self).__init__(resource, priority, preempt)
 
         self.caller = caller
 
-        if hasattr(resource, 'logger') and globalConstants['general'][
-                'LOG_ATTRIBUTES'] and globalConstants['general'][
-                'LOG_SPECIFIC_STEPS']:
+        if (
+            hasattr(resource, "logger")
+            and globalConstants["general"]["LOG_ATTRIBUTES"]
+            and globalConstants["general"]["LOG_SPECIFIC_STEPS"]
+        ):
             self.callbacks.append(resource.logger.steplog)
 
 
@@ -43,12 +46,15 @@ class DepotResourceRelease(Release):
     Release, for providing an interface for customization.
 
     """
+
     def __init__(self, resource, request):
         super(DepotResourceRelease, self).__init__(resource, request)
 
-        if hasattr(resource, 'logger') and globalConstants['general'][
-                'LOG_ATTRIBUTES'] and globalConstants['general'][
-                'LOG_SPECIFIC_STEPS']:
+        if (
+            hasattr(resource, "logger")
+            and globalConstants["general"]["LOG_ATTRIBUTES"]
+            and globalConstants["general"]["LOG_SPECIFIC_STEPS"]
+        ):
             self.callbacks.append(resource.logger.steplog)
 
 
@@ -61,6 +67,7 @@ class DepotResource(simpy.PreemptiveResource):
     depot: [Depot] instance
 
     """
+
     def __init__(self, env, ID, depot, capacity=1):
         super(DepotResource, self).__init__(env, capacity)
 
@@ -68,8 +75,8 @@ class DepotResource(simpy.PreemptiveResource):
         self.ID = ID
         self.depot = depot
 
-        if globalConstants['general']['LOG_ATTRIBUTES']:
-            self.logger = DataLogger(env, self, 'DEPOTRESOURCE')
+        if globalConstants["general"]["LOG_ATTRIBUTES"]:
+            self.logger = DataLogger(env, self, "DEPOTRESOURCE")
 
     request = BoundClass(DepotResourceRequest)
     release = BoundClass(DepotResourceRelease)
@@ -93,13 +100,12 @@ class DepotChargingInterface(DepotResource):
     max_power: [int or float] in kW
 
     """
+
     def __init__(self, env, ID, depot, max_power):
-        super(DepotChargingInterface, self).__init__(env, ID, depot,
-                                                     capacity=1)
+        super(DepotChargingInterface, self).__init__(env, ID, depot, capacity=1)
         self.max_power = max_power
         self._current_power = 0
-        self.power_logs_ci = {0: 0}    # Container for power logs at ci
-
+        self.power_logs_ci = {0: 0}  # Container for power logs at ci
 
     @property
     def current_power(self):
@@ -118,22 +124,40 @@ class DepotChargingInterface(DepotResource):
 
 class ResourceBreak(BaseDepotProcess):
     """Process used by ResourceSwitch to occupy resources."""
-    def __init__(self, env, ID, dur, required_resources=None, resume=False,
-                 priority=-3, recall_priority=-3, preempt=True,
-                 dur_predefined=True):
+
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        required_resources=None,
+        resume=False,
+        priority=-3,
+        recall_priority=-3,
+        preempt=True,
+        dur_predefined=True,
+    ):
         super(ResourceBreak, self).__init__(
-            env, ID, dur, required_resources, resume, priority,
-            recall_priority, preempt, dur_predefined)
+            env,
+            ID,
+            dur,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            dur_predefined,
+        )
 
     def _action(self):
         try:
-            flexprint('Break process started.', env=self.env, switch='res_break')
+            flexprint("Break process started.", env=self.env, switch="res_break")
             yield self.env.timeout(self.dur)
-            flexprint('Break process finished.', env=self.env, switch='res_break')
+            flexprint("Break process finished.", env=self.env, switch="res_break")
 
         except simpy.Interrupt:
             # Early reactivation of the resource
-            flexprint('Break process interrupted', env=self.env, switch='res_break')
+            flexprint("Break process interrupted", env=self.env, switch="res_break")
             pass
 
     @staticmethod
@@ -189,8 +213,10 @@ class ResourceSwitch:
         duration.
 
     """
-    def __init__(self, env, ID, resource, breaks, preempt=True,
-                 strength='full', resume=False):
+
+    def __init__(
+        self, env, ID, resource, breaks, preempt=True, strength="full", resume=False
+    ):
         self.env = env
         self.ID = ID
         self.strength_input = strength
@@ -227,8 +253,10 @@ class ResourceSwitch:
         """
         if value is not None:
             if not isinstance(value, DepotResource):
-                raise ValueError('Argument resource to ResourceSwitch must be '
-                                 'of class DepotResource or subclass.')
+                raise ValueError(
+                    "Argument resource to ResourceSwitch must be "
+                    "of class DepotResource or subclass."
+                )
 
             self.strength = self.strength_input
 
@@ -241,7 +269,7 @@ class ResourceSwitch:
         """
         if self.resource is None:
             return None
-        elif self.strength_input == 'full':
+        elif self.strength_input == "full":
             return self.resource.capacity
 
         return self._strength
@@ -249,20 +277,23 @@ class ResourceSwitch:
     @strength.setter
     def strength(self, value):
         # Check if strength is int or 'full'
-        if not isinstance(value, int) and (not isinstance(value, str)
-                                           or value != 'full'):
-            raise ValueError("'%s' is an invalid input for ResourceSwitch %s "
-                             % (value, self.ID) + "strength. Must be 'full' "
-                                                  "(str) or of type int.")
+        if not isinstance(value, int) and (
+            not isinstance(value, str) or value != "full"
+        ):
+            raise ValueError(
+                "'%s' is an invalid input for ResourceSwitch %s " % (value, self.ID)
+                + "strength. Must be 'full' "
+                "(str) or of type int."
+            )
 
         # Check if 1 < value < self.resource.capacity if int
         if self.resource is not None:
-            if isinstance(value, int) and \
-                    (value > self.resource.capacity or value < 1):
-                raise ValueError('ResourceSwitch "%s" strength must be '
-                                 'between 1 and the capacity of the related '
-                                 'resource (=%d).'
-                                 % (self.ID, self.resource.capacity))
+            if isinstance(value, int) and (value > self.resource.capacity or value < 1):
+                raise ValueError(
+                    'ResourceSwitch "%s" strength must be '
+                    "between 1 and the capacity of the related "
+                    "resource (=%d)." % (self.ID, self.resource.capacity)
+                )
 
         self.strength_input = value
         self._strength = value
@@ -271,27 +302,31 @@ class ResourceSwitch:
     def check_breaks(breaks):
         """Do essential validity checks on ResourceSwitch parameter *break*."""
         if not breaks:
-            raise ValueError('ResourceSwitch breaks cannot be empty.')
+            raise ValueError("ResourceSwitch breaks cannot be empty.")
 
         for break_no, break_i in enumerate(breaks):
-            if not isinstance(break_i, tuple) \
-                    and not isinstance(break_i, list) \
-                    or len(break_i) != 2:
-                raise ValueError('ResourceSwitch break must contain tuples of '
-                                 'length = 2')
-            if break_i[0] < 0 or break_i[1] < 0:
+            if (
+                not isinstance(break_i, tuple)
+                and not isinstance(break_i, list)
+                or len(break_i) != 2
+            ):
                 raise ValueError(
-                    'ResourceSwitch break times must be nonnegative.')
+                    "ResourceSwitch break must contain tuples of " "length = 2"
+                )
+            if break_i[0] < 0 or break_i[1] < 0:
+                raise ValueError("ResourceSwitch break times must be nonnegative.")
             if break_i[0] >= break_i[1]:
                 raise ValueError(
-                    'ResourceSwitch break start time must be earlier '
-                    'than break end time')
+                    "ResourceSwitch break start time must be earlier "
+                    "than break end time"
+                )
             if break_no > 0:
                 if break_i[0] <= breaks[break_no - 1][1]:
                     raise ValueError(
-                        'ResourceSwitch break phases must be listed in '
-                        'chronologically ascending order and start times must '
-                        'be later than end times of previous phases.')
+                        "ResourceSwitch break phases must be listed in "
+                        "chronologically ascending order and start times must "
+                        "be later than end times of previous phases."
+                    )
         return True
 
     def run_break_cycle(self):
@@ -328,8 +363,14 @@ class ResourceSwitch:
     def take_break(self, duration):
         """Request one slot at self.resource and hold it for *duration*."""
         proc = ResourceBreak(
-            self.env, 'break', duration, required_resources=[self.resource],
-            resume=self.resume, priority=self.priority,
-            recall_priority=self.priority, preempt=self.preempt)
+            self.env,
+            "break",
+            duration,
+            required_resources=[self.resource],
+            resume=self.resume,
+            priority=self.priority,
+            recall_priority=self.priority,
+            preempt=self.preempt,
+        )
 
         self.env.process(proc())

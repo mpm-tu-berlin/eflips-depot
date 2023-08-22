@@ -11,10 +11,7 @@ import datetime
 from eflips.helperFunctions import load_json
 
 
-OPT_CONSTANTS = {
-    'algorithm': {},
-    'scenario': {}
-}
+OPT_CONSTANTS = {"algorithm": {}, "scenario": {}}
 
 
 def load_settings(filename):
@@ -27,7 +24,7 @@ def load_settings(filename):
     OPT_CONSTANTS.update(custom)
 
     # Append execution time
-    OPT_CONSTANTS['EXEC_TIME'] = str(datetime.datetime.now().strftime("%Y-%m-%d_%H%M"))
+    OPT_CONSTANTS["EXEC_TIME"] = str(datetime.datetime.now().strftime("%Y-%m-%d_%H%M"))
 
     # Append filename
-    OPT_CONSTANTS['FILENAME'] = filename
+    OPT_CONSTANTS["FILENAME"] = filename
