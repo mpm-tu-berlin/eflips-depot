@@ -33,14 +33,15 @@ The repository contains an example for the simulation and planning of an elecric
     
     ev.sl_all() # For example to plot a result
     ```
-
+4. To use eFLIPS-Depot API, see script `user_example.py`
 ## Testing
 
 *There is no real testing yet. We are moving towards using [pytest](https://docs.pytest.org/) for testing, but this is not yet complete.*
 
 ## Documentation
 
-*There is no real documentation yet. We are moving towards using [sphinx](https://www.sphinx-doc.org/en/master/) for documentation, but this is not yet complete.*
+A temporary documentation is located at eflips-depot/docs/_build/index.html. Still under construction.
+
 
 ## Development
 

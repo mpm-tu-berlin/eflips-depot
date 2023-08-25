@@ -1,0 +1,97 @@
+:py:mod:`basic`
+===============
+
+.. py:module:: basic
+
+.. autoapi-nested-parse::
+
+   A temporary file for eFLIPS-Depot API
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   basic.InputForSimba
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   basic.init_simulation
+   basic.run_simulation
+   basic.to_simba
+
+
+
+.. py:function:: init_simulation(fsettings, fschedule, ftemplate)
+
+   Initialization of :class:'efilps.depot.simulation.SimulationHost'
+
+   :param fsettings: Path of setting file (JSON)
+   :type fsettings: str
+   :param fschedule: Path of bus-schedule file (XML)
+   :type fschedule: str
+   :param ftemplate: Path of template file (JSON)
+   :type ftemplate: str
+
+   :return: A :class:'eflips.depot.simulation.SimulationHost'
+   :rtype: :class:'eflips.depot.simulation.SimulationHost'
+
+
+.. py:function:: run_simulation(simulation_host)
+
+   Run simulation and return simulation results
+
+   :param simulation_host
+   :type simulation_host: :class:'eflips.depot.Simulation.SimulationHost'
+   :return ev
+   :rtype:
+
+
+.. py:function:: to_simba(ev)
+
+   Output data to simBA.
+
+   :param ev: Object storing all simulation results
+   :type ev: :class:'eflips.depot.evaluation.DepotEvaluation'
+   :return: list of :class:'InputForSimba'
+   :rtype: list
+
+
+.. py:class:: InputForSimba
+
+
+   Input Data for Simba
+
+   :param rotation_id: ID of rotation
+   :type rotation_id: int
+   :param vehicle_id: ID of vehicle
+   :type vehicle_id: str
+   :param soc_departure: soc at departure of each vehicle
+   :type soc_departure: float
+
+   .. py:attribute:: rotation_id
+      :type: int
+
+      
+
+   .. py:attribute:: vehicle_id
+      :type: str
+
+      
+
+   .. py:attribute:: soc_departure
+      :type: float
+
+      
+
+

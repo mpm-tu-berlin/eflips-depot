@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>api.output &#8212; eFLIPS-Depot 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="prev" title="api.basic" href="../basic/index.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-api.output">
+<span id="api-output"></span><h1><a class="reference internal" href="#module-api.output" title="api.output"><code class="xref py py-mod docutils literal notranslate"><span class="pre">api.output</span></code></a><a class="headerlink" href="#module-api.output" title="Permalink to this heading">¶</a></h1>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">¶</a></h2>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api.output.SimpleTripOutput" title="api.output.SimpleTripOutput"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleTripOutput</span></code></a></p></td>
+<td><p>Parameters:</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="api.output.SimpleTripOutput">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">api.output.</span></span><span class="sig-name descname"><span class="pre">SimpleTripOutput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trip</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#api.output.SimpleTripOutput" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">eflips.depot.standalone.SimpleTrip</span></code></p>
+<p>Parameters:
+:param origin, destination: Depot ID of departure and destination depot upon init. Is converted to <code class="xref py py-class docutils literal notranslate"><span class="pre">depot.depot.Depot</span></code></p>
+<blockquote>
+<div><p>instance by Timetable</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vehicle_types</strong> (<em>list</em>) – list of <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.simple_vehicle.VehicleType</span></code> as str upon import,
+converted to <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.simple_vehicle.VehicleType</span></code> before simulation start.</p></li>
+<li><p><strong>std</strong> (<em>int</em>) – scheduled time of departure in total seconds since sim start</p></li>
+<li><p><strong>sta</strong> (<em>int</em>) – scheduled time of arrival in total seconds since sim start</p></li>
+<li><p><strong>distance</strong> (<em>int</em><em>, </em><em>float</em>) – total trip distance in km</p></li>
+<li><p><strong>end_soc</strong> (<em>start_soc</em><em>,</em>) – soc upon departure from and
+arrival at the depot. Must be provided if globalConstants[‘depot’][
+‘consumption_calc_mode’] == ‘soc_given’. May be omitted if consumption
+calculation is CR-based.</p></li>
+<li><p><strong>charge_on_track</strong> (<em>bool</em>) – For the use with globalConstants[‘depot’][
+‘consumption_calc_mode’] == ‘soc_given’. If True, opportunity charging
+on track is assumed and start_soc is interpreted as sufficient soc for
+departure and end_soc is interpreted as fixed value upon arrival. If
+False, depot charging is assumed and start_soc and end_soc are used to
+determine the required energy. In this case, start_soc must be higher
+than end_soc. May be omitted if consumption calculation is CR-based.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Attributes:
+:param eta: scheduled time of arrival
+:type eta: int
+:param atd: actual time of departure
+:type atd: int or None
+:param ata: actual time of arrival
+:type ata: int or None
+:param vehicle: <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.simple_vehicle.SimpleVehicle</span></code> assigned to before and after departure
+:type vehicle: <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.simple_vehicle.SimpleVehicle</span></code>
+:param reserved_for_init: see option prioritize_init_store in globalConstants
+:type reserved_for_init: bool
+:param vehicle_from: ID of the area the executing vehicle was located at</p>
+<blockquote>
+<div><p>when calling checkout.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>copy_of</strong> (None or <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.standalone.SimpleTrip</span></code>) – Is set to <code class="xref py py-class docutils literal notranslate"><span class="pre">eflips.depot.standalone.SimpleTrip</span></code> object if trip was
+copied in Timetable.repeat_trips.</p></li>
+<li><p><strong>t_match</strong> (<em>None</em><em> or </em><em>int</em>) – time of matching this trip and a vehicle. If a
+vehicle from a depot’s init store is assigned, this attribute stays
+None. If the match changes, only the last matching time is saved.</p></li>
+<li><p><strong>got_early_vehicle</strong> (<em>bool</em>) – [bool] True if the trip was served by a vehicle where
+the battery wasn’t fully charged upon departure.</p></li>
+<li><p><strong>periodic_trigger_scheduled</strong> (<em>bool</em>) – bool flag to prevent recursion when
+scheduling a dispatch trigger for delayed trips</p></li>
+<li><p><strong>ID_orig</strong> (<em>str</em>) – str ID of trip this trip is a copy from, if not an original</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="api.output.SimpleTripOutput.delay_departure">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delay_departure</span></span><a class="headerlink" href="#api.output.SimpleTripOutput.delay_departure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the departure delay in seconds. Return 0 if not delayed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>delayed time in seconds</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="api.output.SimpleTripOutput.delay_arrival">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delay_arrival</span></span><a class="headerlink" href="#api.output.SimpleTripOutput.delay_arrival" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the departure delay in seconds. Return 0 if not delayed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>delayed time in seconds</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="api.output.SimpleTripOutput.duration">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">duration</span></span><a class="headerlink" href="#api.output.SimpleTripOutput.duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the scheduled duration of the trip. Must greater than 0</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scheduled duration time in seconds</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="api.output.SimpleTripOutput.actual_duration">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">actual_duration</span></span><a class="headerlink" href="#api.output.SimpleTripOutput.actual_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the actual duration of the trip. Must greater than 0</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>actual duration time of a trip</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">eFLIPS-Depot</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">api</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+  <li><a href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">api</span></code></a><ul>
+      <li>Previous: <a href="../basic/index.html" title="previous chapter"><code class="xref py py-mod docutils literal notranslate"><span class="pre">api.basic</span></code></a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, MPM TU Berlin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../../../_sources/autoapi/api/output/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
