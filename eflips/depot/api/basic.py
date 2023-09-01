@@ -3,7 +3,7 @@
 """
 
 from eflips.depot.simulation import SimulationHost, Depotinput
-from depot.api.output import InputForSimba
+from eflips.depot.api.output import InputForSimba
 
 
 def init_simulation(fsettings, fschedule, ftemplate):
