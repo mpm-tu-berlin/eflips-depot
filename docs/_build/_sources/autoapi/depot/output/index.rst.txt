@@ -12,18 +12,9 @@ Classes
 
 .. autoapisummary::
 
-   depot.output.Vehicle
    depot.output.SimpleTripOutput
 
 
-
-
-.. py:class:: Vehicle(simple_vehicle)
-
-
-   Bases: :py:obj:`depot.SimpleVehicle`
-
-       
 
 
 .. py:class:: SimpleTripOutput(trip)
@@ -31,13 +22,12 @@ Classes
 
    Bases: :py:obj:`eflips.depot.standalone.SimpleTrip`
 
-       # TODO: docstring
    Parameters:
-   :param origin, destination: Depot ID of departure and destination depot upon init. Is converted to :class:'depot.depot.Depot'
+   :param origin, destination: Depot ID of departure and destination depot upon init. Is converted to :class:`depot.depot.Depot`
        instance by Timetable
    :type origin, destination: str
-   :param vehicle_types: list of :class:'eflips.depot.simple_vehicle.VehicleType' as str upon import,
-       converted to :class:'eflips.depot.simple_vehicle.VehicleType' before simulation start.
+   :param vehicle_types: list of :class:`eflips.depot.simple_vehicle.VehicleType` as str upon import,
+       converted to :class:`eflips.depot.simple_vehicle.VehicleType` before simulation start.
    :type vehicle_types: list
    :param std: scheduled time of departure in total seconds since sim start
    :type std: int
@@ -66,16 +56,16 @@ Classes
    :type atd: int or None
    :param ata: actual time of arrival
    :type ata: int or None
-   :param vehicle: :class:'eflips.depot.simple_vehicle.SimpleVehicle' assigned to before and after departure
-   :type vehicle: :class:'eflips.depot.simple_vehicle.SimpleVehicle'
+   :param vehicle: :class:`eflips.depot.simple_vehicle.SimpleVehicle` assigned to before and after departure
+   :type vehicle: :class:`eflips.depot.simple_vehicle.SimpleVehicle`
    :param reserved_for_init: see option prioritize_init_store in globalConstants
    :type reserved_for_init: bool
    :param vehicle_from: ID of the area the executing vehicle was located at
        when calling checkout.
    :type vehicle_from: str
-   :param copy_of: Is set to :class:'SimpleTrip' object if trip was
+   :param copy_of: Is set to :class:`eflips.depot.standalone.SimpleTrip` object if trip was
        copied in Timetable.repeat_trips.
-   :type copy_of: None or :class'SimpleTrip'
+   :type copy_of: None or :class:`eflips.depot.standalone.SimpleTrip`
    :param t_match: time of matching this trip and a vehicle. If a
        vehicle from a depot's init store is assigned, this attribute stays
        None. If the match changes, only the last matching time is saved.

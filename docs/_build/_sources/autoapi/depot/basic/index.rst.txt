@@ -34,7 +34,7 @@ Functions
 
 .. py:function:: init_simulation(fsettings, fschedule, ftemplate)
 
-   Initialization of :class:'efilps.depot.simulation.SimulationHost'
+   Initialization of :class:`eflips.depot.simulation.SimulationHost`
 
    :param fsettings: Path of setting file (JSON)
    :type fsettings: str
@@ -43,27 +43,27 @@ Functions
    :param ftemplate: Path of template file (JSON)
    :type ftemplate: str
 
-   :return: A :class:'eflips.depot.simulation.SimulationHost'
-   :rtype: :class:'eflips.depot.simulation.SimulationHost'
+   :return: A :class:`eflips.depot.simulation.SimulationHost`
+   :rtype: :class:`eflips.depot.simulation.SimulationHost`
 
 
 .. py:function:: run_simulation(simulation_host)
 
    Run simulation and return simulation results
 
-   :param simulation_host
-   :type simulation_host: :class:'eflips.depot.Simulation.SimulationHost'
-   :return ev
-   :rtype:
+   :param simulation_host: Simulation Host of eflips-depot
+   :type simulation_host: :class:`eflips.depot.Simulation.SimulationHost`
+   :return: Object of :class:`eflips.depot.Simulation.SimulationHost` storing simulation results
+   :rtype: :class:`eflips.depot.Simulation.SimulationHost`
 
 
 .. py:function:: to_simba(ev)
 
-   Output data to simBA.
+   Returns a list containing input data for simba
 
    :param ev: Object storing all simulation results
-   :type ev: :class:'eflips.depot.evaluation.DepotEvaluation'
-   :return: list of :class:'InputForSimba'
+   :type ev: :class:`eflips.depot.evaluation.DepotEvaluation`
+   :return: list of :class:`InputForSimba`
    :rtype: list
 
 

@@ -2,9 +2,8 @@
 """A temporary file for eFLIPS-Depot API
 """
 
-from dataclasses import dataclass
 from eflips.depot.simulation import SimulationHost, Depotinput
-
+from depot.api.output import InputForSimba
 
 
 def init_simulation(fsettings, fschedule, ftemplate):
@@ -36,7 +35,6 @@ def init_simulation(fsettings, fschedule, ftemplate):
     return simulation_host
 
 
-
 def run_simulation(simulation_host):
     """Run simulation and return simulation results
 
@@ -49,7 +47,6 @@ def run_simulation(simulation_host):
     ev = simulation_host.depot_hosts[0].evaluation
 
     return ev
-
 
 
 def to_simba(ev):
@@ -68,19 +65,3 @@ def to_simba(ev):
             inputs_for_simba.append(data_unit)
 
     return inputs_for_simba
-
-
-@dataclass
-class InputForSimba:
-    """Input Data for Simba
-
-    :param rotation_id: ID of rotation
-    :type rotation_id: int
-    :param vehicle_id: ID of vehicle
-    :type vehicle_id: str
-    :param soc_departure: soc at departure of each vehicle
-    :type soc_departure: float
-    """
-    rotation_id: int
-    vehicle_id: str
-    soc_departure: float

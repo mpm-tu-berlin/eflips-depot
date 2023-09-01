@@ -1,8 +1,25 @@
-"""
+"""Classes repre
 
 """
-from depot import SimpleVehicle
+from dataclasses import dataclass
+from eflips.depot import SimpleVehicle
 from eflips.depot.standalone import SimpleTrip
+
+
+@dataclass
+class InputForSimba:
+    """Input Data for Simba
+
+    :param rotation_id: ID of rotation
+    :type rotation_id: int
+    :param vehicle_id: ID of vehicle
+    :type vehicle_id: str
+    :param soc_departure: soc at departure of each vehicle
+    :type soc_departure: float
+    """
+    rotation_id: int
+    vehicle_id: str
+    soc_departure: float
 
 
 class SimpleTripOutput(SimpleTrip):

@@ -1,7 +1,7 @@
 """An example code to show how to start with eFLIPS-depot"""
 
 import os
-import eflips.api.basic
+import depot.api.basic
 
 absolute_path = os.path.dirname(__file__)
 
@@ -12,14 +12,14 @@ filename_template = os.path.join(absolute_path,
                                  'templates/diss_kls_6xS, 94x150kW_SB, 147x75kW_AB, shunting+precond+chargeequationsteps')
 
 # Setup Simulation Host
-host = eflips.api.basic.init_simulation(filename_eflips_settings, filename_schedule,
-                                 filename_template)
+host = depot.api.basic.init_simulation(filename_eflips_settings, filename_schedule,
+                                       filename_template)
 
 # Run simulation
-ev = eflips.api.basic.run_simulation(host)
+ev = depot.api.basic.run_simulation(host)
 
 # Generate input data for simBA
-data_for_simba = eflips.api.basic.to_simba(ev)
+data_for_simba = depot.api.basic.to_simba(ev)
 
 
 

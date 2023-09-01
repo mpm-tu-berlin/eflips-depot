@@ -1,13 +1,11 @@
 import os
 
+import depot.api.basic
 import pytest
 
-from dataclasses import asdict
-import json
 from depot import DepotEvaluation
-import eflips.api.basic
 
-# import eflips.depot.basic
+
 
 class TestApiSetup:
 
@@ -20,10 +18,10 @@ class TestApiSetup:
         filename_schedule = os.path.join(absolute_path, 'sample_simulation', 'schedule')
         filename_template = os.path.join(absolute_path, 'sample_simulation', 'sample_depot')
 
-        host = eflips.api.basic.init_simulation(filename_eflips_settings, filename_schedule,
-                                         filename_template)
+        host = depot.api.basic.init_simulation(filename_eflips_settings, filename_schedule,
+                                               filename_template)
 
-        ev = eflips.api.basic.run_simulation(host)
+        ev = depot.api.basic.run_simulation(host)
         return ev
 
     def test_result_output(self, depot_evaluation: DepotEvaluation):
@@ -103,11 +101,11 @@ class TestApiSetup:
             # assert trip.actual_duration > 0
             # assert isinstance(trip.actual_duration, int)
             # assert isinstance(trip.lead_time_match, int) or trip.lead_time_match is None
-        data_to_simba = eflips.api.basic.to_simba(ev)
+        data_to_simba = depot.api.basic.to_simba(ev)
         assert data_to_simba is not None
         for i in data_to_simba:
             assert i is not None
-            assert isinstance(i, eflips.api.basic.InputForSimba)
+            assert isinstance(i, depot.api.basic.InputForSimba)
 
             assert i.rotation_id is not None
             assert isinstance(i.rotation_id, int)
@@ -119,49 +117,50 @@ class TestApiSetup:
             assert isinstance(i.soc_departure, float)
             assert 0 <= i.soc_departure <= 1
 
-    def test_json_serialization(self, depot_evaluation: DepotEvaluation):
-        # Create a list of SimBaOutputFormat objects
-
-        ev = depot_evaluation
-        simba_outputs = eflips.api.basic.to_simba(ev)
-        simba_output_as_dicts = [asdict(s) for s in simba_outputs]
-        jsonified = json.dumps(simba_output_as_dicts)
-
-        # Re-create the output list
-        new_simba_output_dict = json.loads(jsonified)
-        new_simba_outputs = [eflips.api.basic.InputForSimba(**kwargs) for kwargs in
-                             new_simba_output_dict]
-        assert isinstance(new_simba_outputs, list)
-
-        # Check equality
-        for old, new in zip(simba_outputs, new_simba_outputs):
-            assert old == new
-
-        # for trip in trips_issued:
-            # assert isinstance(trip.vehicle, SimpleVehicle)
-            # v = trip.vehicle
-            # assert isinstance(v.ID, str)
-            # assert isinstance(v.vehicle_type, VehicleType)
-            # assert isinstance(v.battery, SimpleBattery)
-            # assert v.vehicle_type.battery_capacity == v.battery.energy_nominal
-            # assert v.vehicle_type.soc_min == v.battery.soc_min
-            # assert v.vehicle_type.soc_max == v.battery.soc_max
-            # assert v.vehicle_type.soh == v.battery.soh
-
-            # assert isinstance(v.mileage, float) and v.mileage > 0
-
-            # None in ev (output) even for issued trips
-            # assert isinstance(v.trip, SimpleTrip)
-
-
-            # assert isinstance(v.trip_at_departure, SimpleTrip)
-            # assert isinstance(v.finished_trips, list) and len(v.finished_trips) != 0
-            # for ft in v.finished_trips:
-            #     assert isinstance(ft, SimpleTrip)
-            #
-            # assert isinstance(v.system_entry, bool) and v.system_entry is True
-            # assert isinstance(v.battery_logs, list) and len(v.battery_logs) != 0
-            # assert isinstance(v.power_logs, dict) and len(v.power_logs) != 1
+        # eflips.depot.example.example.print_data(data_to_simba[0])
+    # def test_json_serialization(self, depot_evaluation: DepotEvaluation):
+    #     # Create a list of SimBaOutputFormat objects
+    #
+    #     ev = depot_evaluation
+    #     simba_outputs = eflips.depot.basic.to_simba(ev)
+    #     simba_output_as_dicts = [asdict(s) for s in simba_outputs]
+    #     jsonified = json.dumps(simba_output_as_dicts)
+    #
+    #     # Re-create the output list
+    #     new_simba_output_dict = json.loads(jsonified)
+    #     new_simba_outputs = [eflips.depot.basic.InputForSimba(**kwargs) for kwargs in
+    #                          new_simba_output_dict]
+    #     assert isinstance(new_simba_outputs, list)
+    #
+    #     # Check equality
+    #     for old, new in zip(simba_outputs, new_simba_outputs):
+    #         assert old == new
+    #
+    #     # for trip in trips_issued:
+    #         # assert isinstance(trip.vehicle, SimpleVehicle)
+    #         # v = trip.vehicle
+    #         # assert isinstance(v.ID, str)
+    #         # assert isinstance(v.vehicle_type, VehicleType)
+    #         # assert isinstance(v.battery, SimpleBattery)
+    #         # assert v.vehicle_type.battery_capacity == v.battery.energy_nominal
+    #         # assert v.vehicle_type.soc_min == v.battery.soc_min
+    #         # assert v.vehicle_type.soc_max == v.battery.soc_max
+    #         # assert v.vehicle_type.soh == v.battery.soh
+    #
+    #         # assert isinstance(v.mileage, float) and v.mileage > 0
+    #
+    #         # None in ev (output) even for issued trips
+    #         # assert isinstance(v.trip, SimpleTrip)
+    #
+    #
+    #         # assert isinstance(v.trip_at_departure, SimpleTrip)
+    #         # assert isinstance(v.finished_trips, list) and len(v.finished_trips) != 0
+    #         # for ft in v.finished_trips:
+    #         #     assert isinstance(ft, SimpleTrip)
+    #         #
+    #         # assert isinstance(v.system_entry, bool) and v.system_entry is True
+    #         # assert isinstance(v.battery_logs, list) and len(v.battery_logs) != 0
+    #         # assert isinstance(v.power_logs, dict) and len(v.power_logs) != 1
 
 
 

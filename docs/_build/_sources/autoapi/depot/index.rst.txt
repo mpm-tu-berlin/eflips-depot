@@ -10,6 +10,7 @@ Subpackages
    :titlesonly:
    :maxdepth: 3
 
+   api/index.rst
    layout_opt/index.rst
 
 
@@ -19,13 +20,11 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
-   basic/index.rst
    configuration/index.rst
    depot/index.rst
    evaluation/index.rst
    filters/index.rst
    input_epex_power_price/index.rst
-   output/index.rst
    plots/index.rst
    processes/index.rst
    rating/index.rst

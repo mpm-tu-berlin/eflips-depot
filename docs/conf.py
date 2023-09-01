@@ -29,4 +29,4 @@ html_static_path = ['_static']
 
 
 # -- Options for autoapi -----------------------------------------------------
-autoapi_dirs = ['../eflips/api']
+autoapi_dirs = ['../eflips/depot']

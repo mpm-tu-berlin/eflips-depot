@@ -53,3 +53,4 @@ from eflips.depot.simulation import (
 from eflips.depot.smart_charging import SmartCharging, ControlSmartCharging
 from eflips.depot.standalone import VehicleGenerator, SimpleTrip, Timetable
 from eflips.depot.validation import Validator
+
