@@ -131,8 +131,6 @@ class TestAccessingSimBaModels:
             eflips_input_path: A pathlib.Path object containing the absolute paths to the created files.
         """
 
-        eflips_input_path
-
         # Assert that the files exist
         assert eflips_input_path.exists()
 

@@ -9,8 +9,10 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import os
 import tempfile
 from pathlib import Path
+import environ
 
 # Only uncomment when used as external dependency
 # from django.conf.global_settings import *
@@ -22,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f)wqof-nnuse$(&jjb7)=-iz^%_-860jfi#43!__7tt@%f8#ir'
+SECRET_KEY = 'django-insecure'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -43,14 +45,12 @@ UPLOAD_PATH = tempfile.gettempdir()
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
-        'NAME': ':memory:',
-    }
-}
+assert os.environ['DATABASE_URL'] is not None, "DATABASE_URL environment variable must be set"
+DATABASES = {'default': environ.Env().db('DATABASE_URL')}
 
-CELERY_BROKER_URL = None
+
+#CELERY_BROKER_URL = None
+CELERY_USE = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

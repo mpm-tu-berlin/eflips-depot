@@ -36,8 +36,13 @@ The repository contains an example for the simulation and planning of an elecric
 4. To use eFLIPS-Depot API, see script `bus_depot/user_example.py`
 ## Testing
 
-*There is no real testing yet. We are moving towards using [pytest](https://docs.pytest.org/) for testing, but this is not yet complete.*
+Testing is done using the `pytest` framework with tests located in the `tests`directory. To run the tests, execute the following command in the root directory of the repository:
 
+```bash
+   export PYTHONPATH=eflips:tests:. # To make sure that the tests can find the eflips package
+   export DATABASE_URL=postgis://postgres:postgres@localhost:5432/postgres # Or whatever your database URL is
+   pytest
+```
 ## Documentation
 
 A temporary documentation is located at docs/_build/index.html. Still under construction.
