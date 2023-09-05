@@ -25,8 +25,9 @@ class VehicleGenerator(BackgroundStore):
     items: [list] containing all generated vehicles
 
     """
+
     def __init__(self, env):
-        super(VehicleGenerator, self).__init__(env, 'VehicleGenerator')
+        super(VehicleGenerator, self).__init__(env, "VehicleGenerator")
         self.vIDCounter = {}
         self.map_depots = None
 
@@ -36,8 +37,8 @@ class VehicleGenerator(BackgroundStore):
         """
         self.map_depots = {depot.ID: depot for depot in depots}
 
-        if globalConstants['general']['LOG_ATTRIBUTES']:
-            self.logger = DataLogger(self.env, self, 'BACKGROUNDSTORE')
+        if globalConstants["general"]["LOG_ATTRIBUTES"]:
+            self.logger = DataLogger(self.env, self, "BACKGROUNDSTORE")
 
     def run(self, depots):
         """Intialize vehicles based on data in eflips settings. Executed and
@@ -47,7 +48,7 @@ class VehicleGenerator(BackgroundStore):
         """
         self._complete(depots)
 
-        vehicle_count = globalConstants['depot']['vehicle_count']
+        vehicle_count = globalConstants["depot"]["vehicle_count"]
 
         for depotID in vehicle_count:
             if depotID in self.map_depots:
@@ -63,18 +64,24 @@ class VehicleGenerator(BackgroundStore):
                         # Initialize vehicle object
                         vehicle = SimpleVehicle(
                             self.env,
-                            vtID + ' ' + str(self.vIDCounter[vtID]),
-                            next(vt for vt in globalConstants['depot'][
-                                'vehicle_types_obj'] if vt.ID == vtID),
-                            home_depot)
+                            vtID + " " + str(self.vIDCounter[vtID]),
+                            next(
+                                vt
+                                for vt in globalConstants["depot"]["vehicle_types_obj"]
+                                if vt.ID == vtID
+                            ),
+                            home_depot,
+                        )
 
                         # Assign vehicle to the depot
                         self.put(vehicle)
                         home_depot.init_store.put(vehicle)
 
             else:
-                warn("HomeDepotID '%s' did not match any ID of known depots."
-                     % depotID + ' Vehicle entry skipped.')
+                warn(
+                    "HomeDepotID '%s' did not match any ID of known depots." % depotID
+                    + " Vehicle entry skipped."
+                )
 
         self.check_arrival()
 
@@ -85,13 +92,16 @@ class VehicleGenerator(BackgroundStore):
             total = sum(vehicle_count[depotID].values())
 
             for vtID, count in vehicle_count[depotID].items():
-                vehicle_type = next(vt for vt in globalConstants['depot'][
-                    'vehicle_types_obj'] if vt.ID == vtID)
+                vehicle_type = next(
+                    vt
+                    for vt in globalConstants["depot"]["vehicle_types_obj"]
+                    if vt.ID == vtID
+                )
 
                 vehicle_type.count[depot] = count
                 vehicle_type.share[depot] = count / total
 
-        for vtg in globalConstants['depot']['vehicle_type_groups']:
+        for vtg in globalConstants["depot"]["vehicle_type_groups"]:
             for vehicle_type in vtg.types:
                 for depot in vehicle_type.count:
                     if depot not in vtg.count:
@@ -100,18 +110,17 @@ class VehicleGenerator(BackgroundStore):
                     vtg.count[depot] += vehicle_type.count[depot]
 
             for depot in vtg.count:
-                total = sum(vehicle_type.count[depot]
-                            for vehicle_type in vtg.types)
-                vtg.share[depot] = total / sum(
-                    vehicle_count[depot.ID].values())
+                total = sum(vehicle_type.count[depot] for vehicle_type in vtg.types)
+                vtg.share[depot] = total / sum(vehicle_count[depot.ID].values())
 
     def check_arrival(self):
         for depot in self.map_depots.values():
             if depot.init_store.count > depot.default_plan[0].capacity:
-                warn("The first default plan entry '%s' of depot '%s' should "
-                     "have a capacity at least as high as the amount of "
-                     "vehicles used in the depot."
-                     % (depot.default_plan[0].ID, depot.ID))
+                warn(
+                    "The first default plan entry '%s' of depot '%s' should "
+                    "have a capacity at least as high as the amount of "
+                    "vehicles used in the depot." % (depot.default_plan[0].ID, depot.ID)
+                )
 
 
 class SimpleTrip:
@@ -162,9 +171,21 @@ class SimpleTrip:
     """Event that succeeds if departure delay occurs. Must be set before 
     calling init to be applied."""
 
-    def __init__(self, env, ID, line_name, origin, destination, vehicle_types,
-                 std, sta, distance, start_soc=None, end_soc=None,
-                 charge_on_track=False):
+    def __init__(
+        self,
+        env,
+        ID,
+        line_name,
+        origin,
+        destination,
+        vehicle_types,
+        std,
+        sta,
+        distance,
+        start_soc=None,
+        end_soc=None,
+        charge_on_track=False,
+    ):
         self.env = env
         self.ID = ID
         self.line_name = line_name
@@ -179,8 +200,10 @@ class SimpleTrip:
         self.charge_on_track = charge_on_track
 
         if start_soc is not None and not charge_on_track and start_soc < end_soc:
-            raise ValueError('For depot chargers start_soc cannot be lower '
-                             'than end_soc. Trip: %s' % ID)
+            raise ValueError(
+                "For depot chargers start_soc cannot be lower "
+                "than end_soc. Trip: %s" % ID
+            )
 
         self.eta = sta
         self.atd = None
@@ -201,7 +224,7 @@ class SimpleTrip:
             self.env.process(self.notify_delay())
 
     def __repr__(self):
-        return '{%s} %s' % (type(self).__name__, self.ID)
+        return "{%s} %s" % (type(self).__name__, self.ID)
 
     @property
     def ID_orig(self):
@@ -223,7 +246,7 @@ class SimpleTrip:
         ['EN'] -> 'EN'
         ['EN', 'DL'] -> 'EN, DL'
         """
-        return ', '.join(vt.ID for vt in self.vehicle_types)
+        return ", ".join(vt.ID for vt in self.vehicle_types)
 
     @property
     def delay_departure(self):
@@ -339,6 +362,7 @@ class Timetable:
     fully_reserved: [bool] helper variable for the prioritize_init_store option
 
     """
+
     def __init__(self, env, trips, days_ahead=2):
         self.env = env
         self.trips = trips
@@ -346,8 +370,7 @@ class Timetable:
         self.secs_ahead = days_ahead * 86400
 
         interval_covered_sharp = self.trips[-1].std - self.trips[0].std
-        self.interval_covered = int(86400 * ceil(interval_covered_sharp
-                                                 / 86400))
+        self.interval_covered = int(86400 * ceil(interval_covered_sharp / 86400))
         self.trips_issued = []
 
         self.all_trips = self.trips.copy()
@@ -366,35 +389,41 @@ class Timetable:
             trip.destination = map_ids[trip.destination]
 
         # Check if VehicleGenerator.complete has been called
-        if 'vehicle_types_obj' not in globalConstants['depot']:
+        if "vehicle_types_obj" not in globalConstants["depot"]:
             raise ValueError(
-                "VehicleGenerator.complete must be called before "
-                "Timetable.complete.")
+                "VehicleGenerator.complete must be called before " "Timetable.complete."
+            )
 
         # Check if trip data and vehicle data are valid
         for trip in self.trips:
             for vtID in trip.vehicle_types:
-                if vtID not in \
-                        globalConstants['depot']['vehicle_types']:
+                if vtID not in globalConstants["depot"]["vehicle_types"]:
                     raise ValueError(
                         'vehicle_types "%s" of trip %s is not listed in'
                         % (vtID, trip.ID)
-                        + " globalConstants['depot']['vehicle_types']")
+                        + " globalConstants['depot']['vehicle_types']"
+                    )
 
         # Convert trip.vehicle_types from a list of str to a list of
         # VehicleType objects
         for trip in self.trips:
             trip.vehicle_types = [
-                next(vt for vt in globalConstants['depot'][
-                    'vehicle_types_obj'] if vt.ID == vtID)
+                next(
+                    vt
+                    for vt in globalConstants["depot"]["vehicle_types_obj"]
+                    if vt.ID == vtID
+                )
                 for vtID in trip.vehicle_types
             ]
 
         # Preparation for prioritize_init_store
-        if globalConstants['depot']['prioritize_init_store']:
-            self.reservations = {depotID: {
-                vtID: 0 for vtID in globalConstants['depot']['vehicle_count'][depotID]}
-                for depotID in globalConstants['depot']['vehicle_count']
+        if globalConstants["depot"]["prioritize_init_store"]:
+            self.reservations = {
+                depotID: {
+                    vtID: 0
+                    for vtID in globalConstants["depot"]["vehicle_count"][depotID]
+                }
+                for depotID in globalConstants["depot"]["vehicle_count"]
             }
             self.reserve_trips(self.trips)
 
@@ -414,19 +443,28 @@ class Timetable:
             loop_repetitions = 0
             t_max = self.trips_issued[-1].std
             t_max_ceiled = int(86400 * ceil(t_max / 86400))
-            flexprint('Time for new tripset(s). t_max = %d, t_max_ceiled = %d'
-                      % (t_max, t_max_ceiled), switch='timetable')
+            flexprint(
+                "Time for new tripset(s). t_max = %d, t_max_ceiled = %d"
+                % (t_max, t_max_ceiled),
+                switch="timetable",
+            )
 
             while t_max - self.env.now <= self.secs_ahead:
                 self.repetitions += 1
                 trips_new = self.repeat_trips(
-                    t_max_ceiled + loop_repetitions * self.interval_covered)
-                flexprint('Interval: %d + %d * %d = %d'
-                          % (t_max_ceiled, loop_repetitions,
-                             self.interval_covered,
-                             t_max_ceiled + loop_repetitions
-                             * self.interval_covered), env=self.env,
-                          switch='timetable')
+                    t_max_ceiled + loop_repetitions * self.interval_covered
+                )
+                flexprint(
+                    "Interval: %d + %d * %d = %d"
+                    % (
+                        t_max_ceiled,
+                        loop_repetitions,
+                        self.interval_covered,
+                        t_max_ceiled + loop_repetitions * self.interval_covered,
+                    ),
+                    env=self.env,
+                    switch="timetable",
+                )
                 self.issue_requests(trips_new)
                 t_max = self.trips_issued[-1].std
                 loop_repetitions += 1
@@ -443,7 +481,7 @@ class Timetable:
         for trip in self.trips:
             trip_new = SimpleTrip(
                 self.env,
-                ID=trip.ID + '_r' + str(self.repetitions),
+                ID=trip.ID + "_r" + str(self.repetitions),
                 line_name=trip.line_name,
                 origin=trip.origin,
                 destination=trip.destination,
@@ -453,13 +491,13 @@ class Timetable:
                 distance=trip.distance,
                 start_soc=trip.start_soc,
                 end_soc=trip.end_soc,
-                charge_on_track=trip.charge_on_track
+                charge_on_track=trip.charge_on_track,
             )
             trip_new.copy_of = trip
             new_trips.append(trip_new)
             self.all_trips.append(trip_new)
 
-        if globalConstants['depot']['prioritize_init_store']:
+        if globalConstants["depot"]["prioritize_init_store"]:
             # necessary if there are more vehicles than intial trips
             self.reserve_trips(new_trips)
 
@@ -473,14 +511,12 @@ class Timetable:
 
     @staticmethod
     def issue_request(trip):
-        """Issue request for vehicle at the trip's departure depot. The vehicle 
+        """Issue request for vehicle at the trip's departure depot. The vehicle
         has to match *filter*. Waiting time is possible. Called in run().
         """
         # Please dont add restrictions here!
         # Go to dispatch strategies in depot.py instead.
-        vf = VehicleFilter(
-                filter_names=['trip_vehicle_match'],
-                trip=trip)
+        vf = VehicleFilter(filter_names=["trip_vehicle_match"], trip=trip)
 
         trip.origin.request_vehicle(trip, filter=vf)
 
@@ -490,27 +526,32 @@ class Timetable:
         Call only if option prioritize_init_store is on.
         """
         if not self.fully_reserved:
-
             for trip in trips:
                 # look for the first best match
                 for vt in trip.vehicle_types:
-                    if self.reservations[trip.origin.ID][vt.ID] < \
-                            globalConstants['depot']['vehicle_count'][
-                                trip.origin.ID][vt.ID]:
+                    if (
+                        self.reservations[trip.origin.ID][vt.ID]
+                        < globalConstants["depot"]["vehicle_count"][trip.origin.ID][
+                            vt.ID
+                        ]
+                    ):
                         self.reservations[trip.origin.ID][vt.ID] += 1
                         trip.reserved_for_init = True
                         # vehicle found, stop search for this trip
                         break
-            flexprint('reservations: %s' % self.reservations, env=self.env,
-                      switch='dispatch2')
+            flexprint(
+                "reservations: %s" % self.reservations, env=self.env, switch="dispatch2"
+            )
 
             # Check if there are any available vehicles left to possibly
             # shorten next method call (checking if init store is empty is not
             # safe if interval_covered is very small)
             for depotID in self.reservations:
                 for vtID in self.reservations[depotID]:
-                    if self.reservations[depotID][vtID] < globalConstants[
-                            'depot']['vehicle_count'][depotID][vtID]:
+                    if (
+                        self.reservations[depotID][vtID]
+                        < globalConstants["depot"]["vehicle_count"][depotID][vtID]
+                    ):
                         break
                 else:
                     continue
@@ -526,6 +567,7 @@ class ExcelSheetData:
     data: [list] containing the imported data with one entry per row.
 
     """
+
     def __init__(self, filename, sheetname):
         self.filename = filename
         self.sheetname = sheetname
@@ -569,8 +611,8 @@ def timetabledata_from_excel(filename):
     extension. Example:
         '..\\bvg_depot\\tripdata\\tripData_depot_I_vehicleType_EN_GN_DL'
     """
-    filename += '.xlsx'
-    return ExcelSheetData(filename, 'Tripdata')
+    filename += ".xlsx"
+    return ExcelSheetData(filename, "Tripdata")
 
 
 def timetable_from_timetabledata(env, timetabledata):
@@ -600,28 +642,38 @@ def timetabledata_to_trips(env, timetabledata):
     for entry in timetabledata.data[1:]:
         # At least one of trip's vehicle_types entry must be specified in
         # globalConstants
-        if any([vt in globalConstants['depot']['vehicle_types'].keys()
-                for vt in entry[datamap['vehicle_types']].split(', ')]):
-
+        if any(
+            [
+                vt in globalConstants["depot"]["vehicle_types"].keys()
+                for vt in entry[datamap["vehicle_types"]].split(", ")
+            ]
+        ):
             trips.append(
                 SimpleTrip(
                     env,
-                    str(entry[datamap['ID']]),
-                    str(entry[datamap['line_name']]),
-                    entry[datamap['origin']],
-                    entry[datamap['destination']],
-                    entry[datamap['vehicle_types']].split(', '),
-                    int(round(entry[datamap['std [s]']])),
-                    int(round(entry[datamap['sta [s]']])),
-                    entry[datamap['distance [km]']],
-                    entry[datamap['start_soc']] if 'start_soc' in datamap else None,
-                    entry[datamap['end_soc']] if 'end_soc' in datamap else None,
-                    entry[datamap['charge_on_track']] if 'charge_on_track' in datamap else False
-                ))
+                    str(entry[datamap["ID"]]),
+                    str(entry[datamap["line_name"]]),
+                    entry[datamap["origin"]],
+                    entry[datamap["destination"]],
+                    entry[datamap["vehicle_types"]].split(", "),
+                    int(round(entry[datamap["std [s]"]])),
+                    int(round(entry[datamap["sta [s]"]])),
+                    entry[datamap["distance [km]"]],
+                    entry[datamap["start_soc"]] if "start_soc" in datamap else None,
+                    entry[datamap["end_soc"]] if "end_soc" in datamap else None,
+                    entry[datamap["charge_on_track"]]
+                    if "charge_on_track" in datamap
+                    else False,
+                )
+            )
         else:
             raise ValueError(
-                'No matching vehicle type for trip %s (filename=%s) is '
-                'defined in globalConstants (filename=%s).'
-                % (entry[datamap['ID']], timetabledata.filename,
-                   globalConstants['FILENAME_SETTINGS']))
+                "No matching vehicle type for trip %s (filename=%s) is "
+                "defined in globalConstants (filename=%s)."
+                % (
+                    entry[datamap["ID"]],
+                    timetabledata.filename,
+                    globalConstants["FILENAME_SETTINGS"],
+                )
+            )
     return trips

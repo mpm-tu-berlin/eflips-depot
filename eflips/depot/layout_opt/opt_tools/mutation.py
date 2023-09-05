@@ -59,9 +59,9 @@ def mutgaussian_area_count_rnd(depot, mu, sigma):
     assert len(depot.areas) == count_new
 
     if diff > 0:
-        mutations.append('count+')
+        mutations.append("count+")
     else:
-        mutations.append('count-')
+        mutations.append("count-")
 
     return True
 
@@ -72,9 +72,9 @@ def mutuniform_area_count_crop(depot, a, b):
     before, new areas with random init values are appended to the right.
     """
     if a < 0:
-        raise ValueError('a must be > 0.')
+        raise ValueError("a must be > 0.")
     if a > b:
-        raise ValueError('a must be < b')
+        raise ValueError("a must be < b")
 
     diff = random.randint(a, b)
     count_old = len(depot.areas)
@@ -108,9 +108,9 @@ def mutuniform_area_count_rnd(depot, a, b):
     before, new areas with random init values are appended to the right.
     """
     if a < 0:
-        raise ValueError('a must be > 0.')
+        raise ValueError("a must be > 0.")
     if a > b:
-        raise ValueError('a must be < b')
+        raise ValueError("a must be < b")
 
     diff = random.randint(a, b)
     count_old = len(depot.areas)
@@ -156,9 +156,9 @@ def mutgaussian_area_capacity(area, mu, sigma):
     area.visu = None
 
     if capacity_new > capacity_old:
-        mutations.append('capacity+')
+        mutations.append("capacity+")
     else:
-        mutations.append('capacity-')
+        mutations.append("capacity-")
 
     return True
 
@@ -166,9 +166,9 @@ def mutgaussian_area_capacity(area, mu, sigma):
 def mutuniform_area_capacity(area, a, b):
     """Random uniform mutation of area capacity."""
     if a < 0:
-        raise ValueError('a must be > 0.')
+        raise ValueError("a must be > 0.")
     if a > b:
-        raise ValueError('a must be < b')
+        raise ValueError("a must be < b")
 
     diff = random.randint(a, b)
     capacity_old = area.capacity
@@ -204,7 +204,7 @@ def mut_area_to_other_type(area, depot):
     # Append new areas to the end. The change of order is okay because
     # areas are sorted before packing.
     depot.areas.extend(new_areas)
-    mutations.append('type_to_other')
+    mutations.append("type_to_other")
     return True
 
 
@@ -226,25 +226,30 @@ def mut_combine_two_areas(depot):
     a1.visu = None
     depot.areas.remove(a2)
     # print('Successfully combined into %s.' % a1)
-    mutations.append('type_combine')
+    mutations.append("type_combine")
     return True
 
 
-def mutgaussian_depot_and(depot, mutsigma_area_count, mutpb_area_count,
-                          mutpb_area_type, mutsigma_area_capacity,
-                          mutpb_area_capacity):
+def mutgaussian_depot_and(
+    depot,
+    mutsigma_area_count,
+    mutpb_area_count,
+    mutpb_area_type,
+    mutsigma_area_capacity,
+    mutpb_area_capacity,
+):
     """Wrapper for mutations of a depot individual where area count, type and
     capacity might be mutated.
     """
     mutated = False
     if random.random() < mutpb_area_count:
-        mutated = mutgaussian_area_count_rnd(depot, 0, mutsigma_area_count) \
-                  or mutated
+        mutated = mutgaussian_area_count_rnd(depot, 0, mutsigma_area_count) or mutated
 
     for area in depot.areas.copy():
         if random.random() < mutpb_area_capacity:
-            mutated = mutgaussian_area_capacity(
-                area, 0, mutsigma_area_capacity) or mutated
+            mutated = (
+                mutgaussian_area_capacity(area, 0, mutsigma_area_capacity) or mutated
+            )
 
         if random.random() < mutpb_area_type:
             mutated = mut_area_to_other_type(area, depot) or mutated
@@ -255,27 +260,34 @@ def mutgaussian_depot_and(depot, mutsigma_area_count, mutpb_area_count,
     return mutated
 
 
-def mutgaussian_depot_or_partial(depot, mutsigma_area_count, mutpb_area_count,
-                                 mutpb_area_type, mutsigma_area_capacity,
-                                 mutpb_area_capacity):
+def mutgaussian_depot_or_partial(
+    depot,
+    mutsigma_area_count,
+    mutpb_area_count,
+    mutpb_area_type,
+    mutsigma_area_capacity,
+    mutpb_area_capacity,
+):
     """Wrapper for mutations of a depot individual where area count and either
     type or capacity might be mutated.
     """
     if mutpb_area_capacity + mutpb_area_type > 1:
-        raise ValueError('The sum of mutpb_area_type and mutpb_area_capacity '
-                         'must be smaller or equal to 1.')
+        raise ValueError(
+            "The sum of mutpb_area_type and mutpb_area_capacity "
+            "must be smaller or equal to 1."
+        )
 
     mutated = False
     if random.random() < mutpb_area_count:
-        mutated = mutgaussian_area_count_rnd(depot, 0, mutsigma_area_count) \
-                  or mutated
+        mutated = mutgaussian_area_count_rnd(depot, 0, mutsigma_area_count) or mutated
 
     for area in depot.areas.copy():
         mut_choice = random.random()
 
         if mut_choice < mutpb_area_capacity:
-            mutated = mutgaussian_area_capacity(
-                area, 0, mutsigma_area_capacity) or mutated
+            mutated = (
+                mutgaussian_area_capacity(area, 0, mutsigma_area_capacity) or mutated
+            )
 
         elif mut_choice < mutpb_area_capacity + mutpb_area_type:
             mutated = mut_area_to_other_type(area, depot) or mutated
@@ -286,30 +298,36 @@ def mutgaussian_depot_or_partial(depot, mutsigma_area_count, mutpb_area_count,
     return mutated
 
 
-def mutgaussian_depot_or(depot, mutsigma_area_count, mutpb_area_count,
-                         mutpb_area_type, mutsigma_area_capacity,
-                         mutpb_area_capacity, splitpb):
+def mutgaussian_depot_or(
+    depot,
+    mutsigma_area_count,
+    mutpb_area_count,
+    mutpb_area_type,
+    mutsigma_area_capacity,
+    mutpb_area_capacity,
+    splitpb,
+):
     """Wrapper for mutations of a depot individual where either area count or
     type or capacity of one area might be mutated.
     """
     if mutpb_area_count + mutpb_area_capacity + mutpb_area_type > 1:
-        raise ValueError('The sum of mutsigma_area_count, mutpb_area_type and '
-                         'mutpb_area_capacity must be smaller or equal to 1.')
+        raise ValueError(
+            "The sum of mutsigma_area_count, mutpb_area_type and "
+            "mutpb_area_capacity must be smaller or equal to 1."
+        )
 
     mutated = False
     mut_choice = random.random()
 
     if mut_choice < mutpb_area_count:
-        mutated = mutgaussian_area_count_rnd(
-            depot, 0, mutsigma_area_count) or mutated
+        mutated = mutgaussian_area_count_rnd(depot, 0, mutsigma_area_count) or mutated
 
     elif mut_choice < mutpb_area_count + mutpb_area_capacity:
         area = random.choice(depot.areas)
-        mutated = mutgaussian_area_capacity(
-            area, 0, mutsigma_area_capacity) or mutated
+        mutated = mutgaussian_area_capacity(area, 0, mutsigma_area_capacity) or mutated
 
     elif mut_choice < mutpb_area_count + mutpb_area_capacity + mutpb_area_type:
-        if random.random() < splitpb:   # p_split
+        if random.random() < splitpb:  # p_split
             # Mutate one area to another type, possibly splitting it up
             area = random.choice(depot.areas)
             mutated = mut_area_to_other_type(area, depot) or mutated
@@ -324,26 +342,38 @@ def mutgaussian_depot_or(depot, mutsigma_area_count, mutpb_area_count,
 
 
 def mutuniform_depot_or_partial(
-        depot, a_area_count, b_a_area_count, mutpb_area_count, mutpb_area_type,
-        a_area_capacity, b_area_capacity, mutpb_area_capacity):
+    depot,
+    a_area_count,
+    b_a_area_count,
+    mutpb_area_count,
+    mutpb_area_type,
+    a_area_capacity,
+    b_area_capacity,
+    mutpb_area_capacity,
+):
     """Wrapper for mutations of a depot individual where area count and either
     type or capacity might be mutated.
     """
     if mutpb_area_capacity + mutpb_area_type > 1:
-        raise ValueError('The sum of mutpb_area_type and mutpb_area_capacity '
-                         'must be smaller or equal to 1.')
+        raise ValueError(
+            "The sum of mutpb_area_type and mutpb_area_capacity "
+            "must be smaller or equal to 1."
+        )
 
     mutated = False
     if random.random() < mutpb_area_count:
-        mutated = mutuniform_area_count_crop(
-            depot, a_area_count, b_a_area_count) or mutated
+        mutated = (
+            mutuniform_area_count_crop(depot, a_area_count, b_a_area_count) or mutated
+        )
 
     for area in depot.areas.copy():
         mut_choice = random.random()
 
         if mut_choice < mutpb_area_capacity:
-            mutated = mutuniform_area_capacity(
-                area, a_area_capacity, b_area_capacity) or mutated
+            mutated = (
+                mutuniform_area_capacity(area, a_area_capacity, b_area_capacity)
+                or mutated
+            )
 
         elif mut_choice < mutpb_area_capacity + mutpb_area_type:
             mutated = mut_area_to_other_type(area, depot) or mutated
@@ -354,27 +384,38 @@ def mutuniform_depot_or_partial(
     return mutated
 
 
-def mutuniform_depot_or(depot, a_area_count, b_a_area_count, mutpb_area_count,
-                        mutpb_area_type, a_area_capacity, b_area_capacity,
-                        mutpb_area_capacity):
+def mutuniform_depot_or(
+    depot,
+    a_area_count,
+    b_a_area_count,
+    mutpb_area_count,
+    mutpb_area_type,
+    a_area_capacity,
+    b_area_capacity,
+    mutpb_area_capacity,
+):
     """Wrapper for mutations of a depot individual where area count and either
     type or capacity might be mutated.
     """
     if mutpb_area_count + mutpb_area_capacity + mutpb_area_type > 1:
-        raise ValueError('The sum of mutsigma_area_count, mutpb_area_type and '
-                         'mutpb_area_capacity must be smaller or equal to 1.')
+        raise ValueError(
+            "The sum of mutsigma_area_count, mutpb_area_type and "
+            "mutpb_area_capacity must be smaller or equal to 1."
+        )
 
     mutated = False
     mut_choice = random.random()
 
     if mut_choice < mutpb_area_count:
-        mutated = mutuniform_area_count_rnd(depot, a_area_count,
-                                            b_a_area_count) or mutated
+        mutated = (
+            mutuniform_area_count_rnd(depot, a_area_count, b_a_area_count) or mutated
+        )
 
     elif mut_choice < mutpb_area_count + mutpb_area_capacity:
         area = random.choice(depot.areas)
-        mutated = mutuniform_area_capacity(
-            area, a_area_capacity, b_area_capacity) or mutated
+        mutated = (
+            mutuniform_area_capacity(area, a_area_capacity, b_area_capacity) or mutated
+        )
 
     elif mut_choice < mutpb_area_count + mutpb_area_capacity + mutpb_area_type:
         area = random.choice(depot.areas)

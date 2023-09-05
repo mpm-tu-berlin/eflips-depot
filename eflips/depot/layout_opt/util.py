@@ -9,8 +9,8 @@ def share_nonzero(arr):
 
 
 class StoppingCriteria:
-    """Stopping utilities for optimization loops of an evolutionary algorithm.
-    """
+    """Stopping utilities for optimization loops of an evolutionary algorithm."""
+
     def __init__(self):
         self.bestfit_history = {}
         self._criteria = []
@@ -26,7 +26,7 @@ class StoppingCriteria:
             try:
                 self._criteria.append(getattr(self, crit))
             except AttributeError:
-                raise ValueError('StoppingCriteria has no criterion named %s' % crit)
+                raise ValueError("StoppingCriteria has no criterion named %s" % crit)
 
     def check(self, *args, **kwargs):
         """Return True if any of the selected stopping criteria returns True.
@@ -39,7 +39,7 @@ class StoppingCriteria:
         """Return True if *g* is higher than or equal to *ngen*."""
         result = g >= ngen
         if result:
-            print('Stopped because of reaching max generation.')
+            print("Stopped because of reaching max generation.")
         return result
 
     @staticmethod
@@ -52,7 +52,7 @@ class StoppingCriteria:
         if hof.items:
             result = hof[0].fitness >= maxfitness
             if result:
-                print('Stopped because of reaching max fitness.')
+                print("Stopped because of reaching max fitness.")
             return result
         else:
             return False
@@ -68,8 +68,10 @@ class StoppingCriteria:
             if self.bestfit_history[g_lookup] is not None:
                 result = self.bestfit_history[g_lookup] >= hof[0].fitness
                 if result:
-                    print('Stopped because of no fitness improvement in the last %d generations.'
-                          % improvement_interval)
+                    print(
+                        "Stopped because of no fitness improvement in the last %d generations."
+                        % improvement_interval
+                    )
                 return result
             else:
                 return False
@@ -90,12 +92,11 @@ class StoppingCriteria:
         return False
 
     @staticmethod
-    def higher_than(value, limit, *args, ** kwargs):
-        """Return True if *value* is higher than *limit*.
-        """
+    def higher_than(value, limit, *args, **kwargs):
+        """Return True if *value* is higher than *limit*."""
         result = value > limit
         if result:
-            print('Stopped because value %s is higher than %s.' % (value, limit))
+            print("Stopped because value %s is higher than %s." % (value, limit))
         return result
 
 

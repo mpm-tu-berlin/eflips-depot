@@ -9,8 +9,12 @@ from abc import ABC, abstractmethod
 from warnings import warn
 from eflips.settings import globalConstants
 from eflips.helperFunctions import flexprint
-from eflips.depot.evaluation import BatteryLog, ChargeStart, \
-    FullyCharged, ProcessFinished
+from eflips.depot.evaluation import (
+    BatteryLog,
+    ChargeStart,
+    FullyCharged,
+    ProcessFinished,
+)
 from eflips.depot.filters import VehicleFilter
 import eflips
 import math
@@ -18,9 +22,10 @@ import math
 
 class ProcessStatus(Enum):
     """Status codes for depot processes."""
-    NOT_STARTED = auto()    # process hasn't started yet
-    WAITING = auto()    # process is waiting for required resources
-    IN_PROGRESS = auto()    # process is being executed
+
+    NOT_STARTED = auto()  # process hasn't started yet
+    WAITING = auto()  # process is waiting for required resources
+    IN_PROGRESS = auto()  # process is being executed
     COMPLETED = auto()  # process successfully finished
     CANCELLED = auto()  # process was interrupted with resume=False
 
@@ -30,7 +35,8 @@ class EstimateValue(Enum):
     value.
 
     """
-    UNKNOWN = auto()    # process not completed but an estimate is not possible
+
+    UNKNOWN = auto()  # process not completed but an estimate is not possible
     COMPLETED = auto()  # process completed or no process scheduled
 
 
@@ -83,17 +89,28 @@ class BaseDepotProcess(ABC):
         method self._estimate_time_of_completion for details.
 
     """
+
     @abstractmethod
-    def __init__(self, env, ID, dur=None, required_resources=None, resume=True,
-                 priority=0, recall_priority=-1, preempt=True,
-                 dur_predefined=True):
+    def __init__(
+        self,
+        env,
+        ID,
+        dur=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        dur_predefined=True,
+    ):
         self.env = env
         self.ID = ID
         self.dur = dur
         self.dur_orig = dur
 
-        self.required_resources = required_resources if \
-            required_resources is not None else []
+        self.required_resources = (
+            required_resources if required_resources is not None else []
+        )
         self.resume = resume
         self.priority = priority
         self.recall_priority = recall_priority
@@ -110,12 +127,17 @@ class BaseDepotProcess(ABC):
         self.finished = env.event()
         self.etc = EstimateValue.UNKNOWN
 
-        if required_resources is not None and not preempt and len(
-                required_resources) > 1:
-            warn('BaseDepotProcess parameter "preempt" should not be False '
-                 'while there is more than 1 resource in "required_resources" '
-                 'unless a resource-locking case can be precluded. See'
-                 ' DepotResourceRequest.preempt for more info.')
+        if (
+            required_resources is not None
+            and not preempt
+            and len(required_resources) > 1
+        ):
+            warn(
+                'BaseDepotProcess parameter "preempt" should not be False '
+                'while there is more than 1 resource in "required_resources" '
+                "unless a resource-locking case can be precluded. See"
+                " DepotResourceRequest.preempt for more info."
+            )
 
     @property
     def resIDs(self):
@@ -133,19 +155,25 @@ class BaseDepotProcess(ABC):
 
     def _estimate_time_of_completion(self):
         """Calculate self.etc based on the current status."""
-        if self.status is ProcessStatus.NOT_STARTED \
-                or self.status is ProcessStatus.WAITING:
+        if (
+            self.status is ProcessStatus.NOT_STARTED
+            or self.status is ProcessStatus.WAITING
+        ):
             self.etc = EstimateValue.UNKNOWN
 
         elif self.status is ProcessStatus.IN_PROGRESS:
             if self.dur is None:
-                raise ValueError("Process %s attribute 'dur' must be set "
-                                 "before process execution." % self.ID)
+                raise ValueError(
+                    "Process %s attribute 'dur' must be set "
+                    "before process execution." % self.ID
+                )
             else:
                 self.etc = self.env.now + self.dur
 
-        elif self.status is ProcessStatus.COMPLETED \
-                or self.status is ProcessStatus.CANCELLED:
+        elif (
+            self.status is ProcessStatus.COMPLETED
+            or self.status is ProcessStatus.CANCELLED
+        ):
             self.etc = EstimateValue.COMPLETED
 
     @abstractmethod
@@ -188,9 +216,11 @@ class BaseDepotProcess(ABC):
             yield self.finished
 
         except simpy.Interrupt:
-            raise RuntimeError('BaseDepotProcess must be interrupted through '
-                               'BaseDepotProcess.proc.interrupt() instead of '
-                               'interrupting __call__.')
+            raise RuntimeError(
+                "BaseDepotProcess must be interrupted through "
+                "BaseDepotProcess.proc.interrupt() instead of "
+                "interrupting __call__."
+            )
 
         self._post(*args, **kwargs)
 
@@ -214,10 +244,13 @@ class BaseDepotProcess(ABC):
             self.status = ProcessStatus.WAITING
             yield self.env.all_of(self.requests)
 
-            if hasattr(self, 'vehicle') and self.vehicle is not None:
-                flexprint('Process "%s" for vehicle %s got resources.'
-                          % (self.ID, self.vehicle.ID),
-                          env=self.env, switch='processes')
+            if hasattr(self, "vehicle") and self.vehicle is not None:
+                flexprint(
+                    'Process "%s" for vehicle %s got resources.'
+                    % (self.ID, self.vehicle.ID),
+                    env=self.env,
+                    switch="processes",
+                )
 
             start_time = self.env.now
             self.proc.action_start = start_time
@@ -231,46 +264,64 @@ class BaseDepotProcess(ABC):
             self.status = ProcessStatus.IN_PROGRESS
             yield action_proc
 
-            if hasattr(self, 'vehicle') and self.vehicle is not None:
-                flexprint('Process "%s" for vehicle %s End of pem reached.'
-                          % (self.ID, self.vehicle.ID),
-                          env=self.env, switch='processes')
+            if hasattr(self, "vehicle") and self.vehicle is not None:
+                flexprint(
+                    'Process "%s" for vehicle %s End of pem reached.'
+                    % (self.ID, self.vehicle.ID),
+                    env=self.env,
+                    switch="processes",
+                )
 
             self._cleanup()
             self.status = ProcessStatus.COMPLETED
-            if hasattr(self, 'vehicle') and self.vehicle is not None:
+            if hasattr(self, "vehicle") and self.vehicle is not None:
                 self.vehicle.dwd.active_processes.remove(self)
             self.finished.succeed()
 
         except simpy.Interrupt:
-
-            if hasattr(self, 'vehicle') and self.vehicle is not None:
-                flexprint('Process "%s" for vehicle %s interrupted.'
-                          % (self.ID, self.vehicle.ID),
-                          env=self.env, switch='processes')
+            if hasattr(self, "vehicle") and self.vehicle is not None:
+                flexprint(
+                    'Process "%s" for vehicle %s interrupted.'
+                    % (self.ID, self.vehicle.ID),
+                    env=self.env,
+                    switch="processes",
+                )
 
             if not self.resume:
-                if hasattr(self.vehicle.dwd.current_area,
-                           "items"):  # Needed because of Precondition, special cancel time
+                if hasattr(
+                    self.vehicle.dwd.current_area, "items"
+                ):  # Needed because of Precondition, special cancel time
                     items = self.vehicle.dwd.current_area.items
                 else:
                     items = None
-                flexprint('Process "%s" for vehicle %s interrupted. area. %s, area items: %s. resume: %s'
-                          % (self.ID, self.vehicle.ID, self.vehicle.dwd.current_area, items, self.resume),
-                          env=self.env, switch='departure_before_fully_charged_3')
+                flexprint(
+                    'Process "%s" for vehicle %s interrupted. area. %s, area items: %s. resume: %s'
+                    % (
+                        self.ID,
+                        self.vehicle.ID,
+                        self.vehicle.dwd.current_area,
+                        items,
+                        self.resume,
+                    ),
+                    env=self.env,
+                    switch="departure_before_fully_charged_3",
+                )
 
             # Interrupt process action_proc
             if action_proc is not None and not action_proc.triggered:
                 action_proc.interrupt()
 
-            if self.resume:     # Process may be resumed
+            if self.resume:  # Process may be resumed
                 self._cleanup()
 
                 if self.dur_predefined:
                     # Process requires pre-definition of the (remaining)
                     # duration
-                    usage_time = self.env.now - self.proc.start \
-                        if hasattr(self.proc, 'start') else 0
+                    usage_time = (
+                        self.env.now - self.proc.start
+                        if hasattr(self.proc, "start")
+                        else 0
+                    )
                     remaining_time = self.dur - usage_time
 
                     if remaining_time > 0:
@@ -280,29 +331,40 @@ class BaseDepotProcess(ABC):
                         self.dur = remaining_time
 
                         # Call process again
-                        if hasattr(self, 'vehicle') and self.vehicle is not None:
-                            flexprint('Process "%s" for vehicle %s will be resumed with dur=%s.'
-                                      % (self.ID, self.vehicle.ID, remaining_time),
-                                      env=self.env, switch='processes')
+                        if hasattr(self, "vehicle") and self.vehicle is not None:
+                            flexprint(
+                                'Process "%s" for vehicle %s will be resumed with dur=%s.'
+                                % (self.ID, self.vehicle.ID, remaining_time),
+                                env=self.env,
+                                switch="processes",
+                            )
 
                         self.proc = self.env.process(
-                            self._pem(recall=True, *args, **kwargs))
+                            self._pem(recall=True, *args, **kwargs)
+                        )
 
                 else:
                     # Continue without dur (for processes such as Charge).
                     # Call process again
-                    if hasattr(self, 'vehicle') and self.vehicle is not None:
-                        flexprint('Process "%s" for vehicle %s will be resumed.'
-                                  % (self.ID, self.vehicle.ID),
-                                  env=self.env, switch='processes')
+                    if hasattr(self, "vehicle") and self.vehicle is not None:
+                        flexprint(
+                            'Process "%s" for vehicle %s will be resumed.'
+                            % (self.ID, self.vehicle.ID),
+                            env=self.env,
+                            switch="processes",
+                        )
                     self.proc = self.env.process(
-                        self._pem(recall=True, *args, **kwargs))
+                        self._pem(recall=True, *args, **kwargs)
+                    )
 
             else:
-                if hasattr(self, 'vehicle') and self.vehicle is not None:
-                    flexprint("Process '%s' for vehicle %s won't be resumed."
-                              % (self.ID, self.vehicle.ID),
-                              env=self.env, switch='processes')
+                if hasattr(self, "vehicle") and self.vehicle is not None:
+                    flexprint(
+                        "Process '%s' for vehicle %s won't be resumed."
+                        % (self.ID, self.vehicle.ID),
+                        env=self.env,
+                        switch="processes",
+                    )
                 self._cleanup_after_cancel()
 
     def _request_resources(self, prio):
@@ -310,16 +372,18 @@ class BaseDepotProcess(ABC):
         if self.required_resources:
             resIDs = self.resIDs
 
-            if hasattr(self, 'vehicle') and self.vehicle is not None:
-                flexprint('Process "%s" for vehicle %s requesting resources %s with prio=%s; dur=%s.'
-                          % (self.ID, self.vehicle.ID, resIDs, prio, self.dur),
-                          env=self.env, switch='processes')
+            if hasattr(self, "vehicle") and self.vehicle is not None:
+                flexprint(
+                    'Process "%s" for vehicle %s requesting resources %s with prio=%s; dur=%s.'
+                    % (self.ID, self.vehicle.ID, resIDs, prio, self.dur),
+                    env=self.env,
+                    switch="processes",
+                )
 
-            self.requests = [res.request(
-                caller=self,
-                priority=prio,
-                preempt=self.preempt
-            ) for res in self.required_resources]
+            self.requests = [
+                res.request(caller=self, priority=prio, preempt=self.preempt)
+                for res in self.required_resources
+            ]
 
     def _release_resources(self):
         """Release occupied resource slots and open requests."""
@@ -331,47 +395,64 @@ class BaseDepotProcess(ABC):
 
     def _cleanup(self):
         """Actions after process execution regardless of its success."""
-        if hasattr(self, 'vehicle') and self.vehicle is not None:
-            flexprint('Process "%s" for vehicle %s cleanup called'
-                      % (self.ID, self.vehicle.ID),
-                      env=self.env, switch='processes')
+        if hasattr(self, "vehicle") and self.vehicle is not None:
+            flexprint(
+                'Process "%s" for vehicle %s cleanup called'
+                % (self.ID, self.vehicle.ID),
+                env=self.env,
+                switch="processes",
+            )
         # Release occupied resource slots and open requests
         self._release_resources()
 
         # For stats
-        if hasattr(self.proc, 'action_start'):
+        if hasattr(self.proc, "action_start"):
             self.ends.append(self.env.now)
 
-        if hasattr(self, 'vehicle') and self.vehicle is not None:
-            flexprint('Process "%s" for vehicle %s cleaned up'
-                      % (self.ID, self.vehicle.ID),
-                      env=self.env, switch='processes')
+        if hasattr(self, "vehicle") and self.vehicle is not None:
+            flexprint(
+                'Process "%s" for vehicle %s cleaned up' % (self.ID, self.vehicle.ID),
+                env=self.env,
+                switch="processes",
+            )
 
     def cancel(self):
         """Immediately stop the current process execution. No restart is
         scheduled, even if self.resume was set to True before.
         """
-        if hasattr(self.vehicle.dwd.current_area,"items"): # Needed because of Precondition, special cancel time
+        if hasattr(
+            self.vehicle.dwd.current_area, "items"
+        ):  # Needed because of Precondition, special cancel time
             items = self.vehicle.dwd.current_area.items
         else:
             items = None
-        flexprint('Cancelling %s for vehicle %s. soc=%s, area: %s, area items: %s'
-                  % (self, self.vehicle.ID, self.vehicle.battery.soc,
-                     self.vehicle.dwd.current_area, items),
-                  env=self.env, switch='departure_before_fully_charged_3')
+        flexprint(
+            "Cancelling %s for vehicle %s. soc=%s, area: %s, area items: %s"
+            % (
+                self,
+                self.vehicle.ID,
+                self.vehicle.battery.soc,
+                self.vehicle.dwd.current_area,
+                items,
+            ),
+            env=self.env,
+            switch="departure_before_fully_charged_3",
+        )
 
         self.resume = False
         self.proc.interrupt()
 
     def _cleanup_after_cancel(self):
         """Do general and cancel-specific cleanup."""
-        if hasattr(self, 'vehicle') and self.vehicle is not None:
-            flexprint("Process '%s' for vehicle %s cancelled."
-                      % (self.ID, self.vehicle.ID),
-                      env=self.env, switch='processes')
+        if hasattr(self, "vehicle") and self.vehicle is not None:
+            flexprint(
+                "Process '%s' for vehicle %s cancelled." % (self.ID, self.vehicle.ID),
+                env=self.env,
+                switch="processes",
+            )
         self._cleanup()
         self.status = ProcessStatus.CANCELLED
-        if hasattr(self, 'vehicle') and self.vehicle is not None:
+        if hasattr(self, "vehicle") and self.vehicle is not None:
             self.vehicle.dwd.active_processes.remove(self)
         self.finished.succeed()
 
@@ -403,45 +484,68 @@ class VehicleProcess(BaseDepotProcess, ABC):
         There might still be waiting time due to resource requirements.
 
     """
+
     request_immediately = True
 
-    def __init__(self, env, ID, dur, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False, dur_predefined=True):
-
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        dur_predefined=True,
+    ):
         super(VehicleProcess, self).__init__(
-            env, ID, dur, required_resources, resume, priority,
-            recall_priority, preempt, dur_predefined)
+            env,
+            ID,
+            dur,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            dur_predefined,
+        )
 
         self.vehicle = None
         self.ismandatory = ismandatory
-        self.vehicle_filter = vehicle_filter if vehicle_filter is not None \
-            else VehicleFilter()
+        self.vehicle_filter = (
+            vehicle_filter if vehicle_filter is not None else VehicleFilter()
+        )
 
         self.cancellable_for_dispatch = cancellable_for_dispatch
         if cancellable_for_dispatch:
             self.finished.callbacks.append(self.notify_assignment)
 
     def _pre(self, *args, **kwargs):
-        self.vehicle = kwargs['vehicle']
+        self.vehicle = kwargs["vehicle"]
         # flexprint('in _pre of %s for vehicle %s. slot: %s'
         #         % (self.ID, self.vehicle.ID, self.vehicle.dwd.current_slot),
         #         env=self.env, switch='objID', objID=self.vehicle.ID)
         self.vehicle.dwd.active_processes.append(self)
 
-        if hasattr(self.vehicle, 'logger') and globalConstants['general'][
-            'LOG_ATTRIBUTES'] and globalConstants['general'][
-            'LOG_SPECIFIC_STEPS']:
+        if (
+            hasattr(self.vehicle, "logger")
+            and globalConstants["general"]["LOG_ATTRIBUTES"]
+            and globalConstants["general"]["LOG_SPECIFIC_STEPS"]
+        ):
             self.vehicle.logger.steplog()
 
     def _post(self, *args, **kwargs):
-        if globalConstants['depot']['log_cm_data']:
+        if globalConstants["depot"]["log_cm_data"]:
             # Use home_depot in case the vehicle left the depot before
             # finishing the process (not robust for simulations with multiple
             # depots)
             self.vehicle.dwd.home_depot.evaluation.cm_report.log(
-                ProcessFinished(self.env, self.vehicle))
+                ProcessFinished(self.env, self.vehicle)
+            )
         # flexprint(
         #     'in _post of %s for vehicle %s. slot: %s'
         #     % (self.ID, self.vehicle.ID, self.vehicle.dwd.current_slot),
@@ -449,44 +553,78 @@ class VehicleProcess(BaseDepotProcess, ABC):
 
     def notify_assignment(self, *args):
         """Trigger dispatch process if there is a relevant update."""
-        if self.vehicle is not None \
-                and self.vehicle.dwd.current_area.issink \
-                and self.vehicle.dwd.active_processes \
-                and all([proc.cancellable_for_dispatch
-                         for proc in self.vehicle.dwd.active_processes]):
-
-            flexprint('NOTIFYING ASSIGNMENT AFTER %s END for vehicle %s'
-                      % (self.ID, self.vehicle.ID), env=self.env)
+        if (
+            self.vehicle is not None
+            and self.vehicle.dwd.current_area.issink
+            and self.vehicle.dwd.active_processes
+            and all(
+                [
+                    proc.cancellable_for_dispatch
+                    for proc in self.vehicle.dwd.active_processes
+                ]
+            )
+        ):
+            flexprint(
+                "NOTIFYING ASSIGNMENT AFTER %s END for vehicle %s"
+                % (self.ID, self.vehicle.ID),
+                env=self.env,
+            )
 
             self.vehicle.dwd.current_depot.depot_control.trigger_dispatch()
 
 
 class Serve(VehicleProcess):
     """Process of serving a vehicle such as cleaning."""
-    def __init__(self, env, ID, dur, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+    ):
         super(Serve, self).__init__(
-            env, ID, dur, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch)
+            env,
+            ID,
+            dur,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+        )
 
     def _action(self, vehicle):
         try:
-            flexprint('\t%s started service.' % (vehicle.ID), env=self.env,
-                      switch='operations')
-            flexprint('\t%s started service.' % (vehicle.ID), env=self.env,
-                      switch='processes')
+            flexprint(
+                "\t%s started service." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
+            flexprint(
+                "\t%s started service." % (vehicle.ID), env=self.env, switch="processes"
+            )
             yield self.env.timeout(self.dur)
             vehicle.dwd.service_need = False
             vehicle.dwd.t_lastServed = self.env.now
-            flexprint('\t%s completed service.' % (vehicle.ID), env=self.env,
-                      switch='processes')
+            flexprint(
+                "\t%s completed service." % (vehicle.ID),
+                env=self.env,
+                switch="processes",
+            )
 
         except simpy.Interrupt:
-            flexprint('action interrupted', env=self.env, switch='processes')
+            flexprint("action interrupted", env=self.env, switch="processes")
             pass
 
     @staticmethod
@@ -508,27 +646,50 @@ class ChargeAbstract(VehicleProcess, ABC):
     last_update: [int] time of last call to self.update_battery.
 
     """
-    @abstractmethod
-    def __init__(self, env, ID, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False, efficiency=1, *args, **kwargs):
 
+    @abstractmethod
+    def __init__(
+        self,
+        env,
+        ID,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        efficiency=1,
+        *args,
+        **kwargs
+    ):
         if required_resources is not None:
             raise ValueError(
                 "Parameter 'required_resources' is deactivated for process "
                 "ChargeAbstract. The charging interface is detected "
                 "automatically. Remove this statement when adding other "
-                "requirements.")
+                "requirements."
+            )
 
         super(ChargeAbstract, self).__init__(
-            env, ID, None, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch, dur_predefined=False)
+            env,
+            ID,
+            None,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+            dur_predefined=False,
+        )
 
         self.efficiency = efficiency
         self.last_update = 0
-        self.energy = 0 # total Energy of charging process
+        self.energy = 0  # total Energy of charging process
         self.charging_interface = None  # is set upon call
 
     def _pre(self, *args, **kwargs):
@@ -538,18 +699,27 @@ class ChargeAbstract(VehicleProcess, ABC):
     def _request_resources(self, prio):
         """Request the charging interface at the vehicle's current slot."""
 
-        flexprint('Process "%s" for vehicle %s requesting resource %s'
-                  ' with prio=%s; dur=%s. Index: %d, slot_no: %d'
-                  % (self.ID, self.vehicle.ID, self.charging_interface.ID, prio, self.dur,
-                     self.vehicle.dwd.current_area.items.index(self.vehicle),
-                     self.vehicle.dwd.current_slot),
-                  env=self.env, switch='processes')
+        flexprint(
+            'Process "%s" for vehicle %s requesting resource %s'
+            " with prio=%s; dur=%s. Index: %d, slot_no: %d"
+            % (
+                self.ID,
+                self.vehicle.ID,
+                self.charging_interface.ID,
+                prio,
+                self.dur,
+                self.vehicle.dwd.current_area.items.index(self.vehicle),
+                self.vehicle.dwd.current_slot,
+            ),
+            env=self.env,
+            switch="processes",
+        )
 
-        self.requests = [self.charging_interface.request(
-            caller=self,
-            priority=prio,
-            preempt=self.preempt
-        )]
+        self.requests = [
+            self.charging_interface.request(
+                caller=self, priority=prio, preempt=self.preempt
+            )
+        ]
 
     @classmethod
     def get_chargedata(cls, vehicle):
@@ -557,11 +727,15 @@ class ChargeAbstract(VehicleProcess, ABC):
         are multiple data sets using *cls* with different parameters and
         vehicle filters that can return True for the same vehicle.
         """
-        return next((procdata for procdata in
-                     vehicle.dwd.current_depot.processes.values() if
-                     procdata['type'] is cls and
-                     procdata['kwargs']['vehicle_filter'](vehicle)),
-                    None)
+        return next(
+            (
+                procdata
+                for procdata in vehicle.dwd.current_depot.processes.values()
+                if procdata["type"] is cls
+                and procdata["kwargs"]["vehicle_filter"](vehicle)
+            ),
+            None,
+        )
 
     def update_battery(self, event_name, amount=None):
         """Update the energy level of self.vehicle.battery. Can be called
@@ -576,7 +750,9 @@ class ChargeAbstract(VehicleProcess, ABC):
         """
         self.last_update = self.env.now
 
-        if amount is None and (self.last_update == self.env.now or self.starts[-1] == self.env.now):
+        if amount is None and (
+            self.last_update == self.env.now or self.starts[-1] == self.env.now
+        ):
             # Skip if the call is not for putting and either the process just
             # started (possibly waiting for resources) or just updated
             return
@@ -585,17 +761,22 @@ class ChargeAbstract(VehicleProcess, ABC):
             t_base = max(self.last_update, self.starts[-1])
             t_elapsed = self.env.now - t_base
             amount = t_elapsed / 3600 * self.power * self.efficiency
-            rest = round(self.vehicle.battery.energy_real * self.soc_target - self.vehicle.battery.energy, 14)
+            rest = round(
+                self.vehicle.battery.energy_real * self.soc_target
+                - self.vehicle.battery.energy,
+                14,
+            )
             if rest < amount:
                 # Process was about to finish in this second. Reduce amount to
                 # rest to avoid soc > soc_target and provide an early update
                 amount = rest
-                event_name = 'charge_end'
+                event_name = "charge_end"
 
         self.vehicle.battery.put(amount)
         self.energy += amount
-        self.vehicle.battery_logs.append(BatteryLog(
-            self.env.now, self.vehicle, event_name))
+        self.vehicle.battery_logs.append(
+            BatteryLog(self.env.now, self.vehicle, event_name)
+        )
 
 
 class Charge(ChargeAbstract):
@@ -609,15 +790,35 @@ class Charge(ChargeAbstract):
         vehicle.battery.soc_max will be used as soc_target.
 
     """
-    def __init__(self, env, ID, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False, efficiency=1, soc_target=1):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        efficiency=1,
+        soc_target=1,
+    ):
         super(Charge, self).__init__(
-            env, ID, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch, efficiency)
+            env,
+            ID,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+            efficiency,
+        )
 
         self.check_soc_target(soc_target, vehicle_filter)
         self.soc_target = soc_target
@@ -627,19 +828,29 @@ class Charge(ChargeAbstract):
         return self.charging_interface.max_power
 
     def _action(self, *args, **kwargs):
-        self.vehicle.battery_logs.append(BatteryLog(
-            self.env.now, self.vehicle, 'charge_start'))
-        if globalConstants['depot']['log_cm_data'] and len(self.starts) == 1:
+        self.vehicle.battery_logs.append(
+            BatteryLog(self.env.now, self.vehicle, "charge_start")
+        )
+        if globalConstants["depot"]["log_cm_data"] and len(self.starts) == 1:
             # Log the first start only (ignore interruptions)
             self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                ChargeStart(self.env, self.vehicle))
+                ChargeStart(self.env, self.vehicle)
+            )
 
         self.vehicle.battery.active_processes.append(self)
 
-        if self.soc_target == 'soc_max':
+        if self.soc_target == "soc_max":
             self.soc_target = self.vehicle.battery.soc_max
-        amount = self.vehicle.battery.energy_real * self.soc_target - self.vehicle.battery.energy
-        assert amount > 0, (self.recall_count, self.vehicle.ID, self.vehicle.battery.energy, self.soc_target)
+        amount = (
+            self.vehicle.battery.energy_real * self.soc_target
+            - self.vehicle.battery.energy
+        )
+        assert amount > 0, (
+            self.recall_count,
+            self.vehicle.ID,
+            self.vehicle.battery.energy,
+            self.soc_target,
+        )
 
         effective_power = self.power * self.efficiency
         self.dur = int(amount / effective_power * 3600)
@@ -654,25 +865,33 @@ class Charge(ChargeAbstract):
             yield self.env.timeout(self.dur)
 
             # Update with exact amount to prevent rounding errors
-            rest = round(self.vehicle.battery.energy_real * self.soc_target - self.vehicle.battery.energy, 14)
+            rest = round(
+                self.vehicle.battery.energy_real * self.soc_target
+                - self.vehicle.battery.energy,
+                14,
+            )
             assert rest >= 0
             if rest > 0:
                 # rest is 0 if update_battery was called first in this same
                 # second. Skip adding rest in this case because update_battery
                 # already did
-                self.update_battery('charge_end', amount=rest)
+                self.update_battery("charge_end", amount=rest)
 
             # charge full event
-            if globalConstants['depot']['log_cm_data']:
+            if globalConstants["depot"]["log_cm_data"]:
                 self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                    FullyCharged(self.env, self.vehicle))
+                    FullyCharged(self.env, self.vehicle)
+                )
 
-            flexprint('\t%s completed charging.' % (self.vehicle.ID),
-                      env=self.env, switch='operations')
+            flexprint(
+                "\t%s completed charging." % (self.vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('charge interrupted', env=self.env, switch='processes')
-            self.update_battery('charge_interrupt')
+            flexprint("charge interrupted", env=self.env, switch="processes")
+            self.update_battery("charge_interrupt")
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
@@ -690,9 +909,9 @@ class Charge(ChargeAbstract):
             # returned False
             return 0
 
-        efficiency = chargedata['kwargs']['efficiency']
-        soc_target = chargedata['kwargs']['soc_target']
-        if soc_target == 'soc_max':
+        efficiency = chargedata["kwargs"]["efficiency"]
+        soc_target = chargedata["kwargs"]["soc_target"]
+        if soc_target == "soc_max":
             soc_target = vehicle.battery.soc_max
 
         amount = vehicle.battery.energy_real * soc_target - vehicle.battery.energy
@@ -701,13 +920,17 @@ class Charge(ChargeAbstract):
 
     @staticmethod
     def check_soc_target(soc_target, vehicle_filter):
-        if soc_target != 'soc_max' and not 0 < soc_target <= 1:
+        if soc_target != "soc_max" and not 0 < soc_target <= 1:
             raise ValueError("soc_target must be > 0 and <= 1 or 'soc_max'")
-        if 'soc_lower_than' in vehicle_filter.filter_names \
-                and vehicle_filter.soc is not None \
-                and vehicle_filter.soc > soc_target:
-            raise ValueError('soc_target for charging must be higher than '
-                             'the soc of filter_soc_lower_than')
+        if (
+            "soc_lower_than" in vehicle_filter.filter_names
+            and vehicle_filter.soc is not None
+            and vehicle_filter.soc > soc_target
+        ):
+            raise ValueError(
+                "soc_target for charging must be higher than "
+                "the soc of filter_soc_lower_than"
+            )
 
 
 class ChargeSteps(ChargeAbstract):
@@ -731,15 +954,35 @@ class ChargeSteps(ChargeAbstract):
         the charging interface.
 
     """
-    def __init__(self, env, ID, steps, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False, efficiency=1):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        steps,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        efficiency=1,
+    ):
         super(ChargeSteps, self).__init__(
-            env, ID, ismandatory, vehicle_filter, required_resources, resume,
-            priority, recall_priority, preempt, cancellable_for_dispatch,
-            efficiency)
+            env,
+            ID,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+            efficiency,
+        )
 
         self.steps = steps
         self._power = 0
@@ -753,12 +996,14 @@ class ChargeSteps(ChargeAbstract):
         self._power = value
 
     def _action(self, *args, **kwargs):
-        self.vehicle.battery_logs.append(BatteryLog(
-            self.env.now, self.vehicle, 'charge_start'))
-        if globalConstants['depot']['log_cm_data'] and len(self.starts) == 1:
+        self.vehicle.battery_logs.append(
+            BatteryLog(self.env.now, self.vehicle, "charge_start")
+        )
+        if globalConstants["depot"]["log_cm_data"] and len(self.starts) == 1:
             # Log the first start only (ignore interruptions)
             self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                ChargeStart(self.env, self.vehicle))
+                ChargeStart(self.env, self.vehicle)
+            )
 
         self.vehicle.battery.active_processes.append(self)
 
@@ -767,16 +1012,26 @@ class ChargeSteps(ChargeAbstract):
         for entry in self.steps:
             if entry[0] > self.vehicle.battery.soc:
                 steps_cropped.append(entry)
-        assert steps_cropped, 'soc is already higher than this process ' \
-                              'can achieve. Case should be avoided with ' \
-                              'a vehicle filter.'
+        assert steps_cropped, (
+            "soc is already higher than this process "
+            "can achieve. Case should be avoided with "
+            "a vehicle filter."
+        )
 
         try:
             # Charge according to steps_cropped until steps_cropped is empty
             while steps_cropped:
                 soc_step, self.power = steps_cropped.pop(0)
-                amount = self.vehicle.battery.energy_real * soc_step - self.vehicle.battery.energy
-                assert amount > 0, (self.recall_count, self.vehicle.ID, self.vehicle.battery.energy, soc_step)
+                amount = (
+                    self.vehicle.battery.energy_real * soc_step
+                    - self.vehicle.battery.energy
+                )
+                assert amount > 0, (
+                    self.recall_count,
+                    self.vehicle.ID,
+                    self.vehicle.battery.energy,
+                    soc_step,
+                )
                 effective_power = self.power * self.efficiency
                 self.dur = int(amount / effective_power * 3600)
 
@@ -789,36 +1044,74 @@ class ChargeSteps(ChargeAbstract):
                 yield self.env.timeout(self.dur)
 
                 if steps_cropped:
-                    self.update_battery('charge_step')
-                    flexprint('Vehicle %s after update: soc_step=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, steps_cropped=%s, slot=%s'
-                              % (self.vehicle.ID, soc_step, self.vehicle.battery.soc, self.vehicle.battery.energy, self.vehicle.battery.energy_real, amount, self.power,
-                                 effective_power, self.dur, steps_cropped, self.vehicle.dwd.current_slot),
-                              env=self.env, switch='objID', objID=self.vehicle.ID)
+                    self.update_battery("charge_step")
+                    flexprint(
+                        "Vehicle %s after update: soc_step=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, steps_cropped=%s, slot=%s"
+                        % (
+                            self.vehicle.ID,
+                            soc_step,
+                            self.vehicle.battery.soc,
+                            self.vehicle.battery.energy,
+                            self.vehicle.battery.energy_real,
+                            amount,
+                            self.power,
+                            effective_power,
+                            self.dur,
+                            steps_cropped,
+                            self.vehicle.dwd.current_slot,
+                        ),
+                        env=self.env,
+                        switch="objID",
+                        objID=self.vehicle.ID,
+                    )
 
-            rest = round(self.vehicle.battery.energy_real * soc_step - self.vehicle.battery.energy, 14)
+            rest = round(
+                self.vehicle.battery.energy_real * soc_step
+                - self.vehicle.battery.energy,
+                14,
+            )
             assert rest >= 0
             if rest > 0:
                 # rest is 0 if update_battery was called first in this same
                 # second. Skip adding rest in this case because update_battery
                 # already did
-                self.update_battery('charge_end', amount=rest)
+                self.update_battery("charge_end", amount=rest)
 
-            flexprint('Vehicle %s after update: soc_step=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, steps_cropped=%s, slot=%s'
-                      % (self.vehicle.ID, soc_step, self.vehicle.battery.soc, self.vehicle.battery.energy, self.vehicle.battery.energy_real, amount, self.power,
-                         effective_power, self.dur, steps_cropped, self.vehicle.dwd.current_slot),
-                      env=self.env, switch='objID', objID=self.vehicle.ID)
+            flexprint(
+                "Vehicle %s after update: soc_step=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, steps_cropped=%s, slot=%s"
+                % (
+                    self.vehicle.ID,
+                    soc_step,
+                    self.vehicle.battery.soc,
+                    self.vehicle.battery.energy,
+                    self.vehicle.battery.energy_real,
+                    amount,
+                    self.power,
+                    effective_power,
+                    self.dur,
+                    steps_cropped,
+                    self.vehicle.dwd.current_slot,
+                ),
+                env=self.env,
+                switch="objID",
+                objID=self.vehicle.ID,
+            )
 
             # charge full event
-            if globalConstants['depot']['log_cm_data']:
+            if globalConstants["depot"]["log_cm_data"]:
                 self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                    FullyCharged(self.env, self.vehicle))
+                    FullyCharged(self.env, self.vehicle)
+                )
 
-            flexprint('\t%s completed charging.' % (self.vehicle.ID),
-                      env=self.env, switch='operations')
+            flexprint(
+                "\t%s completed charging." % (self.vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('charge interrupted', env=self.env, switch='processes')
-            self.update_battery('charge_interrupt')
+            flexprint("charge interrupted", env=self.env, switch="processes")
+            self.update_battery("charge_interrupt")
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
@@ -834,8 +1127,8 @@ class ChargeSteps(ChargeAbstract):
             # returned False
             return 0
 
-        efficiency = chargedata['kwargs']['efficiency']
-        steps = chargedata['kwargs']['steps']
+        efficiency = chargedata["kwargs"]["efficiency"]
+        steps = chargedata["kwargs"]["steps"]
 
         steps_cropped = []
         for entry in steps:
@@ -860,16 +1153,18 @@ class ChargeSteps(ChargeAbstract):
         try:
             iterable = iter(steps)
         except TypeError:
-            raise TypeError('steps must be iterable.')
+            raise TypeError("steps must be iterable.")
         else:
             if not steps:
-                raise ValueError('steps cannot be empty.')
+                raise ValueError("steps cannot be empty.")
             previous = -1
             for soc, power in iterable:
                 if previous >= soc:
-                    raise ValueError('Entries in steps must be sorted by SoC '
-                                     'values in ascending order and cannot '
-                                     'contain equal SoC values.')
+                    raise ValueError(
+                        "Entries in steps must be sorted by SoC "
+                        "values in ascending order and cannot "
+                        "contain equal SoC values."
+                    )
                 previous = soc
 
 
@@ -890,22 +1185,43 @@ class ChargeEquationSteps(ChargeAbstract):
     soc_target: same as for class Charge
 
     """
-    def __init__(
-            self, env, ID, peq_name, peq_params, ismandatory=True,
-            vehicle_filter=None, required_resources=None, resume=True,
-            priority=0, recall_priority=-1, preempt=True,
-            cancellable_for_dispatch=False, efficiency=1, precision=0.01,
-            soc_target=1):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        peq_name,
+        peq_params,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        efficiency=1,
+        precision=0.01,
+        soc_target=1,
+    ):
         super(ChargeEquationSteps, self).__init__(
-            env, ID, ismandatory, vehicle_filter, required_resources, resume,
-            priority, recall_priority, preempt, cancellable_for_dispatch,
-            efficiency)
+            env,
+            ID,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+            efficiency,
+        )
 
         self.peq = getattr(eflips.depot.processes, peq_name)
         self.peq_params = peq_params
         if not 0 < precision < 1:
-            raise ValueError('precision must be > 0 and < 1.')
+            raise ValueError("precision must be > 0 and < 1.")
         self.precision = precision
         Charge.check_soc_target(soc_target, vehicle_filter)
         self.soc_target = soc_target
@@ -915,24 +1231,29 @@ class ChargeEquationSteps(ChargeAbstract):
         return self.peq(self.vehicle, self.charging_interface, self.peq_params)
 
     def _action(self, *args, **kwargs):
-        self.vehicle.battery_logs.append(BatteryLog(
-            self.env.now, self.vehicle, 'charge_start'))
-        if globalConstants['depot']['log_cm_data'] and len(self.starts) == 1:
+        self.vehicle.battery_logs.append(
+            BatteryLog(self.env.now, self.vehicle, "charge_start")
+        )
+        if globalConstants["depot"]["log_cm_data"] and len(self.starts) == 1:
             # Log the first start only (ignore interruptions)
             self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                ChargeStart(self.env, self.vehicle))
+                ChargeStart(self.env, self.vehicle)
+            )
 
         self.vehicle.battery.active_processes.append(self)
 
-        if self.soc_target == 'soc_max':
+        if self.soc_target == "soc_max":
             self.soc_target = self.vehicle.battery.soc_max
-        assert self.vehicle.battery.soc < self.soc_target, \
-            'soc is already higher than this process can achieve. Case should be avoided with a vehicle filter.'
+        assert (
+            self.vehicle.battery.soc < self.soc_target
+        ), "soc is already higher than this process can achieve. Case should be avoided with a vehicle filter."
 
         soc_target_step = 0
         try:
             while soc_target_step < self.soc_target:
-                soc_interval = min(self.precision, self.soc_target - self.vehicle.battery.soc)
+                soc_interval = min(
+                    self.precision, self.soc_target - self.vehicle.battery.soc
+                )
                 soc_target_step = self.vehicle.battery.soc + soc_interval
                 amount = self.vehicle.battery.energy_real * soc_interval
                 effective_power = self.power * self.efficiency
@@ -961,24 +1282,45 @@ class ChargeEquationSteps(ChargeAbstract):
                 if soc_target_step < self.soc_target:
                     # recalculate amount because update_battery may have been
                     # called in the meantime
-                    amount_step = self.vehicle.battery.energy_real * soc_target_step - self.vehicle.battery.energy
-                    self.update_battery('charge_step', amount=amount_step)
-                    flexprint('Vehicle %s after update: until_soc=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, slot=%s'
-                              % (self.vehicle.ID, soc_interval, self.vehicle.battery.soc, self.vehicle.battery.energy, self.vehicle.battery.energy_real, amount, self.power,
-                                 effective_power, self.dur, self.vehicle.dwd.current_slot),
-                              env=self.env, switch='objID', objID=self.vehicle.ID)
+                    amount_step = (
+                        self.vehicle.battery.energy_real * soc_target_step
+                        - self.vehicle.battery.energy
+                    )
+                    self.update_battery("charge_step", amount=amount_step)
+                    flexprint(
+                        "Vehicle %s after update: until_soc=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, slot=%s"
+                        % (
+                            self.vehicle.ID,
+                            soc_interval,
+                            self.vehicle.battery.soc,
+                            self.vehicle.battery.energy,
+                            self.vehicle.battery.energy_real,
+                            amount,
+                            self.power,
+                            effective_power,
+                            self.dur,
+                            self.vehicle.dwd.current_slot,
+                        ),
+                        env=self.env,
+                        switch="objID",
+                        objID=self.vehicle.ID,
+                    )
                 else:
                     # Skip to adding rest
                     break
 
-            rest = round(self.vehicle.battery.energy_real * self.soc_target - self.vehicle.battery.energy, 14)
+            rest = round(
+                self.vehicle.battery.energy_real * self.soc_target
+                - self.vehicle.battery.energy,
+                14,
+            )
             # assert rest >= 0, '%s, soc: %s, soc_target: %s, rest: %s, soc_target_step: %s, now: %s, last_update: %s, last log t: %s, last log name: %s' \
             #                   % (self.vehicle, self.vehicle.battery.soc, self.soc_target, rest, soc_target_step, self.env.now, self.last_update, self.vehicle.battery_logs[-1].t, self.vehicle.battery_logs[-1].event_name)
             if rest > 0:
                 # rest is 0 if update_battery was called first in this same
                 # second. Skip adding rest in this case because update_battery
                 # already did
-                self.update_battery('charge_end', amount=rest)
+                self.update_battery("charge_end", amount=rest)
 
             # flexprint(
             #     'Vehicle %s after update: until_soc=%s, soc: %s, energy=%s, energy_real=%s, amount=%s, power=%s, effective_power=%s, dur=%s, slot=%s'
@@ -987,16 +1329,20 @@ class ChargeEquationSteps(ChargeAbstract):
             #     env=self.env, switch='objID', objID=self.vehicle.ID)
 
             # charge full event
-            if globalConstants['depot']['log_cm_data']:
+            if globalConstants["depot"]["log_cm_data"]:
                 self.vehicle.dwd.current_depot.evaluation.cm_report.log(
-                    FullyCharged(self.env, self.vehicle))
+                    FullyCharged(self.env, self.vehicle)
+                )
 
-            flexprint('\t%s completed charging.' % (self.vehicle.ID),
-                      env=self.env, switch='operations')
+            flexprint(
+                "\t%s completed charging." % (self.vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('charge interrupted', env=self.env, switch='processes')
-            self.update_battery('charge_interrupt')
+            flexprint("charge interrupted", env=self.env, switch="processes")
+            self.update_battery("charge_interrupt")
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
@@ -1012,12 +1358,12 @@ class ChargeEquationSteps(ChargeAbstract):
             # returned False
             return 0
 
-        efficiency = chargedata['kwargs']['efficiency']
-        soc_target = chargedata['kwargs']['soc_target']
-        precision = chargedata['kwargs']['precision']
-        peq = getattr(eflips.depot.processes, chargedata['kwargs']['peq_name'])
-        peq_params = chargedata['kwargs']['peq_params']
-        if soc_target == 'soc_max':
+        efficiency = chargedata["kwargs"]["efficiency"]
+        soc_target = chargedata["kwargs"]["soc_target"]
+        precision = chargedata["kwargs"]["precision"]
+        peq = getattr(eflips.depot.processes, chargedata["kwargs"]["peq_name"])
+        peq_params = chargedata["kwargs"]["peq_params"]
+        if soc_target == "soc_max":
             soc_target = vehicle.battery.soc_max
 
         soc = vehicle.battery.soc
@@ -1048,39 +1394,70 @@ def exponential_power(vehicle, charging_interface, peq_params, *args, **kwargs):
     """
     SoC = vehicle.battery.soc
     P_max = charging_interface.max_power
-    SoC_threshold = peq_params['x']
+    SoC_threshold = peq_params["x"]
     En = vehicle.battery.energy_nominal
 
     if SoC < SoC_threshold:
         return P_max
     else:
         # return P_max ** (5 - SoC / 0.2) * 10 ** (4 - SoC / 0.2) * En ** (SoC / 0.2 - 4)
-        return P_max/10 * (1/En - 10) / (math.exp(1) - math.exp(SoC_threshold)) * (math.exp(SoC) - math.exp(SoC_threshold)) + P_max
-
+        return (
+            P_max
+            / 10
+            * (1 / En - 10)
+            / (math.exp(1) - math.exp(SoC_threshold))
+            * (math.exp(SoC) - math.exp(SoC_threshold))
+            + P_max
+        )
 
 
 class Standby(VehicleProcess):
     """Process of mandatory waiting such as standby times."""
-    def __init__(self, env, ID, dur, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+    ):
         super(Standby, self).__init__(
-            env, ID, dur, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch)
+            env,
+            ID,
+            dur,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+        )
 
     def _action(self, vehicle):
         try:
-            flexprint('\t%s started standby.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s started standby." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
             yield self.env.timeout(self.dur)
-            flexprint('\t%s completed standby.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s completed standby." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('action interrupted', env=self.env, switch='processes')
+            flexprint("action interrupted", env=self.env, switch="processes")
             pass
 
     @staticmethod
@@ -1090,27 +1467,50 @@ class Standby(VehicleProcess):
 
 class Repair(VehicleProcess):
     """Process of repairing a vehicle."""
-    def __init__(self, env, ID, dur, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False):
 
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+    ):
         super(Repair, self).__init__(
-            env, ID, dur, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch)
+            env,
+            ID,
+            dur,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+        )
 
     def _action(self, vehicle):
         try:
-            flexprint('\t%s started repair.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s started repair." % (vehicle.ID), env=self.env, switch="operations"
+            )
             yield self.env.timeout(self.dur)
             vehicle.dwd.repair_need = False
-            flexprint('\t%s completed repair.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s completed repair." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('action interrupted', env=self.env, switch='processes')
+            flexprint("action interrupted", env=self.env, switch="processes")
             pass
 
     @staticmethod
@@ -1120,26 +1520,52 @@ class Repair(VehicleProcess):
 
 class Maintain(VehicleProcess):
     """Process of maintaining a vehicle."""
-    def __init__(self, env, ID, dur, ismandatory=True, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False):
+
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=True,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+    ):
         super(Maintain, self).__init__(
-            env, ID, dur, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch)
+            env,
+            ID,
+            dur,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+        )
 
     def _action(self, vehicle):
         try:
-            flexprint('\t%s started maintenance.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s started maintenance." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
             yield self.env.timeout(self.dur)
             vehicle.dwd.maintenance_need = False
-            flexprint('\t%s completed maintenance.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s completed maintenance." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('action interrupted', env=self.env, switch='processes')
+            flexprint("action interrupted", env=self.env, switch="processes")
             pass
 
     @staticmethod
@@ -1160,24 +1586,49 @@ class Precondition(VehicleProcess):
         scheduled depending on departure time instead of entry time at an area.
 
     """
+
     request_immediately = False
 
-    def __init__(self, env, ID, dur, ismandatory=False, vehicle_filter=None,
-                 required_resources=None, resume=True, priority=0,
-                 recall_priority=-1, preempt=True,
-                 cancellable_for_dispatch=False, efficiency=1, power=20):
+    def __init__(
+        self,
+        env,
+        ID,
+        dur,
+        ismandatory=False,
+        vehicle_filter=None,
+        required_resources=None,
+        resume=True,
+        priority=0,
+        recall_priority=-1,
+        preempt=True,
+        cancellable_for_dispatch=False,
+        efficiency=1,
+        power=20,
+    ):
         super(Precondition, self).__init__(
-            env, ID, dur, ismandatory, vehicle_filter, required_resources,
-            resume, priority, recall_priority, preempt,
-            cancellable_for_dispatch)
+            env,
+            ID,
+            dur,
+            ismandatory,
+            vehicle_filter,
+            required_resources,
+            resume,
+            priority,
+            recall_priority,
+            preempt,
+            cancellable_for_dispatch,
+        )
 
         self.efficiency = efficiency
         self.power = power
 
     def _action(self, vehicle):
         try:
-            flexprint('\t%s started preconditioning.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s started preconditioning." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
             effective_power = self.power * self.efficiency
             self.charging_interface.current_power = self.power
             self.vehicle.power_logs[self.env.now] = effective_power
@@ -1185,11 +1636,14 @@ class Precondition(VehicleProcess):
             self.charging_interface.current_power = 0
             self.vehicle.power_logs[self.env.now] = 0
 
-            flexprint('\t%s completed preconditioning.' % (vehicle.ID), env=self.env,
-                      switch='operations')
+            flexprint(
+                "\t%s completed preconditioning." % (vehicle.ID),
+                env=self.env,
+                switch="operations",
+            )
 
         except simpy.Interrupt:
-            flexprint('action interrupted', env=self.env, switch='processes')
+            flexprint("action interrupted", env=self.env, switch="processes")
             self.charging_interface.current_power = 0
             self.vehicle.power_logs[self.env.now] = 0
 

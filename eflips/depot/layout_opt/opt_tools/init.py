@@ -12,13 +12,15 @@ from eflips.depot.layout_opt.settings import OPT_CONSTANTS as OC
 
 # Functions for precomputing
 
+
 def get_capacity_max(visu_class, capacity_min, limit=200):
     """Determine an area type's maximum capacity within DEPOT_A, DEPOT_B (the
     b-dimension). Uses BinWithDistances.try_put as a lightweight packing test.
     Return the capacity [int] or None if not even the minimum fits.
     """
-    dims = packing.BinWithDistances(OC['scenario']['DEPOT_A'],
-                                    OC['scenario']['DEPOT_B'])
+    dims = packing.BinWithDistances(
+        OC["scenario"]["DEPOT_A"], OC["scenario"]["DEPOT_B"]
+    )
     for c in range(capacity_min, limit + 1):
         candidate = visu_class(capacity=c)
         success, _ = dims.try_put(candidate)
@@ -29,8 +31,10 @@ def get_capacity_max(visu_class, capacity_min, limit=200):
             else:
                 # Previous fits
                 return c - 1
-    raise RuntimeError('Determination of the max capacity for %s exceeded the '
-                       'limit of %d areas.' % (visu_class, limit))
+    raise RuntimeError(
+        "Determination of the max capacity for %s exceeded the "
+        "limit of %d areas." % (visu_class, limit)
+    )
 
 
 def get_count_max(visu_class, capacity):
@@ -38,8 +42,9 @@ def get_count_max(visu_class, capacity):
     within DEPOT_A, DEPOT_B. Return the count [int] or None if not even one
     area fits and the BinWithDistances object populated with the max count.
     """
-    dvisu = packing.BinWithDistances(OC['scenario']['DEPOT_A'],
-                                     OC['scenario']['DEPOT_B'])
+    dvisu = packing.BinWithDistances(
+        OC["scenario"]["DEPOT_A"], OC["scenario"]["DEPOT_B"]
+    )
     item = visu_class(capacity=capacity)
     dvisu.items.append(item)
     dvisu.pack()
@@ -79,8 +84,10 @@ def get_count_max_with_capacity_min(visu_class, capacity_min):
 
 # Initializers
 
+
 class AreaPrototype(ABC):
     """Abstract base class for a simple area representation."""
+
     capacity_min = int()
     capacity_max = int()
     typename = str()
@@ -88,10 +95,10 @@ class AreaPrototype(ABC):
 
     def __init__(self, capacity):
         self.capacity = capacity
-        self._visu = None   # take care: needs reset after mutation
+        self._visu = None  # take care: needs reset after mutation
 
     def __repr__(self):
-        return '{%s} cap=%s' % (self.typename, self.capacity)
+        return "{%s} cap=%s" % (self.typename, self.capacity)
 
     @property
     def visu(self):
@@ -111,7 +118,7 @@ class AreaPrototype(ABC):
         other_type: type of other area prototype
         """
         if other_type is type(self):
-            return ValueError('Cannot convert to the same type.')
+            return ValueError("Cannot convert to the same type.")
 
         result = []
 
@@ -137,32 +144,34 @@ class AreaPrototype(ABC):
 
 class DSRPrototype(AreaPrototype):
     """Class for a simple DSR area representation."""
+
     capacity_min = 1
-    capacity_max = get_capacity_max(packing.VisuDataDirectSingleRow,
-                                    capacity_min)
-    typename = 'DSR'
+    capacity_max = get_capacity_max(packing.VisuDataDirectSingleRow, capacity_min)
+    typename = "DSR"
     visu_class = packing.VisuDataDirectSingleRow
 
     def __init__(self, capacity):
         super(DSRPrototype, self).__init__(capacity)
 
+
 class DSR_90Prototype(AreaPrototype):
     """Class for a simple DSR_90 area representation."""
+
     capacity_min = 1
-    capacity_max = get_capacity_max(packing.VisuDataDirectSingleRow_90,
-                                    capacity_min)
-    typename = 'DSR_90'
+    capacity_max = get_capacity_max(packing.VisuDataDirectSingleRow_90, capacity_min)
+    typename = "DSR_90"
     visu_class = packing.VisuDataDirectSingleRow_90
 
     def __init__(self, capacity):
         super(DSR_90Prototype, self).__init__(capacity)
 
+
 class DDRPrototype(AreaPrototype):
     """Class for a simple DDR area representation."""
+
     capacity_min = 2
-    capacity_max = get_capacity_max(packing.VisuDataDirectDoubleRow,
-                                    capacity_min)
-    typename = 'DDR'
+    capacity_max = get_capacity_max(packing.VisuDataDirectDoubleRow, capacity_min)
+    typename = "DDR"
     visu_class = packing.VisuDataDirectDoubleRow
 
     def __init__(self, capacity):
@@ -171,11 +180,11 @@ class DDRPrototype(AreaPrototype):
 
 class LinePrototype(AreaPrototype):
     """Class for a simple Line area representation."""
-    capacity_min = 2
-    capacity_max = get_capacity_max(packing.VisuDataLine,
-                                    capacity_min)
 
-    typename = 'L'
+    capacity_min = 2
+    capacity_max = get_capacity_max(packing.VisuDataLine, capacity_min)
+
+    typename = "L"
     visu_class = packing.VisuDataLine
 
     def __init__(self, capacity):
@@ -186,7 +195,7 @@ OTHER_AREA_TYPES = {
     DSRPrototype: (DSR_90Prototype, DDRPrototype, LinePrototype),
     DSR_90Prototype: (DSRPrototype, DDRPrototype, LinePrototype),
     DDRPrototype: (DSRPrototype, DSR_90Prototype, LinePrototype),
-    LinePrototype: (DSRPrototype, DSR_90Prototype, DDRPrototype)
+    LinePrototype: (DSRPrototype, DSR_90Prototype, DDRPrototype),
 }
 
 
@@ -195,66 +204,120 @@ OTHER_AREA_TYPES = {
 # Estimate the total maximum capacity (max with all areas of the same type
 # with maximum capacity)
 count_max_with_capacity_max_dsr, dims_dsr_cap_max = get_count_max_with_capacity_max(
-    packing.VisuDataDirectSingleRow, DSRPrototype.capacity_min)
-count_max_with_capacity_max_dsr_90, dims_dsr_90_cap_max = get_count_max_with_capacity_max(
-    packing.VisuDataDirectSingleRow_90, DSR_90Prototype.capacity_min)
+    packing.VisuDataDirectSingleRow, DSRPrototype.capacity_min
+)
+(
+    count_max_with_capacity_max_dsr_90,
+    dims_dsr_90_cap_max,
+) = get_count_max_with_capacity_max(
+    packing.VisuDataDirectSingleRow_90, DSR_90Prototype.capacity_min
+)
 count_max_with_capacity_max_ddr, dims_ddr_cap_max = get_count_max_with_capacity_max(
-    packing.VisuDataDirectDoubleRow, DDRPrototype.capacity_min)
+    packing.VisuDataDirectDoubleRow, DDRPrototype.capacity_min
+)
 count_max_with_capacity_max_line, dims_line_cap_max = get_count_max_with_capacity_max(
-    packing.VisuDataLine, LinePrototype.capacity_min)
+    packing.VisuDataLine, LinePrototype.capacity_min
+)
 # count_max_single = max(count_max_dsr, count_max_ddr, count_max_line)
-CAPACITY_MAX = max(dims_dsr_cap_max.count_inner, dims_dsr_90_cap_max.count_inner, dims_ddr_cap_max.count_inner, dims_line_cap_max.count_inner)
+CAPACITY_MAX = max(
+    dims_dsr_cap_max.count_inner,
+    dims_dsr_90_cap_max.count_inner,
+    dims_ddr_cap_max.count_inner,
+    dims_line_cap_max.count_inner,
+)
 
 # Estimate the total maximum number of areas (max of all areas of the same
 # type with minimum capacity)
 count_max_with_capacity_min_dsr, dims_dsr_count_max = get_count_max_with_capacity_min(
-    packing.VisuDataDirectSingleRow, DSRPrototype.capacity_min)
-count_max_with_capacity_min_dsr_90, dims_dsr_90_count_max = get_count_max_with_capacity_min(
-    packing.VisuDataDirectSingleRow_90, DSR_90Prototype.capacity_min)
+    packing.VisuDataDirectSingleRow, DSRPrototype.capacity_min
+)
+(
+    count_max_with_capacity_min_dsr_90,
+    dims_dsr_90_count_max,
+) = get_count_max_with_capacity_min(
+    packing.VisuDataDirectSingleRow_90, DSR_90Prototype.capacity_min
+)
 count_max_with_capacity_min_ddr, dims_ddr_count_max = get_count_max_with_capacity_min(
-    packing.VisuDataDirectDoubleRow, DDRPrototype.capacity_min)
+    packing.VisuDataDirectDoubleRow, DDRPrototype.capacity_min
+)
 count_max_with_capacity_min_line, dims_line_count_max = get_count_max_with_capacity_min(
-    packing.VisuDataLine, LinePrototype.capacity_min)
-COUNT_MAX = max(count_max_with_capacity_min_dsr, count_max_with_capacity_min_dsr_90, count_max_with_capacity_min_ddr, count_max_with_capacity_min_line)
+    packing.VisuDataLine, LinePrototype.capacity_min
+)
+COUNT_MAX = max(
+    count_max_with_capacity_min_dsr,
+    count_max_with_capacity_min_dsr_90,
+    count_max_with_capacity_min_ddr,
+    count_max_with_capacity_min_line,
+)
 COUNT_MIN = 1
 
 
 def print_area_precomps():
-    print('Depot a: %d m, b: %d m'
-          % (OC['scenario']['DEPOT_A'], OC['scenario']['DEPOT_B']))
-    print('capacity_max_dsr: %d, count_max_dsr: %d, total slots: %d'
-          % (dims_dsr_cap_max.items[0].count_inner, count_max_with_capacity_max_dsr, dims_dsr_cap_max.count_inner))
-    print('capacity_max_dsr_90: %d, count_max_dsr_90: %d, total slots: %d'
-          % (dims_dsr_90_cap_max.items[0].count_inner, count_max_with_capacity_max_dsr_90, dims_dsr_90_cap_max.count_inner))
-    print('capacity_max_ddr: %d, count_max_ddr: %d, total slots: %d'
-          % (dims_ddr_cap_max.items[0].count_inner, count_max_with_capacity_max_ddr, dims_ddr_cap_max.count_inner))
-    print('capacity_max_line: %d, count_max_line: %d, total slots: %d'
-          % (dims_line_cap_max.items[0].count_inner, count_max_with_capacity_max_line, dims_line_cap_max.count_inner))
+    print(
+        "Depot a: %d m, b: %d m"
+        % (OC["scenario"]["DEPOT_A"], OC["scenario"]["DEPOT_B"])
+    )
+    print(
+        "capacity_max_dsr: %d, count_max_dsr: %d, total slots: %d"
+        % (
+            dims_dsr_cap_max.items[0].count_inner,
+            count_max_with_capacity_max_dsr,
+            dims_dsr_cap_max.count_inner,
+        )
+    )
+    print(
+        "capacity_max_dsr_90: %d, count_max_dsr_90: %d, total slots: %d"
+        % (
+            dims_dsr_90_cap_max.items[0].count_inner,
+            count_max_with_capacity_max_dsr_90,
+            dims_dsr_90_cap_max.count_inner,
+        )
+    )
+    print(
+        "capacity_max_ddr: %d, count_max_ddr: %d, total slots: %d"
+        % (
+            dims_ddr_cap_max.items[0].count_inner,
+            count_max_with_capacity_max_ddr,
+            dims_ddr_cap_max.count_inner,
+        )
+    )
+    print(
+        "capacity_max_line: %d, count_max_line: %d, total slots: %d"
+        % (
+            dims_line_cap_max.items[0].count_inner,
+            count_max_with_capacity_max_line,
+            dims_line_cap_max.count_inner,
+        )
+    )
 
 
 def init_random_area():
     """Return a new area prototype of random type with random capacity within
     bounds.
     """
-    area_type = random.choice([DSRPrototype, DSR_90Prototype, DDRPrototype, LinePrototype])
+    area_type = random.choice(
+        [DSRPrototype, DSR_90Prototype, DDRPrototype, LinePrototype]
+    )
     capacity = random.randint(area_type.capacity_min, area_type.capacity_max)
     return area_type(capacity)
 
 
 class DepotPrototype:
     """Very basic depot representation."""
+
     def __init__(self):
         self.areas = []
-        self._visu = None   # take care: needs reset after mutation
+        self._visu = None  # take care: needs reset after mutation
         self._ID = None
         self._ID_dm = None
-        self.results = {'simulated': False}
+        self.results = {"simulated": False}
 
     @property
     def visu(self):
         if self._visu is None:
             self._visu = packing.BinWithDistances(
-                OC['scenario']['DEPOT_A'], OC['scenario']['DEPOT_B'], False)
+                OC["scenario"]["DEPOT_A"], OC["scenario"]["DEPOT_B"], False
+            )
             for area in self.areas:
                 self._visu.items.append(area.visu)
         return self._visu
@@ -287,15 +350,15 @@ class DepotPrototype:
                 DSRPrototype.typename: Counter(),
                 DSR_90Prototype.typename: Counter(),
                 DDRPrototype.typename: Counter(),
-                LinePrototype.typename: Counter()
+                LinePrototype.typename: Counter(),
             }
             for area in self.areas:
                 c[area.typename][area.capacity] += 1
 
-            ID = ''
+            ID = ""
             for typename, subcounter in c.items():
                 for capacity, n in subcounter.items():
-                    ID += '_' + str(n) + 'x' + str(capacity) + typename
+                    ID += "_" + str(n) + "x" + str(capacity) + typename
             ID = ID[1:]
             return ID
         else:
@@ -316,15 +379,17 @@ class DepotPrototype:
         if self.areas:
             self.sort_areas()
 
-            transl = {DSRPrototype.typename: 'd',
-                      DSR_90Prototype.typename: 'd',
-                      DDRPrototype.typename: 'd',
-                      LinePrototype.typename: 'l'}
+            transl = {
+                DSRPrototype.typename: "d",
+                DSR_90Prototype.typename: "d",
+                DDRPrototype.typename: "d",
+                LinePrototype.typename: "l",
+            }
             c = {
                 DSRPrototype.typename: Counter(),
                 DSR_90Prototype.typename: Counter(),
                 DDRPrototype.typename: Counter(),
-                LinePrototype.typename: Counter()
+                LinePrototype.typename: Counter(),
             }
             for area in self.areas:
                 c[area.typename][area.capacity] += 1
@@ -333,18 +398,18 @@ class DepotPrototype:
             c[DSRPrototype.typename] += c[DDRPrototype.typename]
             del c[DDRPrototype.typename]
 
-            ID = ''
+            ID = ""
             for typename, subcounter in c.items():
                 for capacity, n in subcounter.items():
-                    ID += '_' + str(n) + 'x' + str(capacity) + transl[typename]
+                    ID += "_" + str(n) + "x" + str(capacity) + transl[typename]
             ID = ID[1:]
             return ID
         else:
             return None
 
     def sort_areas(self):
-        self.areas.sort(key=attrgetter('capacity'), reverse=True)
-        self.areas.sort(key=attrgetter('typename'))
+        self.areas.sort(key=attrgetter("capacity"), reverse=True)
+        self.areas.sort(key=attrgetter("typename"))
 
     def reset_results(self):
         """Reset of evaluation results that is required after changes such as
@@ -352,7 +417,7 @@ class DepotPrototype:
         """
         self.visu = None
         self.results.clear()
-        self.results['simulated'] = False
+        self.results["simulated"] = False
 
     def __eq__(self, other):
         """Return True if DepotPrototype objects *self* and *other* have the
@@ -386,7 +451,7 @@ def init_random_depot(dcls):
     return depot
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     def _instantiate_areas():
         """Instantiate all possible areas within slot capacity bounds."""
@@ -394,8 +459,7 @@ if __name__ == '__main__':
         ail = []
         for area_type in [DSRPrototype, DSR_90Prototype, DDRPrototype, LinePrototype]:
             aid[area_type] = {}
-            for capacity in range(area_type.capacity_min,
-                                  area_type.capacity_max + 1):
+            for capacity in range(area_type.capacity_min, area_type.capacity_max + 1):
                 aid[area_type][capacity] = area_type(capacity)
                 ail.append(area_type(capacity))
         return aid, ail

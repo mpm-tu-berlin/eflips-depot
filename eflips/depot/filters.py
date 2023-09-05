@@ -40,14 +40,14 @@ class VehicleFilter:
     When adding a new filter method:
     - The method name must be preceeded by 'filter_'.
     - 'vehicle' must be the only method parameter. Additional parameters can be
-        accessed via the VehicleFilter object attributes. Passing all those 
-        parameters as keyword arguments during init adds them automatically as 
-        attribute of the VehicleFilter. Alternatively, attributes might be 
+        accessed via the VehicleFilter object attributes. Passing all those
+        parameters as keyword arguments during init adds them automatically as
+        attribute of the VehicleFilter. Alternatively, attributes might be
         added after init, before calling the filter.
 
     """
-    def __init__(self, filter_names=None, **kwargs):
 
+    def __init__(self, filter_names=None, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -55,21 +55,27 @@ class VehicleFilter:
         if self.filter_names is None:
             self.filter_names = []
         elif not isinstance(filter_names, list):
-            raise ValueError("VehicleFilter 'filter_names' must be of type "
-                             'list, not %s' % type(filter_names))
+            raise ValueError(
+                "VehicleFilter 'filter_names' must be of type "
+                "list, not %s" % type(filter_names)
+            )
 
         self.vehicle_types_converted = False
 
-        if hasattr(self, 'period'):
-            if not isinstance(self.period, tuple) \
-                    and not isinstance(self.period, list) \
-                    or len(self.period) != 2 \
-                    or not 0 <= self.period[0] <= 86400 \
-                    or not 0 <= self.period[1] <= 86400 \
-                    or self.period[0] == self.period[1]:
-                raise ValueError('Invalid VehicleFilter.period. See '
-                                 'description of method filter_in_period for '
-                                 'instructions.')
+        if hasattr(self, "period"):
+            if (
+                not isinstance(self.period, tuple)
+                and not isinstance(self.period, list)
+                or len(self.period) != 2
+                or not 0 <= self.period[0] <= 86400
+                or not 0 <= self.period[1] <= 86400
+                or self.period[0] == self.period[1]
+            ):
+                raise ValueError(
+                    "Invalid VehicleFilter.period. See "
+                    "description of method filter_in_period for "
+                    "instructions."
+                )
 
         self.filters = []
         self.filters_from_names()
@@ -94,10 +100,11 @@ class VehicleFilter:
         Filters can alternatively be added after instantiation using append().
         """
         for filter_name in self.filter_names:
-            filter_name = 'filter_' + filter_name
+            filter_name = "filter_" + filter_name
             if not hasattr(self, filter_name):
-                raise ValueError('Method "%s" not found in class VehicleFilter'
-                                 % filter_name)
+                raise ValueError(
+                    'Method "%s" not found in class VehicleFilter' % filter_name
+                )
             filter = getattr(self, filter_name)
             self.append(filter)
 
@@ -133,22 +140,27 @@ class VehicleFilter:
         if not self.vehicle_types_converted or force:
             # Get obj references of vehicle types
             try:
-                self.vehicle_types_str = self.vehicle_types.copy()  # backup the list of strings
+                self.vehicle_types_str = (
+                    self.vehicle_types.copy()
+                )  # backup the list of strings
             except AttributeError:
-                raise AttributeError('filter_vehicle_type requires the '
-                                     'attribute vehicle_types to be set before call.')
+                raise AttributeError(
+                    "filter_vehicle_type requires the "
+                    "attribute vehicle_types to be set before call."
+                )
             # print(self.vehicle_types, self.vehicle_types_str)
             for no, ID in enumerate(self.vehicle_types):
                 if isinstance(ID, str):
                     try:
-                        self.vehicle_types[no] = \
-                        globalConstants['depot']['vehicle_types_obj_dict'][
-                            ID]
+                        self.vehicle_types[no] = globalConstants["depot"][
+                            "vehicle_types_obj_dict"
+                        ][ID]
                     except KeyError:
                         raise KeyError(
                             "Vehicle type %s not found in globalConstants. "
                             "Possibly selected eflips settings and depot template "
-                            "don't match." % ID)
+                            "don't match." % ID
+                        )
             self.vehicle_types_converted = True
 
     def filter_trip_vehicle_match(self, vehicle):
@@ -159,10 +171,12 @@ class VehicleFilter:
         Attributes required in self:
         trip: eflips.depot.standalone.SimpleTrip object
         """
-        return not vehicle.system_entry \
-               and vehicle.vehicle_type in self.trip.vehicle_types \
-               or vehicle.trip is not None \
-               and vehicle.trip is self.trip
+        return (
+            not vehicle.system_entry
+            and vehicle.vehicle_type in self.trip.vehicle_types
+            or vehicle.trip is not None
+            and vehicle.trip is self.trip
+        )
 
     @staticmethod
     def filter_no_active_processes(vehicle):
@@ -183,8 +197,9 @@ class VehicleFilter:
             # if the process is cancellable.
             return False
         else:
-            return all(proc.cancellable_for_dispatch
-                       for proc in vehicle.dwd.active_processes)
+            return all(
+                proc.cancellable_for_dispatch for proc in vehicle.dwd.active_processes
+            )
 
     @staticmethod
     def filter_bat_full(vehicle):
@@ -207,27 +222,39 @@ class VehicleFilter:
         Attributes required in self:
         trip: eflips.depot.standalone.SimpleTrip object
         """
-        if globalConstants['depot']['consumption_calc_mode'] == 'CR_distance_based':
-            energy_reserve = globalConstants['depot']['energy_reserve']
-            required_energy = vehicle.vehicle_type.CR * self.trip.distance * (1 + (energy_reserve / 100))
+        if globalConstants["depot"]["consumption_calc_mode"] == "CR_distance_based":
+            energy_reserve = globalConstants["depot"]["energy_reserve"]
+            required_energy = (
+                vehicle.vehicle_type.CR
+                * self.trip.distance
+                * (1 + (energy_reserve / 100))
+            )
             result = required_energy <= vehicle.battery.energy_remaining
 
-        elif globalConstants['depot']['consumption_calc_mode'] == 'CR_time_based':
-            energy_reserve = globalConstants['depot']['energy_reserve']
-            required_energy = self.trip.duration / 3600 * vehicle.vehicle_type.CR * (1 + (energy_reserve / 100))
+        elif globalConstants["depot"]["consumption_calc_mode"] == "CR_time_based":
+            energy_reserve = globalConstants["depot"]["energy_reserve"]
+            required_energy = (
+                self.trip.duration
+                / 3600
+                * vehicle.vehicle_type.CR
+                * (1 + (energy_reserve / 100))
+            )
             result = required_energy <= vehicle.battery.energy_remaining
 
-        elif globalConstants['depot']['consumption_calc_mode'] == 'soc_given':
+        elif globalConstants["depot"]["consumption_calc_mode"] == "soc_given":
             if self.trip.charge_on_track:
                 result = round(vehicle.battery.soc, 5) >= self.trip.start_soc
             else:
-                required_energy = (self.trip.start_soc - self.trip.end_soc) * vehicle.battery.energy_real
+                required_energy = (
+                    self.trip.start_soc - self.trip.end_soc
+                ) * vehicle.battery.energy_real
                 result = required_energy <= vehicle.battery.energy_remaining
 
         else:
             raise ValueError(
                 "Invalid value %s for 'consumption_calc_mode' in globalConstants."
-                % globalConstants['depot']['consumption_calc_mode'])
+                % globalConstants["depot"]["consumption_calc_mode"]
+            )
 
         # flexprint(
         #     '\tVehicle %s in battery level check. result: %s. Battery energy_remaining: %d (SoC=%.3f). Trip.energy need: %d'
@@ -269,9 +296,10 @@ class VehicleFilter:
                     t_trips += trip.ata - trip.atd
                 else:
                     break
-            if t_trips > self.service_need_td or \
-                    self.env.now - vehicle.dwd.t_lastServed > \
-                    self.service_need_t_elapsed:
+            if (
+                t_trips > self.service_need_td
+                or self.env.now - vehicle.dwd.t_lastServed > self.service_need_t_elapsed
+            ):
                 vehicle.dwd.service_need = True
         return vehicle.dwd.service_need
 
@@ -312,9 +340,13 @@ class VehicleFilter:
         after_day: [int] determines in how many days a service has to be
             done. For example every third day.
         """
-        id = sum([int(id) for id in vehicle.ID.split() if id.isdigit()])  # transfers the str ID in a numeric id
-        day = int(self.env.now / 86400)+1
-        if id % self.after_day == day % self.after_day and self.filter_in_period(vehicle):
+        id = sum(
+            [int(id) for id in vehicle.ID.split() if id.isdigit()]
+        )  # transfers the str ID in a numeric id
+        day = int(self.env.now / 86400) + 1
+        if id % self.after_day == day % self.after_day and self.filter_in_period(
+            vehicle
+        ):
             return True
 
     @staticmethod
