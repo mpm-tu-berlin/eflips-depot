@@ -56,6 +56,12 @@ We utilize the [GitHub Flow](https://docs.github.com/get-started/quickstart/gith
 that the `main` branch is always deployable and that all development happens in feature branches. The feature branches
 are merged into `main` via pull requests.
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+We use [black](https://black.readthedocs.io/en/stable/) for code formatting. You can use 
+[pre-commit](https://pre-commit.com/) to ensure the code is formatted correctly before committing. You are also free to
+use other methods to format the code, but please ensure that the code is formatted correctly before committing.
+
 ## License
 
 This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md) file for details.
