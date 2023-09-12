@@ -5,7 +5,10 @@ from decimal import Decimal
 from typing import Tuple
 import json
 
+import eflips
+
 import djangosettings
+from depot import SimulationHost, Depotinput
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.djangosettings")
 import django
@@ -26,6 +29,20 @@ from ebustoolbox.tasks import (
     vehicles_to_db,
     schedule_to_db,
 )
+
+from eflips.depot.standalone import SimpleTrip, Timetable
+from eflips.depot.api.input import (
+    read_timetable,
+    get_rotation_from_database,
+    get_simba_output,
+    RotationFromDatabase,
+    create_rotation_from_simba_output,
+)
+
+from eflips.depot.api.basic import init_simulation, run_simulation
+
+from eflips.depot.settings_config import load_data_from_database
+from datetime import datetime
 
 
 class TestAccessingSimBaModels:
@@ -147,6 +164,87 @@ class TestAccessingSimBaModels:
 
         return eflips_input_path
 
+    def test_load_vehicle_types(self):
+        absolute_path = os.path.dirname(__file__)
+        fsettings = os.path.join(absolute_path, "sample_simulation", "settings")
+        eflips.load_settings(fsettings)
+        gc = eflips.depot.settings_config.load_data_from_database()
+        assert isinstance(gc["depot"]["vehicle_types"], dict)
+
+    def test_reading_rotation_from_database(self, eflips_input_path: pathlib.Path):
+        simba_output = get_simba_output(eflips_input_path)
+        for rotation_id, results in simba_output.items():
+            rotation = RotationFromDatabase(int(rotation_id))
+            rotation.read_data_for_simba(results)
+            rotation.read_data_from_database()
+            assert isinstance(rotation, RotationFromDatabase)
+            assert isinstance(rotation.name, int)
+            assert isinstance(rotation.vehicle_class, int)
+            assert isinstance(rotation.scenario, Scenario)
+            assert isinstance(rotation.departure_soc, float)
+            assert isinstance(rotation.arrival_soc, float)
+            assert isinstance(rotation.minimal_soc, float)
+            assert isinstance(rotation.delta_soc, list) or isinstance(
+                rotation.delta_soc, None
+            )
+            assert isinstance(rotation.charging_type, str)
+            assert isinstance(rotation.vehicle_type, list)
+
+        # read from rotation database
+        # rotation = Rotation.objects.all()
+        # simba_output = get_simba_output(eflips_input_path)
+        # for rotation_id, results in simba_output.items():
+        #     rotation = RotationFromDatabase(int(rotation_id))
+        #     rotation.read_data_from_database()
+        #     rotation.read_data_for_simba(results)
+        #     assert isinstance(rotation, RotationFromDatabase)
+        #     assert isinstance(rotation.id, int)
+
+    def test_create_rotation_list(self, eflips_input_path: pathlib.Path):
+        rotations = create_rotation_from_simba_output(eflips_input_path)
+        assert isinstance(rotations, list)
+        for rotation in rotations:
+            assert isinstance(rotation, RotationFromDatabase)
+
+        rotation = [r for r in rotations if r.id > 0]
+        print(len(rotation))
+        assert isinstance(rotation, list)
+        for r in rotation:
+            assert isinstance(r.id, int)
+            print(r.id)
+
+        rotation = rotation[0]
+
+    def test_reading_trip_from_database(self, eflips_input_path: pathlib.Path):
+        # select trips from simba output
+        rotations = create_rotation_from_simba_output(eflips_input_path)
+        trips = read_timetable(None, rotations)
+
+        r_ids = []
+        for rotation in rotations:
+            r_ids.append(rotation.id)
+
+        # trips_from_database = Trip.objects.filter(rotation_id__in=r_ids).all()
+        assert isinstance(trips, list)
+        assert len(rotations) == len(trips)
+
+        for trip in trips:
+            assert isinstance(trip, SimpleTrip)
+            assert isinstance(trip.std, int)
+            assert isinstance(trip.sta, int)
+            assert isinstance(trip.start_soc, float)
+            assert isinstance(trip.end_soc, float)
+            assert isinstance(trip.distance, float)
+            assert isinstance(trip.vehicle_types, list)
+            assert isinstance(trip.charge_on_track, bool)
+            assert trip.std > 0
+            assert trip.sta > 0
+            assert trip.start_soc >= 0
+            # assert trip.end_soc >= 0  False: end_soc is negative in simba output
+
+        timetable = Timetable(None, trips)
+        assert isinstance(timetable, Timetable)
+
     def test_eflips_from_simba_output(self, eflips_input_path: pathlib.Path):
         """
         This method tests for the presence and validity of the simBA output file.
@@ -155,6 +253,7 @@ class TestAccessingSimBaModels:
             eflips_input_path: A pathlib.Path object containing the absolute paths to the created files.
         """
 
+        print(eflips_input_path)
         # Assert that the files exist
         assert eflips_input_path.exists()
 
@@ -164,6 +263,12 @@ class TestAccessingSimBaModels:
         # Assert that eflips_input_path is a valid JSON file
         with open(eflips_input_path, "r") as f:
             simba_output = json.load(f)
+
+        # TODO: REMOVE THIS LATER
+        for rotation_id, results in simba_output.items():
+            # Make all the "vehicle_type" lists contain only distinct items
+            if isinstance(results["vehicle_type"], list):
+                results["vehicle_type"] = list(set(results["vehicle_type"]))
 
         # The file should be a dictionary of rotation IDs, with a dict of values for each. Let's load the rotations
         for rotation_id, results in simba_output.items():
