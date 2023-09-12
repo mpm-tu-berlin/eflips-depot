@@ -6,20 +6,22 @@ import pytest
 from depot import DepotEvaluation
 
 
-
 class TestApiSetup:
-
     @pytest.fixture
     def depot_evaluation(self):
-        """This method creates a sample depot evaluation object containing some sample data using wrapped-up methods
-        """
+        """This method creates a sample depot evaluation object containing some sample data using wrapped-up methods"""
         absolute_path = os.path.dirname(__file__)
-        filename_eflips_settings = os.path.join(absolute_path, 'sample_simulation', 'settings')
-        filename_schedule = os.path.join(absolute_path, 'sample_simulation', 'schedule')
-        filename_template = os.path.join(absolute_path, 'sample_simulation', 'sample_depot')
+        filename_eflips_settings = os.path.join(
+            absolute_path, "sample_simulation", "settings"
+        )
+        filename_schedule = os.path.join(absolute_path, "sample_simulation", "schedule")
+        filename_template = os.path.join(
+            absolute_path, "sample_simulation", "sample_depot"
+        )
 
-        host = depot.api.basic.init_simulation(filename_eflips_settings, filename_schedule,
-                                               filename_template)
+        host = depot.api.basic.init_simulation(
+            filename_eflips_settings, filename_schedule, filename_template
+        )
 
         ev = depot.api.basic.run_simulation(host)
         return ev
@@ -29,7 +31,7 @@ class TestApiSetup:
 
         ev = depot_evaluation
         absolute_path = os.path.dirname(__file__)
-        tmp_path = os.path.join(absolute_path, '..', 'bus_depot', 'results')
+        tmp_path = os.path.join(absolute_path, "..", "bus_depot", "results")
 
         # test save_simulation_result()
         # eflips.depot.basic.save_simulation_result(ev, tmp_path)
@@ -44,63 +46,63 @@ class TestApiSetup:
         # assert isinstance(trips_issued, list)
 
         # for trip in trips_issued:
-            # if '_r1' in trip.ID:
-            # assert isinstance(trip, eflips.depot.output_class.SimpleTripOutput)
-            # #     # assert isinstance(trip, SimpleTrip)
-            # #     # assert isinstance(trip.env, simpy.Environment)
-            # assert isinstance(trip.ID, str)
-            # assert isinstance(trip.line_name, str)
-            # #
-            # assert isinstance(trip.origin, str)
-            # assert isinstance(trip.destination, str)
-            # assert isinstance(trip.vehicle_types, list)
-            #
-            # for v in trip.vehicle_types:
-            #     assert isinstance(v, eflips.depot.simple_vehicle.VehicleType)
-            #
-            # assert isinstance(trip.std, int)
-            # assert isinstance(trip.sta, int)
-            # assert isinstance(trip.distance, float) or isinstance(trip.distance, int)
-            #
-            # assert isinstance(trip.start_soc, int) or isinstance(trip.start_soc, float) or trip.start_soc is None
-            # assert isinstance(trip.start_soc, int) or isinstance(trip.start_soc, float) or trip.end_soc is None
-            # assert isinstance(trip.charge_on_track, int) or isinstance(trip.charge_on_track, float)
-            #
-            # assert isinstance(trip.eta, int)
-            #
-            # # Can always be not None for _r1 trips
-            #
-            # assert isinstance(trip.atd, int)
-            # assert isinstance(trip.ata, int)
-            #
-            # assert isinstance(trip.vehicle, SimpleVehicle)
-            # assert isinstance(trip.reserved_for_init, bool)
-            # assert isinstance(trip.vehicle_from, str)
-            # assert isinstance(trip.copy_of, SimpleTrip) or trip.copy_of is None
-            # assert isinstance(trip.t_match, int) or trip.t_match is None
-            # assert isinstance(trip.got_early_vehicle, bool)
-            # assert isinstance(trip.periodic_trigger_scheduled, bool)
-            # assert isinstance(trip.ID_orig, str)
-            # assert isinstance(trip.t_got_early_vehicle, str) or trip.t_got_early_vehicle is None
-            # #     # # #
-            # #     #     # Test properties of class SimpleTrip
-            # assert isinstance(trip.ID_orig, str)
-            # assert isinstance(trip.vehicle_types, list)
-            # assert isinstance(trip.vehicle_types_joinedstr, str)  # vehicle_types is a list of strings or SimpleVehicle?
-            # assert isinstance(trip.delay_departure, int)
-            # assert isinstance(trip.delayed_departure, bool)
-            # assert trip.delay_departure <= 0
-            #
-            # assert isinstance(trip.delay_arrival, int)
-            # assert isinstance(trip.delayed_arrival, bool)
-            # assert trip.delay_arrival <= 0
+        # if '_r1' in trip.ID:
+        # assert isinstance(trip, eflips.depot.output_class.SimpleTripOutput)
+        # #     # assert isinstance(trip, SimpleTrip)
+        # #     # assert isinstance(trip.env, simpy.Environment)
+        # assert isinstance(trip.ID, str)
+        # assert isinstance(trip.line_name, str)
+        # #
+        # assert isinstance(trip.origin, str)
+        # assert isinstance(trip.destination, str)
+        # assert isinstance(trip.vehicle_types, list)
+        #
+        # for v in trip.vehicle_types:
+        #     assert isinstance(v, eflips.depot.simple_vehicle.VehicleType)
+        #
+        # assert isinstance(trip.std, int)
+        # assert isinstance(trip.sta, int)
+        # assert isinstance(trip.distance, float) or isinstance(trip.distance, int)
+        #
+        # assert isinstance(trip.start_soc, int) or isinstance(trip.start_soc, float) or trip.start_soc is None
+        # assert isinstance(trip.start_soc, int) or isinstance(trip.start_soc, float) or trip.end_soc is None
+        # assert isinstance(trip.charge_on_track, int) or isinstance(trip.charge_on_track, float)
+        #
+        # assert isinstance(trip.eta, int)
+        #
+        # # Can always be not None for _r1 trips
+        #
+        # assert isinstance(trip.atd, int)
+        # assert isinstance(trip.ata, int)
+        #
+        # assert isinstance(trip.vehicle, SimpleVehicle)
+        # assert isinstance(trip.reserved_for_init, bool)
+        # assert isinstance(trip.vehicle_from, str)
+        # assert isinstance(trip.copy_of, SimpleTrip) or trip.copy_of is None
+        # assert isinstance(trip.t_match, int) or trip.t_match is None
+        # assert isinstance(trip.got_early_vehicle, bool)
+        # assert isinstance(trip.periodic_trigger_scheduled, bool)
+        # assert isinstance(trip.ID_orig, str)
+        # assert isinstance(trip.t_got_early_vehicle, str) or trip.t_got_early_vehicle is None
+        # #     # # #
+        # #     #     # Test properties of class SimpleTrip
+        # assert isinstance(trip.ID_orig, str)
+        # assert isinstance(trip.vehicle_types, list)
+        # assert isinstance(trip.vehicle_types_joinedstr, str)  # vehicle_types is a list of strings or SimpleVehicle?
+        # assert isinstance(trip.delay_departure, int)
+        # assert isinstance(trip.delayed_departure, bool)
+        # assert trip.delay_departure <= 0
+        #
+        # assert isinstance(trip.delay_arrival, int)
+        # assert isinstance(trip.delayed_arrival, bool)
+        # assert trip.delay_arrival <= 0
 
-            # assert isinstance(trip.duration, int)
-            # assert trip.duration > 0
-            # assert isinstance(trip.actual_duration, int)
-            # assert trip.actual_duration > 0
-            # assert isinstance(trip.actual_duration, int)
-            # assert isinstance(trip.lead_time_match, int) or trip.lead_time_match is None
+        # assert isinstance(trip.duration, int)
+        # assert trip.duration > 0
+        # assert isinstance(trip.actual_duration, int)
+        # assert trip.actual_duration > 0
+        # assert isinstance(trip.actual_duration, int)
+        # assert isinstance(trip.lead_time_match, int) or trip.lead_time_match is None
         data_to_simba = depot.api.basic.to_simba(ev)
         assert data_to_simba is not None
         for i in data_to_simba:
@@ -118,6 +120,7 @@ class TestApiSetup:
             assert 0 <= i.soc_departure <= 1
 
         # eflips.depot.example.example.print_data(data_to_simba[0])
+
     # def test_json_serialization(self, depot_evaluation: DepotEvaluation):
     #     # Create a list of SimBaOutputFormat objects
     #
@@ -161,6 +164,3 @@ class TestApiSetup:
     #         # assert isinstance(v.system_entry, bool) and v.system_entry is True
     #         # assert isinstance(v.battery_logs, list) and len(v.battery_logs) != 0
     #         # assert isinstance(v.power_logs, dict) and len(v.power_logs) != 1
-
-
-

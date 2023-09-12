@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure'
+SECRET_KEY = "django-insecure"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -34,30 +34,31 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'ebustoolbox',
+    "ebustoolbox",
 ]
 
-MIDDLEWARE = [
-]
+MIDDLEWARE = []
 
 UPLOAD_PATH = tempfile.gettempdir()
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-assert os.environ['DATABASE_URL'] is not None, "DATABASE_URL environment variable must be set"
-DATABASES = {'default': environ.Env().db('DATABASE_URL')}
+assert (
+    os.environ["DATABASE_URL"] is not None
+), "DATABASE_URL environment variable must be set"
+DATABASES = {"default": environ.Env().db("DATABASE_URL")}
 
 
-#CELERY_BROKER_URL = None
+# CELERY_BROKER_URL = None
 CELERY_USE = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 

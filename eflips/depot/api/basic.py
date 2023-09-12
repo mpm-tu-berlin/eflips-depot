@@ -20,17 +20,12 @@ def init_simulation(fsettings, fschedule, ftemplate):
     :rtype: :class:`eflips.depot.simulation.SimulationHost`
     """
     simulation_host = SimulationHost(
-        [
-            Depotinput(
-                filename_template=ftemplate,
-                show_gui=False)
-        ],
+        [Depotinput(filename_template=ftemplate, show_gui=False)],
         run_progressbar=True,
         print_timestamps=True,
-        tictocname=''
+        tictocname="",
     )
-    simulation_host.standard_setup(fsettings,
-                                   fschedule)
+    simulation_host.standard_setup(fsettings, fschedule)
 
     return simulation_host
 
@@ -58,10 +53,14 @@ def to_simba(ev):
     :rtype: list"""
     inputs_for_simba = []
     for trip_i in ev.timetable.trips_issued:
-        if '_r1' in trip_i.ID:  # _r1: repetition 1 of all rotations
-            data_unit = InputForSimba(int(float(trip_i.ID_orig)),  # Slightly ugly, but we need to return an int
-                                      trip_i.vehicle.ID,
-                                      trip_i.start_soc)
+        if "_r1" in trip_i.ID:  # _r1: repetition 1 of all rotations
+            data_unit = InputForSimba(
+                int(
+                    float(trip_i.ID_orig)
+                ),  # Slightly ugly, but we need to return an int
+                trip_i.vehicle.ID,
+                trip_i.start_soc,
+            )
             inputs_for_simba.append(data_unit)
 
     return inputs_for_simba

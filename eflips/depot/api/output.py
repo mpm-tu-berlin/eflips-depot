@@ -17,6 +17,7 @@ class InputForSimba:
     :param soc_departure: soc at departure of each vehicle
     :type soc_departure: float
     """
+
     rotation_id: int
     vehicle_id: str
     soc_departure: float
@@ -84,10 +85,20 @@ class SimpleTripOutput(SimpleTrip):
     """
 
     def __init__(self, trip):
-        super().__init__(None, trip.ID, trip.line_name, trip.origin.ID,
-                         trip.destination.ID, trip.vehicle_types,
-                         trip.std, trip.sta, trip.distance, trip.start_soc,
-                         trip.end_soc, trip.charge_on_track)
+        super().__init__(
+            None,
+            trip.ID,
+            trip.line_name,
+            trip.origin.ID,
+            trip.destination.ID,
+            trip.vehicle_types,
+            trip.std,
+            trip.sta,
+            trip.distance,
+            trip.start_soc,
+            trip.end_soc,
+            trip.charge_on_track,
+        )
         # TODO: find a better way to decouple env
         # TODO do we need all these properties?
         self.scheduled_time_arrival = trip.eta
