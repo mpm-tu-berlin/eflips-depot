@@ -12,6 +12,7 @@ import django
 from django.core import management
 
 django.setup()
+management.call_command("flush", "--noinput")
 management.call_command("migrate")
 
 import pytest

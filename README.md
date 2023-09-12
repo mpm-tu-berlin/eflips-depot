@@ -42,6 +42,12 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
 4. To use eFLIPS-Depot API, see script `bus_depot/user_example.py`
 ## Testing
 
+---
+
+**NOTE**: Be aware that the tests will clear the database specified in the `DATABASE_URL` environment variable. Make sure that you are not using a database that you want to keep.
+
+---
+
 Testing is done using the `pytest` framework with tests located in the `tests`directory. To run the tests, execute the following command in the root directory of the repository:
 
 ```bash
