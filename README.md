@@ -72,6 +72,8 @@ We use [black](https://black.readthedocs.io/en/stable/) for code formatting. You
 [pre-commit](https://pre-commit.com/) to ensure the code is formatted correctly before committing. You are also free to
 use other methods to format the code, but please ensure that the code is formatted correctly before committing.
 
+Please make sure that your `poetry.lock` and `pyproject.toml` files are consistent before committing. You can use `poetry check` to check this. This is also checked by pre-commit.
+
 ## License
 
 This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md) file for details.
