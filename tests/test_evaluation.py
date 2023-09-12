@@ -15,22 +15,25 @@ class TestDepotEvaluation:
         """
 
         absolute_path = os.path.dirname(__file__)
-        filename_eflips_settings = os.path.join(absolute_path, 'sample_simulation', 'settings')
-        filename_schedule = os.path.join(absolute_path, 'sample_simulation', 'schedule')
-        filename_template = os.path.join(absolute_path, 'sample_simulation', 'sample_depot')
+        filename_eflips_settings = os.path.join(
+            absolute_path, "sample_simulation", "settings"
+        )
+        filename_schedule = os.path.join(absolute_path, "sample_simulation", "schedule")
+        filename_template = os.path.join(
+            absolute_path, "sample_simulation", "sample_depot"
+        )
 
         simulation_host = eflips.depot.SimulationHost(
             [
                 eflips.depot.Depotinput(
-                    filename_template=filename_template,
-                    show_gui=False)
+                    filename_template=filename_template, show_gui=False
+                )
             ],
             run_progressbar=True,
             print_timestamps=True,
-            tictocname=''
+            tictocname="",
         )
-        simulation_host.standard_setup(filename_eflips_settings,
-                                       filename_schedule)
+        simulation_host.standard_setup(filename_eflips_settings, filename_schedule)
         simulation_host.run()
 
         ev = simulation_host.depot_hosts[0].evaluation
@@ -42,18 +45,28 @@ class TestDepotEvaluation:
         depot_evaluation.path_results = str(tmp_path)
 
         depot_evaluation.vehicle_periods(
-            periods={'depot general': 'darkgray',
-                     'park': 'lightgray',
-                     'serve_supply_clean_daily': 'steelblue',
-                     'serve_clean_ext': 'darkblue',
-                     'charge_dc': 'forestgreen',
-                     'charge_oc': 'forestgreen',
-                     'precondition': 'black'},
-            save=True, show=False, formats=('pdf', 'png',), show_total_power=True, show_annotates=True)
+            periods={
+                "depot general": "darkgray",
+                "park": "lightgray",
+                "serve_supply_clean_daily": "steelblue",
+                "serve_clean_ext": "darkblue",
+                "charge_dc": "forestgreen",
+                "charge_oc": "forestgreen",
+                "precondition": "black",
+            },
+            save=True,
+            show=False,
+            formats=(
+                "pdf",
+                "png",
+            ),
+            show_total_power=True,
+            show_annotates=True,
+        )
 
         # Check if the files were created and are not empty
-        assert os.path.isfile(os.path.join(tmp_path, 'vehicle_periods.pdf'))
-        assert os.stat(os.path.join(tmp_path, 'vehicle_periods.pdf')).st_size > 0
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
 
-        assert os.path.isfile(os.path.join(tmp_path, 'vehicle_periods.png'))
-        assert os.stat(os.path.join(tmp_path, 'vehicle_periods.png')).st_size > 0
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
