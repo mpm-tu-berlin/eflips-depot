@@ -1,8 +1,11 @@
+## TODO:: Achtung, basiert evtl noch zu stark auf dem RLI Skript, ggf. copyright beachten?!
+
+
 name: Automatic tests for eflips depot
 on:
   pull_request:
     branches:
-      - main
+      - feature/test-pytest-postgres-jc
 env:
   PYTHON_VERSION: "3.11"
   POETRY_VERSION: "1.4.2"
@@ -29,7 +32,7 @@ jobs:
 
     steps:
       # Downloads a copy of the code in your repository before running CI tests
-      - name: Check out repository code
+      - name: Check out code
         uses: actions/checkout@v3
       - name: Set Up Gdal
         run: |
@@ -37,6 +40,7 @@ jobs:
           sudo apt-get install gdal-bin
           echo ogrinfo --version
 
+      # TODO benötigen wir Django und Chrom?
       - name: setup-chromedriver
         uses: nanasess/setup-chromedriver@v2.2.0
 
@@ -53,7 +57,7 @@ jobs:
           poetry install --no-root
       - name: Run Tests
         run:
-          poetry run python manage.py test
+          poetry run pytest #test
         env:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
