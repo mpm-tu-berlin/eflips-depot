@@ -2,10 +2,10 @@
 
 
 name: Automatic tests for eflips depot
-on:
-  pull_request:
-    branches:
-      - feature/test-pytest-postgres-jc
+on: pull_request
+#  pull_request:
+#    branches:
+#      - feature/test-pytest-postgres-jc
 env:
   PYTHON_VERSION: "3.11"
   POETRY_VERSION: "1.4.2"
