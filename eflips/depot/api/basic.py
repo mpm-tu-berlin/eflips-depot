@@ -6,15 +6,12 @@ from eflips.depot.simulation import SimulationHost, Depotinput
 from eflips.depot.api.output import InputForSimba
 
 
-def init_simulation(fsettings, fschedule, ftemplate):
+def init_simulation(fsettings: str, fschedule: str, ftemplate: str):
     """Initialization of :class:`eflips.depot.simulation.SimulationHost`
 
     :param fsettings: Path of setting file (JSON)
-    :type fsettings: str
     :param fschedule: Path of bus-schedule file (XML)
-    :type fschedule: str
     :param ftemplate: Path of template file (JSON)
-    :type ftemplate: str
 
     :return: A :class:`eflips.depot.simulation.SimulationHost`
     :rtype: :class:`eflips.depot.simulation.SimulationHost`
