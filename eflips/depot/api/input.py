@@ -1,12 +1,15 @@
 """Read and pre-process data from database"""
 import simpy
 import json
+
 import eflips.depot
 
 from datetime import datetime
 from dataclasses import dataclass
+from typing import Callable
 
 from ebustoolbox.models import Trip, Rotation, VehicleClass, VehicleType
+from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
 from eflips.depot.standalone import SimpleTrip
 from eflips.depot.simple_vehicle import SimpleVehicle
 
