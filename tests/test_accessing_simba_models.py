@@ -2,7 +2,7 @@ import os
 import pathlib
 import uuid
 from decimal import Decimal
-from typing import Tuple
+from typing import Tuple, Callable
 import json
 
 import eflips
@@ -20,7 +20,7 @@ management.call_command("migrate")
 
 import pytest
 from ebustoolbox.models import Scenario, Rotation, Trip, VehicleType
-
+from eflips.depot.api.input import VehicleTypeEflips, VehicleTypeFromDatabase
 from ebustoolbox.tasks import (
     run_ebus_toolbox,
     get_args,
@@ -37,8 +37,10 @@ from eflips.depot.api.input import (
     get_simba_output,
     RotationFromDatabase,
     create_rotation_from_simba_output,
+    load_vehicle_type_to_gc,
 )
-
+from eflips.settings import globalConstants as gc
+from eflips.depot.simple_vehicle import VehicleType as SimpleVehicleType
 from eflips.depot.api.basic import init_simulation, run_simulation
 
 from eflips.depot.settings_config import load_data_from_database
@@ -164,12 +166,112 @@ class TestAccessingSimBaModels:
 
         return eflips_input_path
 
-    def test_load_vehicle_types(self):
+    def test_vehicle_type(self, eflips_input_path):
+        v_ds = VehicleType.objects.all()[0]
+        # assert isinstance(vt[0], VehicleType)
+
+        # assert isinstance(vt[0].charging_curve, list)
+        v_ef = VehicleTypeFromDatabase(v_ds)
+        assert isinstance(v_ef, VehicleTypeEflips)
+        assert isinstance(v_ef, VehicleTypeFromDatabase)
+        assert isinstance(v_ef.id, str)
+        assert v_ef.id == v_ds.name
+        assert isinstance(v_ef.battery_capacity_total, float)
+        assert v_ef.battery_capacity_total == v_ds.battery_capacity
+        assert isinstance(v_ef.charging_curve, Callable)
+
+        assert v_ef.charging_curve(0) == v_ds.charging_curve[0][1]
+        assert v_ef.charging_curve(0.8) == v_ds.charging_curve[1][1]
+        assert v_ef.charging_curve(1) == v_ds.charging_curve[2][1]
+
+        assert v_ef.v2g_curve is None
+        assert v_ef.soc_min == 0.0
+        assert v_ef.soc_max == 1.0
+        assert v_ef.soh == 1.0
+
+        v_dict = v_ef._to_eflips_global_constants()
+        assert isinstance(v_dict, dict)
+        print(v_dict)
+
+    def test_load_vehicle_types(self, eflips_input_path):
         absolute_path = os.path.dirname(__file__)
         fsettings = os.path.join(absolute_path, "sample_simulation", "settings")
         eflips.load_settings(fsettings)
-        gc = eflips.depot.settings_config.load_data_from_database()
-        assert isinstance(gc["depot"]["vehicle_types"], dict)
+        vehicle_types_from_database = VehicleType.objects.all()
+        gc = eflips.depot.settings_config.load_data_from_database(
+            vehicle_types_from_database
+        )
+        vt_from_database = VehicleType.objects.all()
+        vt_dict = {}
+        for vt in vt_from_database:
+            v = VehicleTypeFromDatabase(vt)
+            vc = v._to_eflips_global_constants()
+            vt_dict.update(vc)
+
+        assert isinstance(vt_dict, dict)
+        # print(vt_dict)
+
+        gc["depot"]["vehicle_types"] = vt_dict
+
+        # assert isinstance(vehicle_types_from_gc, dict)
+        #
+        #
+        v_list = []
+        for ID in vt_dict:
+            vt = SimpleVehicleType(ID, **vt_dict[ID])
+            v_list.append(vt)
+            assert isinstance(vt, SimpleVehicleType)
+
+    def test_load_vehicle_to_gc(self, eflips_input_path):
+        vt_dict = load_vehicle_type_to_gc()
+        assert isinstance(vt_dict, dict)
+
+    @pytest.fixture
+    def simulation_host(self) -> SimulationHost:
+        absolute_path = os.path.dirname(__file__)
+
+        filename_template = os.path.join(
+            absolute_path, "sample_simulation", "sample_depot"
+        )
+
+        simulation_host = eflips.depot.SimulationHost(
+            [
+                eflips.depot.Depotinput(
+                    filename_template=filename_template, show_gui=False
+                )
+            ],
+            run_progressbar=True,
+            print_timestamps=True,
+            tictocname="",
+        )
+
+        assert isinstance(simulation_host, SimulationHost)
+        return simulation_host
+
+    def test_init_settings(
+        self, simulation_host: SimulationHost, eflips_input_path: pathlib.Path
+    ):
+        absolute_path = os.path.dirname(__file__)
+        filename_eflips_settings = os.path.join(
+            absolute_path, "sample_simulation", "settings"
+        )
+        filename_schedule = os.path.join(absolute_path, "sample_simulation", "schedule")
+
+        eflips.load_settings(filename_eflips_settings)
+        gc["depot"]["vehicle_types"] = load_vehicle_type_to_gc()
+        eflips.depot.settings_config.check_gc_validity()
+        eflips.depot.settings_config.complete_gc()
+
+        rotations = create_rotation_from_simba_output(eflips_input_path)
+        trips = read_timetable(simulation_host.env, rotations)
+        timetable = Timetable(simulation_host.env, trips)
+        simulation_host.timetable = timetable
+        simulation_host.run()
+        # print(gc['depot']['vehicle_types'])
+
+        # print(gc['depot']['vehicle_types'])
+        # assert isinstance(gc['depot']['vehicle_types_obj'], list)
+        # print(len(gc['depot']['vehicle_types_obj']))
 
     def test_reading_rotation_from_database(self, eflips_input_path: pathlib.Path):
         simba_output = get_simba_output(eflips_input_path)
