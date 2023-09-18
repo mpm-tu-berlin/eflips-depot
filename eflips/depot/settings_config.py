@@ -66,3 +66,23 @@ def complete_gc():
 
     # Precompute maximum battery capacity and save it in globalConstants
     gc["depot"]["max_battery_capacity"] = max(vt.battery_capacity for vt in vto)
+
+
+def load_data_from_database(vehicle_types_from_database: list):
+    """Loads VehicleType from database into globalConstants."""
+
+    vehicle_types = {}
+    for vehicle in vehicle_types_from_database:
+        v_curr = {
+            "battery_capacity": vehicle.battery_capacity,
+            "soc_min": 0.1,
+            "soc_max": 0.9,
+            "soc_init": 0.9,
+            "soh": vehicle.charging_efficiency,
+        }
+        vehicle_types[vehicle.name] = v_curr
+
+    gc["depot"]["vehicle_types"] = vehicle_types
+    return gc  # temporary for testing
+
+    # TODO: check if this is the right data format
