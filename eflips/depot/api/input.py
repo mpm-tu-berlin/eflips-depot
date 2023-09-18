@@ -46,7 +46,6 @@ class RotationFromDatabase:
         self.delta_soc = None
         self.charging_type = None
 
-    # TODO: move this and the next method to __init__()
     def read_data_from_database(self):
         """This method reads data from database according to given rotation id"""
 
@@ -143,13 +142,14 @@ def read_timetable(
     :type env: simpy.Environment
     """
 
-    # Use 0am of the first trip date as simulation 0-second. Might be changed later
+    # Use 0am of the first trip date as simulation start. Might be changed later
 
     rotations = []
 
     r_ids = []
     for rotation in rotation_from_simba:
         r_ids.append(rotation.id)
+        # r_id = rotation.id
 
     trips_from_rotations = (
         Trip.objects.filter(rotation_id__in=r_ids).order_by("departure_time").all()
@@ -172,6 +172,7 @@ def read_timetable(
         for t in trips:
             distance += t.distance
 
+        # TODO: check if it inculdes right rotations
         rotations.append(
             SimpleTrip(
                 env,
@@ -179,7 +180,8 @@ def read_timetable(
                 first_trip.line,  # might be changed later
                 str(start_station),
                 str(last_station),
-                rotation.vehicle_types(),  # need to see where vehicle_types will be converted to SimpleVehicle
+                # need to see where vehicle_types will be converted to SimpleVehicle
+                rotation.vehicle_types(),
                 int((first_trip.departure_time - start_time).total_seconds()),
                 int((last_trip.arrival_time - start_time).total_seconds()),
                 # a calculation from timestamp -> seconds after simulation begin
@@ -191,3 +193,56 @@ def read_timetable(
         )
 
     return rotations
+
+
+@dataclass
+class VehicleTypeEflips:
+    id: str
+    battery_capacity_total: float
+    charging_curve: Callable[[float], float]
+    v2g_curve: Callable[[float], float] = None
+    soc_min: float = 0.0
+    soc_max: float = 1.0
+    soh: float = 1.0
+
+    def _to_simple_vehicle(self) -> SimpleVehicle:
+        return SimpleVehicle(self)  # TODO: Of course it doesn't work that way
+
+    def _to_eflips_global_constants(self):
+        vehicle_type_dict = {}
+        vehicle_type_dict[self.id] = {
+            "battery_capacity": self.battery_capacity_total,
+            "soc_min": self.soc_min,
+            "soc_max": self.soc_max,
+            "soc_init": self.soc_max,
+            "soh": self.soh,
+        }
+        return vehicle_type_dict
+
+
+class VehicleTypeFromDatabase(VehicleTypeEflips):
+    def __init__(self, vehicle_type: DjangoSimbaVehicleType):
+        def charging_curve(soc: float) -> float:
+            for curve_point in vehicle_type.charging_curve:
+                if soc <= curve_point[0]:
+                    return curve_point[1]
+
+        self.id = vehicle_type.name
+        self.battery_capacity_total = vehicle_type.battery_capacity
+        self.charging_curve = charging_curve
+
+
+# TODO: Remove, this is just a sample
+# t = VehicleTypeFromDatabase(DjangoSimbaVehicleType.objects.all()[0])
+# eflips_v = t._to_simple_vehicle()
+
+
+def load_vehicle_type_to_gc():
+    vt_from_database = DjangoSimbaVehicleType.objects.all()
+    vt_dict = {}
+    for vt in vt_from_database:
+        v = VehicleTypeFromDatabase(vt)
+        vc = v._to_eflips_global_constants()
+        vt_dict.update(vc)
+
+    return vt_dict
