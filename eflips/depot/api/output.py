@@ -28,10 +28,10 @@ class SimpleTripOutput(SimpleTrip):
 
     Parameters:
     :param origin, destination: Depot ID of departure and destination depot upon init. Is converted to :class:`depot.depot.Depot`
-        instance by Timetable
+    instance by Timetable
     :type origin, destination: str
     :param vehicle_types: list of :class:`eflips.depot.simple_vehicle.VehicleType` as str upon import,
-        converted to :class:`eflips.depot.simple_vehicle.VehicleType` before simulation start.
+    converted to :class:`eflips.depot.simple_vehicle.VehicleType` before simulation start.
     :type vehicle_types: list
     :param std: scheduled time of departure in total seconds since sim start
     :type std: int
@@ -40,17 +40,17 @@ class SimpleTripOutput(SimpleTrip):
     :param distance: total trip distance in km
     :type distance: int, float
     :param start_soc, end_soc: soc upon departure from and
-        arrival at the depot. Must be provided if globalConstants['depot'][
-        'consumption_calc_mode'] == 'soc_given'. May be omitted if consumption
-        calculation is CR-based.
+    arrival at the depot. Must be provided if globalConstants['depot'][
+    'consumption_calc_mode'] == 'soc_given'. May be omitted if consumption
+    calculation is CR-based.
     :type start_soc, end_soc: int, float, None
     :param charge_on_track: For the use with globalConstants['depot'][
-        'consumption_calc_mode'] == 'soc_given'. If True, opportunity charging
-        on track is assumed and start_soc is interpreted as sufficient soc for
-        departure and end_soc is interpreted as fixed value upon arrival. If
-        False, depot charging is assumed and start_soc and end_soc are used to
-        determine the required energy. In this case, start_soc must be higher
-        than end_soc. May be omitted if consumption calculation is CR-based.
+    'consumption_calc_mode'] == 'soc_given'. If True, opportunity charging
+    on track is assumed and start_soc is interpreted as sufficient soc for
+    departure and end_soc is interpreted as fixed value upon arrival. If
+    False, depot charging is assumed and start_soc and end_soc are used to
+    determine the required energy. In this case, start_soc must be higher
+    than end_soc. May be omitted if consumption calculation is CR-based.
     :type charge_on_track: bool
 
     Attributes:
@@ -65,20 +65,20 @@ class SimpleTripOutput(SimpleTrip):
     :param reserved_for_init: see option prioritize_init_store in globalConstants
     :type reserved_for_init: bool
     :param vehicle_from: ID of the area the executing vehicle was located at
-        when calling checkout.
+    when calling checkout.
     :type vehicle_from: str
     :param copy_of: Is set to :class:`eflips.depot.standalone.SimpleTrip` object if trip was
-        copied in Timetable.repeat_trips.
+    copied in Timetable.repeat_trips.
     :type copy_of: None or :class:`eflips.depot.standalone.SimpleTrip`
     :param t_match: time of matching this trip and a vehicle. If a
-        vehicle from a depot's init store is assigned, this attribute stays
-        None. If the match changes, only the last matching time is saved.
+    vehicle from a depot's init store is assigned, this attribute stays
+    None. If the match changes, only the last matching time is saved.
     :type t_match: None or int
     :param got_early_vehicle: [bool] True if the trip was served by a vehicle where
-        the battery wasn't fully charged upon departure.
+    the battery wasn't fully charged upon departure.
     :type got_early_vehicle: bool
     :param periodic_trigger_scheduled: bool flag to prevent recursion when
-        scheduling a dispatch trigger for delayed trips
+    scheduling a dispatch trigger for delayed trips
     :type periodic_trigger_scheduled: bool
     :param ID_orig: str ID of trip this trip is a copy from, if not an original
     :type ID_orig: str
