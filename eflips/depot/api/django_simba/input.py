@@ -1,0 +1,254 @@
+"""
+
+This module contains the classes to process the output of django-simba into the input of eFLIPS-Depot. Please note that
+`import as` statements are used to distinguish between classes with the same name from eFLIPS-Depot and django-simba.
+
+"""
+import json
+import os
+from typing import List, Union, Dict, Any
+
+from depot.api.input import VehicleType as ApiVehicleType
+from depot.api.input import VehicleSchedule as ApiVehicleSchedule
+
+from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType, Rotation, Trip
+
+
+class VehicleType(ApiVehicleType):
+    """
+    This class represents a vehicle type in eFLIPS-Depot. It is a subclass of
+    :class:`eflips.depot.api.input.VehicleType` and overrides the :meth:`__init__()` method to read the data from the
+    django-simba database.
+    """
+
+    def __init__(self, vehicle_type: DjangoSimbaVehicleType):
+        """
+        Create a new VehicleType object from a django-simba VehicleType object.
+        :param vehicle_type: A django-simba VehicleType object.
+        """
+
+        def charging_curve(soc: float) -> float:
+            for curve_point in vehicle_type.charging_curve:
+                if soc <= curve_point[0]:
+                    return curve_point[1]
+
+        self.id = vehicle_type.name
+        self.battery_capacity_total = vehicle_type.battery_capacity
+        self.charging_curve = charging_curve
+
+
+class VehicleSchedule(ApiVehicleSchedule):
+    """
+    This class represents a vehicle schedule in eFLIPS-Depot. It is a subclass of
+    :class:`eflips.depot.api.input.VehicleSchedule` and overrides the :meth:`__init__()` method to read the data from the
+    django-simba database.
+    """
+
+    @classmethod
+    def from_rotations(
+        cls, input_path: Union[str, bytes, os.PathLike]
+    ) -> List["VehicleSchedule"]:
+        """
+        Create a new VehicleSchedule object from a django-simba Rotation object.
+        :param input_path: A Path-like object pointing to the input file. The input file format is specified below
+
+        The input file format is as follows: It should be a JSON file containing a dictionary, with the key being a
+        "rotation ID" for the database. The format of the dictionary for each rotation is specified in the __init__()
+        method.
+
+        :param input_path: A Path-like object pointing to the input file. The input file format is specified below.
+        :return: a list of VehicleSchedule objects.
+        """
+        with open(input_path, "r") as f:
+            input_data = json.load(f)
+
+        result = []
+        for rotation_id, rotation_info in input_data.items():
+            result.append(VehicleSchedule(rotation_id, rotation_info))
+
+    def __init__(self, rotation_id: int, rotation_info: Dict[str, Any]):
+        """
+        :param rotation_id: The ID of the rotation in the database.
+        :param rotation_info: A dictionary containing the information about the rotation. It is specified as follows:
+
+        This dictionary for each rotation contains the following keys:
+
+        - `charging_type`: The charging type of the vehicle during the rotation. This is a string, either "oppb" for
+            for vehicles that charge outside of the depot, or "depb" for vehicles that only charge in the depot.
+        - `departure_soc`: The state of charge of the vehicle at the departure from the depot. This is a float between
+            0 and 1.
+        - `arrival_soc`: The state of charge of the vehicle at the arrival at the depot. This is a float between
+            0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
+        - `minimal_soc`: The minimal state of charge of the vehicle during the rotation. This is a float between
+            0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
+        - `delta_soc`: A list of floats, representing the discharge of the vehicle during the rotation. The list
+        contains one float for each vehicle type. Only provided for depb vehicles, not given for oppb vehicles.
+        - `vehicle_type`: An integer (oppb) or a list of integers (depb), representing the vehicle type(s) of the
+            vehicle during the rotation. The integers correspond to the vehicle types in the database.
+
+        """
+
+        # Validate the input file
+        self._validate_input_file(rotation_id, rotation_info)
+
+        # Fill in the values from the rotation_info dictionary
+        self.id = rotation_id
+        self.departure_soc = rotation_info["departure_soc"]
+
+        # If the 'arrival_soc' entry is a list, then we want to create a dictionary with the vehicle type as key
+        # and the arrival soc as value
+        if isinstance(rotation_info["arrival_soc"], list):
+            assert len(rotation_info["arrival_soc"]) == len(
+                rotation_info["vehicle_type"]
+            ), "arrival_soc list has different length than vehicle_type list"
+            assert (
+                rotation_info["charging_type"] == "depb"
+            ), "arrival_soc list is only allowed for depb vehicles"
+            for i in len(rotation_info["arrival_soc"]):
+                vehicle_type = rotation_info["vehicle_type"][i]
+                arrival_soc = (
+                    rotation_info["departure_soc"][i] - rotation_info["delta_soc"][i]
+                )
+                self.arrival_soc[vehicle_type] = arrival_soc
+        else:
+            assert (
+                rotation_info["charging_type"] == "oppb"
+            ), "arrival_soc is only allowed for oppb vehicles"
+            assert isinstance(
+                rotation_info["arrival_soc"], float
+            ), "arrival_soc is not a float"
+            assert isinstance(
+                rotation_info["vehicle_type"], int
+            ), "vehicle_type is not an integer"
+            self.arrival_soc = {
+                rotation_info["vehicle_type"]: rotation_info["arrival_soc"]
+            }
+
+        if rotation_info["charging_type"] == "oppb":
+            self.minimal_soc = rotation_info["minimal_soc"]
+            self.opporunity_charging = True
+        else:
+            self.minimal_soc = None
+            self.opporunity_charging = False
+
+        self._fill_in_from_database()
+
+    def _fill_in_from_database(self):
+        """
+        This method takes a populated VehicleSchedule object and fills in the remaining values from the database.
+
+        :return: Nothing.
+        """
+
+        # Load the rotation from the database
+        rotation = Rotation.objects.get(id=self.id)
+        self.vehicle_class = rotation.vehicle_class.id
+
+        # Load the arrival and departure times by looking through the trips
+        trips = (
+            Trip.objects.filter(rotation_id=self.id).order_by("departure_time").all()
+        )  # TODO: Can we filter by rotation_id?
+
+        first_trip = trips.first()
+        start_station = first_trip.departure_stop_id
+        last_trip = trips.last()
+        last_station = last_trip.arrival_stop_id
+        assert (
+            first_trip.departure_stop == last_trip.arrival_stop
+        ), "First trip departure stop does not match last trip arrival stop"
+
+        self.departure_time = first_trip.departure_time
+        self.arrival_time = last_trip.arrival_time
+
+    @staticmethod
+    def _validate_input_file(rotation_id: int, rotation_info: Dict[str, Any]) -> bool:
+        """
+        This method validates whether an input file is valid according to the format specified in the class
+        docstring.
+        :param rotation_id: The ID of the rotation in the database.
+        :param rotation_info: A dictionary containing the information about the rotation. It is specified in the
+        __init__() method.
+        :return: True if the input file is valid. Throws an AssertionError if the input file is invalid.
+        """
+
+        assert isinstance(rotation_id, int), "Rotation ID is not an integer"
+        assert isinstance(rotation_info, dict), "Rotation info is not a dictionary"
+
+        # Check if the rotation ID exists
+        assert Rotation.objects.filter(
+            id=rotation_id
+        ).exists(), "Rotation ID does not exist"
+
+        # Load the trip with the lowest arrival time for this rotation
+        first_trip = (
+            Trip.objects.filter(rotation_id=rotation_id)
+            .order_by("arrival_time")
+            .first()
+        )
+
+        # Load the trip with the highest departure time for this rotation
+        last_trip = (
+            Trip.objects.filter(rotation_id=rotation_id)
+            .order_by("-departure_time")
+            .first()
+        )
+
+        # Check if the trip goes from the same station as the first trip to the same station as the last trip
+        assert (
+            first_trip.departure_stop == last_trip.arrival_stop
+        ), "First trip departure stop does not match last trip arrival stop"
+
+        # For each rotation, the vehicle_type in the rotation_info should be either a string or a list of strings,
+        # dependeing on the number of VehicleTypes for the VehicleClass fot the rotation
+        rotation = Rotation.objects.get(id=rotation_id)
+        database_vehicle_types = VehicleType.objects.filter(
+            vehicle_class=rotation.vehicle_class
+        ).all()
+
+        if len(database_vehicle_types) == 1:
+            assert (
+                rotation_info["vehicle_type"] == database_vehicle_types[0].id
+            ), "vehicle_type does not match vehicle_class"
+        else:
+            assert isinstance(
+                rotation_info["vehicle_type"], list
+            ), "vehicle_type is not a list"
+            assert len(rotation_info["vehicle_type"]) == len(
+                database_vehicle_types
+            ), "vehicle_type list has different length than vehicle_class list"
+            assert set([v.id for v in database_vehicle_types]) == set(
+                rotation_info["vehicle_type"]
+            ), "vehicle_type list does not match vehicle_class list"
+
+        # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
+        # or for "minimal_soc" for opportunity chargers ("oppb")
+        if rotation_info["charging_type"] == "depb":
+            assert "delta_soc" in rotation_info, "delta_soc not found in rotation_info"
+            assert isinstance(rotation_info["delta_soc"], float) or isinstance(
+                rotation_info["delta_soc"], list
+            ), "delta_soc is not a float or list"
+            if isinstance(rotation_info["delta_soc"], list):
+                assert len(rotation_info["delta_soc"]) == len(
+                    rotation_info["vehicle_type"]
+                ), "delta_soc list has different length than vehicle_type list"
+                for delta_soc in rotation_info["delta_soc"]:
+                    assert isinstance(
+                        delta_soc, float
+                    ), "delta_soc list contains non-float value"
+        elif rotation_info["charging_type"] == "oppb":
+            assert (
+                "minimal_soc" in rotation_info
+            ), "minimal_soc not found in rotation_info"
+            assert isinstance(rotation_info["minimal_soc"], float) or isinstance(
+                rotation_info["minimal_soc"], list
+            ), "minimal_soc is not a float or list"
+            if isinstance(rotation_info["minimal_soc"], list):
+                assert len(rotation_info["minimal_soc"]) == len(
+                    rotation_info["vehicle_type"]
+                ), "minimal_soc list has different length than vehicle_type list"
+                for minimal_soc in rotation_info["minimal_soc"]:
+                    assert isinstance(
+                        minimal_soc, float
+                    ), "minimal_soc list contains non-float value"
+
+        return True
