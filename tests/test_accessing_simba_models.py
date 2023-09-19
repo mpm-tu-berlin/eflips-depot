@@ -355,7 +355,6 @@ class TestAccessingSimBaModels:
             eflips_input_path: A pathlib.Path object containing the absolute paths to the created files.
         """
 
-        print(eflips_input_path)
         # Assert that the files exist
         assert eflips_input_path.exists()
 
@@ -366,7 +365,8 @@ class TestAccessingSimBaModels:
         with open(eflips_input_path, "r") as f:
             simba_output = json.load(f)
 
-        # TODO: REMOVE THIS LATER
+        # TODO: REMOVE THIS LATER. We are modifying the JSON file's contents after laoding
+        # Once django-simba fixes their #28, we can remove this
         for rotation_id, results in simba_output.items():
             # Make all the "vehicle_type" lists contain only distinct items
             if isinstance(results["vehicle_type"], list):
