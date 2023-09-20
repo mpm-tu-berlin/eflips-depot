@@ -64,6 +64,7 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         result = []
         for rotation_id, rotation_info in input_data.items():
+            rotation_id = int(rotation_id)
             result.append(VehicleSchedule(rotation_id, rotation_info))
 
     def __init__(self, rotation_id: int, rotation_info: Dict[str, Any]):
