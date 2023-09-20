@@ -201,7 +201,7 @@ class VehicleSchedule(ApiVehicleSchedule):
         # For each rotation, the vehicle_type in the rotation_info should be either a string or a list of strings,
         # dependeing on the number of VehicleTypes for the VehicleClass fot the rotation
         rotation = Rotation.objects.get(id=rotation_id)
-        database_vehicle_types = VehicleType.objects.filter(
+        database_vehicle_types = DjangoSimbaVehicleType.objects.filter(
             vehicle_class=rotation.vehicle_class
         ).all()
 
