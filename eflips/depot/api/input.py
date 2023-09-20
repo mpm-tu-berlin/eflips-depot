@@ -83,7 +83,8 @@ class VehicleType:
             self._charge_power_list = list(self.charging_curve.values())
             self.charging_curve = self._interpolate_charging_curve
         elif isinstance(self.charging_curve, float):
-            self.charging_curve = lambda x: self.charging_curve
+            self._const_charging_curve = self.charging_curve
+            self.charging_curve = lambda x: self._const_charging_curve
         else:
             raise ValueError("Invalid charging curve format")
 
@@ -101,7 +102,8 @@ class VehicleType:
             self._v2g_power_list = list(self.v2g_curve.values())
             self.v2g_curve = self._interpolate_v2g_curve
         elif isinstance(self.v2g_curve, float):
-            self.v2g_curve = lambda x: self.v2g_curve
+            self._const_v2g_curve = self.v2g_curve
+            self.v2g_curve = lambda x: self._const_v2g_curves
         else:
             raise ValueError("Invalid V2G curve format")
 
