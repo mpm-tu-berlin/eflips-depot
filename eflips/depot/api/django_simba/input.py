@@ -66,6 +66,7 @@ class VehicleSchedule(ApiVehicleSchedule):
         for rotation_id, rotation_info in input_data.items():
             rotation_id = int(rotation_id)
             result.append(VehicleSchedule(rotation_id, rotation_info))
+        return result
 
     def __init__(self, rotation_id: int, rotation_info: Dict[str, Any]):
         """
@@ -90,40 +91,28 @@ class VehicleSchedule(ApiVehicleSchedule):
         """
 
         # Validate the input file
-        self._validate_input_file(rotation_id, rotation_info)
+        self._validate_input_data(rotation_id, rotation_info)
 
         # Fill in the values from the rotation_info dictionary
         self.id = rotation_id
         self.departure_soc = rotation_info["departure_soc"]
 
-        # If the 'arrival_soc' entry is a list, then we want to create a dictionary with the vehicle type as key
-        # and the arrival soc as value
-        if isinstance(rotation_info["arrival_soc"], list):
-            assert len(rotation_info["arrival_soc"]) == len(
-                rotation_info["vehicle_type"]
-            ), "arrival_soc list has different length than vehicle_type list"
-            assert (
-                rotation_info["charging_type"] == "depb"
-            ), "arrival_soc list is only allowed for depb vehicles"
-            for i in len(rotation_info["arrival_soc"]):
-                vehicle_type = rotation_info["vehicle_type"][i]
-                arrival_soc = (
-                    rotation_info["departure_soc"][i] - rotation_info["delta_soc"][i]
-                )
-                self.arrival_soc[vehicle_type] = arrival_soc
+        self.arrival_soc = {}
+        if rotation_info["charging_type"] == "depb":
+            # For the depb buses, arrival_soc is not provided, so we have to calculate it from the departure_soc and
+            # delta_soc
+            for i in range(len(rotation_info["vehicle_type"])):
+                vehicle_type_key = rotation_info["vehicle_type"][i]
+                delta_soc = rotation_info["delta_soc"][i]
+                arrival_soc = rotation_info["departure_soc"] - delta_soc
+                self.arrival_soc[vehicle_type_key] = arrival_soc
+        elif rotation_info["charging_type"] == "oppb":
+            # For the oppb buses, arrival_soc is provided, so we can just use that
+            # And there is only one vehicle type
+            vehicle_type_key = rotation_info["vehicle_type"]
+            self.arrival_soc[vehicle_type_key] = rotation_info["arrival_soc"]
         else:
-            assert (
-                rotation_info["charging_type"] == "oppb"
-            ), "arrival_soc is only allowed for oppb vehicles"
-            assert isinstance(
-                rotation_info["arrival_soc"], float
-            ), "arrival_soc is not a float"
-            assert isinstance(
-                rotation_info["vehicle_type"], int
-            ), "vehicle_type is not an integer"
-            self.arrival_soc = {
-                rotation_info["vehicle_type"]: rotation_info["arrival_soc"]
-            }
+            raise AssertionError("Invalid charging_type")
 
         if rotation_info["charging_type"] == "oppb":
             self.minimal_soc = rotation_info["minimal_soc"]
@@ -162,10 +151,12 @@ class VehicleSchedule(ApiVehicleSchedule):
         self.arrival_time = last_trip.arrival_time
 
     @staticmethod
-    def _validate_input_file(rotation_id: int, rotation_info: Dict[str, Any]) -> bool:
+    def _validate_input_data(rotation_id: int, rotation_info: Dict[str, Any]) -> bool:
         """
-        This method validates whether an input file is valid according to the format specified in the class
-        docstring.
+        This method validates whether a given rotation_info dictionary is valid. The rotation_info dictionary is
+        one of the values from the django-simBA rotation JSON. The rotation_id is the key of the rotation_info
+        dictionary.
+
         :param rotation_id: The ID of the rotation in the database.
         :param rotation_info: A dictionary containing the information about the rotation. It is specified in the
         __init__() method.
@@ -202,24 +193,38 @@ class VehicleSchedule(ApiVehicleSchedule):
         # For each rotation, the vehicle_type in the rotation_info should be either a string or a list of strings,
         # dependeing on the number of VehicleTypes for the VehicleClass fot the rotation
         rotation = Rotation.objects.get(id=rotation_id)
-        database_vehicle_types = DjangoSimbaVehicleType.objects.filter(
-            vehicle_class=rotation.vehicle_class
-        ).all()
 
-        if len(database_vehicle_types) == 1:
-            assert (
-                rotation_info["vehicle_type"] == database_vehicle_types[0].id
-            ), "vehicle_type does not match vehicle_class"
-        else:
+        if rotation_info["charging_type"] == "depb":
+            # If it's a depot charger, there can be multiple vehicle types and we have to check if all types of
+            # the VehicleClass are present
+            database_vehicle_types = DjangoSimbaVehicleType.objects.filter(
+                vehicle_class=rotation.vehicle_class
+            ).all()
+
+            if len(database_vehicle_types) == 1:
+                assert (
+                    rotation_info["vehicle_type"] == database_vehicle_types[0].id
+                ), "vehicle_type does not match vehicle_class"
+            else:
+                assert isinstance(
+                    rotation_info["vehicle_type"], list
+                ), "vehicle_type is not a list"
+                assert len(rotation_info["vehicle_type"]) == len(
+                    database_vehicle_types
+                ), "vehicle_type list has different length than vehicle_class list"
+                assert set([v.id for v in database_vehicle_types]) == set(
+                    rotation_info["vehicle_type"]
+                ), "vehicle_type list does not match vehicle_class list"
+        elif rotation_info["charging_type"] == "oppb":
+            # For an opportunity charger, there django-simba only provides one vehicle type
             assert isinstance(
-                rotation_info["vehicle_type"], list
-            ), "vehicle_type is not a list"
-            assert len(rotation_info["vehicle_type"]) == len(
-                database_vehicle_types
-            ), "vehicle_type list has different length than vehicle_class list"
-            assert set([v.id for v in database_vehicle_types]) == set(
-                rotation_info["vehicle_type"]
-            ), "vehicle_type list does not match vehicle_class list"
+                rotation_info["vehicle_type"], int
+            ), "vehicle_type is not an int"
+            vehicle_type_from_database = DjangoSimbaVehicleType.objects.get(
+                id=rotation_info["vehicle_type"]
+            )
+        else:
+            raise AssertionError("Invalid charging_type")
 
         # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
         # or for "minimal_soc" for opportunity chargers ("oppb")
