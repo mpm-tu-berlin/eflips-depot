@@ -55,10 +55,10 @@ class VehicleType:
     We take the same formats as for the charging curve.
     """
 
-    soc_max: float = 0.0
+    soc_max: float = 1.0
     """The maximum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1]."""
 
-    soc_min: float = 1.0
+    soc_min: float = 0.0
     """The minimum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1] and smaller than `soc_max`."""
 
     soh: float = 1.0
@@ -132,8 +132,8 @@ class VehicleType:
 @dataclass
 class VehicleSchedule:
     """
-    This class represents a vehicle schedule in eFLIPS-Depot. A vehicöe schedule presents everything a vehicle does
-    between leaving the depot and returning to the depot. In eFLIPS-Depot, we only care about about a reduced set of
+    This class represents a vehicle schedule in eFLIPS-Depot. A vehicle schedule presents everything a vehicle does
+    between leaving the depot and returning to the depot. In eFLIPS-Depot, we only care about a reduced set of
     information, limited to the interaction with the depot.
     """
 
