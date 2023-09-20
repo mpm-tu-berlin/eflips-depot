@@ -16,7 +16,7 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
-django-simba = { git = "git@github.com:rl-institut/django-simba.git" }
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "issue/#28" }
 
 [tool.pytest.ini_options]
 addopts = [
@@ -25,6 +25,7 @@ addopts = [
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
+pytest-pycharm = "^0.7.0"
 sphinx = "^7.0.1"
 sphinx-autoapi = "^2.1.1"
 black = "^23.7.0"
