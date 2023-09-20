@@ -1,251 +1,267 @@
 """Read and pre-process data from database"""
-import simpy
 import json
-
-import eflips.depot
-
-from datetime import datetime
 from dataclasses import dataclass
-from typing import Callable
+from datetime import datetime
+from math import ceil
+from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple
 
-from ebustoolbox.models import Trip, Rotation, VehicleClass, VehicleType
-from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
+import numpy as np
+import simpy
+
+import eflips.depot.standalone
+from depot import VehicleType
 from eflips.depot.standalone import SimpleTrip
-from eflips.depot.simple_vehicle import SimpleVehicle
-
-
-def get_rotation_from_database(rid: int) -> Rotation:
-    """this method return data units from rotation-table"""
-
-    current_rotation = Rotation.objects.filter(id=rid).all()
-    return current_rotation[0]
-
-
-def get_start_time(dt):
-    """Temporarily take 0 am of the earliest day in the trip schedule as start of the simulation
-
-    :return: 0 am of the earliest day in the trip schedule
-    :rtype: datetime
-    """
-
-    # TODO: check timezone
-    return datetime(dt.year, dt.month, dt.day, 0, 0, 0, tzinfo=dt.tzinfo)
-
-
-class RotationFromDatabase:
-    """
-    TODO: actually rotation from database and simba. Change the name of this class later
-    """
-
-    def __init__(self, query_id):
-        self.id = int(query_id)
-        self.name = None
-        self.vehicle_class = None
-        self.scenario = None
-        self.vehicle_type = None
-        self.departure_soc = None
-        self.arrival_soc = None
-        self.minimal_soc = None
-        self.delta_soc = None
-        self.charging_type = None
-
-    def read_data_from_database(self):
-        """This method reads data from database according to given rotation id"""
-
-        current_rotation = get_rotation_from_database(self.id)
-        self.name = current_rotation.id
-        self.vehicle_class = current_rotation.vehicle_class
-        self.scenario = current_rotation.scenario  # TODO: do we need this?
-
-    def read_data_for_simba(self, simba_result):
-        """This method reads simba output according to given rotation id"""
-
-        self.departure_soc = simba_result["departure_soc"]
-        self.arrival_soc = simba_result["arrival_soc"]
-        self.minimal_soc = simba_result["minimal_soc"]
-        self.delta_soc = (
-            simba_result["delta_soc"] if "delta_soc" in simba_result else None
-        )
-        self.charging_type = simba_result["charging_type"]
-        self.vehicle_type = simba_result["vehicle_type"]
-
-    def vehicle_class(self):
-        vehicle_class_query = VehicleClass.objects.filter(id=self.vehicle_class).all()
-        return vehicle_class_query[0]
-
-    # @property
-    # def departure_soc(self):
-    #     return self.departure_soc
-    #
-    # @property
-    # def arrival_soc(self):
-    #     return self.arrival_soc
-    #
-    # @property
-    # def minimal_soc(self):
-    #     return self.minimal_soc
-    #
-    # @property
-    # def delta_soc(self):
-    #     return self.delta_soc
-    #
-    # @property
-    # def charging_type(self):
-    #     return self.charging_type
-
-    def vehicle_types(self) -> list:
-        """Return a list of vehicle types for this rotation. Prioritize reading from simBA output, if available."""
-        if self.vehicle_type is not None:
-            return [self.vehicle_type]
-        else:
-            return [
-                v.name
-                for v in VehicleType.objects.filter(vehicle_class_id=self.vehicle_class)
-            ]
-
-    def get_eflips_input(self):
-        pass
-
-    def get_trips(self):
-        return VehicleClass.objects.filter(rotation_id=self.id).all()
-
-
-def get_simba_output(eflips_input_path):
-    """This method get the simba output data from json file...
-    Should call after run_ebus_toolbox()
-
-
-    """
-    # read json files
-    with open(eflips_input_path, "r") as f:
-        simba_output = json.load(f)
-    return simba_output
-
-
-def create_rotation_from_simba_output(eflips_input_path) -> list:
-    """This method creates a list of RotationFromDatabase object from simba output data"""
-    simba_output = get_simba_output(eflips_input_path)
-    rotation_list = []
-    for rotation_id, results in simba_output.items():
-        rotation = RotationFromDatabase(rotation_id)
-        rotation.read_data_for_simba(results)
-        rotation.read_data_from_database()
-        rotation_list.append(rotation)
-
-    return rotation_list
-
-
-def read_timetable(
-    env: simpy.Environment, rotation_from_simba
-) -> list:  # or better return Timetable?
-    """The method reads trips from database and returns a list of SimpleTrip for configuration a DepotEvaluation object
-
-    Parameters:
-    :param env: simulation environment object
-    :type env: simpy.Environment
-    """
-
-    # Use 0am of the first trip date as simulation start. Might be changed later
-
-    rotations = []
-
-    r_ids = []
-    for rotation in rotation_from_simba:
-        r_ids.append(rotation.id)
-        # r_id = rotation.id
-
-    trips_from_rotations = (
-        Trip.objects.filter(rotation_id__in=r_ids).order_by("departure_time").all()
-    )
-    start_trip = trips_from_rotations[0]
-    start_time = get_start_time(start_trip.departure_time)
-
-    for rotation in rotation_from_simba:  # rotations...
-        trips = (
-            trips_from_rotations.filter(rotation_id=rotation.id)
-            .order_by("departure_time")
-            .all()
-        )
-
-        first_trip = trips.first()
-        start_station = first_trip.departure_stop_id
-        last_trip = trips.last()
-        last_station = last_trip.arrival_stop_id
-        distance = 0.0
-        for t in trips:
-            distance += t.distance
-
-        # TODO: check if it inculdes right rotations
-        rotations.append(
-            SimpleTrip(
-                env,
-                str(rotation.id),
-                first_trip.line,  # might be changed later
-                str(start_station),
-                str(last_station),
-                # need to see where vehicle_types will be converted to SimpleVehicle
-                rotation.vehicle_types(),
-                int((first_trip.departure_time - start_time).total_seconds()),
-                int((last_trip.arrival_time - start_time).total_seconds()),
-                # a calculation from timestamp -> seconds after simulation begin
-                distance,  # sum of all trips
-                rotation.departure_soc,
-                rotation.arrival_soc,
-                rotation.charging_type == "oppb",
-            )
-        )
-
-    return rotations
 
 
 @dataclass
-class VehicleTypeEflips:
-    id: str
+class VehicleType:
+    id: Hashable
+    """A unique identifier for this vehicle type. This identifier will be returned in the output of eFLIPS-Depot."""
+
     battery_capacity_total: float
-    charging_curve: Callable[[float], float]
-    v2g_curve: Callable[[float], float] = None
-    soc_min: float = 0.0
-    soc_max: float = 1.0
+    """The total battery capacity of the vehicle in kWh. This is the gross capacity, which is actually quite a stupid
+    value, but everybody does it that way. The practical capacity is the net capacity, which id returned in :meth:`net_battery_capacity`."""
+
+    charging_curve: Union[
+        Callable[[float], float],
+        Tuple[List[float], List[float]],
+        Dict[float, float],
+        float,
+    ]
+    """
+    The charging curve of the vehicle specifies the charging power as a function of the battery state of charge (SoC).
+    
+    We accept it in four different formats:
+    - A function that takes the SoC as a float [0-1] and returns the charging power in kW.
+    - A tuple of two lists. The first list contains the SoC values [0-1] and the second list contains the corresponding
+        charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
+    - A dictionary mapping SoC values [0-1] to charging power values in kW. The resulting function is a piecewise linear
+        interpolation between the points.
+    - A float. The charging power is constant at this value over the whole SoC range.
+    """
+
+    v2g_curve: Optional[
+        Union[
+            Callable[[float], float],
+            Tuple[List[float], List[float]],
+            Dict[float, float],
+            float,
+        ]
+    ] = None
+    """
+    The (optional) vehicle-to-grid (V2G) curve of the vehicle specifies the discharging power as a function of the b
+    attery state of charge (SoC).
+    
+    We take the same formats as for the charging curve.
+    """
+
+    soc_max: float = 0.0
+    """The maximum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1]."""
+
+    soc_min: float = 1.0
+    """The minimum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1] and smaller than `soc_max`."""
+
     soh: float = 1.0
+    """The state of health (SoH) of the vehicle. It must be in the range [0, 1]."""
 
-    def _to_simple_vehicle(self) -> SimpleVehicle:
-        return SimpleVehicle(self)  # TODO: Of course it doesn't work that way
+    def __post_init__(self):
+        """
+        This method is called after the object is initialized. It converts the charging curve and the V2G curve into
+        functions, if they were provided in a different format.
+        :return: Nothing
+        """
 
-    def _to_eflips_global_constants(self):
-        vehicle_type_dict = {}
-        vehicle_type_dict[self.id] = {
-            "battery_capacity": self.battery_capacity_total,
-            "soc_min": self.soc_min,
-            "soc_max": self.soc_max,
-            "soc_init": self.soc_max,
-            "soh": self.soh,
-        }
-        return vehicle_type_dict
+        # Convert the charging curve to a function
+        if isinstance(self.charging_curve, Callable):
+            pass
+        elif isinstance(self.charging_curve, tuple):
+            self._charge_soc_list = self.charging_curve[0]
+            self._charge_power_list = self.charging_curve[1]
+            self.charging_curve = self._interpolate_charging_curve
+        elif isinstance(self.charging_curve, dict):
+            self._charge_soc_list = list(self.charging_curve.keys())
+            self._charge_power_list = list(self.charging_curve.values())
+            self.charging_curve = self._interpolate_charging_curve
+        elif isinstance(self.charging_curve, float):
+            self.charging_curve = lambda x: self.charging_curve
+        else:
+            raise ValueError("Invalid charging curve format")
+
+        # Convert the V2G curve to a function
+        if self.v2g_curve is None:
+            pass
+        elif isinstance(self.v2g_curve, Callable):
+            pass
+        elif isinstance(self.v2g_curve, tuple):
+            self._v2g_soc_list = self.v2g_curve[0]
+            self._v2g_power_list = self.v2g_curve[1]
+            self.v2g_curve = self._interpolate_v2g_curve
+        elif isinstance(self.v2g_curve, dict):
+            self._v2g_soc_list = list(self.v2g_curve.keys())
+            self._v2g_power_list = list(self.v2g_curve.values())
+            self.v2g_curve = self._interpolate_v2g_curve
+        elif isinstance(self.v2g_curve, float):
+            self.v2g_curve = lambda x: self.v2g_curve
+        else:
+            raise ValueError("Invalid V2G curve format")
+
+    def _interpolate_charging_curve(self, soc: float) -> float:
+        """Internal method to calculate the charging power from the charging curve."""
+        return float(np.interp(soc, self._charge_soc_list, self._charge_power_list))
+
+    def _interpolate_v2g_curve(self, soc: float) -> float:
+        """Internal method to calculate the discharging power from the V2G curve."""
+        return float(np.interp(soc, self._v2g_soc_list, self._v2g_power_list))
+
+    @property
+    def net_battery_capacity(self) -> float:
+        """The net battery capacity of the vehicle in kWh. This is the battery capacity that is actually available for
+        use. It is calculated as `battery_capacity_total * soh * (soc_max-soc_min)`."""
+        return self.battery_capacity_total * self.soh * (self.soc_max - self.soc_min)
+
+    def _to_vehicle_type(self) -> VehicleType:
+        """
+        This converts the VehicleTypeFromDatabase object into a :class:`depot.VehicleType` object, which is the input
+        format of the depot simulation.
+
+        :return: A :class:`depot.VehicleType` object.
+        """
+        raise NotImplementedError  # TODO
 
 
-class VehicleTypeFromDatabase(VehicleTypeEflips):
-    def __init__(self, vehicle_type: DjangoSimbaVehicleType):
-        def charging_curve(soc: float) -> float:
-            for curve_point in vehicle_type.charging_curve:
-                if soc <= curve_point[0]:
-                    return curve_point[1]
+@dataclass
+class VehicleSchedule:
+    """
+    This class represents a vehicle schedule in eFLIPS-Depot. A vehicöe schedule presents everything a vehicle does
+    between leaving the depot and returning to the depot. In eFLIPS-Depot, we only care about about a reduced set of
+    information, limited to the interaction with the depot.
+    """
 
-        self.id = vehicle_type.name
-        self.battery_capacity_total = vehicle_type.battery_capacity
-        self.charging_curve = charging_curve
+    id: Hashable
+    """Unique ID of this vehicle schedule. This identifier will be returned in the output of eFLIPS-Depot."""
+
+    vehicle_class: Hashable
+    """
+    The vehicle class of this vehicle schedule. This should match the `vehicle_class` of the corresponding
+    :class:`eflips.depot.api.input.VehicleType` objects.
+    """
+
+    departure: datetime
+    """
+    The departure time of the vehicle from the depot. It *must* include the timezone information.
+    """
+
+    arrival: datetime
+    """
+    The arrival time of the vehicle at the depot. It *must* include the timezone information.
+    """
+
+    departure_soc: float
+    """
+    The battery state of charge (SoC) of the vehicle at the departure time. It must be in the range [0, 1]. Note that
+    this SoC may not be ctually reached, e.g. if the vehicle is not fully charged when it leaves the depot. The depot
+    simulation should always be run multiple times until the `departure_soc` stabilizes.
+    """
+
+    arrival_soc: Dict[Hashable, float]
+    """
+    The battery state of charge (SoC) of the vehicle at the arrival time. It must be in the range [-inf, 1]. This value
+    is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It is a dictionary 
+    mapping vehicle types to floats. The dictionary must contain an entry for each vehicle type that is part of the 
+    `vehicle_class` of this vehicle schedule.
+    """
+
+    minimal_soc: Optional[float]
+    """
+    The minimal battery state of charge (SoC) of the vehicle during the trip. It must be in the range [-inf, 1]. This
+    value is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It may be
+    left `None` if the consumption model does not provide this information.
+    """
+
+    opporunity_charging: bool
+    """
+    Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip.
+    """
+
+    def _to_simple_trip(
+        self, simulation_start_time: datetime, env: simpy.Environment
+    ) -> SimpleTrip:
+        """
+        This converts the vehicle schedule into a :class:`eflips.depot.standalone.SimpleTrip` object, which is the
+        input format of the depot simulation.
+
+        :param simulation_start_time: The time that serves as "zero" for the simulation. It must be before the
+            `departure` time of the first of all vehicle schedules, probably midnight of the first day.
+        :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
+
+        :return: A :class:`eflips.depot.standalone.SimpleTrip` object.
+        """
+
+        vehicle_types = (
+            self.arrival_soc.keys()
+        )  # The vehicle type ids are the keys of the arrival_soc dictionary
+        departure = int((self.departure - simulation_start_time).total_seconds())
+        arrival = int((self.arrival - simulation_start_time).total_seconds())
+        simple_trip = SimpleTrip(
+            env,
+            self.id,
+            None,
+            None,
+            None,
+            vehicle_types,
+            departure,
+            arrival,
+            None,
+            self.departure_soc,
+            self.arrival_soc,
+            self.opporunity_charging,
+        )
+        return simple_trip
+
+    @staticmethod
+    def _to_timetable(
+        vehicle_schedules: List["VehicleSchedule"], env: simpy.Environment
+    ) -> eflips.depot.standalone.Timetable:
+        """
+        This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which
+        is the input format of the depot simulation. This Timetable object is part of the "black box" not covered by
+        the API documentation.
+
+        :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+        :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
+        :return:
+        """
+
+        # Sort the vehicle schedules by departure time
+        vehicle_schedules = sorted(vehicle_schedules, key=lambda x: x.departure)
+
+        # Find the first departure time
+        first_departure = vehicle_schedules[0].departure
+        start_of_simulation = first_departure.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        # Convert the vehicle schedules into SimpleTrip objects
+        simple_trips = []
+        for vehicle_schedule in vehicle_schedules:
+            simple_trip = vehicle_schedule._to_simple_trip(start_of_simulation, env)
+            simple_trips.append(simple_trip)
+
+        # Create the Timetable object
+        total_interval = (
+            vehicle_schedules[-1].arrival - vehicle_schedules[0].departure
+        ).total_seconds()
+        days_ahead = (
+            ceil(total_interval / 86400) + 1
+        )  # Apparently, that's what the TimeTable documentation wants
+        timetable = eflips.depot.standalone.Timetable(env, simple_trips, days_ahead)
+
+        return timetable
 
 
-# TODO: Remove, this is just a sample
-# t = VehicleTypeFromDatabase(DjangoSimbaVehicleType.objects.all()[0])
-# eflips_v = t._to_simple_vehicle()
+class Depot:
+    """
+    This class represents a depot in eFLIPS-Depot. A depot is a place where vehicles can be charged. It is **WIP**.
+    """
 
-
-def load_vehicle_type_to_gc():
-    vt_from_database = DjangoSimbaVehicleType.objects.all()
-    vt_dict = {}
-    for vt in vt_from_database:
-        v = VehicleTypeFromDatabase(vt)
-        vc = v._to_eflips_global_constants()
-        vt_dict.update(vc)
-
-    return vt_dict
+    pass
