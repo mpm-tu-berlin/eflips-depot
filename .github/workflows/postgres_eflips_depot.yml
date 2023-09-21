@@ -2,7 +2,7 @@
 
 
 name: Automatic tests for eflips depot
-on: pull_request
+on: push #TODO zurück zu pull_request SOBALD FERTIG
 #  pull_request:
 #    branches:
 #      - feature/test-pytest-postgres-jc
@@ -34,15 +34,15 @@ jobs:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Set Up Gdal
-        run: |
-          sudo apt-get update
-          sudo apt-get install gdal-bin
-          echo ogrinfo --version
+      #- name: Set Up Gdal
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install gdal-bin
+      #    echo ogrinfo --version
 
       # TODO benötigen wir Django und Chrom?
-      - name: setup-chromedriver
-        uses: nanasess/setup-chromedriver@v2.2.0
+      #- name: setup-chromedriver
+      #  uses: nanasess/setup-chromedriver@v2.2.0
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v3
