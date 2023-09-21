@@ -18,6 +18,9 @@ class VehicleType:
     id: Hashable
     """A unique identifier for this vehicle type. This identifier will be returned in the output of eFLIPS-Depot."""
 
+    vehicle_class: Hashable
+    """A unique identifier for the vehicle class which this vehicle type belongs to."""
+
     battery_capacity_total: float
     """The total battery capacity of the vehicle in kWh. This is the gross capacity, which is actually quite a stupid
     value, but everybody does it that way. The practical capacity is the net capacity, which id returned in :meth:`net_battery_capacity`."""
