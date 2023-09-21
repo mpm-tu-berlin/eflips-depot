@@ -43,6 +43,34 @@ def init_simulation(
     raise NotImplementedError
 
 
+def _validate_input_data(
+    vehicle_types: List[VehicleType], vehicle_schedule: List[VehicleSchedule]
+):
+    """Validate input data for simulation
+
+    :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType`
+    :param vehicle_schedule: A list of :class:`eflips.depot.api.input.VehicleSchedule´
+    :raises AssertionError: If VehicleType suggested in each VehicleSchedule cannot be found in input list of VehicleType
+    """
+
+    for vehicle_schedule in vehicle_schedule:
+        if_vehicle_type_found = False
+
+        # get vehicle class from vehicle schedule
+        vehicle_class = vehicle_schedule.vehicle_class
+
+        # search vehicle type with the same vehicle class
+        for vehicle_type in vehicle_types:
+            if vehicle_type.vehicle_class == vehicle_class:
+                if_vehicle_type_found = True
+                break
+
+        if not if_vehicle_type_found:
+            raise AssertionError(
+                f"VehicleType with vehicle_class {vehicle_class.id} not found"
+            )
+
+
 def run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
     """Run simulation and return simulation results
 
