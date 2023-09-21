@@ -11,6 +11,7 @@ import simpy
 import eflips.depot.standalone
 from depot import VehicleType
 from eflips.depot.standalone import SimpleTrip
+from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
 
 @dataclass
@@ -132,14 +133,15 @@ class VehicleType:
         use. It is calculated as `battery_capacity_total * soh * (soc_max-soc_min)`."""
         return self.battery_capacity_total * self.soh * (self.soc_max - self.soc_min)
 
-    def _to_eflips_vehicle_type(self) -> VehicleType:
+    def _to_eflips_vehicle_type(self) -> EflipsVehicleType:
         """
-        This converts the VehicleTypeFromDatabase object into a :class:`depot.VehicleType` object, which is the input
+        This converts the VehicleType object into a :class:`depot.VehicleType` object, which is the input
         format of the depot simulation.
 
         :return: A :class:`depot.VehicleType` object.
         """
-        raise NotImplementedError  # TODO
+
+        raise NotImplementedError  # TODO: Or maybe return a dict fragment that gets added to global constants.
 
 
 @dataclass
