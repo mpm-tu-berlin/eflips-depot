@@ -194,37 +194,21 @@ class VehicleSchedule(ApiVehicleSchedule):
         # dependeing on the number of VehicleTypes for the VehicleClass fot the rotation
         rotation = Rotation.objects.get(id=rotation_id)
 
-        if rotation_info["charging_type"] == "depb":
-            # If it's a depot charger, there can be multiple vehicle types and we have to check if all types of
-            # the VehicleClass are present
-            database_vehicle_types = DjangoSimbaVehicleType.objects.filter(
-                vehicle_class=rotation.vehicle_class
-            ).all()
+        # For now, we are only allowing on evehicle type per vehicle class, which simplifies the handling here
 
-            if len(database_vehicle_types) == 1:
-                assert (
-                    rotation_info["vehicle_type"] == database_vehicle_types[0].id
-                ), "vehicle_type does not match vehicle_class"
-            else:
-                assert isinstance(
-                    rotation_info["vehicle_type"], list
-                ), "vehicle_type is not a list"
-                assert len(rotation_info["vehicle_type"]) == len(
-                    database_vehicle_types
-                ), "vehicle_type list has different length than vehicle_class list"
-                assert set([v.id for v in database_vehicle_types]) == set(
-                    rotation_info["vehicle_type"]
-                ), "vehicle_type list does not match vehicle_class list"
-        elif rotation_info["charging_type"] == "oppb":
-            # For an opportunity charger, there django-simba only provides one vehicle type
-            assert isinstance(
-                rotation_info["vehicle_type"], int
-            ), "vehicle_type is not an int"
-            vehicle_type_from_database = DjangoSimbaVehicleType.objects.get(
-                id=rotation_info["vehicle_type"]
-            )
+        assert isinstance(rotation_info["vehicle_type"], int) or isinstance(
+            rotation_info["vehicle_type"], list
+        ), "vehicle_type is not an int or list"
+        if isinstance(rotation_info["vehicle_type"], list):
+            vehicle_type_id = rotation_info["vehicle_type"][0]
         else:
-            raise AssertionError("Invalid charging_type")
+            vehicle_type_id = rotation_info["vehicle_type"]
+        vehicle_type_from_database = DjangoSimbaVehicleType.objects.get(
+            id=vehicle_type_id
+        )
+        assert (
+            vehicle_type_from_database.vehicle_class.id == rotation.vehicle_class.id
+        ), "vehicle_type does not match vehicle_class"
 
         # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
         # or for "minimal_soc" for opportunity chargers ("oppb")

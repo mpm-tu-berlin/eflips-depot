@@ -71,6 +71,14 @@ class VehicleType:
         :return: Nothing
         """
 
+        # Some sanity checks
+        assert self.soc_min >= 0
+        assert self.soc_max <= 1
+        assert self.soc_min < self.soc_max
+
+        assert self.soh >= 0
+        assert self.soh <= 1
+
         # Convert the charging curve to a function
         if isinstance(self.charging_curve, Callable):
             pass
@@ -103,7 +111,7 @@ class VehicleType:
             self.v2g_curve = self._interpolate_v2g_curve
         elif isinstance(self.v2g_curve, float):
             self._const_v2g_curve = self.v2g_curve
-            self.v2g_curve = lambda x: self._const_v2g_curves
+            self.v2g_curve = lambda x: self._const_v2g_curve
         else:
             raise ValueError("Invalid V2G curve format")
 
@@ -121,7 +129,7 @@ class VehicleType:
         use. It is calculated as `battery_capacity_total * soh * (soc_max-soc_min)`."""
         return self.battery_capacity_total * self.soh * (self.soc_max - self.soc_min)
 
-    def _to_vehicle_type(self) -> VehicleType:
+    def _to_eflips_vehicle_type(self) -> VehicleType:
         """
         This converts the VehicleTypeFromDatabase object into a :class:`depot.VehicleType` object, which is the input
         format of the depot simulation.
@@ -167,23 +175,39 @@ class VehicleSchedule:
 
     arrival_soc: Dict[Hashable, float]
     """
-    The battery state of charge (SoC) of the vehicle at the arrival time. It must be in the range [-inf, 1]. This value
+    The battery state of charge (SoC) of the vehicles at the arrival time. It must be in the range [-inf, 1]. This value
     is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It is a dictionary 
     mapping vehicle types to floats. The dictionary must contain an entry for each vehicle type that is part of the 
-    `vehicle_class` of this vehicle schedule.
+    `vehicle_class` of this vehicle schedule. 
+    
+    **NOTE**: For the current API version, we only support a single vehicle type per vehicle schedule. This means that
+    the dictionary must contain exactly one entry.
     """
 
-    minimal_soc: Optional[float]
+    minimal_soc: Dict[Hashable, float]
     """
     The minimal battery state of charge (SoC) of the vehicle during the trip. It must be in the range [-inf, 1]. This
     value is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It may be
     left `None` if the consumption model does not provide this information.
+    
+    **NOTE**: For the current API version, we only support a single vehicle type per vehicle schedule. This means that
+    the dictionary must contain exactly one entry.
     """
 
-    opporunity_charging: bool
+    opportunity_charging: bool
     """
     Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip.
     """
+
+    def __post_init__(self):
+        """
+        The post-initialization method. It makes sure that the arrival SoC and minimal SoC dictionaries contain exactly
+        one entry.
+        :return: Nothing
+        """
+
+        assert len(self.arrival_soc) == 1
+        assert len(self.minimal_soc) == 1
 
     def _to_simple_trip(
         self, simulation_start_time: datetime, env: simpy.Environment
@@ -199,8 +223,8 @@ class VehicleSchedule:
         :return: A :class:`eflips.depot.standalone.SimpleTrip` object.
         """
 
-        vehicle_types = (
-            self.arrival_soc.keys()
+        vehicle_types = list(
+            (self.arrival_soc.keys())
         )  # The vehicle type ids are the keys of the arrival_soc dictionary
         departure = int((self.departure - simulation_start_time).total_seconds())
         arrival = int((self.arrival - simulation_start_time).total_seconds())
@@ -215,8 +239,8 @@ class VehicleSchedule:
             arrival,
             None,
             self.departure_soc,
-            self.arrival_soc,
-            self.opporunity_charging,
+            self.arrival_soc[vehicle_types[0]],
+            self.opportunity_charging,
         )
         return simple_trip
 

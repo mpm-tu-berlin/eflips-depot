@@ -1,34 +1,187 @@
-from depot.api import VehicleType
+import os
+from datetime import datetime
+
+import eflips
+import pytest
+import pytz
+
+from depot import Timetable
+from depot.api import VehicleType, VehicleSchedule
+from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
 
-class TestApiInput:
-    def test_vehicle_type(self):
-        """This method tests if a VehicleType object can be correctly successfully initialized and the curves are properly functioning"""
+class TestVehicleType:
+    @pytest.fixture
+    def sample_vehicle_type(self):
+        # Sample values for initialization
+        id = "SB_DC"
+        battery_capacity_total = 100
+        charging_curve = 15.0
+        v2g_curve = None
+        soc_max = 0.8
+        soc_min = 0.2
+        soh = 1.0
 
-        vehicle_type = VehicleType("SB_DC", 100, 15.0, None, 0.8, 0.2, 1.0)
-
-        assert isinstance(vehicle_type, VehicleType)
-
-        # Test if charging curve can be initialized with a constant float
-        assert isinstance(vehicle_type.charging_curve(0.5), float)
-
-        assert vehicle_type.v2g_curve is None
-        assert vehicle_type.soc_min == 0.2
-        assert vehicle_type.soc_max == 0.8
-        assert vehicle_type.soh == 1.0
-
-        # Test if the charging curve can be successfully initialized with tuple of lists
-        soc_list = [0, 0.8, 1]
-        power_list = [0, 15, 0]
-
-        vehicle_type = VehicleType(
-            "SB_DC", 100, (soc_list, power_list), None, 0.8, 0.2, 1.0
+        return VehicleType(
+            id, battery_capacity_total, charging_curve, v2g_curve, soc_max, soc_min, soh
         )
-        assert isinstance(vehicle_type.charging_curve(0.5), float)
 
-        # Test if the charging curve can be successfully initialized with dict
-        charging_curve_dict = {0.0: 0.0, 0.8: 15.0, 1.0: 0.0}
+    def test_vehicle_type_init(self):
+        """This method tests if a VehicleType object can be correctly successfully initialized and the curves
+        are properly functioning"""
+
+        # Sample values for initialization
+        id = "SB_DC"
+        battery_capacity_total = 100
+        charging_curve = 15.0
+        v2g_curve = None
+        soc_max = 0.8
+        soc_min = 0.2
+        soh = 1.0
+
+        # Test if a sample vehicle type can be initialized
         vehicle_type = VehicleType(
-            "SB_DC", 100, charging_curve_dict, None, 0.8, 0.2, 1.0
+            id, battery_capacity_total, charging_curve, v2g_curve, soc_max, soc_min, soh
         )
-        assert isinstance(vehicle_type.charging_curve(0.5), float)
+
+        # Test invalid soc_min and soc_max values
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id, battery_capacity_total, charging_curve, v2g_curve, 1.1, soc_min, soh
+            )
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                -0.1,
+                soc_min,
+                soh,
+            )
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id, battery_capacity_total, charging_curve, v2g_curve, soc_max, 1.1, soh
+            )
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                soc_max,
+                -0.1,
+                soh,
+            )
+        # SocMin must be smaller than SocMax
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id, battery_capacity_total, charging_curve, v2g_curve, 0.8, 0.9, soh
+            )
+
+        # Test invalid SoH values
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                soc_max,
+                soc_min,
+                1.1,
+            )
+        with pytest.raises(AssertionError):
+            vehicle_type = VehicleType(
+                id,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                soc_max,
+                soc_min,
+                -0.1,
+            )
+
+        # Test different konds of inputs for charging curve and v2g curve
+        possible_curves = [
+            15.0,
+            ([0, 0.8, 1], [0, 15, 0]),
+            {0.0: 0.0, 0.8: 15.0, 1.0: 0.0},
+        ]
+
+        for curve in possible_curves:
+            vehicle_type = VehicleType(
+                id, battery_capacity_total, curve, v2g_curve, soc_max, soc_min, soh
+            )
+            assert vehicle_type.charging_curve(0.8) == 15.0
+
+            vehicle_type = VehicleType(
+                id, battery_capacity_total, charging_curve, curve, soc_max, soc_min, soh
+            )
+            assert vehicle_type.v2g_curve(0.8) == 15.0
+
+    def test_net_capacity(self, sample_vehicle_type):
+        """This method tests if the net capacity is correctly calculated"""
+
+        assert pytest.approx(sample_vehicle_type.net_battery_capacity) == 60.0
+
+    def test_to_eflips_vehicle_type(self, sample_vehicle_type):
+        eflips_vehicle_type = sample_vehicle_type._to_eflips_vehicle_type()
+        assert isinstance(eflips_vehicle_type, EflipsVehicleType)
+
+
+class TestVehicleSchedule:
+    @pytest.fixture
+    def sample_vehicle_schedule(self):
+        tz = pytz.UTC
+        # Sample values for initialization
+        id = "Honig"
+        vehicle_class = "Pustekuchen"
+        departure = datetime(2020, 1, 1, 0, 0, 0, tzinfo=tz)
+        arrival = datetime(2020, 1, 1, 1, 0, 0, tzinfo=tz)
+        departure_soc = 0.9
+        arrival_soc = {
+            "ebus": 0.5,
+        }
+        minimum_soc = {"ebus": 0.2}
+        opportunity_charging = False
+
+        return VehicleSchedule(
+            id,
+            vehicle_class,
+            departure,
+            arrival,
+            departure_soc,
+            arrival_soc,
+            minimum_soc,
+            opportunity_charging,
+        )
+
+    def test_conversion_to_eflips(self, sample_vehicle_schedule):
+        # We need an environment to convert the vehicle schedule
+        absolute_path = os.path.dirname(__file__)
+        filename_eflips_settings = os.path.join(
+            absolute_path, "..", "sample_simulation", "settings"
+        )
+        filename_schedule = os.path.join(
+            absolute_path, "..", "sample_simulation", "schedule"
+        )
+        filename_template = os.path.join(
+            absolute_path, "..", "sample_simulation", "sample_depot"
+        )
+
+        simulation_host = eflips.depot.SimulationHost(
+            [
+                eflips.depot.Depotinput(
+                    filename_template=filename_template, show_gui=False
+                )
+            ],
+            run_progressbar=True,
+            print_timestamps=True,
+            tictocname="",
+        )
+        env = simulation_host.env
+
+        eflips_vehicle_schedule = sample_vehicle_schedule._to_timetable(
+            [sample_vehicle_schedule], env
+        )
+        assert isinstance(eflips_vehicle_schedule, Timetable)
