@@ -26,6 +26,7 @@ from ebustoolbox.models import Scenario, VehicleClass, Trip, Rotation
 from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
 
 from eflips.depot.api.django_simba.input import VehicleType as EflipsVehicleType
+from eflips.depot.api.__init__ import _validate_input_data
 
 from ebustoolbox.tasks import (
     run_ebus_toolbox,
@@ -248,6 +249,31 @@ class TestApiDjangoSimba:
         vehicle_schedule_list = VehicleSchedule.from_rotations(eflips_input_path)
 
         assert isinstance(vehicle_schedule_list, list)
+
+        for schedule in vehicle_schedule_list:
+            assert isinstance(schedule, VehicleSchedule)
+            assert isinstance(schedule.id, int)
+            assert isinstance(schedule.vehicle_class, int)
+            assert isinstance(schedule.departure, datetime)
+            assert isinstance(schedule.arrival, datetime)
+            assert isinstance(schedule.departure_soc, float)
+            assert isinstance(schedule.arrival_soc, dict)
+            if schedule.opportunity_charging is True:
+                assert isinstance(schedule.minimal_soc, float)
+                # TODO: fix minimum_soc to be a dict
+                # assert isinstance(schedule.minimal_soc, dict)
+            assert isinstance(schedule.opportunity_charging, bool)
+
+    def test_validate_input_data(self, eflips_input_path):
+        """This method tests if the vehicle class referred in vehicle schedule points to a correct vehicle type"""
+        vehicle_type_from_database = DjangoSimbaVehicleType.objects.all()
+        vehicle_type_from_input = []
+        for vehicle_type in vehicle_type_from_database:
+            vehicle_type_eflips = EflipsVehicleType(vehicle_type)
+            vehicle_type_from_input.append(vehicle_type_eflips)
+        #
+        vehicle_schedule_list = VehicleSchedule.from_rotations(eflips_input_path)
+        _validate_input_data(vehicle_type_from_input, vehicle_schedule_list)
 
     def test_eflips_from_simba_output(self, eflips_input_path: pathlib.Path):
         """
