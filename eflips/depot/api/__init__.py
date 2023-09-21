@@ -40,6 +40,23 @@ def init_simulation(
 
     # Check input data
 
+    # Create simulation host
+    simulation_host = NotImplementedError
+
+    # Turn API VehicleSchedule objects into eFLIPS TimeTable object
+    timetable = NotImplementedError
+
+    ### In g areeneral, after obtaining the simulation host we will do the things
+    ### that done in `standard_setuo()` from the old input files here,
+    ### but instead use the API objects.
+
+    ### For example:
+    # vehicle types by giving vehicle type objects (avoiding the unpacking of JSON files done in complete_gc())
+    # vehicle count information (by creating a very very large number of vehicles for each type, e.g 10 times the number of vehicles in the schedule)
+
+    # Add timetable to simulation host
+    simulation_host.timetable = timetable
+
     raise NotImplementedError
 
 
