@@ -159,7 +159,7 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         :param rotation_id: The ID of the rotation in the database.
         :param rotation_info: A dictionary containing the information about the rotation. It is specified in the
-        __init__() method.
+            __init__() method.
         :return: True if the input file is valid. Throws an AssertionError if the input file is invalid.
         """
 

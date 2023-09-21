@@ -34,9 +34,9 @@ class VehicleType:
     We accept it in four different formats:
     - A function that takes the SoC as a float [0-1] and returns the charging power in kW.
     - A tuple of two lists. The first list contains the SoC values [0-1] and the second list contains the corresponding
-        charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
+    charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
     - A dictionary mapping SoC values [0-1] to charging power values in kW. The resulting function is a piecewise linear
-        interpolation between the points.
+    interpolation between the points.
     - A float. The charging power is constant at this value over the whole SoC range.
     """
 
