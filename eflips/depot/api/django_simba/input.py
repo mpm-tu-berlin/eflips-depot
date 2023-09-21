@@ -116,10 +116,10 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         if rotation_info["charging_type"] == "oppb":
             self.minimal_soc = rotation_info["minimal_soc"]
-            self.opporunity_charging = True
+            self.opportunity_charging = True
         else:
             self.minimal_soc = None
-            self.opporunity_charging = False
+            self.opportunity_charging = False
 
         self._fill_in_from_database()
 
@@ -147,8 +147,8 @@ class VehicleSchedule(ApiVehicleSchedule):
             first_trip.departure_stop == last_trip.arrival_stop
         ), "First trip departure stop does not match last trip arrival stop"
 
-        self.departure_time = first_trip.departure_time
-        self.arrival_time = last_trip.arrival_time
+        self.departure = first_trip.departure_time
+        self.arrival = last_trip.arrival_time
 
     @staticmethod
     def _validate_input_data(rotation_id: int, rotation_info: Dict[str, Any]) -> bool:
