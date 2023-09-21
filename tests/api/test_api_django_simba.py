@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.api.djangosettings")
 import django
@@ -167,7 +168,7 @@ class TestApiDjangoSimba:
         with open(eflips_input_path, "r") as f:
             simba_output = json.load(f)
 
-        # TODO: REMOVE THIS LATER. We are modifying the JSON file's contents after laoding
+        # TODO: REMOVE THIS LATER. We are modifying the JSON file's contents after loading
         # Once django-simba fixes their #28, we can remove this
         for rotation_id, results in simba_output.items():
             # Make all the "vehicle_type" lists contain only distinct items
@@ -200,8 +201,9 @@ class TestApiDjangoSimba:
         assert isinstance(vehicle_eflips, EflipsVehicleType)
 
         # Test if the properties of the VehicleType object are correct
-        assert isinstance(vehicle_eflips.id, str)
-        assert vehicle_eflips.id == vehicle_from_database.name
+        assert isinstance(vehicle_eflips.id, int)
+        assert isinstance(vehicle_eflips.vehicle_class, int)
+        assert vehicle_eflips.id == vehicle_from_database.id
         assert isinstance(vehicle_eflips.battery_capacity_total, float)
         assert (
             vehicle_eflips.battery_capacity_total
