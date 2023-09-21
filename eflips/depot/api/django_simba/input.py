@@ -32,7 +32,8 @@ class VehicleType(ApiVehicleType):
                 if soc <= curve_point[0]:
                     return curve_point[1]
 
-        self.id = vehicle_type.name
+        self.id = vehicle_type.id
+        self.vehicle_class = vehicle_type.vehicle_class.id
         self.battery_capacity_total = vehicle_type.battery_capacity
         self.charging_curve = charging_curve
 
