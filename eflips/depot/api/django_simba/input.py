@@ -27,15 +27,16 @@ class VehicleType(ApiVehicleType):
         :param vehicle_type: A django-simba VehicleType object.
         """
 
-        def charging_curve(soc: float) -> float:
-            for curve_point in vehicle_type.charging_curve:
-                if soc <= curve_point[0]:
-                    return curve_point[1]
-
         self.id = vehicle_type.id
         self.vehicle_class = vehicle_type.vehicle_class.id
         self.battery_capacity_total = vehicle_type.battery_capacity
-        self.charging_curve = charging_curve
+        self.charging_curve = tuple(zip(*vehicle_type.charging_curve))
+        if vehicle_type.v2g:
+            self.v2g_curve = tuple(zip(*vehicle_type.v2g_curve))
+        else:
+            self.v2g_curve = None
+
+        self.__post_init__()
 
 
 class VehicleSchedule(ApiVehicleSchedule):
