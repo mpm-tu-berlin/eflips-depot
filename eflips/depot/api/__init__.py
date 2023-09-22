@@ -63,11 +63,17 @@ def init_simulation(
 def _validate_input_data(
     vehicle_types: List[VehicleType], vehicle_schedule: List[VehicleSchedule]
 ):
-    """Validate input data for simulation
+    """
+    This method checks if the VehicleSchedule "matches" the VehicleType. For each VehicleClass suggested in the
+    VehicleSchedule, there should be a VehicleType with the same VehicleClass.
+
+    In this version of the API, there should be *exactly* one VehicleType for each VehicleClass. We will move to
+    "at least one" in the future.
 
     :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType`
     :param vehicle_schedule: A list of :class:`eflips.depot.api.input.VehicleSchedule´
-    :raises AssertionError: If VehicleType suggested in each VehicleSchedule cannot be found in input list of VehicleType
+    :raises AssertionError: If there is a VehicleClass in the VehicleSchedule that does not have a corresponding
+    VehicleType.
     """
 
     for vehicle_schedule in vehicle_schedule:
@@ -84,7 +90,7 @@ def _validate_input_data(
 
         if not if_vehicle_type_found:
             raise AssertionError(
-                f"VehicleType with vehicle_class {vehicle_class.id} not found"
+                f"VehicleType with vehicle_class {vehicle_class} not found"
             )
 
 
