@@ -15,6 +15,7 @@ class TestVehicleType:
     def sample_vehicle_type(self):
         # Sample values for initialization
         id = "SB_DC"
+        vehicle_class = "SB"
         battery_capacity_total = 100
         charging_curve = 15.0
         v2g_curve = None
@@ -23,7 +24,14 @@ class TestVehicleType:
         soh = 1.0
 
         return VehicleType(
-            id, battery_capacity_total, charging_curve, v2g_curve, soc_max, soc_min, soh
+            id,
+            vehicle_class,
+            battery_capacity_total,
+            charging_curve,
+            v2g_curve,
+            soc_max,
+            soc_min,
+            soh,
         )
 
     def test_vehicle_type_init(self):
@@ -32,6 +40,7 @@ class TestVehicleType:
 
         # Sample values for initialization
         id = "SB_DC"
+        vehicle_class = "SB"
         battery_capacity_total = 100
         charging_curve = 15.0
         v2g_curve = None
@@ -41,17 +50,32 @@ class TestVehicleType:
 
         # Test if a sample vehicle type can be initialized
         vehicle_type = VehicleType(
-            id, battery_capacity_total, charging_curve, v2g_curve, soc_max, soc_min, soh
+            id,
+            vehicle_class,
+            battery_capacity_total,
+            charging_curve,
+            v2g_curve,
+            soc_max,
+            soc_min,
+            soh,
         )
 
         # Test invalid soc_min and soc_max values
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
-                id, battery_capacity_total, charging_curve, v2g_curve, 1.1, soc_min, soh
+                id,
+                vehicle_class,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                1.1,
+                soc_min,
+                soh,
             )
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
                 id,
+                vehicle_class,
                 battery_capacity_total,
                 charging_curve,
                 v2g_curve,
@@ -61,11 +85,19 @@ class TestVehicleType:
             )
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
-                id, battery_capacity_total, charging_curve, v2g_curve, soc_max, 1.1, soh
+                id,
+                vehicle_class,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                soc_max,
+                1.1,
+                soh,
             )
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
                 id,
+                vehicle_class,
                 battery_capacity_total,
                 charging_curve,
                 v2g_curve,
@@ -76,13 +108,21 @@ class TestVehicleType:
         # SocMin must be smaller than SocMax
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
-                id, battery_capacity_total, charging_curve, v2g_curve, 0.8, 0.9, soh
+                id,
+                vehicle_class,
+                battery_capacity_total,
+                charging_curve,
+                v2g_curve,
+                0.8,
+                0.9,
+                soh,
             )
 
         # Test invalid SoH values
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
                 id,
+                vehicle_class,
                 battery_capacity_total,
                 charging_curve,
                 v2g_curve,
@@ -93,6 +133,7 @@ class TestVehicleType:
         with pytest.raises(AssertionError):
             vehicle_type = VehicleType(
                 id,
+                vehicle_class,
                 battery_capacity_total,
                 charging_curve,
                 v2g_curve,
@@ -110,12 +151,26 @@ class TestVehicleType:
 
         for curve in possible_curves:
             vehicle_type = VehicleType(
-                id, battery_capacity_total, curve, v2g_curve, soc_max, soc_min, soh
+                id,
+                vehicle_class,
+                battery_capacity_total,
+                curve,
+                v2g_curve,
+                soc_max,
+                soc_min,
+                soh,
             )
             assert vehicle_type.charging_curve(0.8) == 15.0
 
             vehicle_type = VehicleType(
-                id, battery_capacity_total, charging_curve, curve, soc_max, soc_min, soh
+                id,
+                vehicle_class,
+                battery_capacity_total,
+                charging_curve,
+                curve,
+                soc_max,
+                soc_min,
+                soh,
             )
             assert vehicle_type.v2g_curve(0.8) == 15.0
 
