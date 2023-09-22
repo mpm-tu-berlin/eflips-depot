@@ -183,6 +183,15 @@ class TestVehicleType:
         eflips_vehicle_type = sample_vehicle_type._to_eflips_vehicle_type()
         assert isinstance(eflips_vehicle_type, EflipsVehicleType)
 
+        assert eflips_vehicle_type.ID == sample_vehicle_type.id
+        assert (
+            eflips_vehicle_type.battery_capacity
+            == sample_vehicle_type.battery_capacity_total
+        )
+        assert eflips_vehicle_type.soc_min == sample_vehicle_type.soc_min
+        assert eflips_vehicle_type.soc_max == sample_vehicle_type.soc_max
+        assert eflips_vehicle_type.soh == sample_vehicle_type.soh
+
 
 class TestVehicleSchedule:
     @pytest.fixture

@@ -142,7 +142,18 @@ class VehicleType:
         :return: A :class:`depot.VehicleType` object.
         """
 
-        raise NotImplementedError  # TODO: Or maybe return a dict fragment that gets added to global constants.
+        # Create the depot VehicleType object
+        eflips_vehicle_type = EflipsVehicleType(
+            str(self.id),
+            self.battery_capacity_total,
+            self.soc_min,
+            self.soc_max,
+            1.0,
+            self.soh,
+            None,
+        )
+
+        return eflips_vehicle_type
 
 
 @dataclass
