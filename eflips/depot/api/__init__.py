@@ -41,8 +41,8 @@ def init_simulation(
         vehicle type for each `vehicle_class` referenced in the VehicleSchedule.
     :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
     :param vehicle_counts: A dictionary mapping vehicle type IDs to the number of vehicles of that type. If `None`, a
-    very high vehicle count will be used. It is expected that the simulation will be run twice, once to estimate the
-    number of vehicles needed and once to run the simulation with the correct number of vehicles.
+        very high vehicle count will be used. It is expected that the simulation will be run twice, once to estimate the
+        number of vehicles needed and once to run the simulation with the correct number of vehicles.
     :param depot: A :class:`eflips.depot.api.input.Depot` object. If `None`, a default depot will be created.
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
@@ -224,10 +224,10 @@ def _validate_input_data(
     In this version of the API, there should be *exactly* one VehicleType for each VehicleClass. We will move to
     "at least one" in the future.
 
-    :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType`
-    :param vehicle_schedule: A list of :class:`eflips.depot.api.input.VehicleSchedule´
+    :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType` objects.
+    :param vehicle_schedule: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
     :raises AssertionError: If there is a VehicleClass in the VehicleSchedule that does not have a corresponding
-    VehicleType.
+        VehicleType.
     """
 
     for vehicle_schedule in vehicle_schedule:
