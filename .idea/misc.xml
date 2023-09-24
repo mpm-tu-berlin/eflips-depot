@@ -2,7 +2,7 @@
 <project version="4">
   <component name="Black">
     <option name="enabledOnReformat" value="true" />
-    <option name="sdkUUID" value="eb665615-11c5-4dab-8e4e-cdb619cd71ee" />
+    <option name="sdkUUID" value="55f828d3-89c9-47cd-a278-92f1470def30" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (eflips-depot)" project-jdk-type="Python SDK" />
 </project>
