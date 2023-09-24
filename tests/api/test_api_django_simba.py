@@ -178,8 +178,6 @@ class TestApiDjangoSimba:
             if isinstance(results["vehicle_type"], list):
                 results["vehicle_type"] = [results["vehicle_type"][0]]
                 results["delta_soc"] = [results["delta_soc"][0]]
-                if results["delta_soc"][0] > 1:
-                    results["delta_soc"][0] = 1.0
 
         with open(eflips_input_path, "w") as f:
             json.dump(simba_output, f)
