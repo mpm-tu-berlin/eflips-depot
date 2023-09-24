@@ -825,8 +825,8 @@ spice_ev = {git = "https://github.com/rl-institut/spice_ev", rev = "51268c639a02
 [package.source]
 type = "git"
 url = "git@github.com:rl-institut/django-simba.git"
-reference = "6eafc9883633677d28dd720c19f7b6b3a1b4c767"
-resolved_reference = "6eafc9883633677d28dd720c19f7b6b3a1b4c767"
+reference = "issue/#28"
+resolved_reference = "f3e160926f82668e654a4f8dfbf1665aaa4a25cc"
 
 [[package]]
 name = "djangorestframework"
@@ -2563,4 +2563,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e6bd644ca340884bab560db28a684b007162d038f8ccb50e255a1b4ebb1a8bcc"
+content-hash = "c60e4f38cdcb6dab706ffd29f03e2674e2506cbedaa8c8c3636e661d045eeeb0"
