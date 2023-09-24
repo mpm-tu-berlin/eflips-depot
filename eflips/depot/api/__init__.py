@@ -93,6 +93,12 @@ def _validate_input_data(
                 f"VehicleType with vehicle_class {vehicle_class} not found"
             )
 
+        # FOr this API version, we also check that there is only one vehicle type per vehicle class
+        # We will move to "at least one" in the future
+        assert len(set([t.vehicle_class for t in vehicle_types])) == len(
+            vehicle_types
+        ), "There should be exactly one vehicle type per vehicle class"
+
 
 def run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
     """Run simulation and return simulation results
