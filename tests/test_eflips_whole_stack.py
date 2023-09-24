@@ -8,6 +8,10 @@ from depot import DepotEvaluation
 
 
 class TestDepotEvaluation:
+    @pytest.fixture(autouse=True)
+    def clear_settings(self):
+        eflips.settings.reset_settings()
+
     @pytest.fixture
     def depot_evaluation(self):
         """This method creates a sample depot evaluation object containing some sample data. Since the depot evaluation
