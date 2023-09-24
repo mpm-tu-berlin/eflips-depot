@@ -18,11 +18,11 @@ from eflips.helperFunctions import load_json, save_json
 
 class DepotConfigurator:
     """Utilities to:
+
     - create a depot
-    - add/remove resources, resource switches, processes, areas, groups and
-        plans to/from a depot
-    - load and save a json depot template
-    before simulation start.
+    - add/remove resources, resource switches, processes, areas, groups and plans to/from a depot
+    - load and save a json depot template before simulation start.
+
     Before env.run is called, complete() must be called.
 
     Configuration-related errors are not raised. Instead, the current action is
@@ -33,12 +33,13 @@ class DepotConfigurator:
     methods.
 
     Attributes:
-    filename_loaded: [None or str] filename of the imported template. None
+
+    :param filename_loaded: [None or str] filename of the imported template. None
         until loading. Stays the same even if templatename changes.
-    templatename: [str] filename of the imported template, excluding the path.
+    :param templatename: [str] filename of the imported template, excluding the path.
         May be changed manually. Used to create export filenames.
-    templatename_display: [str] "pretty" version of templatename.
-    multiplied_areas: Map for connecting area IDs added with 'amount' with
+    :param templatename_display: [str] "pretty" version of templatename.
+    :param multiplied_areas: Map for connecting area IDs added with 'amount' with
         their resulting areas.
 
     """

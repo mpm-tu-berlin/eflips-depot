@@ -3184,11 +3184,11 @@ def baseplot(show, figsize=None):
 def setting_language(language):
     # English (default)
     if language == "eng":
-        locale.setlocale(locale.LC_ALL, "en_US.utf8")
+        locale.setlocale(locale.LC_ALL, "en_US")
 
     # German
     if language == "de":
-        locale.setlocale(locale.LC_ALL, "de_DE.utf8")
+        locale.setlocale(locale.LC_ALL, "de_DE")
 
 
 def intersection(interval_a, interval_b):

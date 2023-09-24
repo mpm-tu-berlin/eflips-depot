@@ -12,8 +12,8 @@ def save_json(obj, filename):
         json.dump(obj, file, indent=4)
 
 
-total_capacity = 410
-arrival_capacity = 232
+total_capacity = 1000
+arrival_capacity = 1000
 power = 150
 
 
@@ -30,8 +30,8 @@ template = {
 
 
 template["templatename_display"] = "Depot KLS Sept19 all direct"
-template["general"]["depotID"] = "KLS"
-template["general"]["dispatch_strategy_name"] = "FIRST"
+template["general"]["depotID"] = "DEFAULT"
+template["general"]["dispatch_strategy_name"] = "SMART"
 # template['resources']['workers_service'] = {
 #             'typename': 'DepotResource',
 #             'capacity': 8
@@ -48,32 +48,19 @@ for i in range(total_capacity):
     ci_all[ID] = template["resources"][ID]
 
 # charging switches
-cs_all = {}
-for i in range(total_capacity):
-    ID = "charging_switch_ci_" + str(i)
-    template["resource_switches"][ID] = {
-        "resource": "ci_" + str(i),
-        "breaks": [[64800, 72000]],
-        "preempt": True,
-        "strength": "full",
-    }
-    cs_all[ID] = template["resource_switches"][ID]
+# cs_all = {}
+# for i in range(total_capacity):
+#    ID = "charging_switch_ci_" + str(i)
+#    template["resource_switches"][ID] = {
+##        "resource": "ci_" + str(i),
+#        "preempt": True,
+#        "strength": "full",
+#    }
+#    cs_all[ID] = template["resource_switches"][ID]
 
-
-template["resource_switches"]["charging_switch"] = {
-    "resource": "workers_service",
-    "breaks": [[25200, 61200]],
-    "preempt": True,
-    "strength": "full",
-}
 
 # service switch
-# template['resource_switches']['service_switch'] = {
-#     'resource': 'workers_service',
-#     'breaks': [[25200, 61200]],
-#     'preempt': True,
-#     'strength': 'full'
-# }
+
 
 template["processes"]["charge"] = {
     "typename": "Charge",
@@ -176,4 +163,7 @@ template["plans"]["default"] = {
 
 # save_json(template, 'kls_template_2_all_direct')
 # save_json(template, 'templates\\kls\\kls_template_2_all_direct')
-save_json(template, "templates\\kls\\test")
+save_json(
+    template,
+    "/Users/arbeit/Documents/Arbeit/Software/eflips-depot/defaults/default_depot",
+)

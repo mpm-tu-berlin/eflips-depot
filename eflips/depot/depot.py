@@ -1117,7 +1117,8 @@ class DepotControl:
                 current_area.trigger_get(None)
             self.trigger_dispatch()
 
-            current_area.logger.steplog()
+            if globalConstants["general"]["LOG_ATTRIBUTES"]:
+                current_area.logger.steplog()
 
     def proceed_area(self, vehicle, current_area, next_area):
         """Proceed with *next_area* as a BaseArea subtype."""

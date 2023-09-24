@@ -39,16 +39,31 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
     
     ev.sl_all() # For example to plot a result
     ```
-
+4. To use eFLIPS-Depot API, see script `bus_depot/user_example.py`
 ## Testing
 
-*There is no real testing yet. We are moving towards using [pytest](https://docs.pytest.org/) for testing, but this is
-not yet complete.*
+---
 
+**NOTE**: Be aware that the tests will clear the database specified in the `DATABASE_URL` environment variable. Make sure that you are not using a database that you want to keep.
+
+---
+
+Testing is done using the `pytest` framework with tests located in the `tests`directory. To run the tests, execute the following command in the root directory of the repository:
+
+```bash
+   export PYTHONPATH=eflips:tests:. # To make sure that the tests can find the eflips package
+   export DATABASE_URL=postgis://postgres:postgres@localhost:5432/postgres # Or whatever your database URL is
+   pytest
+```
 ## Documentation
 
-*There is no real documentation yet. We are moving towards using [sphinx](https://www.sphinx-doc.org/en/master/) for
-documentation, but this is not yet complete.*
+Documentation is automatically created from the docstrings in the code using [sphinx-autoapi](https://sphinx-autoapi.readthedocs.io/en/latest/). If you have downloaded a specific release, the documentation is included in the `docs` directory. If you have cloned the repository, you can create the documentation yourself by executing the following command in the root directory of the repository:
+
+```bash
+   cd docs/
+   sphinx-build -b html . _build
+```
+
 
 ## Development
 
@@ -61,6 +76,8 @@ are merged into `main` via pull requests.
 We use [black](https://black.readthedocs.io/en/stable/) for code formatting. You can use 
 [pre-commit](https://pre-commit.com/) to ensure the code is formatted correctly before committing. You are also free to
 use other methods to format the code, but please ensure that the code is formatted correctly before committing.
+
+Please make sure that your `poetry.lock` and `pyproject.toml` files are consistent before committing. You can use `poetry check` to check this. This is also checked by pre-commit.
 
 ## License
 

@@ -15,8 +15,10 @@ xlsxwriter = "^3.1.1"
 pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
-eflips = { git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility" }
-pre-commit = "^3.4.0"
+eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "6eafc9883633677d28dd720c19f7b6b3a1b4c767" }
+seaborn = "^0.12.2"
+tqdm = "^4.66.1"
 
 [tool.pytest.ini_options]
 addopts = [
@@ -25,7 +27,12 @@ addopts = [
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
+pytest-pycharm = "^0.7.0"
 sphinx = "^7.0.1"
+sphinx-autoapi = "^2.1.1"
+black = "^23.7.0"
+django-environ = "^0.11.2"
+pre-commit = "^3.4.0"
 
 [build-system]
 requires = ["poetry-core"]
