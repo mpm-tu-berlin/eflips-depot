@@ -16,7 +16,9 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
-django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "issue/#28" }
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "6eafc9883633677d28dd720c19f7b6b3a1b4c767" }
+seaborn = "^0.12.2"
+tqdm = "^4.66.1"
 
 [tool.pytest.ini_options]
 addopts = [
