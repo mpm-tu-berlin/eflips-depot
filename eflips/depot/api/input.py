@@ -158,6 +158,22 @@ class VehicleType:
 
         return eflips_vehicle_type
 
+    def _to_global_constants_dict(self) -> Dict[str, Any]:
+        """
+        This converts the VehicleType object into a dictionary, which is the input
+        format of the eflips.globalConstants object.
+        :return: A dictionary describing some of the properties of the vehicle type.
+        """
+
+        the_dict = {
+            "battery_capacity": self.battery_capacity_total,
+            "soc_min": self.soc_min,
+            "soc_max": self.soc_max,
+            "soc_init": 1.0,
+            "soh": self.soh,
+        }
+        return the_dict
+
 
 @dataclass
 class VehicleSchedule:
