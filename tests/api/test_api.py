@@ -1,5 +1,6 @@
 import os
 import random
+from datetime import datetime
 from typing import List
 
 import pandas as pd
@@ -10,7 +11,13 @@ from depot import SimulationHost
 
 import pytest
 
-from depot.api import VehicleSchedule, VehicleType, _validate_input_data
+from depot.api import (
+    VehicleSchedule,
+    VehicleType,
+    _validate_input_data,
+    init_simulation,
+    run_simulation,
+)
 
 
 class TestApi:
@@ -57,7 +64,16 @@ class TestApi:
             # we need to turn the arrival_soc and minimal_soc into dictionaries
             row["arrival_soc"] = {row["vehicle_class"]: row["arrival_soc"]}
             row["minimal_soc"] = {row["vehicle_class"]: row["minimal_soc"]}
+            row["departure"] = datetime.fromisoformat(row["departure"])
+            row["arrival"] = datetime.fromisoformat(row["arrival"])
             vehicle_schedules.append(VehicleSchedule(**row))
+
+        # Limit the number of trips in order to simplify testing
+        state = random.getstate()
+        random.seed(42)
+        vehicle_schedules = random.sample(vehicle_schedules, 1000)
+        random.setstate(state)
+
         return vehicle_schedules
 
     @pytest.fixture
@@ -73,6 +89,9 @@ class TestApi:
 
         df = pd.read_csv(path_to_sample_input)
 
+        state = random.getstate()
+        random.seed(42)
+
         vehicle_classes = set(df["vehicle_class"])
         vehicle_types = []
         for vehicle_class in vehicle_classes:
@@ -80,10 +99,12 @@ class TestApi:
                 vehicle_class,
                 vehicle_class,
                 random.randrange(100, 300, 50),
-                random.randrange(90, 240, 30),
+                random.randrange(10, 40, 10),
                 None,
             )
             vehicle_types.append(vehicle_type)
+
+        random.setstate(state)
         return vehicle_types
 
     def test_validate_input_data(self, vehicle_types, vehicle_schedules):
@@ -101,3 +122,54 @@ class TestApi:
         vehicle_types.pop()
         with pytest.raises(AssertionError):
             _validate_input_data(vehicle_types, vehicle_schedules)
+
+    def test_init_simulation(self, vehicle_types, vehicle_schedules):
+        """
+        Test the init_simulation() API endpoint.
+
+        :param vehicle_types: THe vehicle types from the fixture
+        :param vehicle_schedules: The vehicle schedules from the fixture
+        :return: Nothing
+        """
+        simulation_host = init_simulation(vehicle_types, vehicle_schedules)
+
+    def test_run_simulation(self, vehicle_types, vehicle_schedules, tmp_path):
+        simulation_host = init_simulation(vehicle_types, vehicle_schedules)
+        depot_evaluation = run_simulation(simulation_host)
+
+        vehicle_counts = depot_evaluation.nvehicles_used_calculation()
+
+        # Now run the simulation again, with the knowledge of the vehicle counts
+        simulation_host = init_simulation(
+            vehicle_types, vehicle_schedules, vehicle_counts
+        )
+        depot_evaluation = run_simulation(simulation_host)
+
+        depot_evaluation.path_results = str(tmp_path)
+
+        depot_evaluation.vehicle_periods(
+            periods={
+                "depot general": "darkgray",
+                "park": "lightgray",
+                "serve_supply_clean_daily": "steelblue",
+                "serve_clean_ext": "darkblue",
+                "charge_dc": "forestgreen",
+                "charge_oc": "forestgreen",
+                "precondition": "black",
+            },
+            save=True,
+            show=False,
+            formats=(
+                "pdf",
+                "png",
+            ),
+            show_total_power=True,
+            show_annotates=True,
+        )
+
+        # Check if the files were created and are not empty
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
+
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0

@@ -15,8 +15,14 @@ by interface
     overriding the :meth:`__init__()` method to read the data from the other simulation framework.
 
 """
-from typing import List
+import copy
+import os
+from datetime import timedelta
+from math import ceil
+from pathlib import Path
+from typing import List, Optional, Dict, Hashable
 
+import eflips.depot
 from depot import SimulationHost, DepotEvaluation
 from depot.api.input import VehicleType, VehicleSchedule, Depot
 
@@ -24,6 +30,7 @@ from depot.api.input import VehicleType, VehicleSchedule, Depot
 def init_simulation(
     vehicle_types: List[VehicleType],
     vehicle_schedules: List[VehicleSchedule],
+    vehicle_counts: Optional[Dict[Hashable, int]] = None,
     depot: Depot = None,
 ) -> SimulationHost:
     """
@@ -33,31 +40,178 @@ def init_simulation(
     :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType` objects. There should be at least one
         vehicle type for each `vehicle_class` referenced in the VehicleSchedule.
     :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+    :param vehicle_counts: A dictionary mapping vehicle type IDs to the number of vehicles of that type. If `None`, a
+    very high vehicle count will be used. It is expected that the simulation will be run twice, once to estimate the
+    number of vehicles needed and once to run the simulation with the correct number of vehicles.
     :param depot: A :class:`eflips.depot.api.input.Depot` object. If `None`, a default depot will be created.
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
     """
 
+    # Clear the eflips settings
+    eflips.settings.reset_settings()
+
     # Check input data
+    _validate_input_data(vehicle_types, vehicle_schedules)
+
+    # For this API version, we only support the implicit depot
+    if depot is not None:
+        raise NotImplementedError(
+            "Only implicit depot is supported in this API version"
+        )
+    else:
+        path_to_this_file = os.path.dirname(__file__)
+        path_to_default_depot = os.path.join(
+            path_to_this_file, "..", "..", "..", "defaults", "default_depot"
+        )
+        eflips_depot = eflips.depot.Depotinput(
+            filename_template=path_to_default_depot, show_gui=False
+        )
+        depot_id = "DEFAULT"
 
     # Create simulation host
-    simulation_host = NotImplementedError
+    simulation_host = SimulationHost([eflips_depot], print_timestamps=False)
+
+    # Now we do what is done in `standard_setup()` from the old input files
+    # Load the settings
+    path_to_default_settings = os.path.join(
+        path_to_this_file, "..", "..", "..", "defaults", "default_settings"
+    )
+    eflips.load_settings(path_to_default_settings)
+
+    # However, we need to override quite a lot of the settings
+    # The ["general"]["SIMULATION_TIME"] entry is calculated from the difference between the first and last departure
+    # time in the vehicle schedule
+    first_departure_time = min(
+        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
+    )
+    last_arrival_time = max(
+        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
+    )
+    total_duration = (last_arrival_time - first_departure_time).total_seconds()
+    # We take the total duration in days (rounded down) and add 2 days
+    total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
+    total_duration_seconds = total_duration_days * 24 * 60 * 60
+    eflips.globalConstants["general"]["SIMULATION_TIME"] = total_duration_seconds
+
+    # The ["general"]["START_DAY"] entry (not changed by us) will start the evaluation at the first departure time
+    # However, the simulation will start one day before.
+    midnight_of_first_departure_day = first_departure_time.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    simulation_start_time = midnight_of_first_departure_day - timedelta(days=1)
+
+    # We need to calculate roughly how many vehicles we need
+    # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
+    # for each vehicle type in the vehicle class
+    all_vehicle_classes = set(
+        [vehicle_schedule.vehicle_class for vehicle_schedule in vehicle_schedules]
+    )
+    vehicle_count = {}
+    for vehicle_class in all_vehicle_classes:
+        trip_count = sum(
+            [
+                1 if vehicle_schedule.vehicle_class == vehicle_class else 0
+                for vehicle_schedule in vehicle_schedules
+            ]
+        )
+        vehicle_types_with_vehicle_class = [
+            vehicle_type
+            for vehicle_type in vehicle_types
+            if vehicle_type.vehicle_class == vehicle_class
+        ]
+        for vehicle_type in vehicle_types_with_vehicle_class:
+            if vehicle_counts is not None and vehicle_type.id in vehicle_counts:
+                vehicle_count[vehicle_type.id] = vehicle_counts[vehicle_type.id]
+            else:
+                vehicle_count[vehicle_type.id] = int(
+                    ceil(trip_count * 1.1 * len(vehicle_types_with_vehicle_class))
+                )
+    # Now we put the vehicle count into the settings
+    eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
+    for vehicle_type, count in vehicle_count.items():
+        eflips.globalConstants["depot"]["vehicle_count"][depot_id][vehicle_type] = count
+
+    # We  need to put the vehicle type objects into the GlobalConstants
+    for vehicle_type in vehicle_types:
+        eflips.globalConstants["depot"]["vehicle_types"][
+            vehicle_type.id
+        ] = vehicle_type._to_global_constants_dict()
+
+    # We need to fill out the substitutable types, which is a list of lists of vehicle type IDs for a vehicle class
+    for vehicle_class in all_vehicle_classes:
+        vehicle_types_with_vehicle_class = [
+            vehicle_type
+            for vehicle_type in vehicle_types
+            if vehicle_type.vehicle_class == vehicle_class
+        ]
+        eflips.globalConstants["depot"]["substitutable_types"].append(
+            [vehicle_type.id for vehicle_type in vehicle_types_with_vehicle_class]
+        )
+
+    # Run the eflips validity checks
+    eflips.depot.settings_config.check_gc_validity()
+
+    # Complete the eflips settings
+    eflips.depot.settings_config.complete_gc()
 
     # Turn API VehicleSchedule objects into eFLIPS TimeTable object
-    timetable = NotImplementedError
 
-    ### In g areeneral, after obtaining the simulation host we will do the things
-    ### that done in `standard_setuo()` from the old input files here,
-    ### but instead use the API objects.
+    # We will need to first create a vehicle schedule three times as long as the original one
+    # Then we cut off everything but one day before the first departure and one day after the last departure
+    # TODO: we need to enable this and disable the trip multipilication in eflips-DEPOT
+    if False:
+        schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
+        schedules_shifted_back = copy.deepcopy(vehicle_schedules)
+        for vehicle_schedule in schedules_shifted_back:
+            vehicle_schedule.departure = vehicle_schedule.departure - timedelta(
+                days=schedule_duration_days
+            )
+            vehicle_schedule.arrival = vehicle_schedule.arrival - timedelta(
+                days=schedule_duration_days
+            )
 
-    ### For example:
-    # vehicle types by giving vehicle type objects (avoiding the unpacking of JSON files done in complete_gc())
-    # vehicle count information (by creating a very very large number of vehicles for each type, e.g 10 times the number of vehicles in the schedule)
+        schedules_shifted_forward = copy.deepcopy(vehicle_schedules)
+        for vehicle_schedule in schedules_shifted_forward:
+            vehicle_schedule.departure = vehicle_schedule.departure + timedelta(
+                days=schedule_duration_days
+            )
+            vehicle_schedule.arrival = vehicle_schedule.arrival + timedelta(
+                days=schedule_duration_days
+            )
 
-    # Add timetable to simulation host
+        midnight_of_day_before_first_departure = (
+            midnight_of_first_departure_day - timedelta(days=1)
+        )
+        midnight_of_last_departure_day = last_departure_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        midnight_of_day_after_last_departure = (
+            midnight_of_last_departure_day + timedelta(days=1)
+        )
+
+        final_vehicle_schedules = []
+        for vehicle_schedule in (
+            schedules_shifted_back + vehicle_schedules + schedules_shifted_forward
+        ):
+            if (
+                midnight_of_day_before_first_departure
+                < vehicle_schedule.departure
+                < midnight_of_day_after_last_departure
+            ):
+                final_vehicle_schedules.append(vehicle_schedule)
+        vehicle_schedules = sorted(final_vehicle_schedules, key=lambda x: x.departure)
+
+    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
     simulation_host.timetable = timetable
 
-    raise NotImplementedError
+    # Set up the depots
+    for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):
+        dh.load_and_complete_template(di.filename_template)
+
+    simulation_host.complete()
+
+    return simulation_host
 
 
 def _validate_input_data(

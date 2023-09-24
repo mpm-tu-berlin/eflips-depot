@@ -1,0 +1,253 @@
+{
+  "general": {
+    "SIMULATION_TIME": null,
+    "START_DAY": 86400,
+    "LOG_ATTRIBUTES": true,
+    "LOG_CONTINUOUSLY": false,
+    "LOG_SPECIFIC_STEPS": true,
+    "LOG_COPIES": false,
+    "DEFAULT_PLOT_SIZE": [
+      15,
+      9
+    ],
+    "FLEXPRINT_SWITCHES": {
+      "operations": false,
+      "dispatch": true,
+      "objID": false,
+      "timetable": false,
+      "dispatch2": true,
+      "processes": false,
+      "res_break": false,
+      "parking_full": false,
+      "departure_before_fully_charged": false,
+      "departure_before_fully_charged_2": false,
+      "departure_before_fully_charged_3": false,
+      "vehicle_reconsideration": false,
+      "vehicle_reassignment": false
+    }
+  },
+  "depot": {
+    "vehicle_types": {},
+    "substitutable_types": [
+      []
+    ],
+    "vehicle_count": {},
+    "consumption_calc_mode": "soc_given",
+    "prioritize_init_store": false,
+    "allow_negative_soc": false,
+    "reset_negative_soc_to": 0.5,
+    "energy_reserve": 0,
+    "log_sl": true,
+    "sl_period": 1800,
+    "lead_time_match": 3600,
+    "path_results": "..\\bus_depot\\results\\",
+    "log_cm_data": false,
+    "dispatch_retrigger_interval": null,
+    "gui": {
+      "line_break": 1400,
+      "show_occupancy_rate": true,
+      "occupancy_rate_interval": [
+        86400,
+        172800
+      ],
+      "offset_line_break": [
+        false
+      ],
+      "first_parking_area": "-01-",
+      "slot_length": {
+        "default": 133,
+        "SB_DC": 91,
+        "AB_OC": 133
+      },
+      "blocks": [
+        11,
+        15
+      ],
+      "distances_between_areas": 3,
+      "special_position_areas": {
+        "S_1": {
+          "x": 50,
+          "y": 150
+        },
+        "S_2": {
+          "x": 160,
+          "y": 150
+        },
+        "R_1": {
+          "x": 0,
+          "y": 800
+        },
+        "R_2": {
+          "x": 50,
+          "y": 800
+        },
+        "R_3": {
+          "x": 100,
+          "y": 800
+        },
+        "R_4": {
+          "x": 150,
+          "y": 800
+        },
+        "R_5": {
+          "x": 200,
+          "y": 800
+        },
+        "R_6": {
+          "x": 250,
+          "y": 800
+        },
+        "W_1": {
+          "x": 50,
+          "y": 1100
+        },
+        "W_2": {
+          "x": 200,
+          "y": 1100
+        },
+        "-01-": {
+          "x": 400,
+          "y": 70
+        },
+        "Rangierflaeche_1": {
+          "x": 2000,
+          "y": 70
+        },
+        "Rangierflaeche_2": {
+          "x": 2000,
+          "y": 300
+        }
+      },
+      "special_orientation_slots": {
+        "HPC_1": "VERTICAL",
+        "HPC_2": "VERTICAL",
+        "HPC_3": "VERTICAL",
+        "HPC_4": "VERTICAL",
+        "HPC_5": "HORIZONTAL",
+        "HPC_6": "HORIZONTAL",
+        "HPC_7": "HORIZONTAL",
+        "HPC_8": "HORIZONTAL",
+        "R_1": "VERTICAL",
+        "R_2": "VERTICAL",
+        "R_3": "VERTICAL",
+        "R_4": "VERTICAL",
+        "R_5": "VERTICAL",
+        "R_6": "VERTICAL",
+        "W_1": "VERTICAL",
+        "W_2": "VERTICAL",
+        "S_1": "ANGLE_LEFT",
+        "S_2": "ANGLE_RIGHT",
+        "Werkstatt": "ANGLE_LEFT",
+        "-01-": "ANGLE_RIGHT",
+        "-11-": "ANGLE_LEFT",
+        "-12-": "ANGLE_RIGHT",
+        "-15-": "ANGLE_LEFT"
+      }
+    },
+    "smart_charging": {
+      "start_date": [
+        2018,
+        10,
+        23
+      ],
+      "power_limit_grid": {
+        "0": 3625,
+        "86400": 3625
+      },
+      "accuracy": 5,
+      "price_data_path": "..\\bus_depot\\electricity_prices\\spot_day_ahead\\"
+    }
+  },
+  "rcParams": {
+    "font.family": "sans-serif",
+    "font.sans-serif": "Liberation Sans, Arial, Helvetica, DejaVu Sans",
+    "axes.labelsize": 10,
+    "axes.titleweight": "normal",
+    "axes.titlesize": 10,
+    "legend.fontsize": 10,
+    "legend.frameon": true,
+    "figure.autolayout": true,
+    "figure.dpi": 150
+  },
+  "evaluationSets": {
+    "VEHICLE": {
+      "DEPOTAREAS": {
+        "attsToLog_const": [],
+        "attsToLog_time": [
+          "dwd.current_area",
+          "dwd.current_slot"
+        ]
+      },
+      "DEPOTPROCESSES": {
+        "attsToLog_const": [],
+        "attsToLog_time": [
+          "dwd.active_processes_copy"
+        ]
+      }
+    },
+    "DIRECTAREA": {
+      "CUSTOM_LOG": {
+        "attsToLog_const": [
+          "count",
+          "count_rfd_unblocked"
+        ],
+        "attsToLog_time": [
+          "count",
+          "count_rfd_unblocked"
+        ]
+      }
+    },
+    "LINEAREA": {
+      "CUSTOM_LOG": {
+        "attsToLog_const": [
+          "count",
+          "vacant_blocked",
+          "count_rfd_unblocked"
+        ],
+        "attsToLog_time": [
+          "count",
+          "vacant_blocked",
+          "count_rfd_unblocked"
+        ]
+      }
+    },
+    "BACKGROUNDSTORE": {
+      "CUSTOM_LOG": {
+        "attsToLog_const": [
+          "count"
+        ],
+        "attsToLog_time": [
+          "count"
+        ]
+      }
+    },
+    "DEPOTRESOURCE": {
+      "CUSTOM_LOG": {
+        "attsToLog_const": [
+          "user_count"
+        ],
+        "attsToLog_time": [
+          "user_count"
+        ]
+      }
+    }
+  },
+  "evaluationScheme": {
+    "VEHICLE": [
+      "DEPOTAREAS",
+      "DEPOTPROCESSES"
+    ],
+    "DIRECTAREA": [
+      "CUSTOM_LOG"
+    ],
+    "LINEAREA": [
+      "CUSTOM_LOG"
+    ],
+    "BACKGROUNDSTORE": [
+      "CUSTOM_LOG"
+    ],
+    "DEPOTRESOURCE": [
+      "CUSTOM_LOG"
+    ]
+  }
+}

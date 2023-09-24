@@ -137,13 +137,12 @@ class SimpleVehicle:
         trip.
         """
         flexprint(
-            "t = %d: %s starting to drive with driving time = %d (= %f h) for distance = %d km"
+            "t = %d: %s starting to drive with driving time = %d (= %f h)"
             % (
                 self.env.now,
                 self.ID,
                 self.trip.duration,
                 self.trip.duration / 3600,
-                self.trip.distance,
             ),
             switch="operations",
         )
@@ -174,7 +173,7 @@ class SimpleVehicle:
         self.battery_logs.append(BatteryLog(self.env.now, self, "consume_end"))
 
         # Driving time is over, now check in at the depot
-        self.mileage += self.trip.distance
+        self.mileage += self.trip.distance if self.trip.distance is not None else 0
         self.trip.destination.checkin(self)
 
 
