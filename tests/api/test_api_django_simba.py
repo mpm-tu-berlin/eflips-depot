@@ -200,9 +200,9 @@ class TestApiDjangoSimba:
         assert isinstance(vehicle_eflips, EflipsVehicleType)
 
         # Test if the properties of the VehicleType object are correct
-        assert isinstance(vehicle_eflips.id, int)
-        assert isinstance(vehicle_eflips.vehicle_class, int)
-        assert vehicle_eflips.id == vehicle_from_database.id
+        assert isinstance(vehicle_eflips.id, str)
+        assert isinstance(vehicle_eflips.vehicle_class, str)
+        assert vehicle_eflips.id == str(vehicle_from_database.id)
         assert isinstance(vehicle_eflips.battery_capacity_total, float)
         assert (
             vehicle_eflips.battery_capacity_total
@@ -253,8 +253,8 @@ class TestApiDjangoSimba:
 
         for schedule in vehicle_schedule_list:
             assert isinstance(schedule, VehicleSchedule)
-            assert isinstance(schedule.id, int)
-            assert isinstance(schedule.vehicle_class, int)
+            assert isinstance(schedule.id, str)
+            assert isinstance(schedule.vehicle_class, str)
             assert isinstance(schedule.departure, datetime)
             assert isinstance(schedule.arrival, datetime)
             assert isinstance(schedule.departure_soc, float)

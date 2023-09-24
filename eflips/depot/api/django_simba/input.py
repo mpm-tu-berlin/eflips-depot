@@ -27,8 +27,8 @@ class VehicleType(ApiVehicleType):
         :param vehicle_type: A django-simba VehicleType object.
         """
 
-        self.id = vehicle_type.id
-        self.vehicle_class = vehicle_type.vehicle_class.id
+        self.id = str(vehicle_type.id)
+        self.vehicle_class = str(vehicle_type.vehicle_class.id)
         self.battery_capacity_total = vehicle_type.battery_capacity
         self.charging_curve = tuple(zip(*vehicle_type.charging_curve))
         if vehicle_type.v2g:
@@ -96,7 +96,7 @@ class VehicleSchedule(ApiVehicleSchedule):
         self._validate_input_data(rotation_id, rotation_info)
 
         # Fill in the values from the rotation_info dictionary
-        self.id = rotation_id
+        self.id = str(rotation_id)
         self.departure_soc = rotation_info["departure_soc"]
 
         self.arrival_soc = {}
@@ -104,14 +104,14 @@ class VehicleSchedule(ApiVehicleSchedule):
             # For the depb buses, arrival_soc is not provided, so we have to calculate it from the departure_soc and
             # delta_soc
             for i in range(len(rotation_info["vehicle_type"])):
-                vehicle_type_key = rotation_info["vehicle_type"][i]
+                vehicle_type_key = str(rotation_info["vehicle_type"][i])
                 delta_soc = rotation_info["delta_soc"][i]
                 arrival_soc = rotation_info["departure_soc"] - delta_soc
                 self.arrival_soc[vehicle_type_key] = arrival_soc
         elif rotation_info["charging_type"] == "oppb":
             # For the oppb buses, arrival_soc is provided, so we can just use that
             # And there is only one vehicle type
-            vehicle_type_key = rotation_info["vehicle_type"]
+            vehicle_type_key = str(rotation_info["vehicle_type"])
             self.arrival_soc[vehicle_type_key] = rotation_info["arrival_soc"]
         else:
             raise AssertionError("Invalid charging_type")
@@ -134,7 +134,7 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         # Load the rotation from the database
         rotation = Rotation.objects.get(id=self.id)
-        self.vehicle_class = rotation.vehicle_class.id
+        self.vehicle_class = str(rotation.vehicle_class.id)
 
         # Load the arrival and departure times by looking through the trips
         trips = (

@@ -17,10 +17,10 @@ from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
 @dataclass
 class VehicleType:
-    id: Hashable
+    id: str
     """A unique identifier for this vehicle type. This identifier will be returned in the output of eFLIPS-Depot."""
 
-    vehicle_class: Hashable
+    vehicle_class: str
     """A unique identifier for the vehicle class which this vehicle type belongs to."""
 
     battery_capacity_total: float
@@ -164,7 +164,7 @@ class VehicleSchedule:
     information, limited to the interaction with the depot.
     """
 
-    id: Hashable
+    id: str
     """Unique ID of this vehicle schedule. This identifier will be returned in the output of eFLIPS-Depot."""
 
     vehicle_class: Hashable
