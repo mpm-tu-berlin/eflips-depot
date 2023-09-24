@@ -1,5 +1,9 @@
+import dataclasses
 import os
 from datetime import datetime
+
+from depot.api import init_simulation, run_simulation
+from depot.api.django_simba.output import to_simba
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.api.djangosettings")
 import django
@@ -172,7 +176,10 @@ class TestApiDjangoSimba:
         for rotation_id, results in simba_output.items():
             # Make all the "vehicle_type" lists contain only distinct items
             if isinstance(results["vehicle_type"], list):
-                results["vehicle_type"] = [1]
+                results["vehicle_type"] = [results["vehicle_type"][0]]
+                results["delta_soc"] = [results["delta_soc"][0]]
+                if results["delta_soc"][0] > 1:
+                    results["delta_soc"][0] = 1.0
 
         with open(eflips_input_path, "w") as f:
             json.dump(simba_output, f)
@@ -265,7 +272,7 @@ class TestApiDjangoSimba:
                 # assert isinstance(schedule.minimal_soc, dict)
             assert isinstance(schedule.opportunity_charging, bool)
 
-    def test_eflips_from_simba_output(self, eflips_input_path: pathlib.Path):
+    def test_eflips_from_simba_output(self, eflips_input_path: pathlib.Path, tmp_path):
         """
         This method tests for the presence and validity of the simBA output file.
 
@@ -351,3 +358,68 @@ class TestApiDjangoSimba:
                         assert isinstance(
                             minimal_soc, float
                         ), "minimal_soc list contains non-float value"
+
+    def test_whole_stack(self, eflips_input_path, tmp_path):
+        """
+        This method is a sample of how to use the eflips API in a Django project.
+
+        :param eflips_input_path: A pathlib.Path object containing the inout JSON in the agreed
+        """
+
+        # We have the input JSON. Create a VehicleSchedule object from it
+        vehicle_schedule_list = VehicleSchedule.from_rotations(eflips_input_path)
+
+        # Get the Vehicle Types
+        vehicle_types = []
+        for djangosimba_vehicle_type in DjangoSimbaVehicleType.objects.all():
+            vehicle_type = EflipsVehicleType(djangosimba_vehicle_type)
+            vehicle_types.append(vehicle_type)
+
+        # Initialize the simulation
+        simulation_host = init_simulation(vehicle_types, vehicle_schedule_list)
+
+        # Run the simulation
+        depot_evaluation = run_simulation(simulation_host)
+
+        # Optional: Find the total number of vehicles used and run the simulation again in order to get continuous
+        # vehicle IDs and nicer plots *This is not relevant for the export back to django-simba*
+        vehicle_counts = depot_evaluation.nvehicles_used_calculation()
+        simulation_host = init_simulation(
+            vehicle_types, vehicle_schedule_list, vehicle_counts
+        )
+        depot_evaluation = run_simulation(simulation_host)
+
+        # Save the results to a folder
+        output_for_simba = to_simba(depot_evaluation)
+        with open(tmp_path / "output_for_simba.json", "w") as f:
+            json.dump([dataclasses.asdict(o) for o in output_for_simba], f, indent=4)
+
+        # Optional: Create a plot of the results
+        depot_evaluation.path_results = str(tmp_path)
+
+        depot_evaluation.vehicle_periods(
+            periods={
+                "depot general": "darkgray",
+                "park": "lightgray",
+                "serve_supply_clean_daily": "steelblue",
+                "serve_clean_ext": "darkblue",
+                "charge_dc": "forestgreen",
+                "charge_oc": "forestgreen",
+                "precondition": "black",
+            },
+            save=True,
+            show=False,
+            formats=(
+                "pdf",
+                "png",
+            ),
+            show_total_power=True,
+            show_annotates=True,
+        )
+
+        # Check if the output file exists
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
+
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
