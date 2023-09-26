@@ -28,7 +28,11 @@ class VehicleType(ApiVehicleType):
         """
 
         self.id = str(vehicle_type.id)
-        self.vehicle_class = str(vehicle_type.vehicle_class.id)
+        vehicle_classes = [vc.id for vc in vehicle_type.vehicle_class.all()]
+        assert (
+            len(vehicle_classes) == 1
+        ), "We do not support multiple vehicle classes yet"
+        self.vehicle_class = str(vehicle_classes[0])
         self.battery_capacity_total = vehicle_type.battery_capacity
         self.charging_curve = tuple(zip(*vehicle_type.charging_curve))
         if vehicle_type.v2g:

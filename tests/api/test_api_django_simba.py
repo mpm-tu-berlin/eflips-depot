@@ -39,6 +39,7 @@ from ebustoolbox.tasks import (
     stations_to_db,
     vehicles_to_db,
     schedule_to_db,
+    add_classes_to_vehicle_types,
 )
 
 
@@ -114,8 +115,6 @@ class TestApiDjangoSimba:
                 args[k] = float(v)
         scenario.options = args
 
-        scenario.opps_charging_power = scenario.options["cs_power_opps"]
-        scenario.deps_charging_power = scenario.options["cs_power_deps_depb"]
         scenario.save()
         return scenario
 
@@ -139,6 +138,8 @@ class TestApiDjangoSimba:
         vehicles_to_db(scenario.options["vehicle_types"], scenario)
 
         schedule_to_db(simba_schedule, scenario)
+
+        add_classes_to_vehicle_types(scenario)
 
         return scenario, simba_schedule, original_args
 
@@ -186,14 +187,13 @@ class TestApiDjangoSimba:
 
         return eflips_input_path
 
-    def test_database_query(self, eflips_input_path):
+    def test_database_query(self):
         """Playground for reading data from database"""
 
         vehicle_type = DjangoSimbaVehicleType.objects.all()[0]
-        vehicle_class = (
-            VehicleClass.objects.filter(id=vehicle_type.vehicle_class_id).all()[0].name
-        )
-        assert isinstance(vehicle_class, str)
+        vehicle_classes = vehicle_type.vehicle_class.all()
+        for vehicle_class in vehicle_classes:
+            vehicle_type_ids = [v.id for v in vehicle_class.vehicletype_set.all()]
 
     def test_fill_vehicle_type_from_djangosimba(self):
         """This method tests if a VehicleType object can be correctly created from a DjangoSimbaVehicleType object"""
