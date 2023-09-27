@@ -28,7 +28,11 @@ class VehicleType(ApiVehicleType):
         """
 
         self.id = str(vehicle_type.id)
-        self.vehicle_class = str(vehicle_type.vehicle_class.id)
+        vehicle_classes = [vc.id for vc in vehicle_type.vehicle_class.all()]
+        assert (
+            len(vehicle_classes) == 1
+        ), "We do not support multiple vehicle classes yet"
+        self.vehicle_class = str(vehicle_classes[0])
         self.battery_capacity_total = vehicle_type.battery_capacity
         self.charging_curve = tuple(zip(*vehicle_type.charging_curve))
         if vehicle_type.v2g:
@@ -196,8 +200,7 @@ class VehicleSchedule(ApiVehicleSchedule):
         # dependeing on the number of VehicleTypes for the VehicleClass fot the rotation
         rotation = Rotation.objects.get(id=rotation_id)
 
-        # For now, we are only allowing on evehicle type per vehicle class, which simplifies the handling here
-
+        # For now, we are only allowing on vehicle type per vehicle class, which simplifies the handling here
         assert isinstance(rotation_info["vehicle_type"], int) or isinstance(
             rotation_info["vehicle_type"], list
         ), "vehicle_type is not an int or list"
@@ -208,9 +211,19 @@ class VehicleSchedule(ApiVehicleSchedule):
         vehicle_type_from_database = DjangoSimbaVehicleType.objects.get(
             id=vehicle_type_id
         )
+        vehicle_class_for_type = [
+            vt.id for vt in vehicle_type_from_database.vehicle_class.all()
+        ]
         assert (
-            vehicle_type_from_database.vehicle_class.id == rotation.vehicle_class.id
-        ), "vehicle_type does not match vehicle_class"
+            len(vehicle_class_for_type) == 1
+        ), "We do not support multiple vehicle classes yet"
+        vehicle_class_for_type = vehicle_class_for_type[0]
+
+        vehicle_class_for_rotation = rotation.vehicle_class.id
+
+        assert (
+            vehicle_class_for_type == vehicle_class_for_rotation
+        ), "Vehicle type does not match vehicle class"
 
         # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
         # or for "minimal_soc" for opportunity chargers ("oppb")
