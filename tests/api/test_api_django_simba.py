@@ -326,8 +326,15 @@ class TestApiDjangoSimba:
             else:
                 vehicle_type_id = results["vehicle_type"]
             vehicle_type = DjangoSimbaVehicleType.objects.get(id=vehicle_type_id)
+            vehicle_class_for_vehicle_type = [
+                vt.id for vt in vehicle_type.vehicle_class.all()
+            ]
             assert (
-                vehicle_type.vehicle_class_id == vehicle_class.id
+                len(vehicle_class_for_vehicle_type) == 1
+            ), "We do not support multiple vehicle classes per vehicle type yet"
+
+            assert (
+                vehicle_class_for_vehicle_type[0] == vehicle_class.id
             ), "Vehicle type does not match vehicle class"
 
             # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
