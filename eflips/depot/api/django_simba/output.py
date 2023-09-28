@@ -21,6 +21,9 @@ class InputForSimba:
     rotation_id: int
     """The Rotation ID this rotation had in the input data."""
 
+    vehicle_type_id: str
+    """The Vehicle Type ID for the vehicle assigned to this rotation."""
+
     vehicle_id: str
     """The Vehicle ID assigned to this rotation. Using this value, you can see how the same vehicle was used in different rotations."""
 
@@ -45,6 +48,7 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
                 int(
                     float(trip_i.ID_orig)
                 ),  # Slightly ugly, but we need to return an int
+                trip_i.vehicle.vehicle_type.ID,
                 trip_i.vehicle.ID,
                 trip_i.start_soc,
             )
