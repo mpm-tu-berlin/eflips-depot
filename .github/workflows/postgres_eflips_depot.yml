@@ -31,6 +31,16 @@ jobs:
           - 5432:5432
 
     steps:
+      - name: Give GH Actions access to django-simba repo
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.DSIM_KEY }}
+
+      - name: Give GH Actions access to eflips repo
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EFL_KEY }}
+
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v3
