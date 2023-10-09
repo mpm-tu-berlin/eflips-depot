@@ -63,6 +63,12 @@ jobs:
       - name: Install Dependencies
         run: |
           poetry install --no-root
+      - name: Create Database
+        run: |
+          psql -c 'CREATE EXTENSION postgis;'
+          psql -c 'CREATE DATABASE DbName;'
+          psql -c 'create user posgtgres with encrypted password "postgres";'
+          psql c 'grant all privileges on database DbName to postgres;'
       - name: Run Tests
         run:
           poetry run pytest #test
@@ -74,7 +80,6 @@ jobs:
           # Replace with your own database info
           DATABASE_URL: postgis://postgres:postgres@localhost/DbName
           CELERY_USE: False
-          CELERY_BROKER_URL: pyamqp://guerrst@localhost//
           TILING_SERVICE_TOKEN: ${{ secrets.TILING_SERVICE_TOKEN }}
           TILING_SERVICE_STYLE_ID: basic-v2
           # DJANGO_SETTINGS_MODULE: ebusdjango.settings
