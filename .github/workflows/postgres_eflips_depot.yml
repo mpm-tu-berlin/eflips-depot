@@ -34,12 +34,12 @@ jobs:
 
     steps:
       - name: Give GH Actions access to django-simba repo
-        uses: webfactory/ssh-agent@v0.5.4
+        uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.DSIM_KEY }}
 
       - name: Give GH Actions access to eflips repo
-        uses: webfactory/ssh-agent@v0.5.4
+        uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.EFL_KEY }}
 
