@@ -34,6 +34,7 @@ jobs:
         with:
           ssh-private-key: |
             ${{ secrets.EFLIPS_KEY }}
+            ${{ secrets.EFLIPS_DEPOT_KEY }}
             ${{ secrets.DJANGO_SIMBA_KEY }}
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
