@@ -1,6 +1,3 @@
-## TODO:: Achtung, basiert evtl noch zu stark auf dem RLI Skript, ggf. copyright beachten?!
-
-
 name: Automatic tests for eflips depot
 on:
   - pull_request
@@ -36,7 +33,8 @@ jobs:
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: |
-                          ${{ secrets.EXT_REPOS_PRIVATE_KEY }}
+            ${{ secrets.EFLIPS_KEY }}
+            ${{ secrets.DJANGO_SIMBA_KEY }}
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v3
