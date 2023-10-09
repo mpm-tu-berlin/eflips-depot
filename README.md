@@ -57,7 +57,12 @@ Testing is done using the `pytest` framework with tests located in the `tests`di
 ```
 ## Documentation
 
-A temporary documentation is located at docs/_build/index.html. Still under construction.
+Documentation is automatically created from the docstrings in the code using [sphinx-autoapi](https://sphinx-autoapi.readthedocs.io/en/latest/). If you have downloaded a specific release, the documentation is included in the `docs` directory. If you have cloned the repository, you can create the documentation yourself by executing the following command in the root directory of the repository:
+
+```bash
+   cd docs/
+   sphinx-build -b html . _build
+```
 
 
 ## Development

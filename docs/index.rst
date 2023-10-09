@@ -19,6 +19,8 @@ The repository contains an example for the simulation and planning of an electri
    :maxdepth: 2
    :caption: Contents:
 
+   autoapi/depot/api/index
+
 
 
 Indices and tables
