@@ -3,11 +3,8 @@
 
 name: Automatic tests for eflips depot
 on:
-  - push #TODO zurück zu pull_request SOBALD FERTIG
+  - pull_request
   - workflow_dispatch
-#  pull_request:
-#    branches:
-#      - feature/test-pytest-postgres-jc
 env:
   PYTHON_VERSION: "3.11"
   POETRY_VERSION: "1.4.2"
@@ -67,7 +64,7 @@ jobs:
           poetry install --no-root
       - name: Run Tests
         run:
-          poetry run pytest #test
+          poetry run pytest --junit-xml=test-results.xml #test
         env:
           # To make sure that the tests can find the eflips package
           PYTHONPATH: "eflips:tests:." 
@@ -81,3 +78,28 @@ jobs:
           POSTGRES_HOST: localhost
           # The default PostgreSQL port
           POSTGRES_PORT: 5432
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          # A list of JUnit XML files, directories containing the former, and wildcard
+          # patterns to process.
+          # See @actions/glob for supported patterns.
+          path: test-results.xml
+      
+          # Add a summary of the results at the top of the report
+          # Default: true
+          summary: true
+      
+          # Select which results should be included in the report.
+          # Follows the same syntax as
+          # `pytest -r`
+          # Default: fEX
+          display-options: fEX
+      
+          # Fail the workflow if no JUnit XML was found.
+          # Default: true
+          fail-on-empty: true
+      
+      
+      
