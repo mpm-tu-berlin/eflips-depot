@@ -17,31 +17,24 @@ jobs:
   # Label
   Runner-job-of-Tests-with-DB:
     runs-on: ubuntu-latest
-    #services:
-    #  postgres:
-    #    image: postgis/postgis
-    #    env:
-    #      POSTGRES_USER: postgres
-    #      POSTGRES_PASSWORD: postgres
-    #      POSTGRES_DB: postgres
-    #    # Set health checks to wait until postgres has started
-    #    options: >-
-    #      --health-cmd pg_isready
-    #      --health-interval 10s
-    #      --health-timeout 5s
-    #      --health-retries 5
-    #    ports:
-    #      # Maps tcp port 5432 on service container to the host
-    #      - 5432:5432
+    services:
+      postgres:
+        image: postgis/postgis
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: database
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
 
     steps:
-      - name: Setup Postgres database
-        uses: Daniel-Marynicz/postgresql-action@master
-        with:
-          app_user: postgres
-          app_user_password: postgres
-          app_db: postgres
-          postgres_extensions: postgis
       - name: Give GH Actions access to django-simba repo
         uses: webfactory/ssh-agent@v0.8.0
         with:
@@ -81,10 +74,8 @@ jobs:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
           # Replace with your own database info
-          DATABASE_URL: postgis://postgres:postgres@localhost/postgres
+          DATABASE_URL: postgis://user:password@localhost/database
           CELERY_USE: False
-          TILING_SERVICE_TOKEN: ${{ secrets.TILING_SERVICE_TOKEN }}
-          TILING_SERVICE_STYLE_ID: basic-v2
           # DJANGO_SETTINGS_MODULE: ebusdjango.settings
           # The hostname used to communicate with the PostgreSQL service container
           POSTGRES_HOST: localhost
