@@ -44,6 +44,9 @@ class TestDepotEvaluation:
 
         return ev
 
+    def test_failing_test(self):
+        assert False
+
     def test_plot_vehicle_periods(self, depot_evaluation: DepotEvaluation, tmp_path):
         # Override the path_results variable in the config's ['depot']['path_results'] with a temporary directory
         depot_evaluation.path_results = str(tmp_path)
