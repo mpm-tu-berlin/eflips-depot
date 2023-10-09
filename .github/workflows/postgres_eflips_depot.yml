@@ -41,11 +41,11 @@ jobs:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v3
-      #- name: Set Up Gdal
-      #  run: |
-      #    sudo apt-get update
-      #    sudo apt-get install gdal-bin
-      #    echo ogrinfo --version
+      - name: Set Up Gdal
+        run: |
+          sudo apt-get update
+          sudo apt-get install gdal-bin
+          echo ogrinfo --version
 
       # TODO benötigen wir Django und Chrom?
       #- name: setup-chromedriver
