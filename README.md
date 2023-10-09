@@ -1,3 +1,5 @@
+[![Tests](https://github.com/mpm-tu-berlin/eflips-depot/actions/workflows/postgres_eflips_depot.yml/badge.svg)](https://github.com/mpm-tu-berlin/eflips-depot/actions/workflows/postgres_eflips_depot.yml)
+
 # eflips-depot
 
 eFLIPS has been developed within several research projects at the Department of Methods of Product Development and
