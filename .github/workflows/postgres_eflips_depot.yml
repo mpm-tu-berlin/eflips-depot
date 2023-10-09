@@ -2,7 +2,9 @@
 
 
 name: Automatic tests for eflips depot
-on: push #TODO zurück zu pull_request SOBALD FERTIG
+on:
+  push #TODO zurück zu pull_request SOBALD FERTIG
+  workflow_dispatch
 #  pull_request:
 #    branches:
 #      - feature/test-pytest-postgres-jc
