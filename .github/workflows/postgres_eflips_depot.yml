@@ -37,8 +37,7 @@ jobs:
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: |
-                          ${{ secrets.DSIM_KEY }}
-                          ${{ secrets.EFL_KEY }}
+                          ${{ secrets.EXT_REPOS_PRIVATE_KEY }}
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v3
