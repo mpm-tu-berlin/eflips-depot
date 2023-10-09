@@ -67,6 +67,8 @@ jobs:
         run:
           poetry run pytest #test
         env:
+          # To make sure that the tests can find the eflips package
+          PYTHONPATH: "eflips:tests:." 
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
           # Replace with your own database info
