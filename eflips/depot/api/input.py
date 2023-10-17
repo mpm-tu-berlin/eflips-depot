@@ -461,9 +461,6 @@ class Resource:
     max_power: float or None
     """The maximum power of the resource if this resource is a charging interface. If self.max_power is float, then 
     then the resource is a charging interface."""
-    capacity: int
-    """The amount of park places that can be served by this resource at the same time. If self.capacity == 1, 
-    then the resource is a charging interface."""
 
 
 @dataclass
