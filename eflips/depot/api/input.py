@@ -380,9 +380,76 @@ class VehicleSchedule:
         return timetable
 
 
+@dataclass
 class Depot:
-    """
-    This class represents a depot in eFLIPS-Depot. A depot is a place where vehicles can be charged. It is **WIP**.
-    """
+    """This class represent a depot in eFLIPS-Depot. A vehicle arrives at a depot, is processed there and leaves the
+    depot again. In eFLIPS-Depot the processes within a depot is simulated"""
 
-    pass
+    id: Hashable
+    """A unique identifier of this depot."""
+
+    default_plan_id: Hashable
+    """The ID of the default plan for this depot, representing a series of processes that are executed for all the 
+    vehicles at the depot, if there are no requirements of specific plans."""
+
+
+@dataclass
+class Area:
+    """This class represents an area in eFLIPS-Depot, where a vehicle can be processed."""
+
+    id: Hashable
+    """A unique identifier of this area."""
+    type: str
+    """The type of the area. It must be one of the following values: DirectArea and LineArea"""
+    depot: Hashable
+    """The id of the depot this area belongs to."""
+    capacity: int
+    """The maximum number of vehicles that can be processed in this area at the same time."""
+    available_processes: List[Hashable]
+    """This list represents the processes that can be executed in this area."""
+
+    vehicle_class: List[Hashable]
+    """This list represents the vehicle classes that can be allowed to enter this area."""
+
+    issink: bool
+    """Whether this area is a sink area. A sink area is an area where vehicles have no where to move. Vehicles are 
+    ready for departure."""
+
+
+@dataclass
+class Process:
+    """This class represents a process in eFLIPS-Depot, which is the possible actions for a vehicle in a depot."""
+
+    id: str
+    """The name of the process. It must be one of the following values: Serve, Charge, Standby, Repair, Maintain, 
+    Precondition."""
+    resource: Hashable or None
+    """The resource required in this process. If self.resource is None, then the process does not require any 
+    resource."""
+    # area: List?
+
+
+@dataclass
+class Resource:
+    """This class represents a resource to perform a process in eFLIPS-Depot. A process can require one resource at
+    most or doesn't require any resource."""
+
+    id: Hashable
+    """A unique identifier of this resource."""
+    max_power: float or None
+    """The maximum power of the resource if this resource is a charging interface. If self.max_power is float, then 
+    then the resource is a charging interface."""
+    capacity: int
+    """The amount of park places that can be served by this resource at the same time. If self.capacity == 1, 
+    then the resource is a charging interface."""
+
+
+@dataclass
+class Plan:
+    """This class represents a plan in eFLIPS-Depot. A plan is a series of processes, where a vehicle must be
+    processed in this exact order."""
+
+    id: Hashable
+    """A unique identifier of this plan."""
+    processes: List[Hashable]
+    """This list represents the processes that are executed in order for the vehicles belonging to this plan."""
