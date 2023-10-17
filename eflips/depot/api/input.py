@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from math import ceil
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
+from enum import Enum
 
 import numpy as np
 import simpy
@@ -393,13 +394,20 @@ class Depot:
     vehicles at the depot, if there are no requirements of specific plans."""
 
 
+class AreaType(Enum):
+    """This class represents the type of an area in eFLIPS-Depot"""
+
+    DirectArea = 1
+    LineArea = 2
+
+
 @dataclass
 class Area:
     """This class represents an area in eFLIPS-Depot, where a vehicle can be processed."""
 
     id: Hashable
     """A unique identifier of this area."""
-    type: str
+    type: AreaType
     """The type of the area. It must be one of the following values: DirectArea and LineArea"""
     depot: Hashable
     """The id of the depot this area belongs to."""
@@ -416,13 +424,27 @@ class Area:
     ready for departure."""
 
 
+class ProcessType(Enum):
+    """This class represents the type of a process in eFLIPS-Depot."""
+
+    Serve = 1
+    Charge = 2
+    StandbyArrival = 3
+    StandbyDeparture = 4
+    Repair = 5
+    Maintain = 6
+    Precondition = 7
+
+
 @dataclass
 class Process:
     """This class represents a process in eFLIPS-Depot, which is the possible actions for a vehicle in a depot."""
 
-    id: str
-    """The name of the process. It must be one of the following values: Serve, Charge, Standby, Repair, Maintain, 
-    Precondition."""
+    id: Hashable
+    """The name of the process. """
+    type: ProcessType
+    """The type of the process. It must be one of the following values: Serve, Charge, StandbyArrival, 
+    StandbyDeparture, Repair, Maintain, Precondition."""
     resource: Hashable or None
     """The resource required in this process. If self.resource is None, then the process does not require any 
     resource."""
