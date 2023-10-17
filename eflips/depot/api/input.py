@@ -10,13 +10,15 @@ from enum import Enum
 import numpy as np
 import simpy
 import seaborn as sns
+from ebustoolbox.models import VehicleClass
 from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
+from eflips.depot import Depot as EflipsDepot
 import eflips.depot.standalone
-from depot import VehicleType
+from depot import VehicleType, DepotControl, DepotConfigurator
 from eflips.depot.standalone import SimpleTrip
-from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
+from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType, SimpleVehicle
 
 
 @dataclass
@@ -389,16 +391,56 @@ class Depot:
     id: Hashable
     """A unique identifier of this depot."""
 
-    default_plan_id: Hashable
-    """The ID of the default plan for this depot, representing a series of processes that are executed for all the 
+    plan: "Plan"
+    """The default plan for this depot, representing a series of processes that are executed for all the 
     vehicles at the depot, if there are no requirements of specific plans."""
+
+    areas: List["Area"]
+    """This list represents the areas in this depot, where vehicles can take part in processes."""
+
+    name: str | None = None
+    """The name of this depot. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
+
+    plan_override: Optional[Callable[[DepotControl, SimpleVehicle], "Plan"]] = None
+    """A function that takes a :class:`eflips.depot.api.input.DepotControl` object and a
+    :class:`eflips.depot.standalone.SimpleVehicle` object and returns a :class:`eflips.depot.api.input.Plan` object. It
+    will be called at the assign_plan when the vehicle arrives at the depot. It can be used to dynamically assign a
+    plan to a vehicle. **Note**: This function takes the "black box" :class:`eflips.depot.api.input.DepotControl` and 
+    :class:`eflips.depot.standalone.SimpleVehicle` objects as input, as such it is not covered by the API documentation.
+    """
+
+    def _to_eflips(self) -> Union[EflipsDepot, DepotConfigurator]:
+        """Placeholder method to convert the depot into a :class:`eflips.depot.api.input.Depot` object, which is the
+        input format of the depot simulation. We may convert to a depotConfigurator instead or use the depotConfigurator.
+        """
+        raise NotImplementedError
+
+    def validate(self):
+        """
+        This method cehcks for validity of the depot. Specifically
+        - it makes sure that all processes in the plan are available in at least one area (*note: plan_override is not checked*)
+        - it makes sure that all areas have at least one process available
+
+        :return: Nothing. Raises an AssertionError if the depot is invalid.
+        """
+        for process in self.plan.processes:
+            assert any(process in area.available_processes for area in self.areas)
+
+        for area in self.areas:
+            assert len(area.available_processes) > 0
 
 
 class AreaType(Enum):
     """This class represents the type of an area in eFLIPS-Depot"""
 
-    DirectArea = 1
-    LineArea = 2
+    DIRECT_ONESIDE = 1
+    """A direct area where vehicles drive in form one side only."""
+
+    DIRECT_TWOSIDE = 2
+    """A direct area where vehicles drive in form both sides. Also called a "herringbone" configuration."""
+
+    LINE = 3
+    """A line area where vehicles are parked in a line. There might be one or more rows in the area."""
 
 
 @dataclass
@@ -407,33 +449,63 @@ class Area:
 
     id: Hashable
     """A unique identifier of this area."""
+
     type: AreaType
-    """The type of the area. It must be one of the following values: DirectArea and LineArea"""
-    depot: Hashable
-    """The id of the depot this area belongs to."""
+    """The type of the area. See :class:`eflips.depot.api.input.AreaType` for more information."""
+
+    depot: Depot
+    """The depot this area belongs to."""
+
     capacity: int
-    """The maximum number of vehicles that can be processed in this area at the same time."""
-    available_processes: List[Hashable]
+    """The maximum number of vehicles that can be processed in this area at the same time.
+    - For a LINE area, it must be evenly divisible by the row_count
+    - For a DIRECT_ONESIDE area it can be freely chosen
+    - For a DIRECT_TWOSIDE area it must be a multiple of two.
+    """
+
+    available_processes: List["Process"]
     """This list represents the processes that can be executed in this area."""
 
-    vehicle_class: List[Hashable]
-    """This list represents the vehicle classes that can be allowed to enter this area."""
+    vehicle_classes: List[VehicleClass]
+    """
+    This list represents the vehicle classes that can be allowed to enter this area. This will also be used
+    for size calculation. The sizing of the area will make sure it fits the largest vehicle type in all vehicle classes.
+    """
 
-    issink: bool
-    """Whether this area is a sink area. A sink area is an area where vehicles have no where to move. Vehicles are 
-    ready for departure."""
+    name: str | None = None
+    """The name of this area. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
+
+    row_count: Optional[int] = None
+    """For a line area, this is the number of rows in the area. It must be an integer greater than 0 that evenly
+    divides the capacity of the area."""
+
+    def __post_init__(self):
+        """
+        This method is called after the object is initialized. It makes sure that the capacity is valid for the given
+        area type
+        :return: Nothing
+        """
+
+        match self.type:
+            case AreaType.DIRECT_ONESIDE:
+                assert self.capacity > 0
+            case AreaType.DIRECT_TWOSIDE:
+                assert self.capacity > 0 and self.capacity % 2 == 0
+            case AreaType.LINE:
+                assert (self.capacity > 0 and self.row_count is not None) and (
+                    self.capacity % self.row_count == 0
+                )
 
 
 class ProcessType(Enum):
     """This class represents the type of a process in eFLIPS-Depot."""
 
-    Serve = 1
-    Charge = 2
-    StandbyArrival = 3
-    StandbyDeparture = 4
-    Repair = 5
-    Maintain = 6
-    Precondition = 7
+    # TODO: What are those types? They need to be documented.
+    SERVICE = 1
+    CHARGING = 2
+    STANDBY = 3
+    STANDBY_DEPARTURE = 4
+    PRECONDITION = 5
 
 
 @dataclass
@@ -441,26 +513,40 @@ class Process:
     """This class represents a process in eFLIPS-Depot, which is the possible actions for a vehicle in a depot."""
 
     id: Hashable
-    """The name of the process. """
+    """The unique identifier of this process."""
+
     type: ProcessType
-    """The type of the process. It must be one of the following values: Serve, Charge, StandbyArrival, 
-    StandbyDeparture, Repair, Maintain, Precondition."""
-    resource: Hashable or None
-    """The resource required in this process. If self.resource is None, then the process does not require any 
-    resource."""
-    # area: List?
+    """The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
+    a process needs a resource or not depends on the type of the process."""
 
+    areas: List[Area]
+    """This list represents the areas where this process can be executed."""
 
-@dataclass
-class Resource:
-    """This class represents a resource to perform a process in eFLIPS-Depot. A process can require one resource at
-    most or doesn't require any resource."""
+    name: str | None = None
+    """The name of this process. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
 
-    id: Hashable
-    """A unique identifier of this resource."""
-    max_power: float or None
-    """The maximum power of the resource if this resource is a charging interface. If self.max_power is float, then 
-    then the resource is a charging interface."""
+    charging_power: Optional[float] = None
+    """If this process requires power, this is the power in kW that is required. It must be a positive float."""
+
+    duration: Optional[float] = None
+    """If this process has a fixed duration, this is the duration in seconds. It must be a positive float."""
+
+    def __post_init__(self):
+        """
+        After initializing a class, we need to check that the duration and charging power are valid and
+        correspond to the process type.
+
+        :return: Nothing
+        """
+
+        if self.type in (ProcessType.SERVICE):
+            assert self.duration is not None and self.charging_power is None
+        elif self.type in (ProcessType.CHARGING):
+            assert self.duration is None and self.charging_power is not None
+        elif self.type in (ProcessType.PRECONDITION):
+            assert self.duration is not None and self.charging_power is not None
+        elif self.type in (ProcessType.STANDBY, ProcessType.STANDBY_DEPARTURE):
+            assert self.duration is None and self.charging_power is None
 
 
 @dataclass
@@ -470,5 +556,6 @@ class Plan:
 
     id: Hashable
     """A unique identifier of this plan."""
-    processes: List[Hashable]
+
+    processes: List[Process]
     """This list represents the processes that are executed in order for the vehicles belonging to this plan."""
