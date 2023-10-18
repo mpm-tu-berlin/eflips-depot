@@ -1,5 +1,4 @@
 """Read and pre-process data from database"""
-import json
 import numbers
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,7 +15,7 @@ from tqdm.auto import tqdm
 
 from eflips.depot import Depot as EflipsDepot
 import eflips.depot.standalone
-from depot import VehicleType, DepotControl, DepotConfigurator
+from depot import DepotControl, DepotConfigurator
 from eflips.depot.standalone import SimpleTrip
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType, SimpleVehicle
 
@@ -295,7 +294,7 @@ class VehicleSchedule:
         vehicle_classes = set(
             [schedule.vehicle_class for schedule in vehicle_schedules]
         )
-        vehicle_classes = sorted(vehicle_classes)
+        vehicle_classes = sorted(list(vehicle_classes))
         palette = sns.color_palette("husl", len(vehicle_classes))
         colors_for_vehicle_classes = dict(zip(vehicle_classes, palette))
 
@@ -522,9 +521,12 @@ class Process:
     id: Hashable
     """The unique identifier of this process."""
 
-    type: ProcessType
-    """The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
-    a process needs a resource or not depends on the type of the process."""
+    dispatchable: bool
+    """
+    Whether the bus can be dispatched (assigned to a line or a service) during this process. If it is not, then the 
+    process must be completed before the vehicle can be dispatched. At least the last process in a plan must be 
+    dispatchable.
+    """
 
     areas: List[Area]
     """This list represents the areas where this process can be executed."""
@@ -532,7 +534,7 @@ class Process:
     name: str | None = None
     """The name of this process. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
 
-    charging_power: Optional[float] = None
+    electric_power: Optional[float] = None
     """If this process requires power, this is the power in kW that is required. It must be a positive float."""
 
     duration: Optional[float] = None
@@ -546,14 +548,25 @@ class Process:
         :return: Nothing
         """
 
-        if self.type in (ProcessType.SERVICE):
-            assert self.duration is not None and self.charging_power is None
-        elif self.type in (ProcessType.CHARGING):
-            assert self.duration is None and self.charging_power is not None
-        elif self.type in (ProcessType.PRECONDITION):
-            assert self.duration is not None and self.charging_power is not None
-        elif self.type in (ProcessType.STANDBY, ProcessType.STANDBY_DEPARTURE):
-            assert self.duration is None and self.charging_power is None
+    @property
+    def type(self) -> ProcessType:
+        """
+        The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
+        a process needs a resource or not depends on the type of the process.
+        """
+        if self.duration is not None and self.electric_power is None:
+            return ProcessType.SERVICE
+        elif self.duration is None and self.electric_power is not None:
+            return ProcessType.CHARGING
+        elif self.duration is not None and self.electric_power is not None:
+            return ProcessType.PRECONDITION
+        elif self.duration is None and self.electric_power is None:
+            if self.dispatchable:
+                return ProcessType.STANDBY_DEPARTURE
+            else:
+                return ProcessType.STANDBY
+        else:
+            raise ValueError("Invalid process type")
 
 
 @dataclass
