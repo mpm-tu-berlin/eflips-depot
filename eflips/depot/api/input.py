@@ -498,14 +498,21 @@ class Area:
 
 
 class ProcessType(Enum):
-    """This class represents the type of a process in eFLIPS-Depot."""
+    """This class represents the types of a process in eFLIPS-Depot."""
 
-    # TODO: What are those types? They need to be documented.
     SERVICE = 1
+    """This process represents a bus service by workers. It does not require a charging_power and has a fixed 
+    duration."""
     CHARGING = 2
+    """This process represents a bus charging process. It requires a charging_power and has no fixed duration."""
     STANDBY = 3
+    """This process represents an arriving bus that is waiting for a service. It does not require a charging_power 
+    and has no fixed duration."""
     STANDBY_DEPARTURE = 4
+    """This process represents a bus ready for departure. It does not require a charging_power and has no fixed 
+    duration."""
     PRECONDITION = 5
+    """This process represents a bus preconditioning process. It requires a charging_power and has a fixed duration."""
 
 
 @dataclass
