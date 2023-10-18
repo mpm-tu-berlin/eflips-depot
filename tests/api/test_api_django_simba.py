@@ -1,9 +1,5 @@
 import dataclasses
 import os
-from datetime import datetime
-
-from depot.api import init_simulation, run_simulation
-from depot.api.django_simba.output import to_simba
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.api.djangosettings")
 import django
@@ -12,6 +8,11 @@ django.setup()
 from django.core import management
 
 management.call_command("migrate")
+from datetime import datetime
+
+from depot.api import init_simulation, run_simulation
+from depot.api.django_simba.output import to_simba
+
 
 from api import djangosettings
 from depot.api.django_simba.input import VehicleSchedule
