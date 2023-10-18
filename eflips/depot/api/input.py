@@ -9,7 +9,6 @@ from enum import Enum
 import numpy as np
 import simpy
 import seaborn as sns
-from ebustoolbox.models import VehicleClass
 from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
@@ -419,14 +418,34 @@ class Depot:
         This method cehcks for validity of the depot. Specifically
         - it makes sure that all processes in the plan are available in at least one area (*note: plan_override is not checked*)
         - it makes sure that all areas have at least one process available
+        - it makes sure that (at least) the last process in the plan is dispatchable
+        - it makes sure that the bidirectional links between e.g. areas and processes are set up correctly
 
         :return: Nothing. Raises an AssertionError if the depot is invalid.
         """
         for process in self.plan.processes:
-            assert any(process in area.available_processes for area in self.areas)
+            assert any(
+                process in area.available_processes for area in self.areas
+            ), "All processes in the plan must be available in at least one area."
 
         for area in self.areas:
-            assert len(area.available_processes) > 0
+            assert (
+                len(area.available_processes) > 0
+            ), "All areas must have at least one process available."
+
+        assert self.plan.processes[
+            -1
+        ].dispatchable, "The last process in the plan must be dispatchable."
+
+        for area in self.areas:
+            assert area.depot == self, "The depot of an area must be set correctly."
+            for process in area.available_processes:
+                assert (
+                    process in self.plan.processes
+                ), "All processes in an area must be part of the plan."
+                assert (
+                    area in process.areas
+                ), "All areas in an area must be part of the area."
 
 
 class AreaType(Enum):
@@ -465,10 +484,12 @@ class Area:
     available_processes: List["Process"]
     """This list represents the processes that can be executed in this area."""
 
-    vehicle_classes: List[VehicleClass]
+    vehicle_classes: List["VehicleClass"] | None = None
     """
     This list represents the vehicle classes that can be allowed to enter this area. This will also be used
     for size calculation. The sizing of the area will make sure it fits the largest vehicle type in all vehicle classes.
+    If this is `None`, then all vehicle classes are allowed. The sizing will be done based on the largest vehicle type in
+    the database.
     """
 
     name: str | None = None
@@ -491,8 +512,10 @@ class Area:
             case AreaType.DIRECT_TWOSIDE:
                 assert self.capacity > 0 and self.capacity % 2 == 0
             case AreaType.LINE:
-                assert (self.capacity > 0 and self.row_count is not None) and (
-                    self.capacity % self.row_count == 0
+                assert (
+                    (self.capacity > 0 and self.row_count is not None)
+                    and (self.capacity % self.row_count == 0)
+                    and (self.row_count > 0)
                 )
 
 
