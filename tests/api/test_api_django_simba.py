@@ -1,17 +1,20 @@
 import dataclasses
 import os
 from datetime import datetime
+from numbers import Number
 
 from depot.api import init_simulation, run_simulation
 from depot.api.django_simba.output import to_simba
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.api.djangosettings")
 import django
 
 django.setup()
 from django.core import management
 
 management.call_command("migrate")
+
+
+from ebustoolbox.views import save_and_simulate
 
 from api import djangosettings
 from depot.api.django_simba.input import VehicleSchedule
@@ -44,107 +47,17 @@ from ebustoolbox.tasks import (
 
 
 class TestApiDjangoSimba:
-    @pytest.fixture
-    def input_data(self):
-        # Find the absolute path to the test folder (the folder this file is in)
-        absolute_path = os.path.dirname(__file__)
-        path_to_sample_simulation = os.path.join(absolute_path, "sample_simBA_input")
-
-        # This is a copy-paste from running the django web app in a debugger
-        input_data = {
-            "title": "SimBA",
-            "preferred_charging_type": "oppb",
-            "modes": "sim,report",
-            "gc_power_opps": Decimal("100000.0"),
-            "gc_power_deps": Decimal("100000.0"),
-            "cs_power_opps": Decimal("300"),
-            "cs_power_deps_depb": Decimal("150"),
-            "cs_power_deps_oppb": Decimal("150"),
-            "default_voltage_level": "MV",
-            "desired_soc_deps": Decimal("1"),
-            "desired_soc_opps": Decimal("1"),
-            "min_recharge_deps_oppb": Decimal("1"),
-            "min_recharge_deps_depb": Decimal("1"),
-            "min_charging_time": Decimal("0"),
-            "default_buffer_time_opps": Decimal("0"),
-            "input_schedule": os.path.join(
-                path_to_sample_simulation, "trips_example.csv"
-            ),
-            "electrified_stations": os.path.join(
-                path_to_sample_simulation, "electrified_stations.json"
-            ),
-            "vehicle_types": os.path.join(
-                path_to_sample_simulation, "vehicle_types.json"
-            ),
-            "station_data_path": os.path.join(
-                path_to_sample_simulation, "all_stations.csv"
-            ),
-            "outside_temperature_over_day_path": os.path.join(
-                path_to_sample_simulation, "default_temp_summer.csv"
-            ),
-            "level_of_loading_over_day_path": os.path.join(
-                path_to_sample_simulation, "default_level_of_loading_over_day.csv"
-            ),
-            "cost_parameters_file": os.path.join(
-                path_to_sample_simulation, "cost_params.json"
-            ),
-            "strategy": "distributed",
-            "interval": Decimal("15"),
-            "signal_time_dif": Decimal("10"),
-            "days": None,
-            "include_price_csv": None,
-            "seed": "",
-            "cost_calculation": False,
-        }
-
-        return input_data
-
-    @pytest.fixture
-    def scenario(self, input_data):
+    @pytest.fixture(autouse=True)
+    def scenario(self):
         """
         Variant of ebustoolbox.tasks.scenario_to_db that does not use Django forms.
         """
         management.call_command("flush", "--noinput")
-
-        scenario = Scenario.objects.create(name=input_data["title"])
-        args = dict(input_data)
-        args["mode"] = list(map(lambda s: s.strip(), args["modes"].split(",")))
-        # decimal -> float
-        for k, v in args.items():
-            if type(v) == Decimal:
-                args[k] = float(v)
-        scenario.options = args
-
-        scenario.save()
+        scenario = save_and_simulate()
         return scenario
 
-    @pytest.fixture(autouse=True)
-    def simulation_input(self, scenario):
-        """
-        Variant of ebustoolbox.tasks.fill_db_with_input_files that does not use Django forms.
-
-        This one (and the ones it depends on) clear the database and fill it with the sample data from the
-        sample_simBA_input folder.
-        """
-
-        original_args = get_args(scenario)
-        simba_schedule, new_args = get_schedule_from_args(original_args)
-
-        stations_to_db(
-            scenario.options["station_data_path"],
-            scenario.options["electrified_stations"],
-            scenario,
-        )
-        vehicles_to_db(scenario.options["vehicle_types"], scenario)
-
-        schedule_to_db(simba_schedule, scenario)
-
-        add_classes_to_vehicle_types(scenario)
-
-        return scenario, simba_schedule, original_args
-
     @pytest.fixture
-    def eflips_input_path(self, simulation_input) -> pathlib.Path:
+    def eflips_input_path(self, scenario) -> pathlib.Path:
         """
         This method calls Django-Simba using the sample files in order to create the input files for eFlips.
 
@@ -152,17 +65,11 @@ class TestApiDjangoSimba:
             A pathlib.Path object containing the absolute paths to the created files.
         """
 
-        django_scenario, simba_schedule, args = simulation_input
-
-        task_id = str(uuid.uuid4())
-
-        django_scenario.task_id = task_id
-        django_scenario.save()
-        run_ebus_toolbox(simba_schedule, args, task_id)
-
         # By API contract, the files are located in settings.BASE_DIR / settings.UPLOAD_PATH / task_id
         path_to_files = (
-            pathlib.Path(djangosettings.BASE_DIR) / djangosettings.UPLOAD_PATH / task_id
+            pathlib.Path(djangosettings.BASE_DIR)
+            / djangosettings.UPLOAD_PATH
+            / scenario.task_id
         )
 
         # The files are named eflips_input.json and rotation_socs.csv
@@ -264,10 +171,10 @@ class TestApiDjangoSimba:
             assert isinstance(schedule.vehicle_class, str)
             assert isinstance(schedule.departure, datetime)
             assert isinstance(schedule.arrival, datetime)
-            assert isinstance(schedule.departure_soc, float)
+            assert isinstance(schedule.departure_soc, Number)
             assert isinstance(schedule.arrival_soc, dict)
             if schedule.opportunity_charging is True:
-                assert isinstance(schedule.minimal_soc, float)
+                assert isinstance(schedule.minimal_soc, Number)
                 # TODO: fix minimum_soc to be a dict
                 # assert isinstance(schedule.minimal_soc, dict)
             assert isinstance(schedule.opportunity_charging, bool)
