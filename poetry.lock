@@ -926,6 +926,7 @@ django-geojson = "^4.0.0"
 django-plotly-dash = "^2.2.1"
 djangorestframework = ">=3.14.0, <4.0.0"
 djangorestframework-mvt = ">=0.2.5, <1.0.0"
+eflips-depot = { git = "git@github.com:mpm-tu-berlin/eflips-depot.git" }
 matplotlib = "^3.7.2"
 pandas = "^2.0.3"
 psycopg2-binary = "^2.9.6"
@@ -937,8 +938,8 @@ spice_ev = {git = "https://github.com/rl-institut/spice_ev", rev = "51268c639a02
 [package.source]
 type = "git"
 url = "git@github.com:rl-institut/django-simba.git"
-reference = "HEAD"
-resolved_reference = "badb0f2744f17061a47053ea9ea3e208ea1747f6"
+reference = "personal/ludger"
+resolved_reference = "ac78db0b7d95d84bfd88b24d3591c0ad890f4daa"
 
 [[package]]
 name = "djangorestframework"
@@ -2713,4 +2714,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b51be13ea842d93632c47355fe41251cfd4fba920606fcfda5865bd7a4a72e96"
+content-hash = "6c8006c1e874977647c000c97c02d44e389c3423ea02be7e121c6b7b3699586d"

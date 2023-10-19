@@ -55,6 +55,7 @@ Testing is done using the `pytest` framework with tests located in the `tests`di
 ```bash
    export PYTHONPATH=eflips:tests:. # To make sure that the tests can find the eflips package
    export DATABASE_URL=postgis://postgres:postgres@localhost:5432/postgres # Or whatever your database URL is
+   export DJANGO_SETTINGS_MODULE=tests.api.djangosettings # To make sure that the tests use the correct settings
    pytest
 ```
 ## Documentation

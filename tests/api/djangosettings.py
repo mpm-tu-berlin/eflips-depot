@@ -63,3 +63,9 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
+
+# Not sure what it does, but it's an int.
+MAP_ENGINE_CLUSTER_ZOOM = 12
+
+# It's needed now apparently
+STATIC_URL = "static/"
