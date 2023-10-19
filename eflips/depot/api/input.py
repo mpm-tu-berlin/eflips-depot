@@ -571,6 +571,12 @@ class Process:
         :return: Nothing
         """
 
+        if self.electric_power is not None:
+            assert isinstance(self.electric_power, float) and self.electric_power > 0.0
+
+        if self.duration is not None:
+            assert isinstance(self.duration, float) and self.duration > 0.0
+
     @property
     def type(self) -> ProcessType:
         """

@@ -22,7 +22,7 @@ class TestDepot:
             name="Arrival Cleaning",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=240,
+            duration=240.0,
             electric_power=None,
         )
 
@@ -46,7 +46,7 @@ class TestDepot:
             dispatchable=False,
             areas=[],  # Connect the areas later
             duration=None,
-            electric_power=150,
+            electric_power=150.0,
         )
 
         # And a pre-conditioning process
@@ -55,8 +55,8 @@ class TestDepot:
             name="Pre-conditioning",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=30 * 60,
-            electric_power=20,
+            duration=30.0 * 60.0,
+            electric_power=20.0,
         )
 
         # And a standby pre-departure process
@@ -159,7 +159,7 @@ class TestDepot:
             name="Test Process",
             dispatchable=True,
             areas=[],  # Connect the areas later
-            duration=240,
+            duration=240.0,
             electric_power=None,
         )
         new_depot.plan.processes.append(new_process)
@@ -209,7 +209,7 @@ class TestDepot:
             name="Test Process",
             dispatchable=True,
             areas=[area],
-            duration=240,
+            duration=240.0,
             electric_power=None,
         )
         area.available_processes.append(new_process)
@@ -369,6 +369,28 @@ class TestProcessAndPlan:
         process.electric_power = None
         process.dispatchable = True
         assert process.type == ProcessType.STANDBY_DEPARTURE
+
+    def test_process_post_init(self):
+        "Test checks in __post_init__()"
+        with pytest.raises(AssertionError):
+            # process with electric_power and duration not a float
+            process = Process(
+                id=2,
+                dispatchable=False,
+                areas=None,
+                name="precondition",
+                electric_power=150,
+                duration=-240.0,
+            )
+
+            process = Process(
+                id=2,
+                dispatchable=False,
+                areas=None,
+                name="precondition",
+                electric_power=-150.0,
+                duration=240,
+            )
 
     def test_plan(self, process):
         """The plan class needs just one test."""
