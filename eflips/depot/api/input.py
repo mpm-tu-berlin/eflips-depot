@@ -413,6 +413,180 @@ class Depot:
         """
         raise NotImplementedError
 
+    def _to_template(self) -> Dict:
+        """Convert Depot to a dictionary of the format in eFLIPS.Depot"""
+        # convert depot to the dict format corresponding to the original JSON template
+        # validate
+        # use DepotConfigurator.load() to load it into eFLIPS-Depot
+
+        template = {
+            "templatename_display": "Depot KLS Sept19 all direct",
+            "general": {"depotID": "", "dispatch_strategy_name": ""},
+            "resources": {},
+            "resource_switches": {},
+            "processes": {},
+            "areas": {},
+            "groups": {},
+            "plans": {},
+        }
+
+        # Placeholder
+
+        template["general"]["depotID"] = "DEFAULT"
+
+        # TODO: do we need a Strategy in Depot later?
+        template["general"]["dispatch_strategy_name"] = "SMART"
+
+        # Helper for generating processes in dictionary
+        list_of_processes = []
+
+        # Get dictionary of each area
+        for area in self.areas:
+            template["areas"][area.name] = {
+                "typename": (
+                    "LineArea" if area.type == AreaType.LINE else "DirectArea"
+                ),
+                "amount": 1,
+                "capacity": area.capacity,
+                "available_processes": area.available_processes,
+                "issink": False,
+                "entry_filter": None,
+            }
+
+            # Fill in vehicle_filter. Now this is only a placeholder
+            if area.vehicle_classes is not None:
+                template["areas"][area.name]["entry_filter"] = {
+                    "filter_names": ["vehilce_type"],
+                    "vehicle_types": ["SB_DC"],  # TODO: get correct types via database
+                }
+
+            # Put and Get for LineArea. See eflips.depot.Depot.LineArea for more information
+            if area.type == AreaType.LINE:
+                template["areas"][area.name]["side_put_default"] = "front"
+                template["areas"][area.name]["side_get_default"] = "back"
+
+            for process in area.available_processes:
+                # Add process into process list
+                list_of_processes.append(
+                    process
+                ) if process not in list_of_processes else None
+
+                # Charging interfaces
+                if process.type == ProcessType.CHARGING:
+                    ci_per_area = []
+                    for i in range(area.capacity):
+                        ID = "ci_" + str(len(template["resources"]))
+                        template["resources"][ID] = {
+                            "typename": "DepotChargingInterface",
+                            "max_power": process.electric_power,
+                        }
+                        ci_per_area.append(ID)
+
+                    template["areas"][area.name]["charging_interfaces"] = ci_per_area
+
+                # issink
+                if process.type == ProcessType.STANDBY_DEPARTURE:
+                    template["areas"][area.name]["issink"] = True
+
+        # Get resource for service
+        # if process.type == ProcessType.SERVICE:
+
+        # resource of workers: capacity is the sum of capacity each area
+
+        # A Placeholder resource_switch
+        template["resource_switches"] = {
+            "service_switch": {
+                "resource": "workers_service",
+                "breaks": [[21600, 64800]],
+                "preempt": True,
+                "strength": "full",
+            }
+        }
+
+        for process in list_of_processes:
+            match process.type:
+                case ProcessType.SERVICE:
+                    template["processes"][process.name] = {
+                        "typename": "Serve",
+                        "dur": process.duration,
+                        "ismandatory": False,
+                        # this is a copy from original template.
+                        "vehicle_filter": {
+                            "filter_names": ["in_period"],
+                            "period": [57600, 20700],
+                        },
+                        "required_resources": ["workers_service"],
+                        "cancellable_for_dispatch": False,
+                    }
+                    # get workers_service for resources
+
+                    service_capacity = sum([x.capacity for x in process.areas])
+
+                    # Fill in the worker_service
+                    template["resources"]["workers_service"] = {
+                        "typename": "DepotResource",
+                        "capacity": service_capacity,
+                    }
+
+                case ProcessType.CHARGING:
+                    template["processes"][process.name] = {
+                        "typename": "ChargeEquationSteps",
+                        "ismandatory": False,
+                        #  This is a copy from original template TODO: get charging curve from vehicle_class
+                        "vehicle_filter": {
+                            "filter_names": ["soc_lower_than"],
+                            "soc": 1,
+                        },
+                        "cancellable_for_dispatch": False,
+                    }
+
+                case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
+                    template["processes"][process.name] = {
+                        "typename": "Standby",
+                        "dur": process.duration,
+                        "ismandatory": True,
+                        "vehicle_filter": None,
+                        "required_resources": [],
+                        "cancellable_for_dispatch": False,
+                    }
+
+                case ProcessType.PRECONDITION:
+                    template["processes"][process.name] = {
+                        "typename": "Precondition",
+                        "duration": process.duration,
+                        "ismandatory": False,
+                        "required_resources": [],
+                        "cancellable_for_dispatch": False,
+                        "efficiency": 1.0,
+                        "power": process.electric_power,
+                    }
+
+        # Groups
+        # TODO: user-defined parking_strategy in the future?
+        template["groups"]["parking area group"] = {
+            "typename": "ParkingAreaGroup",
+            "stores": [
+                key for key, value in template["areas"].items() if value["issink"]
+            ],
+            "parking_strategy_name": "SMART2",
+        }
+        # Plan
+        template["plans"]["default"] = {
+            "typename": "DefaultActivityPlan",
+            "locations": [],
+        }
+        for process in self.plan.processes:
+            template["plans"]["default"]["locations"] += [
+                area.name for area in process.areas
+            ]
+
+        template["plans"]["default"]["locations"] = list(
+            set(template["plans"]["default"]["locations"])
+        )
+        template["plans"]["default"]["locations"][-1] = "parking area group"
+
+        return template
+
     def validate(self):
         """
         This method cehcks for validity of the depot. Specifically

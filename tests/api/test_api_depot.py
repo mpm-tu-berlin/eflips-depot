@@ -225,6 +225,73 @@ class TestDepot:
         with pytest.raises(AssertionError):
             new_depot.validate()
 
+    def test_to_template(self, depot):
+        template_dict = depot._to_template()
+        assert isinstance(template_dict, dict)
+        assert isinstance(template_dict["resources"], dict)
+
+        # Check resources
+        # check if the amount of interfaces equals to the sum of area capacity with process CHARGING
+        total_interfaces = 0
+        for area in depot.areas:
+            for process in area.available_processes:
+                if process.type == ProcessType.CHARGING:
+                    total_interfaces += area.capacity
+
+        # assert len(template_dict["resources"]) == total_interfaces
+
+        # Check if template_dict["resource"]["charging_interfaces"] has the right data format
+
+        for k, v in template_dict["resources"].items():
+            if v["typename"] == "DepotChargingInterface":
+                assert isinstance(v["max_power"], float) and v["max_power"] >= 0.0
+
+        # Check areas
+        # if the amount of area dictionaries equals to number of areas in depot
+        assert len(template_dict["areas"]) == len(depot.areas)
+
+        # If the dictionary has the right data format. See template_creation.py for reference
+        for area_name, area_dict in template_dict["areas"].items():
+            assert (
+                area_dict["typename"] == "DirectArea"
+                or area_dict["typename"] == "LineArea"
+            )
+            assert isinstance(area_dict["capacity"], int) and area_dict["capacity"] > 0
+            assert (
+                isinstance(area_dict["available_processes"], list)
+                and len(area_dict["available_processes"]) > 0
+            )
+            assert isinstance(area_dict["issink"], bool)
+            assert (
+                isinstance(area_dict["entry_filter"], list)
+                or area_dict["entry_filter"] is None
+            )
+            if area_dict["typename"] == "LineArea":
+                assert area_dict["side_put_default"] is not None
+                assert area_dict["side_get_default"] is not None
+
+        # Check groups
+        for group_name, group_dict in template_dict["groups"].items():
+            assert (
+                group_dict["typename"] == "ParkingAreaGroup"
+                or group_dict["typename"] == "AreaGroup"
+            )
+            if group_dict["typename"] == "ParkingAreaGroup":
+                assert isinstance(group_dict["parking_strategy_name"], str)
+
+            assert (
+                isinstance(group_dict["stores"], list) and len(group_dict["stores"]) > 0
+            )
+
+        # Check plans
+        assert template_dict["plans"]["default"]["typename"] == "DefaultActivityPlan"
+        assert (
+            isinstance(template_dict["plans"]["default"]["locations"], list)
+            and len(template_dict["plans"]["default"]["locations"]) > 0
+        )
+
+        # Check processes
+
 
 class TestArea:
     """Test the "Area" class."""
