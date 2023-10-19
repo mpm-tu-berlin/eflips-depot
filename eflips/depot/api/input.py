@@ -688,8 +688,8 @@ class Area:
             case AreaType.LINE:
                 assert (
                     (self.capacity > 0 and self.row_count is not None)
-                    and (self.capacity % self.row_count == 0)
                     and (self.row_count > 0)
+                    and (self.capacity % self.row_count == 0)
                 )
 
 
