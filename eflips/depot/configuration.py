@@ -762,7 +762,7 @@ class DepotConfigurator:
         """
         Load a depot configuration from a template the template may either be a
         - dict containing the configuration
-        - a string containing a path withou extension to a json file
+        - a string containing a path without extension to a json file
 
         :param template: dict or str
         """

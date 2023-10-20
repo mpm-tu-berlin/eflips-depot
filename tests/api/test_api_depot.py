@@ -11,6 +11,8 @@ from depot.api import VehicleType, VehicleSchedule
 from depot.api.input import Process, Area, Depot, Plan, AreaType, ProcessType
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
+from eflips.depot.simulation import SimulationHost
+
 
 class TestDepot:
     @pytest.fixture
@@ -22,7 +24,7 @@ class TestDepot:
             name="Arrival Cleaning",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=240.0,
+            duration=240,
             electric_power=None,
         )
 
@@ -52,10 +54,12 @@ class TestDepot:
         # And a pre-conditioning process
         preconditioning = Process(
             id=3,
-            name="Pre-conditioning",
+            # TODO check the "precondition" problem and will be removed till its done
+            # name="Pre-conditioning",
+            name="precondition",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=30.0 * 60.0,
+            duration=30 * 60,
             electric_power=20.0,
         )
 
@@ -100,7 +104,7 @@ class TestDepot:
             depot=None,  # we connect the depot later
             available_processes=[standby_pre_departure],
             vehicle_classes=None,
-            capacity=6,
+            capacity=24,
         )
 
         # Connect the areas and processes
@@ -159,7 +163,7 @@ class TestDepot:
             name="Test Process",
             dispatchable=True,
             areas=[],  # Connect the areas later
-            duration=240.0,
+            duration=240,
             electric_power=None,
         )
         new_depot.plan.processes.append(new_process)
@@ -209,7 +213,7 @@ class TestDepot:
             name="Test Process",
             dispatchable=True,
             areas=[area],
-            duration=240.0,
+            duration=240,
             electric_power=None,
         )
         area.available_processes.append(new_process)
@@ -238,8 +242,6 @@ class TestDepot:
                 if process.type == ProcessType.CHARGING:
                     total_interfaces += area.capacity
 
-        # assert len(template_dict["resources"]) == total_interfaces
-
         # Check if template_dict["resource"]["charging_interfaces"] has the right data format
 
         for k, v in template_dict["resources"].items():
@@ -261,6 +263,9 @@ class TestDepot:
                 isinstance(area_dict["available_processes"], list)
                 and len(area_dict["available_processes"]) > 0
             )
+            for p in area_dict["available_processes"]:
+                assert isinstance(p, str)
+
             assert isinstance(area_dict["issink"], bool)
             assert (
                 isinstance(area_dict["entry_filter"], list)
@@ -285,12 +290,48 @@ class TestDepot:
 
         # Check plans
         assert template_dict["plans"]["default"]["typename"] == "DefaultActivityPlan"
+        assert isinstance(template_dict["plans"]["default"]["locations"], list) and len(
+            template_dict["plans"]["default"]["locations"]
+        ) == len(depot.plan.processes)
+
+        parking_group_name = template_dict["plans"]["default"]["locations"][-1]
         assert (
-            isinstance(template_dict["plans"]["default"]["locations"], list)
-            and len(template_dict["plans"]["default"]["locations"]) > 0
+            template_dict["groups"][parking_group_name]["typename"]
+            == "ParkingAreaGroup"
         )
+        # TODO check if locations are correct in thie
 
         # Check processes
+        for process_name, process_dict in template_dict["processes"].items():
+            assert isinstance(process_dict, dict)
+            assert (
+                process_dict["typename"] == "Serve"
+                or process_dict["typename"] == "Charge"
+                or process_dict["typename"] == "Precondition"
+                or process_dict["typename"] == "Standby"
+                or process_dict["typename"] == "Repair"
+                or process_dict["typename"] == "Maintain"
+            )
+
+            # TODO: rewrite the asserts of duration till we figure out if a duration is mandatory for Stand
+
+            # assert (isinstance(process_dict["dur"], float) and process_dict["dur"] >= 0.0) or process_dict[
+            #     "dur"] is None
+
+    def test_depot_configuration(self, depot):
+        template_dict = depot._to_template()
+
+        # Initialize a SimulationHost from the dictinary from Depot
+        simulation_host = eflips.depot.SimulationHost(
+            [eflips.depot.Depotinput(filename_template=template_dict, show_gui=False)],
+            run_progressbar=True,
+            print_timestamps=True,
+            tictocname="",
+        )
+
+        assert isinstance(simulation_host, eflips.depot.SimulationHost)
+
+        assert isinstance(simulation_host.depot_hosts[0].depot, eflips.depot.Depot)
 
 
 class TestArea:

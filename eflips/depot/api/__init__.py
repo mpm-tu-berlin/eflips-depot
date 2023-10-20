@@ -52,22 +52,30 @@ def init_simulation(
     eflips.settings.reset_settings()
 
     # Check input data
+    depot.validate()
     _validate_input_data(vehicle_types, vehicle_schedules)
+
+    path_to_this_file = os.path.dirname(__file__)
 
     # For this API version, we only support the implicit depot
     if depot is not None:
-        raise NotImplementedError(
-            "Only implicit depot is supported in this API version"
+        # raise NotImplementedError(
+        #     "Only implicit depot is supported in this API version"
+        # )
+        depot_dict = depot._to_template()
+        eflips_depot = eflips.depot.Depotinput(
+            filename_template=depot_dict, show_gui=False
         )
     else:
-        path_to_this_file = os.path.dirname(__file__)
+        # path_to_this_file = os.path.dirname(__file__)
         path_to_default_depot = os.path.join(
             path_to_this_file, "..", "..", "..", "defaults", "default_depot"
         )
         eflips_depot = eflips.depot.Depotinput(
             filename_template=path_to_default_depot, show_gui=False
         )
-        depot_id = "DEFAULT"
+
+    depot_id = "DEFAULT"
 
     # Create simulation host
     simulation_host = SimulationHost([eflips_depot], print_timestamps=False)

@@ -123,7 +123,14 @@ class DepotWorkingData:
             # All processes are completed
             return EstimateValue.COMPLETED
         else:
-            return max([etc for etc in etcs if isinstance(etc, int)])
+            # tODO figure out if duration must be an int?
+            return max(
+                [
+                    etc
+                    for etc in etcs
+                    if (isinstance(etc, int) or isinstance(etc, float))
+                ]
+            )
 
     @property
     def etc_processes_uncertain(self):
@@ -2479,7 +2486,7 @@ class ParkingAreaGroup(AreaGroup):
 
     Attributes:
     parking_strategy: [BaseParkingStrategy] subclass
-    max_power, max_power: [int or float or None] min and max of max_power of
+    max_power, min_power: [int or float or None] min and max of max_power of
         all charging interfaces at areas in this group. Constant, set before
         simulation start. None if there are no charging interfaces.
     put_queue: [dict] Container for keeping count and time of pending put
@@ -2586,21 +2593,27 @@ class ParkingAreaGroup(AreaGroup):
         min_power = float("inf")
         max_power = float("-inf")
 
+        # Added compatibility for areas without charging interfaces
         for store in self.stores:
-            for ci in store.charging_interfaces:
-                if ci.max_power < min_power:
-                    min_power = ci.max_power
-                if ci.max_power > max_power:
-                    max_power = ci.max_power
+            if store.charging_interfaces is not None:
+                for ci in store.charging_interfaces:
+                    if ci.max_power < min_power:
+                        min_power = ci.max_power
+                    if ci.max_power > max_power:
+                        max_power = ci.max_power
 
-        if min_power < float("inf"):
-            self.min_power = min_power
-        else:
-            self.min_power = None
-        if max_power > float("-inf"):
-            self.max_power = max_power
-        else:
-            self.max_power = None
+                if min_power < float("inf"):
+                    self.min_power = min_power
+                else:
+                    self.min_power = None
+                if max_power > float("-inf"):
+                    self.max_power = max_power
+                else:
+                    self.max_power = None
+
+            else:
+                min_power = None
+                max_power = None
 
     def put(self, item, selection=None):
         """Summarize put_imm and put_wait. A parking strategy is applied here.
