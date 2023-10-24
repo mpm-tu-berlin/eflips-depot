@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 from numbers import Number
 
-from depot.api import init_simulation, run_simulation
-from depot.api.django_simba.output import to_simba
+from eflips.depot.api import init_simulation, run_simulation
+from eflips.depot.api.django_simba.output import to_simba
 
 import django
 
@@ -17,7 +17,7 @@ management.call_command("migrate")
 from ebustoolbox.views import save_and_simulate
 
 from api import djangosettings
-from depot.api.django_simba.input import VehicleSchedule
+from eflips.depot.api.django_simba.input import VehicleSchedule
 
 
 import os

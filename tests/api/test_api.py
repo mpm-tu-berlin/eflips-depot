@@ -7,11 +7,11 @@ import pandas as pd
 
 import eflips
 
-from depot import SimulationHost
+from eflips.depot import SimulationHost
 
 import pytest
 
-from depot.api import (
+from eflips.depot.api import (
     VehicleSchedule,
     VehicleType,
     _validate_input_data,

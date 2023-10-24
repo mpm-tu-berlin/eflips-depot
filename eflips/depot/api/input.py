@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from depot import VehicleType
+from eflips.depot import VehicleType
 from eflips.depot.standalone import SimpleTrip
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 

@@ -4,7 +4,7 @@ import pytest
 
 import eflips
 import eflips.depot
-from depot import DepotEvaluation
+from eflips.depot import DepotEvaluation
 
 
 class TestDepotEvaluation:

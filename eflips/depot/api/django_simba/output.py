@@ -6,7 +6,7 @@ This module contains the data structures needed by django-simba to process the o
 from dataclasses import dataclass
 from typing import List
 
-from depot import DepotEvaluation
+from eflips.depot import DepotEvaluation
 
 
 @dataclass
