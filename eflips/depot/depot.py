@@ -577,9 +577,18 @@ class BaseDispatchStrategy(ABC):
         ):  # and preconddata['kwargs']['vehicle_filter'](vehicle):
             # Start the preconditioning process...
             # Instantiate process object
-            proc_obj = depot.processes["precondition"]["type"](
-                env=env, **depot.processes["precondition"]["kwargs"]
-            )
+
+            # proc_obj = depot.processes["precondition"]["type"](
+            #     env=env, **depot.processes["precondition"]["kwargs"]
+            # )
+
+            # Bugfix to make sure the name of the processs doesn't matter
+            # TODO is it only one precondition process allowed?
+            for key, value in depot.processes.items():
+                if value["typename"] == "Precondition":
+                    proc_obj = value["type"](env=env, **value["kwargs"])
+                    break
+
             if proc_obj.vehicle_filter(vehicle):  # Apply filters
                 # Determine starting time. Call process and schedule it in env
                 until_std = trip.std - env.now
