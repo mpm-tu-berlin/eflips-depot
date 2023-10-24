@@ -66,7 +66,7 @@ jobs:
           poetry run pytest --junit-xml=test-results.xml #test
         env:
           # To make sure that the tests can find the eflips package
-          PYTHONPATH: "eflips:tests:." 
+          PYTHONPATH: "tests:."
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
           # Replace with your own database info
