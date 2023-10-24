@@ -25,15 +25,22 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
     - The supported platforms are macOS and Windows, Linux should work, but is not tested.
     - Using the [poetry](https://python-poetry.org/) package manager is recommended. It can be installed accoring to the
       instructions listed [here](https://python-poetry.org/docs/#installing-with-the-official-installer).
+   #### macOS
     ```bash
     poetry env use 3.11
     poetry install
     ```
+    #### Windows
+   If you are using Windows, you have to provide the full path to the desired Python executable, e.g.:
+    ```bash
+   poetry env use C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe
+   poetry install
+   ```
 
-3. To start a simulation, the script `STARTSIM_busdepot.py` needs to be executed. This loads the 3 necessary files for
+3. To start a simulation, the script `bus_depot/STARTSIM_busdepot.py` needs to be executed. This loads the 3 necessary files for
    settings, schedule and template for depot layout. After the execution, all relevant results are in the `ev` variable
-   in the workspace (if the script is run with a "keep python running after last statement" option) . To analyse or plot
-   results the example calls for the console in eflips/depot/plots.py can be used.
+   in the workspace (e.g. if you are using PyCharm as your IDE, if the script is run with the "Run with Python Console" option). To analyse or plot
+   results the example calls for the console in ```eflips/depot/plots.py``` can be used.
     ```python
     import os
     os.chdir('bus_depot') # Optional, if not already in the bus_depot folder
@@ -42,6 +49,16 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
     ev.sl_all() # For example to plot a result
     ```
 4. To use eFLIPS-Depot API, see script `bus_depot/user_example.py`
+
+## Usage
+
+Please refer to the [Documentation section](#documentation) of this Readme for information
+on how to use eFLIPS-Depot.
+
+The API of eFLIPS-Depot can be accessed via ```eFLIPS.depot.api```. A usage example can be found in the
+script `bus_depot/user_example.py`. Furthermore, until an official documentation of the API
+is available, you can manually check the files inside the ```eflips/depot/api``` folder to get more insights on how to use the API. 
+
 ## Testing
 
 ---
