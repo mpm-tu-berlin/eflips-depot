@@ -1,5 +1,5 @@
-from depot import DepotEvaluation
-from depot.api.django_simba.output import to_simba, InputForSimba
+from eflips.depot import DepotEvaluation
+from eflips.depot.api.django_simba.output import to_simba, InputForSimba
 from test_eflips_whole_stack import TestDepotEvaluation
 
 

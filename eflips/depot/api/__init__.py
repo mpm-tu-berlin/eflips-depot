@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import List, Optional, Dict, Hashable
 
 import eflips.depot
-from depot import SimulationHost, DepotEvaluation
-from depot.api.input import VehicleType, VehicleSchedule, Depot
+from eflips.depot import SimulationHost, DepotEvaluation
+from eflips.depot.api.input import VehicleType, VehicleSchedule, Depot
 
 
 def init_simulation(
