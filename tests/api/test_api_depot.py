@@ -24,8 +24,9 @@ class TestDepot:
             name="Arrival Cleaning",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=240,
+            duration=4800,
             electric_power=None,
+            availability=[64800, 20700],
         )
 
         arrival_area = Area(
@@ -48,15 +49,13 @@ class TestDepot:
             dispatchable=False,
             areas=[],  # Connect the areas later
             duration=None,
-            electric_power=150.0,
+            electric_power=20.0,
         )
 
         # And a pre-conditioning process
         preconditioning = Process(
             id=3,
-            # TODO check the "precondition" problem and will be removed till its done
-            # name="Pre-conditioning",
-            name="precondition",
+            name="Pre-conditioning",
             dispatchable=False,
             areas=[],  # Connect the areas later
             duration=30 * 60,
@@ -104,7 +103,7 @@ class TestDepot:
             depot=None,  # we connect the depot later
             available_processes=[standby_pre_departure],
             vehicle_classes=None,
-            capacity=24,
+            capacity=6,
         )
 
         # Connect the areas and processes
@@ -317,6 +316,40 @@ class TestDepot:
 
             # assert (isinstance(process_dict["dur"], float) and process_dict["dur"] >= 0.0) or process_dict[
             #     "dur"] is None
+
+    def test_write_process_to_template(self, depot):
+        template_dict = depot._to_template()
+        assert isinstance(template_dict["processes"], dict)
+
+        for process_name, process_dict in template_dict["processes"].items():
+            assert isinstance(process_dict, dict)
+            assert (
+                process_dict["typename"] == "Serve"
+                or process_dict["typename"] == "Charge"
+                or process_dict["typename"] == "Precondition"
+                or process_dict["typename"] == "Standby"
+                or process_dict["typename"] == "Repair"
+                or process_dict["typename"] == "Maintain"
+            )
+            assert isinstance(process_dict["ismandatory"], bool)
+            assert isinstance(process_dict["cancellable_for_dispatch"], bool)
+
+            # Test for Serve
+
+            if process_dict["typename"] == "Serve":
+                assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
+                assert isinstance(process_dict["vehicle_filter"], dict)
+                assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
+                # TODO test for time availability
+
+            if process_dict["typename"] == "Charge":
+                assert isinstance(process_dict["vehicle_filter"], dict)
+                assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
+                # TODO test for maximum soc
+
+            if process_dict["typename"] == "Precondition":
+                assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
+                assert isinstance(process_dict["power"], float)
 
     def test_depot_configuration(self, depot):
         template_dict = depot._to_template()

@@ -34,7 +34,7 @@ class TestApi:
             name="Arrival Cleaning",
             dispatchable=False,
             areas=[],  # Connect the areas later
-            duration=240,
+            duration=4800,
             electric_power=None,
         )
 
@@ -65,8 +65,8 @@ class TestApi:
         preconditioning = Process(
             id=3,
             # TODO fix the name problem of preconditioning
-            # name="Pre-conditioning",
-            name="precondition",
+            name="Pre-conditioning",
+            # name="precondition",
             dispatchable=False,
             areas=[],  # Connect the areas later
             duration=30 * 60,
@@ -338,7 +338,7 @@ class TestApi:
                 "park": "lightgray",
                 "Arrival Cleaning": "steelblue",
                 "Charging": "darkblue",
-                "Standby Pre departure": "forestgreen",
+                "Standby Pre-departure": "forestgreen",
                 "precondition": "black",
             },
             save=True,

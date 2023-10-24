@@ -449,7 +449,7 @@ class Depot:
                 "typename": (
                     "LineArea" if area.type == AreaType.LINE else "DirectArea"
                 ),
-                "amount": 1,  # TODO Lu: Is that maybe the row count? @Enrico
+                # "amount": 2,  # TODO Check how multiple areas work. For now leave it as default
                 "capacity": area.capacity,
                 "available_processes": [
                     process.name for process in area.available_processes
@@ -461,16 +461,12 @@ class Depot:
             # Fill in vehicle_filter. Now this is only a placeholder
             if (
                 area.vehicle_classes is not None
-            ):  # TODO Lu: The Vehicle class thing still needs some rework. Here, we directly depend on the database in ebustoolbox, which i don't really want
+            ):  # TODO Lu: The Vehicle class thing still needs some rework. Here, we directly depend on the database
+                # in ebustoolbox, which i don't really want
                 template["areas"][area.name]["entry_filter"] = {
                     "filter_names": ["vehicle_type"],
                     "vehicle_types": ["SB_DC"],  # TODO: get correct types via database
                 }
-
-            # Put and Get for LineArea. See eflips.depot.Depot.LineArea for more information
-            if area.type == AreaType.LINE:  # TODO Lu: Ask Enrico about this
-                template["areas"][area.name]["side_put_default"] = "front"
-                template["areas"][area.name]["side_get_default"] = "back"
 
             for process in area.available_processes:
                 # Add process into process list
@@ -502,7 +498,7 @@ class Depot:
 
         # resource of workers: capacity is the sum of capacity each area
 
-        # A Placeholder resource_switch TODO: Add "availability" fields to processes
+        # A Placeholder resource_switch TODO: Add "availability" fields to processes if a process is a SERVE
         # template["resource_switches"] = {
         #    "service_switch": {
         #        "resource": "workers_service",
@@ -512,26 +508,34 @@ class Depot:
         #    }
         # }
 
+        # TODO: rewrite processes to template
+
         for process in list_of_processes:
+            # Shared template for all processes
+            template["processes"][process.name] = {
+                "typename": "",  # Placeholder for initialization
+                "dur": process.duration,
+                # True if process.type is STANDBY or STANDBY_DEPARTURE. In this case vehicle_filter must be None
+                "ismandatory": False,
+                "vehicle_filter": {},
+                "required_resources": [],
+                "cancellable_for_dispatch": False,
+            }
+
             match process.type:
                 case ProcessType.SERVICE:
-                    template["processes"][process.name] = {
-                        "typename": "Serve",
-                        "dur": process.duration,
-                        "ismandatory": False,  # TODO Lu: What does ENrico mean by 'mandatory'?
-                        # this is a copy from original template.
-                        # "vehicle_filter": { # TODO Lu: This should also use the process availabilty times once they are implemented
-                        #    "filter_names": ["in_period"],
-                        #    "period": [57600, 20700],
-                        # },
-                        "vehicle_filter": {},
-                        "required_resources": ["workers_service"],
-                        "cancellable_for_dispatch": False,
-                    }
+                    template["processes"][process.name]["typename"] = "Serve"
+                    if process.availability is not None:
+                        template["processes"][process.name]["vehicle_filter"] = {
+                            "filter_names": ["in_period"],
+                            "period": process.availability
+                            # TODO is it possible for service without workers_service? Or do we write this in database?
+                        }
 
                     # Fill in workers_service of resources
                     service_capacity = sum([x.capacity for x in process.areas])
 
+                    # TODO distinguish between workers in different services
                     # Fill in the worker_service
                     template["resources"]["workers_service"] = {
                         "typename": "DepotResource",
@@ -539,41 +543,26 @@ class Depot:
                     }
 
                 case ProcessType.CHARGING:
-                    template["processes"][process.name] = {
-                        "typename": "Charge",
-                        # "dur": process.duration,
-                        "ismandatory": True,
-                        #  This is a copy from original template TODO: get charging curve from vehicle_class
-                        "vehicle_filter": {
-                            "filter_names": ["soc_lower_than"],
-                            "soc": 1,
-                        },
-                        # "vehicle_filter": None,
-                        "cancellable_for_dispatch": False,
+                    template["processes"][process.name]["typename"] = "Charge"
+                    del template["processes"][process.name]["dur"]
+                    template["processes"][process.name]["vehicle_filter"] = {
+                        # TODO do we need to customize the maximum soc for charging
+                        "filter_names": ["soc_lower_than"],
+                        "soc": 1,
                     }
 
                 case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
-                    template["processes"][process.name] = {
-                        "typename": "Standby",
-                        "dur": 600,  # TODO see if standby must have a duration
-                        "ismandatory": True,
-                        "vehicle_filter": None,
-                        # "required_resources": [],
-                        "cancellable_for_dispatch": False,
-                    }
+                    template["processes"][process.name]["typename"] = "Standby"
+                    template["processes"][process.name]["dur"] = 0
+                    template["processes"][process.name]["ismandatory"] = True
+                # TODO in test_api_depot add a test for vehicle filter is None if ismandatory is True
 
                 case ProcessType.PRECONDITION:
-                    # TODO check if here the name must be "precondition
-                    template["processes"][process.name] = {
-                        "typename": "Precondition",
-                        "dur": process.duration,
-                        "ismandatory": False,
-                        "vehicle_filter": None,
-                        "required_resources": [],
-                        "cancellable_for_dispatch": False,
-                        # "efficiency": 1.0,
-                        "power": process.electric_power,
-                    }
+                    template["processes"][process.name]["typename"] = "Precondition"
+                    template["processes"][process.name]["dur"] = process.duration
+                    template["processes"][process.name][
+                        "power"
+                    ] = process.electric_power
 
         # Initialize the default plan
         template["plans"]["default"] = {
@@ -753,6 +742,9 @@ class Process:
     duration: Optional[int] = None
     """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
 
+    availability: Optional[Tuple[int, int]] = None
+    """If this process is only available during a certain time period, this is the time period in seconds. It must be a tuple of two integers."""
+
     def __post_init__(self):
         """
         After initializing a class, we need to check that the duration and charging power are valid and
@@ -765,7 +757,7 @@ class Process:
             assert isinstance(self.electric_power, float) and self.electric_power > 0.0
 
         if self.duration is not None:
-            assert isinstance(self.duration, int) and self.duration > 0.0
+            assert isinstance(self.duration, int) and self.duration >= 0
 
     @property
     def type(self) -> ProcessType:
@@ -786,6 +778,10 @@ class Process:
                 return ProcessType.STANDBY
         else:
             raise ValueError("Invalid process type")
+
+    def _validate(self):
+        # TODO see if we need to add a validate method
+        pass
 
 
 @dataclass
