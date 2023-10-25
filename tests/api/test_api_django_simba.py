@@ -303,11 +303,6 @@ class TestApiDjangoSimba:
         )
         depot_evaluation = run_simulation(simulation_host)
 
-        # Save the results to a folder
-        output_for_simba = to_simba(depot_evaluation)
-        with open(tmp_path / "output_for_simba.json", "w") as f:
-            json.dump([dataclasses.asdict(o) for o in output_for_simba], f, indent=4)
-
         # Optional: Create a plot of the results
         depot_evaluation.path_results = str(tmp_path)
 
@@ -337,3 +332,8 @@ class TestApiDjangoSimba:
 
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
+
+        # Save the results to a folder
+        output_for_simba = to_simba(depot_evaluation)
+        with open(tmp_path / "output_for_simba.json", "w") as f:
+            json.dump([dataclasses.asdict(o) for o in output_for_simba], f, indent=4)
