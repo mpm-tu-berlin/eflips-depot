@@ -62,7 +62,7 @@ def init_simulation(
     else:
         path_to_this_file = os.path.dirname(__file__)
         path_to_default_depot = os.path.join(
-            path_to_this_file, "..", "..", "..", "defaults", "default_depot"
+            path_to_this_file, "defaults", "default_depot"
         )
         eflips_depot = eflips.depot.Depotinput(
             filename_template=path_to_default_depot, show_gui=False
@@ -75,7 +75,7 @@ def init_simulation(
     # Now we do what is done in `standard_setup()` from the old input files
     # Load the settings
     path_to_default_settings = os.path.join(
-        path_to_this_file, "..", "..", "..", "defaults", "default_settings"
+        path_to_this_file, "defaults", "default_settings"
     )
     eflips.load_settings(path_to_default_settings)
 
