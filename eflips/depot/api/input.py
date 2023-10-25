@@ -493,32 +493,15 @@ class Depot:
                         "issink"
                     ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
 
-        # Get resource for service
-        # if process.type == ProcessType.SERVICE:
-
-        # resource of workers: capacity is the sum of capacity each area
-
-        # A Placeholder resource_switch TODO: Add "availability" fields to processes if a process is a SERVE
-        # template["resource_switches"] = {
-        #    "service_switch": {
-        #        "resource": "workers_service",
-        #        "breaks": [[21600, 64800]],
-        #        "preempt": True,
-        #        "strength": "full",
-        #    }
-        # }
-
-        # TODO: rewrite processes to template
-
         for process in list_of_processes:
             # Shared template for all processes
             template["processes"][process.name] = {
                 "typename": "",  # Placeholder for initialization
                 "dur": process.duration,
-                # True if process.type is STANDBY or STANDBY_DEPARTURE. In this case vehicle_filter must be None
-                "ismandatory": False,
+                # True if this process will be executed for all vehicles. False if there are available vehicle filters
+                "ismandatory": True,
                 "vehicle_filter": {},
-                "required_resources": [],
+                # True if this process can be interrupted by a dispatch. False if it cannot be interrupted
                 "cancellable_for_dispatch": False,
             }
 
@@ -529,13 +512,11 @@ class Depot:
                         template["processes"][process.name]["vehicle_filter"] = {
                             "filter_names": ["in_period"],
                             "period": process.availability
-                            # TODO is it possible for service without workers_service? Or do we write this in database?
                         }
 
                     # Fill in workers_service of resources
                     service_capacity = sum([x.capacity for x in process.areas])
 
-                    # TODO distinguish between workers in different services
                     # Fill in the worker_service
                     template["resources"]["workers_service"] = {
                         "typename": "DepotResource",
@@ -545,17 +526,11 @@ class Depot:
                 case ProcessType.CHARGING:
                     template["processes"][process.name]["typename"] = "Charge"
                     del template["processes"][process.name]["dur"]
-                    template["processes"][process.name]["vehicle_filter"] = {
-                        # TODO do we need to customize the maximum soc for charging
-                        "filter_names": ["soc_lower_than"],
-                        "soc": 1,
-                    }
 
                 case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
                     template["processes"][process.name]["typename"] = "Standby"
                     template["processes"][process.name]["dur"] = 0
-                    template["processes"][process.name]["ismandatory"] = True
-                # TODO in test_api_depot add a test for vehicle filter is None if ismandatory is True
+                    # template["processes"][process.name]["ismandatory"] = True
 
                 case ProcessType.PRECONDITION:
                     template["processes"][process.name]["typename"] = "Precondition"
@@ -583,7 +558,7 @@ class Depot:
             # Fill in locations of the plan
             template["plans"]["default"]["locations"].append(group_name)
 
-        # TODO remove this later
+        # TODO dump to json for test purposes. will be removed later
 
         file_path = os.path.dirname(__file__)
         tmp_output_path = os.path.join(file_path, "tmp_output.json")
