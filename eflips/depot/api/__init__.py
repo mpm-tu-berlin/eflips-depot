@@ -89,7 +89,7 @@ def init_simulation(
         [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
     )
     total_duration = (last_arrival_time - first_departure_time).total_seconds()
-    # We take the total duration in days (rounded down) and add 2 days
+    # We take the total duration in days (rounded up) and add 2 days
     total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
     total_duration_seconds = total_duration_days * 24 * 60 * 60
     eflips.globalConstants["general"]["SIMULATION_TIME"] = total_duration_seconds
@@ -202,7 +202,9 @@ def init_simulation(
                 final_vehicle_schedules.append(vehicle_schedule)
         vehicle_schedules = sorted(final_vehicle_schedules, key=lambda x: x.departure)
 
-    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
+    timetable = VehicleSchedule._to_timetable(
+        vehicle_schedules, simulation_host.env, simulation_start_time
+    )
     simulation_host.timetable = timetable
 
     # Set up the depots
