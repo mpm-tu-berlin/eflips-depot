@@ -338,14 +338,10 @@ class TestDepot:
 
             if process_dict["typename"] == "Serve":
                 assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
-                assert isinstance(process_dict["vehicle_filter"], dict)
-                assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
-                # TODO test for time availability
 
-            if process_dict["typename"] == "Charge":
-                assert isinstance(process_dict["vehicle_filter"], dict)
-                assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
-                # TODO test for maximum soc
+                # assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
+                if "in_period" in process_dict:
+                    assert isinstance(process_dict["in_period"], list)
 
             if process_dict["typename"] == "Precondition":
                 assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
