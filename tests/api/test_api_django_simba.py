@@ -326,6 +326,12 @@ class TestApiDjangoSimba:
             show_annotates=True,
         )
 
+        for vehicle in set(
+            [t.vehicle for t in depot_evaluation.timetable.trips_issued]
+        ):
+            if vehicle is not None:
+                depot_evaluation.battery_level(vehicle.ID, save=True, show=True)
+
         # Check if the output file exists
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0

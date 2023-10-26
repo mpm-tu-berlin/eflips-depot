@@ -88,7 +88,9 @@ def init_simulation(
     last_arrival_time = max(
         [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
     )
-    total_duration = (last_arrival_time - first_departure_time).total_seconds()
+    total_duration = (
+        last_arrival_time - first_departure_time
+    ).total_seconds()  # TODO From midnight of the first to midnight of the day following last instead?
     # We take the total duration in days (rounded up) and add 2 days
     total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
     total_duration_seconds = total_duration_days * 24 * 60 * 60
@@ -99,7 +101,6 @@ def init_simulation(
     midnight_of_first_departure_day = first_departure_time.replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    simulation_start_time = midnight_of_first_departure_day - timedelta(days=1)
 
     # We need to calculate roughly how many vehicles we need
     # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
@@ -202,9 +203,7 @@ def init_simulation(
                 final_vehicle_schedules.append(vehicle_schedule)
         vehicle_schedules = sorted(final_vehicle_schedules, key=lambda x: x.departure)
 
-    timetable = VehicleSchedule._to_timetable(
-        vehicle_schedules, simulation_host.env, simulation_start_time
-    )
+    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
     simulation_host.timetable = timetable
 
     # Set up the depots
