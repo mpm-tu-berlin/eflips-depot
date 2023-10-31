@@ -43,10 +43,10 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
 
     inputs_for_simba = []
     for trip_i in ev.timetable.trips_issued:
-        if "_r1" in trip_i.ID:  # _r1: repetition 1 of all rotations
+        if not trip_i.is_copy:
             data_unit = InputForSimba(
                 int(
-                    float(trip_i.ID_orig)
+                    float(trip_i.ID)
                 ),  # Slightly ugly, but we need to return an int
                 trip_i.vehicle.vehicle_type.ID,
                 trip_i.vehicle.ID,
