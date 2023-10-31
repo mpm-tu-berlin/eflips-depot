@@ -16,6 +16,7 @@ by interface
 
 """
 import copy
+import datetime
 import os
 from datetime import timedelta
 from math import ceil
@@ -82,25 +83,17 @@ def init_simulation(
     # However, we need to override quite a lot of the settings
     # The ["general"]["SIMULATION_TIME"] entry is calculated from the difference between the first and last departure
     # time in the vehicle schedule
-    first_departure_time = min(
-        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
+
+    first_arrival_time = min(
+        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
     )
+
     last_arrival_time = max(
         [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
     )
-    total_duration = (
-        last_arrival_time - first_departure_time
-    ).total_seconds()  # TODO From midnight of the first to midnight of the day following last instead?
-    # We take the total duration in days (rounded up) and add 2 days
-    total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
-    total_duration_seconds = total_duration_days * 24 * 60 * 60
-    eflips.globalConstants["general"]["SIMULATION_TIME"] = total_duration_seconds
 
-    # The ["general"]["START_DAY"] entry (not changed by us) will start the evaluation at the first departure time
-    # However, the simulation will start one day before.
-    midnight_of_first_departure_day = first_departure_time.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    # We take first arrival time as simulation start
+    total_duration = (last_arrival_time - first_arrival_time).total_seconds()
 
     # We need to calculate roughly how many vehicles we need
     # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
@@ -158,53 +151,45 @@ def init_simulation(
 
     # Turn API VehicleSchedule objects into eFLIPS TimeTable object
 
-    # We will need to first create a vehicle schedule three times as long as the original one
-    # Then we cut off everything but one day before the first departure and one day after the last departure
-    # TODO: we need to enable this and disable the trip multipilication in eflips-DEPOT
-    if False:
-        schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
-        schedules_shifted_back = copy.deepcopy(vehicle_schedules)
-        for vehicle_schedule in schedules_shifted_back:
-            vehicle_schedule.departure = vehicle_schedule.departure - timedelta(
-                days=schedule_duration_days
-            )
-            vehicle_schedule.arrival = vehicle_schedule.arrival - timedelta(
-                days=schedule_duration_days
-            )
+    # Get correctly repeated vehicle schedules
+    # if total duration time is less than 2 days, vehicle schedule will be repeated daily
+    # if total duration time is more than 6 days, vehicle schedule will be repeated weekly
+    schedule_list_backward = []
+    schedule_list_forward = []
+    schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
 
-        schedules_shifted_forward = copy.deepcopy(vehicle_schedules)
-        for vehicle_schedule in schedules_shifted_forward:
-            vehicle_schedule.departure = vehicle_schedule.departure + timedelta(
-                days=schedule_duration_days
+    if schedule_duration_days <= 2:
+        for vehicle_schedule in vehicle_schedules:
+            schedule_list_backward.append(
+                vehicle_schedule.repeat(datetime.timedelta(days=-1))
             )
-            vehicle_schedule.arrival = vehicle_schedule.arrival + timedelta(
-                days=schedule_duration_days
+            schedule_list_forward.append(
+                vehicle_schedule.repeat(datetime.timedelta(days=1))
             )
 
-        midnight_of_day_before_first_departure = (
-            midnight_of_first_departure_day - timedelta(days=1)
-        )
-        midnight_of_last_departure_day = last_departure_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        midnight_of_day_after_last_departure = (
-            midnight_of_last_departure_day + timedelta(days=1)
-        )
+        total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
+    elif schedule_duration_days > 6:
+        for vehicle_schedule in vehicle_schedules:
+            schedule_list_backward.append(
+                vehicle_schedule.repeat(datetime.timedelta(weeks=-1))
+            )
+            schedule_list_forward.append(
+                vehicle_schedule.repeat(datetime.timedelta(weeks=1))
+            )
 
-        final_vehicle_schedules = []
-        for vehicle_schedule in (
-            schedules_shifted_back + vehicle_schedules + schedules_shifted_forward
-        ):
-            if (
-                midnight_of_day_before_first_departure
-                < vehicle_schedule.departure
-                < midnight_of_day_after_last_departure
-            ):
-                final_vehicle_schedules.append(vehicle_schedule)
-        vehicle_schedules = sorted(final_vehicle_schedules, key=lambda x: x.departure)
+        total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2 * 7
+    else:
+        # TODO ask the user to provide the number of days to repeat
+        raise NotImplementedError
 
+    vehicle_schedules = (
+        schedule_list_backward + vehicle_schedules + schedule_list_forward
+    )
     timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
     simulation_host.timetable = timetable
+
+    total_duration_seconds = total_duration_days * 24 * 60 * 60
+    eflips.globalConstants["general"]["SIMULATION_TIME"] = total_duration_seconds
 
     # Set up the depots
     for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):
