@@ -537,6 +537,8 @@ class Depot:
                     template["processes"][process.name][
                         "power"
                     ] = process.electric_power
+                case _:
+                    raise ValueError(f"Invalid process type: {process.type.name}")
 
         # Initialize the default plan
         template["plans"]["default"] = {
