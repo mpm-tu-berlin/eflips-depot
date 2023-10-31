@@ -1,25 +1,24 @@
 """Read and pre-process data from database"""
-import os
 import json
-
 import numbers
+import os
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from math import ceil
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
-from enum import Enum
 
 import numpy as np
-import simpy
 import seaborn as sns
+import simpy
 from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
-from eflips.depot import Depot as EflipsDepot
 import eflips.depot.standalone
-from depot import DepotControl, DepotConfigurator
-from eflips.depot.standalone import SimpleTrip
+from eflips.depot import Depot as EflipsDepot
+from eflips.depot import DepotControl, DepotConfigurator
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType, SimpleVehicle
+from eflips.depot.standalone import SimpleTrip
 
 
 @dataclass
@@ -511,7 +510,7 @@ class Depot:
                     if process.availability is not None:
                         template["processes"][process.name]["vehicle_filter"] = {
                             "filter_names": ["in_period"],
-                            "period": process.availability
+                            "period": process.availability,
                         }
 
                     # Fill in workers_service of resources

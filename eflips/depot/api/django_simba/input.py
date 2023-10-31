@@ -8,8 +8,8 @@ import json
 import os
 from typing import List, Union, Dict, Any
 
-from depot.api.input import VehicleType as ApiVehicleType
-from depot.api.input import VehicleSchedule as ApiVehicleSchedule
+from eflips.depot.api.input import VehicleType as ApiVehicleType
+from eflips.depot.api.input import VehicleSchedule as ApiVehicleSchedule
 
 from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType, Rotation, Trip
 

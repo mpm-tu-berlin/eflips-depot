@@ -5,8 +5,8 @@ import eflips
 import pytest
 import pytz
 
-from depot import Timetable
-from depot.api import VehicleType, VehicleSchedule
+from eflips.depot import Timetable
+from eflips.depot.api import VehicleType, VehicleSchedule
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
 
