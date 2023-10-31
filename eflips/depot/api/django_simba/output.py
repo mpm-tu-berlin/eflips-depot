@@ -49,14 +49,18 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
             actual_time_departure = trip_i.atd
 
             # Get start_soc from battery logs
-            vehicle = trip_i.vehicle
-            for log in vehicle.battery_logs:
+            start_soc = None
+            for log in trip_i.vehicle.battery_logs:
                 if log.t == actual_time_departure:
                     assert log.event_name == "consume_start", (
                         f"Expected consume_start event at {actual_time_departure} "
-                        f"for vehicle {vehicle.ID}, but got {log.event_name} instead."
+                        f"for vehicle {trip_i.vehicle.ID}, but got {log.event_name} instead."
                     )
                     start_soc = log.energy / log.energy_real
+            assert start_soc is not None, (
+                "Did not find consume_start event at "
+                f"{actual_time_departure} for vehicle {trip_i.vehicle.ID}."
+            )
 
             data_unit = InputForSimba(
                 int(
