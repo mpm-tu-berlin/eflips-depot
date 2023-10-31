@@ -45,7 +45,6 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
 
     for trip_i in ev.timetable.trips_issued:
         if "_r1" in trip_i.ID:  # _r1: repetition 1 of all rotations
-
             # Get actual departure time of that trip
             actual_time_departure = trip_i.atd
 
@@ -57,7 +56,7 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
                         f"Expected consume_start event at {actual_time_departure} "
                         f"for vehicle {vehicle.ID}, but got {log.event_name} instead."
                     )
-                    start_soc = log.energy/log.energy_real
+                    start_soc = log.energy / log.energy_real
 
             data_unit = InputForSimba(
                 int(
