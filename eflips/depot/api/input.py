@@ -295,7 +295,7 @@ class VehicleSchedule:
         :return: A VehicleSchedule object
         """
         sched = VehicleSchedule(
-            self.id,  # TODO: Maybe a random string needs to be added here,
+            self.id,
             self.vehicle_class,
             self.departure + interval,  # Intervals can be negative too, right?
             self.arrival + interval,
