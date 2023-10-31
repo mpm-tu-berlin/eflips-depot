@@ -15,11 +15,9 @@ by interface
     overriding the :meth:`__init__()` method to read the data from the other simulation framework.
 
 """
-import copy
 import os
-from datetime import timedelta
+import warnings
 from math import ceil
-from pathlib import Path
 from typing import List, Optional, Dict, Hashable
 
 import eflips.depot
@@ -51,23 +49,19 @@ def init_simulation(
     # Clear the eflips settings
     eflips.settings.reset_settings()
 
-    # Check input data
-    depot.validate()
-    _validate_input_data(vehicle_types, vehicle_schedules)
-
     path_to_this_file = os.path.dirname(__file__)
 
-    # For this API version, we only support the implicit depot
+    # Step 1: Set up the depot
     if depot is not None:
-        # raise NotImplementedError(
-        #     "Only implicit depot is supported in this API version"
-        # )
+        depot.validate()
+
+        # Create an eFlips depot
         depot_dict = depot._to_template()
         eflips_depot = eflips.depot.Depotinput(
             filename_template=depot_dict, show_gui=False
         )
     else:
-        # path_to_this_file = os.path.dirname(__file__)
+        warnings.warn("Smart default depot not implemented yet")
         path_to_default_depot = os.path.join(
             path_to_this_file, "defaults", "default_depot"
         )
@@ -79,6 +73,11 @@ def init_simulation(
 
     # Create simulation host
     simulation_host = SimulationHost([eflips_depot], print_timestamps=False)
+
+    # Step 2: Set up the Schedule
+    _validate_input_data(vehicle_types, vehicle_schedules)
+    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
+    simulation_host.timetable = timetable
 
     # Now we do what is done in `standard_setup()` from the old input files
     # Load the settings
@@ -97,17 +96,13 @@ def init_simulation(
         [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
     )
     total_duration = (last_arrival_time - first_departure_time).total_seconds()
-    # We take the total duration in days (rounded down) and add 2 days
-    total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 2
+    # We take the total duration in days (rounded down) and add 1 day
+    total_duration_days = ceil(total_duration / (24 * 60 * 60)) + 1
     total_duration_seconds = total_duration_days * 24 * 60 * 60
     eflips.globalConstants["general"]["SIMULATION_TIME"] = total_duration_seconds
 
     # The ["general"]["START_DAY"] entry (not changed by us) will start the evaluation at the first departure time
     # However, the simulation will start one day before.
-    midnight_of_first_departure_day = first_departure_time.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    simulation_start_time = midnight_of_first_departure_day - timedelta(days=1)
 
     # We need to calculate roughly how many vehicles we need
     # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
@@ -162,56 +157,6 @@ def init_simulation(
 
     # Complete the eflips settings
     eflips.depot.settings_config.complete_gc()
-
-    # Turn API VehicleSchedule objects into eFLIPS TimeTable object
-
-    # We will need to first create a vehicle schedule three times as long as the original one
-    # Then we cut off everything but one day before the first departure and one day after the last departure
-    # TODO: we need to enable this and disable the trip multipilication in eflips-DEPOT
-    if False:
-        schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
-        schedules_shifted_back = copy.deepcopy(vehicle_schedules)
-        for vehicle_schedule in schedules_shifted_back:
-            vehicle_schedule.departure = vehicle_schedule.departure - timedelta(
-                days=schedule_duration_days
-            )
-            vehicle_schedule.arrival = vehicle_schedule.arrival - timedelta(
-                days=schedule_duration_days
-            )
-
-        schedules_shifted_forward = copy.deepcopy(vehicle_schedules)
-        for vehicle_schedule in schedules_shifted_forward:
-            vehicle_schedule.departure = vehicle_schedule.departure + timedelta(
-                days=schedule_duration_days
-            )
-            vehicle_schedule.arrival = vehicle_schedule.arrival + timedelta(
-                days=schedule_duration_days
-            )
-
-        midnight_of_day_before_first_departure = (
-            midnight_of_first_departure_day - timedelta(days=1)
-        )
-        midnight_of_last_departure_day = last_departure_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        midnight_of_day_after_last_departure = (
-            midnight_of_last_departure_day + timedelta(days=1)
-        )
-
-        final_vehicle_schedules = []
-        for vehicle_schedule in (
-            schedules_shifted_back + vehicle_schedules + schedules_shifted_forward
-        ):
-            if (
-                midnight_of_day_before_first_departure
-                < vehicle_schedule.departure
-                < midnight_of_day_after_last_departure
-            ):
-                final_vehicle_schedules.append(vehicle_schedule)
-        vehicle_schedules = sorted(final_vehicle_schedules, key=lambda x: x.departure)
-
-    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env)
-    simulation_host.timetable = timetable
 
     # Set up the depots
     for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):
