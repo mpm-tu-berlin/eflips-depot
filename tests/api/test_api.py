@@ -41,7 +41,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[arrival_cleaning],
             vehicle_classes=None,
-            capacity=50,
+            capacity=100,
         )
 
         # Connect the areas and processes
@@ -87,8 +87,8 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=30,
-            row_count=6,
+            capacity=120,
+            row_count=30,
         )
 
         # Create a direct charging area
@@ -99,7 +99,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=20,
+            capacity=6,
         )
 
         # Create another area that just does standby pre-departure
@@ -186,7 +186,7 @@ class TestApi:
 
     @pytest.fixture
     def vehicle_schedules(
-        self, vehicle_types, schedules_per_day=50, days=1
+        self, vehicle_types, schedules_per_day=100, days=1
     ) -> List[VehicleSchedule]:
         """
         This method creates a believable set of VehicleSchedule objects for testing purposes. It creates a number of
@@ -208,7 +208,7 @@ class TestApi:
 
         # Limit the number of trips in order to simplify testing
         state = random.getstate()
-        random.seed(42)
+        random.seed(46)
 
         for day in range(days):
             schedules_created = 0
