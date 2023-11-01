@@ -105,7 +105,7 @@ def init_simulation(
     # However, the simulation will start one day before.
 
     # We need to calculate roughly how many vehicles we need
-    # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
+    # We do that by taking the total trips for each vehicle class and creating 100 times the number of vehicles
     # for each vehicle type in the vehicle class
     all_vehicle_classes = set(
         [vehicle_schedule.vehicle_class for vehicle_schedule in vehicle_schedules]
@@ -128,7 +128,7 @@ def init_simulation(
                 vehicle_count[vehicle_type.id] = vehicle_counts[vehicle_type.id]
             else:
                 vehicle_count[vehicle_type.id] = int(
-                    ceil(trip_count * 1.1 * len(vehicle_types_with_vehicle_class))
+                    ceil(trip_count * 100 * len(vehicle_types_with_vehicle_class))
                 )
     # Now we put the vehicle count into the settings
     eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
