@@ -15,13 +15,10 @@ by interface
     overriding the :meth:`__init__()` method to read the data from the other simulation framework.
 
 """
-import copy
-import datetime
 import os
-from datetime import timedelta
+from datetime import timedelta, datetime
 from math import ceil
-from pathlib import Path
-from typing import List, Optional, Dict, Hashable
+from typing import List, Optional, Dict, Hashable, Tuple
 
 import eflips.depot
 from eflips.depot import SimulationHost, DepotEvaluation
@@ -87,7 +84,6 @@ def init_simulation(
     )
     eflips.load_settings(path_to_default_settings)
 
-
     # We need to calculate roughly how many vehicles we need
     # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
     # for each vehicle type in the vehicle class
@@ -151,21 +147,59 @@ def init_simulation(
     # The ["general"]["SIMULATION_TIME"] entry is calculated from the difference between the first and last departure
     # time in the vehicle schedule
 
-
-    first_departure_time = min([vehicle_schedule.departure for vehicle_schedule in vehicle_schedules])
-    last_arrival_time = max([vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules])
+    first_departure_time = min(
+        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
+    )
+    last_arrival_time = max(
+        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
+    )
 
     # We take first arrival time as simulation start
     total_duration = (last_arrival_time - first_departure_time).total_seconds()
     schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
 
-    if repetition_period is None and schedule_duration_days in [1,2]:
-        repetition_period = datetime.timedelta(days=1)
-    elif repetition_period is None and schedule_duration_days in [7,8]:
-        repetition_period = datetime.timedelta(weeks=1)
+    if repetition_period is None and schedule_duration_days in [1, 2]:
+        repetition_period = timedelta(days=1)
+    elif repetition_period is None and schedule_duration_days in [7, 8]:
+        repetition_period = timedelta(weeks=1)
     elif repetition_period is None:
-        raise ValueError("Could not automatically detect repetition period. Please specify manually.")
+        raise ValueError(
+            "Could not automatically detect repetition period. Please specify manually."
+        )
 
+    # Now, we need to repeat the vehicle schedules
+    vehicle_schedules = _repeat_vehicle_schedules(vehicle_schedules, repetition_period)
+
+    sim_start_stime, total_duration_seconds = _start_and_end_times(vehicle_schedules)
+    eflips.globalConstants["general"]["SIMULATION_TIME"] = int(total_duration_seconds)
+
+    timetable = VehicleSchedule._to_timetable(
+        vehicle_schedules, simulation_host.env, sim_start_stime
+    )
+    simulation_host.timetable = timetable
+
+    # Set up the depots
+    for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):
+        dh.load_and_complete_template(di.filename_template)
+
+    simulation_host.complete()
+
+    return simulation_host
+
+
+def _repeat_vehicle_schedules(
+    vehicle_schedules: List[VehicleSchedule], repetition_period: timedelta
+) -> List[VehicleSchedule]:
+    """
+    This method repeats the vehicle schedules in the list `vehicle_schedules` by the timedelta `repetition_period`.
+
+    It takes the given vehicle schedules and creates two copies, one `repetition_period` earlier, one `repetition_period`
+    later. It then returns the concatenation of the three lists.
+
+    :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+    :param repetition_period: A timedelta object specifying the period of the vehicle schedules.
+    :return: a list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+    """
     # Add the repeated schedules to the forward and backward lists
     schedule_list_backward = []
     schedule_list_forward = []
@@ -178,28 +212,37 @@ def init_simulation(
         schedule_list_backward + vehicle_schedules + schedule_list_forward
     )
 
-    # Now, find the start and end times for the eFLIPS simulation based on the vehicle schedules
-    first_departure_time = min([vehicle_schedule.departure for vehicle_schedule in vehicle_schedules])
-    midnight_of_first_departure_day = first_departure_time.replace(hour=0, minute=0, second=0, microsecond=0)
-    last_arrival_time = max([vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules])
-    midnight_of_last_arrival_day = last_arrival_time.replace(hour=0, minute=0, second=0, microsecond=0)
-    midnight_after_last_arrival_day = midnight_of_last_arrival_day + datetime.timedelta(days=1)
-
-    total_duration_seconds = (midnight_after_last_arrival_day - midnight_of_first_departure_day).total_seconds()
-    eflips.globalConstants["general"]["SIMULATION_TIME"] = int(total_duration_seconds)
+    return vehicle_schedules
 
 
-    timetable = VehicleSchedule._to_timetable(vehicle_schedules, simulation_host.env, midnight_of_first_departure_day)
-    simulation_host.timetable = timetable
+def _start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
+    """
+    This method is used to find the start time and duration for simulating a given list of vehicle schedules.
+    It finds the times of midnight of the day of the first departure and midnight of the day after the last arrival.
 
+    :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+    :return: The datetime of midnight of the day of the first departure and the total duration of the simulation in
+        seconds.
+    """
 
-    # Set up the depots
-    for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):
-        dh.load_and_complete_template(di.filename_template)
+    first_departure_time = min(
+        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
+    )
+    midnight_of_first_departure_day = first_departure_time.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    last_arrival_time = max(
+        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
+    )
+    midnight_of_last_arrival_day = last_arrival_time.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    midnight_after_last_arrival_day = midnight_of_last_arrival_day + timedelta(days=1)
+    total_duration_seconds = (
+        midnight_after_last_arrival_day - midnight_of_first_departure_day
+    ).total_seconds()
 
-    simulation_host.complete()
-
-    return simulation_host
+    return midnight_of_first_departure_day, total_duration_seconds
 
 
 def _validate_input_data(
