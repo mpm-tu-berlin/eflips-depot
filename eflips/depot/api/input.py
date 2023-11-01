@@ -4,8 +4,8 @@ import numbers
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from math import ceil
+from numbers import Number
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
 
 import numpy as np
@@ -15,8 +15,8 @@ from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from eflips.depot import Depot as EflipsDepot
-from eflips.depot import DepotControl, DepotConfigurator
+from depot.api.enums import ProcessType, AreaType
+from eflips.depot import DepotControl
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType, SimpleVehicle
 from eflips.depot.standalone import SimpleTrip
 
@@ -409,20 +409,15 @@ class Depot:
     :class:`eflips.depot.standalone.SimpleVehicle` objects as input, as such it is not covered by the API documentation.
     """
 
-    def _to_eflips(self) -> Union[EflipsDepot, DepotConfigurator]:
-        """Placeholder method to convert the depot into a :class:`eflips.depot.api.input.Depot` object, which is the
-        input format of the depot simulation. We may convert to a depotConfigurator instead or use the depotConfigurator.
-        """
-        raise NotImplementedError
-
     def _to_template(self) -> Dict:
-        """Convert Depot to a dictionary of the format in eFLIPS.Depot"""
-        # convert depot to the dict format corresponding to the original JSON template
-        # validate
-        # use DepotConfigurator.load() to load it into eFLIPS-Depot
+        """
+        Converts the depot to a template
+        :return:
+        """
 
+        # Initialize the template
         template = {
-            "templatename_display": "Depot KLS Sept19 all direct",
+            "templatename_display": "",
             "general": {"depotID": "", "dispatch_strategy_name": ""},
             "resources": {},
             "resource_switches": {},
@@ -432,11 +427,9 @@ class Depot:
             "plans": {},
         }
 
-        # Placeholder
-
+        # Set up the general information
+        template["templatename_display"] = self.name
         template["general"]["depotID"] = "DEFAULT"
-
-        # TODO: do we need a Strategy in Depot later?
         template["general"]["dispatch_strategy_name"] = "SMART"
 
         # Helper for adding processes to the template
@@ -458,9 +451,8 @@ class Depot:
             }
 
             # Fill in vehicle_filter. Now this is only a placeholder
-            if (
-                area.vehicle_classes is not None
-            ):  # TODO Lu: The Vehicle class thing still needs some rework. Here, we directly depend on the database
+            if area.vehicle_classes is not None:
+                raise NotImplementedError("Vehicle classes are not implemented yet")
                 # in ebustoolbox, which i don't really want
                 template["areas"][area.name]["entry_filter"] = {
                     "filter_names": ["vehicle_type"],
@@ -507,11 +499,11 @@ class Depot:
             match process.type:
                 case ProcessType.SERVICE:
                     template["processes"][process.name]["typename"] = "Serve"
-                    if process.availability is not None:
-                        template["processes"][process.name]["vehicle_filter"] = {
-                            "filter_names": ["in_period"],
-                            "period": process.availability,
-                        }
+                    # if process.availability is not None:
+                    #    template["processes"][process.name]["vehicle_filter"] = {
+                    #        "filter_names": ["in_period"],
+                    #        "period": process.availability,
+                    #    } TODO: Fix availability
 
                     # Fill in workers_service of resources
                     service_capacity = sum([x.capacity for x in process.areas])
@@ -603,19 +595,6 @@ class Depot:
                 ), "All areas in an area must be part of the area."
 
 
-class AreaType(Enum):
-    """This class represents the type of an area in eFLIPS-Depot"""
-
-    DIRECT_ONESIDE = 1
-    """A direct area where vehicles drive in form one side only."""
-
-    DIRECT_TWOSIDE = 2
-    """A direct area where vehicles drive in form both sides. Also called a "herringbone" configuration."""
-
-    LINE = 3
-    """A line area where vehicles are parked in a line. There might be one or more rows in the area."""
-
-
 @dataclass
 class Area:
     """This class represents an area in eFLIPS-Depot, where a vehicle can be processed."""
@@ -674,24 +653,6 @@ class Area:
                 )
 
 
-class ProcessType(Enum):
-    """This class represents the types of a process in eFLIPS-Depot."""
-
-    SERVICE = 1
-    """This process represents a bus service by workers. It does not require a charging_power and has a fixed 
-    duration."""
-    CHARGING = 2
-    """This process represents a bus charging process. It requires a charging_power and has no fixed duration."""
-    STANDBY = 3
-    """This process represents an arriving bus that is waiting for a service. It does not require a charging_power 
-    and has no fixed duration."""
-    STANDBY_DEPARTURE = 4
-    """This process represents a bus ready for departure. It does not require a charging_power and has no fixed 
-    duration."""
-    PRECONDITION = 5
-    """This process represents a bus preconditioning process. It requires a charging_power and has a fixed duration."""
-
-
 @dataclass
 class Process:
     """This class represents a process in eFLIPS-Depot, which is the possible actions for a vehicle in a depot."""
@@ -718,8 +679,7 @@ class Process:
     duration: Optional[int] = None
     """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
 
-    availability: Optional[Tuple[int, int]] = None
-    """If this process is only available during a certain time period, this is the time period in seconds. It must be a tuple of two integers."""
+    # TODO: Availability is not implemented yet
 
     def __post_init__(self):
         """
@@ -730,13 +690,13 @@ class Process:
         """
 
         if self.electric_power is not None:
-            assert isinstance(self.electric_power, float) and self.electric_power > 0.0
+            assert isinstance(self.electric_power, Number) and self.electric_power > 0.0
 
         if self.duration is not None:
-            assert isinstance(self.duration, int) and self.duration >= 0
+            assert isinstance(self.duration, Number) and self.duration >= 0
 
     @property
-    def type(self) -> ProcessType:
+    def type(self) -> "ProcessType":
         """
         The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
         a process needs a resource or not depends on the type of the process.

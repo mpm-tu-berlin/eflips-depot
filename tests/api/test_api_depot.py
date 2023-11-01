@@ -1,17 +1,11 @@
 import copy
-import os
-from datetime import datetime
+
+import pytest
 
 import eflips
-import pytest
-import pytz
-
-from depot import Timetable
-from depot.api import VehicleType, VehicleSchedule
-from depot.api.input import Process, Area, Depot, Plan, AreaType, ProcessType
+from depot.api.enums import ProcessType, AreaType
+from depot.api.input import Process, Area, Depot, Plan
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
-
-from eflips.depot.simulation import SimulationHost
 
 
 class TestDepot:
