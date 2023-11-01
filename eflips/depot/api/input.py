@@ -327,18 +327,27 @@ class VehicleSchedule:
                         "start": entry.departure,
                         "end": entry.arrival,
                         "color": colors_for_vehicle_classes[entry.vehicle_class],
+                        "type": entry.vehicle_class,
                     }
                 )
 
         # Create the plot
         fig, ax = plt.subplots(figsize=(10, 5))
+        already_labelled = set()
         for row in plot_data:
             for entry in row:
                 ax.broken_barh(
                     [(entry["start"], entry["end"] - entry["start"])],
                     (plot_data.index(row), 1),
                     facecolors=entry["color"],
+                    label=entry["type"]
+                    if entry["type"] not in already_labelled
+                    else None,
                 )
+                already_labelled.add(
+                    entry["type"]
+                )  # Slightly hacky way to make sure that the labels are only added once
+        plt.legend()
         plt.show()
         plt.close()
 
