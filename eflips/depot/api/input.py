@@ -1,21 +1,18 @@
 """Read and pre-process data from database"""
-import json
 import numbers
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from math import ceil
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
 
 import numpy as np
-import simpy
 import seaborn as sns
+import simpy
 from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from eflips.depot import VehicleType
-from eflips.depot.standalone import SimpleTrip
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
+from eflips.depot.standalone import SimpleTrip
 
 
 @dataclass
@@ -369,7 +366,9 @@ class VehicleSchedule:
 
     @staticmethod
     def _to_timetable(
-        vehicle_schedules: List["VehicleSchedule"], env: simpy.Environment, start_of_simulation: datetime
+        vehicle_schedules: List["VehicleSchedule"],
+        env: simpy.Environment,
+        start_of_simulation: datetime,
     ) -> eflips.depot.standalone.Timetable:
         """
         This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which

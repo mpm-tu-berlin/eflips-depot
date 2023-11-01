@@ -1,10 +1,10 @@
 import os
 from datetime import datetime
 
-import eflips
 import pytest
 import pytz
 
+import eflips
 from eflips.depot import Timetable
 from eflips.depot.api import VehicleType, VehicleSchedule
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
@@ -246,6 +246,8 @@ class TestVehicleSchedule:
         env = simulation_host.env
 
         eflips_vehicle_schedule = sample_vehicle_schedule._to_timetable(
-            [sample_vehicle_schedule], env, start_of_simulation=datetime(2020, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
+            [sample_vehicle_schedule],
+            env,
+            start_of_simulation=datetime(2020, 1, 1, 0, 0, 0, tzinfo=pytz.UTC),
         )
         assert isinstance(eflips_vehicle_schedule, Timetable)

@@ -8,14 +8,16 @@ Complementary components that are necessary for a standalone run of the depot
 simulation.
 
 """
-from xlrd import open_workbook
 from math import ceil
-from eflips.depot.simple_vehicle import SimpleVehicle
-from eflips.depot.depot import VehicleFilter, BackgroundStore
+from warnings import warn
+
+from eflips.evaluation import DataLogger
 from eflips.helperFunctions import flexprint
 from eflips.settings import globalConstants
-from eflips.evaluation import DataLogger
-from warnings import warn
+from xlrd import open_workbook
+
+from eflips.depot.depot import VehicleFilter, BackgroundStore
+from eflips.depot.simple_vehicle import SimpleVehicle
 
 
 class VehicleGenerator(BackgroundStore):
@@ -355,12 +357,10 @@ class Timetable:
 
     """
 
-
     def __init__(self, env, trips):
         self.env = env
         self.trips = trips
         self.repetitions = 0
-
 
         interval_covered_sharp = self.trips[-1].std - self.trips[0].std
         self.interval_covered = int(86400 * ceil(interval_covered_sharp / 86400))
@@ -434,8 +434,6 @@ class Timetable:
 
         while True:
             yield self.env.timeout(self.interval_covered)
-
-
 
     def issue_requests(self, trips):
         """Issue requests for all trips in trips."""
