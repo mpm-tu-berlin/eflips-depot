@@ -20,7 +20,6 @@ class TestDepot:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
-            availability=[64800, 20700],
         )
 
         arrival_area = Area(
@@ -265,7 +264,9 @@ class TestDepot:
                 or area_dict["entry_filter"] is None
             )
             if area_dict["typename"] == "LineArea":
-                assert area_dict["side_put_default"] is not None
+                assert (
+                    area_dict["side_put_default"] is not None
+                )  # TODO: Ask Shuyao about this
                 assert area_dict["side_get_default"] is not None
 
         # Check groups
