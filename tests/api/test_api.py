@@ -4,14 +4,12 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List
 
-import pandas as pd
-
-import eflips
-
-from eflips.depot import SimulationHost
-
 import pytest
 
+import eflips
+from depot.api.enums import AreaType
+from depot.api.input import Area, Process, Plan
+from eflips.depot import SimulationHost
 from eflips.depot.api import (
     VehicleSchedule,
     VehicleType,
@@ -20,8 +18,6 @@ from eflips.depot.api import (
     init_simulation,
     run_simulation,
 )
-
-from depot.api.input import Area, AreaType, Process, Plan
 
 
 class TestApi:
@@ -45,7 +41,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[arrival_cleaning],
             vehicle_classes=None,
-            capacity=6,
+            capacity=50,
         )
 
         # Connect the areas and processes
@@ -58,7 +54,7 @@ class TestApi:
             dispatchable=False,
             areas=[],  # Connect the areas later
             duration=None,
-            electric_power=20.0,
+            electric_power=150.0,
         )
 
         # And a pre-conditioning process
@@ -91,8 +87,8 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=24,
-            row_count=4,
+            capacity=30,
+            row_count=6,
         )
 
         # Create a direct charging area
@@ -103,7 +99,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=6,
+            capacity=20,
         )
 
         # Create another area that just does standby pre-departure
@@ -112,14 +108,18 @@ class TestApi:
             name="Standby Pre-departure Area",
             type=AreaType.DIRECT_ONESIDE,
             depot=None,  # we connect the depot later
-            available_processes=[standby_pre_departure],
+            available_processes=[standby_pre_departure, preconditioning],
             vehicle_classes=None,
-            capacity=6,
+            capacity=10,
         )
 
         # Connect the areas and processes
         charging.areas = [line_charging_area, direct_charging_area]
-        preconditioning.areas = [line_charging_area, direct_charging_area]
+        preconditioning.areas = [
+            line_charging_area,
+            direct_charging_area,
+            standby_pre_departure_area,
+        ]
         standby_pre_departure.areas = [
             line_charging_area,
             direct_charging_area,
@@ -185,102 +185,111 @@ class TestApi:
         return simulation_host
 
     @pytest.fixture
-    def vehicle_schedules(self) -> List[VehicleSchedule]:
+    def vehicle_schedules(
+        self, vehicle_types, schedules_per_day=50, days=1
+    ) -> List[VehicleSchedule]:
         """
-        This method creates a believable set of VehicleSchedule objects for testing purposes. It loads the sample_input
-        file and creates VehicleSchedule objects from the data in the file.
+        This method creates a believable set of VehicleSchedule objects for testing purposes. It creates a number of
+        "bus lines" with a randomly chosen interval (within 3 to 20 minutes) and a randomly chosen duration of the
+        total vehicle schedule (5 to 25 hours). For each day, a random set of schedules is created.
+
+        :param vehicle_types: A list of :class:`eflips.depot.api.input.VehicleType` objects. Schedule objects will be
+        randomly assigned to one of these vehicle types.
+
+        :param schedules_per_day: The number of schedules to create per day.
+
+        :param days: The number of days to create schedules for.
 
         :return: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
         """
-        absolute_path = os.path.dirname(__file__)
-        # path_to_sample_input = os.path.join(absolute_path, "sample_input.csv")
 
-        # TODO use a small capacity of schedules and will be fixed later
-        path_to_sample_input = os.path.join(
-            absolute_path, "sample_input_small_capacity.csv"
-        )
-
-        df = pd.read_csv(path_to_sample_input)
-        vehicle_schedules = []
-        for _, row in df.iterrows():
-            # we need to turn the arrival_soc and minimal_soc into dictionaries
-            row["arrival_soc"] = {row["vehicle_class"]: row["arrival_soc"]}
-            row["minimal_soc"] = {row["vehicle_class"]: row["minimal_soc"]}
-            row["departure"] = datetime.fromisoformat(row["departure"])
-            row["arrival"] = datetime.fromisoformat(row["arrival"])
-            vehicle_schedules.append(VehicleSchedule(**row))
+        start_date = datetime(2023, 1, 1, 0, 0, 0)
+        schedules = []
 
         # Limit the number of trips in order to simplify testing
         state = random.getstate()
         random.seed(42)
-        # vehicle_schedules = random.sample(vehicle_schedules, 1000)
 
-        # TODO use a small capacity of schedules and will be fixed later
-        vehicle_schedules = random.sample(vehicle_schedules, 5)
-
-        # Instead, I'll do it manually
-        # Let's have a bus depart every four hours for an eight hour period
-        vehicle_schedules = []
-        for i in range(0, 24, 4):
-            departure = datetime(2020, 1, 1, i)
-            arrival = departure + timedelta(hours=8)
-            vehicle_schedules.append(
-                VehicleSchedule(
-                    vehicle_class="articulated",
-                    departure=departure,
-                    arrival=arrival,
-                    arrival_soc={"articulated": 0.8},
-                    departure_soc=1.0,
-                    minimal_soc={"articulated": 0.2},
-                    opportunity_charging=False,
-                    id=str(i),
+        for day in range(days):
+            schedules_created = 0
+            while schedules_created < schedules_per_day:
+                # Create a new bus line
+                # Give it an interval between 3 and 20 minutes, a duration between 5 and 25 hours and a first time
+                # between 5:00 and 8:00
+                interval = timedelta(minutes=random.randint(3, 60))
+                duration = timedelta(hours=random.randint(6, 30))
+                first_time = start_date + timedelta(
+                    minutes=random.randint(5 * 60, 8 * 60)
                 )
-            )
+
+                number_of_schedules = random.randint(5, 20)
+                vehicle_type = random.choice(vehicle_types)
+
+                departure_time = first_time
+                for schedule_number in range(number_of_schedules):
+                    if schedules_created >= schedules_per_day:
+                        break
+
+                    # Create a new schedule
+                    soc = {vehicle_type.id: random.uniform(0.1, 0.2)}
+                    schedule = VehicleSchedule(
+                        id=str(
+                            uuid.uuid5(uuid.NAMESPACE_DNS, str(random.randbytes(64)))
+                        ),  # Repeatable randomness
+                        vehicle_class=vehicle_type.vehicle_class,
+                        departure=departure_time,
+                        arrival=departure_time + duration,
+                        departure_soc=1.0,
+                        arrival_soc=soc,
+                        minimal_soc=soc,
+                        opportunity_charging=False,
+                    )
+                    schedules.append(schedule)
+                    departure_time += interval
+                    schedules_created += 1
+
+            start_date += timedelta(days=1)
 
         random.setstate(state)
 
-        return vehicle_schedules
+        return schedules
 
     @pytest.fixture
     def vehicle_types(self) -> List[VehicleType]:
         """
-        This method creates a believable set of VehicleType objects for testing purposes. It loads the sample_input
-        file and creates a VehicleType for each vehicle class in the file.
+        This method creates a believable set of VehicleType objects for testing purposes.
 
         :return: A list of :class:`eflips.depot.api.input.VehicleType`
         """
-        absolute_path = os.path.dirname(__file__)
-        # path_to_sample_input = os.path.join(absolute_path, "sample_input.csv")
 
-        # TODO use a small capacity of schedules and will be fixed later
-        path_to_sample_input = os.path.join(
-            absolute_path, "sample_input_small_capacity.csv"
+        # Create a 12 meter bus
+        vehicle_type_12m = VehicleType(
+            id="12",
+            vehicle_class="12m",
+            battery_capacity_total=300,
+            charging_curve=150,
+            v2g_curve=None,
         )
 
-        df = pd.read_csv(path_to_sample_input)
+        # Create a 18 meter bus
+        vehicle_type_18m = VehicleType(
+            id="18",
+            vehicle_class="18m",
+            battery_capacity_total=120,
+            charging_curve=450,
+            v2g_curve=None,
+        )
 
-        state = random.getstate()
-        random.seed(42)
+        # Create another 12 meter bus
+        vehicle_type_12m_terminus_charge = VehicleType(
+            id="121",
+            vehicle_class="12m terminus_charge",
+            battery_capacity_total=120,
+            charging_curve=450,
+            v2g_curve=None,
+        )
 
-        vehicle_classes = set(df["vehicle_class"])
-        vehicle_types = []
-        for vehicle_class in vehicle_classes:
-            vehicle_type = VehicleType(
-                vehicle_class,
-                vehicle_class,
-                random.randrange(100, 300, 50),
-                random.randrange(10, 40, 10),
-                None,
-            )
-            vehicle_types.append(vehicle_type)
-
-        random.setstate(state)
-
-        # Also add a vehicle type for the articulated buses
-        vehicle_type = VehicleType("articulated", "articulated", 600, 90)
-        vehicle_types.append(vehicle_type)
-
-        return vehicle_types
+        return [vehicle_type_12m, vehicle_type_18m, vehicle_type_12m_terminus_charge]
 
     def test_validate_input_data(self, vehicle_types, vehicle_schedules):
         """
