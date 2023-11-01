@@ -369,7 +369,7 @@ class VehicleSchedule:
 
     @staticmethod
     def _to_timetable(
-        vehicle_schedules: List["VehicleSchedule"], env: simpy.Environment
+        vehicle_schedules: List["VehicleSchedule"], env: simpy.Environment, start_of_simulation: datetime
     ) -> eflips.depot.standalone.Timetable:
         """
         This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which
@@ -378,25 +378,19 @@ class VehicleSchedule:
 
         :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
         :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
+        :param start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
+            `departure` time of the first of all vehicle schedules, probably midnight of the first day.
         :return:
         """
 
         # Sort the vehicle schedules by departure time
         vehicle_schedules = sorted(vehicle_schedules, key=lambda x: x.departure)
 
-        # Find the first departure time
-        first_departure = vehicle_schedules[0].departure
-        start_of_simulation = first_departure
-
-        # TODO bug for first arrival time as start of simulation
-        # first_arrival = vehicle_schedules[0].arrival
-        # start_of_simulation = first_arrival
         # Convert the vehicle schedules into SimpleTrip objects
         simple_trips = []
         for vehicle_schedule in vehicle_schedules:
             simple_trip = vehicle_schedule._to_simple_trip(start_of_simulation, env)
             simple_trips.append(simple_trip)
-
 
         timetable = eflips.depot.standalone.Timetable(env, simple_trips)
 
