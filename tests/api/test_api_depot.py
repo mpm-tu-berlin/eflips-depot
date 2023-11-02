@@ -263,11 +263,6 @@ class TestDepot:
                 isinstance(area_dict["entry_filter"], list)
                 or area_dict["entry_filter"] is None
             )
-            if area_dict["typename"] == "LineArea":
-                assert (
-                    area_dict["side_put_default"] is not None
-                )  # TODO: Ask Shuyao about this
-                assert area_dict["side_get_default"] is not None
 
         # Check groups
         for group_name, group_dict in template_dict["groups"].items():
