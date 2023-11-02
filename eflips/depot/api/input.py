@@ -1,21 +1,18 @@
 """Read and pre-process data from database"""
-import json
 import numbers
 from dataclasses import dataclass
-from datetime import datetime
-from math import ceil
+from datetime import datetime, timedelta
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
 
 import numpy as np
-import simpy
 import seaborn as sns
+import simpy
 from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from eflips.depot import VehicleType
-from eflips.depot.standalone import SimpleTrip
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
+from eflips.depot.standalone import SimpleTrip
 
 
 @dataclass
@@ -235,6 +232,12 @@ class VehicleSchedule:
     Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip.
     """
 
+    _is_copy: bool = False
+    """
+    Whether this vehicle schedule is a copy of another vehicle schedule. It should not be set manually, but only by
+    calling the :meth:`repeat` method.
+    """
+
     def __post_init__(self):
         """
         The post-initialization method. It makes sure that the arrival SoC and minimal SoC dictionaries contain exactly
@@ -243,7 +246,7 @@ class VehicleSchedule:
         """
 
         assert len(self.arrival_soc) == 1
-        assert len(self.minimal_soc) == 1
+        # assert len(self.minimal_soc) == 1
 
     def _to_simple_trip(
         self, simulation_start_time: datetime, env: simpy.Environment
@@ -277,8 +280,29 @@ class VehicleSchedule:
             self.departure_soc,
             self.arrival_soc[vehicle_types[0]],
             self.opportunity_charging,
+            is_copy=self._is_copy,
         )
         return simple_trip
+
+    def repeat(self, interval: timedelta) -> "VehicleSchedule":
+        """
+        Repeats a given VehicleSchedule. Returns a new vehicle schdule offset by a given timedelta that has the
+        _copy_of field filled
+
+        :return: A VehicleSchedule object
+        """
+        sched = VehicleSchedule(
+            self.id,
+            self.vehicle_class,
+            self.departure + interval,  # Intervals can be negative too, right?
+            self.arrival + interval,
+            self.departure_soc,
+            self.arrival_soc,
+            self.minimal_soc,
+            self.opportunity_charging,
+        )
+        sched._is_copy = True
+        return sched
 
     @staticmethod
     def visualize(vehicle_schedules: List["VehicleSchedule"]):
@@ -336,12 +360,15 @@ class VehicleSchedule:
                     (plot_data.index(row), 1),
                     facecolors=entry["color"],
                 )
+        plt.savefig("/tmp/a.pdf")
         plt.show()
         plt.close()
 
     @staticmethod
     def _to_timetable(
-        vehicle_schedules: List["VehicleSchedule"], env: simpy.Environment
+        vehicle_schedules: List["VehicleSchedule"],
+        env: simpy.Environment,
+        start_of_simulation: datetime,
     ) -> eflips.depot.standalone.Timetable:
         """
         This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which
@@ -350,17 +377,13 @@ class VehicleSchedule:
 
         :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
         :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
+        :param start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
+            `departure` time of the first of all vehicle schedules, probably midnight of the first day.
         :return:
         """
 
         # Sort the vehicle schedules by departure time
         vehicle_schedules = sorted(vehicle_schedules, key=lambda x: x.departure)
-
-        # Find the first departure time
-        first_departure = vehicle_schedules[0].departure
-        start_of_simulation = first_departure.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
 
         # Convert the vehicle schedules into SimpleTrip objects
         simple_trips = []
@@ -368,14 +391,7 @@ class VehicleSchedule:
             simple_trip = vehicle_schedule._to_simple_trip(start_of_simulation, env)
             simple_trips.append(simple_trip)
 
-        # Create the Timetable object
-        total_interval = (
-            vehicle_schedules[-1].arrival - vehicle_schedules[0].departure
-        ).total_seconds()
-        days_ahead = (
-            ceil(total_interval / 86400) + 1
-        )  # Apparently, that's what the TimeTable documentation wants
-        timetable = eflips.depot.standalone.Timetable(env, simple_trips, days_ahead)
+        timetable = eflips.depot.standalone.Timetable(env, simple_trips)
 
         return timetable
 

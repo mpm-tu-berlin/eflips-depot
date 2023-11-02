@@ -615,7 +615,7 @@ class DepotEvaluation:
                         if self.xlim[0] <= t <= self.xlim[1]:
                             data["depot general"]["triptexts"].append(
                                 {
-                                    "ID": trip.ID_orig,
+                                    "ID": trip.ID,
                                     "line_name": trip.line_name,
                                     "x": t,
                                     "y": y + 0.5,
@@ -751,7 +751,9 @@ class DepotEvaluation:
             periods = {"depot general": "yellow"}
 
         # Set sim time lower bound to avoid inaccuracy of first day
-        xmin_calcs = 86400 if self.SIM_TIME > 86400 else 0
+        # TODO make sure the correct xmin_calcs for plotting
+        xmin_calcs = 0
+        # xmin_calcs = 86400 if self.SIM_TIME > 86400 else 0
 
         # Get data for periods
         vehicledata = {}

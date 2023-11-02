@@ -303,11 +303,6 @@ class TestApiDjangoSimba:
         )
         depot_evaluation = run_simulation(simulation_host)
 
-        # Save the results to a folder
-        output_for_simba = to_simba(depot_evaluation)
-        with open(tmp_path / "output_for_simba.json", "w") as f:
-            json.dump([dataclasses.asdict(o) for o in output_for_simba], f, indent=4)
-
         # Optional: Create a plot of the results
         depot_evaluation.path_results = str(tmp_path)
 
@@ -331,9 +326,20 @@ class TestApiDjangoSimba:
             show_annotates=True,
         )
 
+        for vehicle in set(
+            [t.vehicle for t in depot_evaluation.timetable.trips_issued]
+        ):
+            if vehicle is not None:
+                depot_evaluation.battery_level(vehicle.ID, save=True, show=True)
+
         # Check if the output file exists
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
 
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
+
+        # Save the results to a folder
+        output_for_simba = to_simba(depot_evaluation)
+        with open(tmp_path / "output_for_simba.json", "w") as f:
+            json.dump([dataclasses.asdict(o) for o in output_for_simba], f, indent=4)

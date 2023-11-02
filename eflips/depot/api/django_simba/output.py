@@ -44,7 +44,7 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
     inputs_for_simba = []
 
     for trip_i in ev.timetable.trips_issued:
-        if "_r1" in trip_i.ID:  # _r1: repetition 1 of all rotations
+        if not trip_i.is_copy:
             # Get actual departure time of that trip
             actual_time_departure = trip_i.atd
 
@@ -61,11 +61,8 @@ def to_simba(ev: DepotEvaluation) -> List[InputForSimba]:
                 "Did not find consume_start event at "
                 f"{actual_time_departure} for vehicle {trip_i.vehicle.ID}."
             )
-
             data_unit = InputForSimba(
-                int(
-                    float(trip_i.ID_orig)
-                ),  # Slightly ugly, but we need to return an int
+                int(float(trip_i.ID)),  # Slightly ugly, but we need to return an int
                 trip_i.vehicle.vehicle_type.ID,
                 trip_i.vehicle.ID,
                 start_soc,
