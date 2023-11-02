@@ -8,14 +8,16 @@ Complementary components that are necessary for a standalone run of the depot
 simulation.
 
 """
-from xlrd import open_workbook
 from math import ceil
-from eflips.depot.simple_vehicle import SimpleVehicle
-from eflips.depot.depot import VehicleFilter, BackgroundStore
+from warnings import warn
+
+from eflips.evaluation import DataLogger
 from eflips.helperFunctions import flexprint
 from eflips.settings import globalConstants
-from eflips.evaluation import DataLogger
-from warnings import warn
+from xlrd import open_workbook
+
+from eflips.depot.depot import VehicleFilter, BackgroundStore
+from eflips.depot.simple_vehicle import SimpleVehicle
 
 
 class VehicleGenerator(BackgroundStore):
@@ -154,8 +156,7 @@ class SimpleTrip:
     reserved_for_init: see option prioritize_init_store in globalConstants
     vehicle_from: [str] ID of the area the executing vehicle was located at
         when calling checkout.
-    copy_of: [None or SimpleTrip] Is set to SimpleTrip object if trip was
-        copied in Timetable.repeat_trips.
+    is_copy: boolean flag to indicate if this trip is a copy of another trip
     t_match: [None or int] time of matching this trip and a vehicle. If a
         vehicle from a depot's init store is assigned, this attribute stays
         None. If the match changes, only the last matching time is saved.
@@ -185,6 +186,7 @@ class SimpleTrip:
         start_soc=None,
         end_soc=None,
         charge_on_track=False,
+        is_copy=False,
     ):
         self.env = env
         self.ID = ID
@@ -198,6 +200,7 @@ class SimpleTrip:
         self.start_soc = start_soc
         self.end_soc = end_soc
         self.charge_on_track = charge_on_track
+        self.is_copy = is_copy
 
         if start_soc is not None and not charge_on_track and start_soc < end_soc:
             raise ValueError(
@@ -213,8 +216,6 @@ class SimpleTrip:
         self.reserved_for_init = False
         self.vehicle_from = None
 
-        self.copy_of = None
-
         self.t_match = None
         self.got_early_vehicle = False
         self.t_got_early_vehicle = None
@@ -225,13 +226,6 @@ class SimpleTrip:
 
     def __repr__(self):
         return "{%s} %s" % (type(self).__name__, self.ID)
-
-    @property
-    def ID_orig(self):
-        if self.copy_of:
-            return self.copy_of.ID_orig
-        else:
-            return self.ID
 
     @property
     def vehicle_types_str(self):
@@ -363,11 +357,10 @@ class Timetable:
 
     """
 
-    def __init__(self, env, trips, days_ahead=2):
+    def __init__(self, env, trips):
         self.env = env
         self.trips = trips
         self.repetitions = 0
-        self.secs_ahead = days_ahead * 86400
 
         interval_covered_sharp = self.trips[-1].std - self.trips[0].std
         self.interval_covered = int(86400 * ceil(interval_covered_sharp / 86400))
@@ -440,68 +433,7 @@ class Timetable:
         self.issue_requests(self.trips)
 
         while True:
-            loop_repetitions = 0
-            t_max = self.trips_issued[-1].std
-            t_max_ceiled = int(86400 * ceil(t_max / 86400))
-            flexprint(
-                "Time for new tripset(s). t_max = %d, t_max_ceiled = %d"
-                % (t_max, t_max_ceiled),
-                switch="timetable",
-            )
-
-            while t_max - self.env.now <= self.secs_ahead:
-                self.repetitions += 1
-                trips_new = self.repeat_trips(
-                    t_max_ceiled + loop_repetitions * self.interval_covered
-                )
-                flexprint(
-                    "Interval: %d + %d * %d = %d"
-                    % (
-                        t_max_ceiled,
-                        loop_repetitions,
-                        self.interval_covered,
-                        t_max_ceiled + loop_repetitions * self.interval_covered,
-                    ),
-                    env=self.env,
-                    switch="timetable",
-                )
-                self.issue_requests(trips_new)
-                t_max = self.trips_issued[-1].std
-                loop_repetitions += 1
-
             yield self.env.timeout(self.interval_covered)
-
-    def repeat_trips(self, interval):
-        """Create a new list of trips with modified time attributes.
-        interval: [int] difference in seconds between base and new time
-            attributes
-        """
-        new_trips = []
-
-        for trip in self.trips:
-            trip_new = SimpleTrip(
-                self.env,
-                ID=trip.ID + "_r" + str(self.repetitions),
-                line_name=trip.line_name,
-                origin=trip.origin,
-                destination=trip.destination,
-                vehicle_types=trip.vehicle_types,
-                std=trip.std + interval,
-                sta=trip.sta + interval,
-                distance=trip.distance,
-                start_soc=trip.start_soc,
-                end_soc=trip.end_soc,
-                charge_on_track=trip.charge_on_track,
-            )
-            trip_new.copy_of = trip
-            new_trips.append(trip_new)
-            self.all_trips.append(trip_new)
-
-        if globalConstants["depot"]["prioritize_init_store"]:
-            # necessary if there are more vehicles than intial trips
-            self.reserve_trips(new_trips)
-
-        return new_trips
 
     def issue_requests(self, trips):
         """Issue requests for all trips in trips."""
