@@ -578,13 +578,6 @@ class Depot:
             # Fill in locations of the plan
             template["plans"]["default"]["locations"].append(group_name)
 
-        # TODO dump to json for test purposes. will be removed later
-
-        file_path = os.path.dirname(__file__)
-        tmp_output_path = os.path.join(file_path, "tmp_output.json")
-        with open(tmp_output_path, "w") as f:
-            json.dump(template, f, indent=4)
-
         return template
 
     def validate(self):
