@@ -572,18 +572,9 @@ class BaseDispatchStrategy(ABC):
             None,
         )
 
-        if (
-            preconddata is not None
-        ):  # and preconddata['kwargs']['vehicle_filter'](vehicle):
-            # Start the preconditioning process...
-            # Instantiate process object
-
-            # proc_obj = depot.processes["precondition"]["type"](
-            #     env=env, **depot.processes["precondition"]["kwargs"]
-            # )
-
+        if preconddata is not None:
             # Bugfix to make sure the name of the processs doesn't matter
-            # TODO is it only one precondition process allowed?
+
             for key, value in depot.processes.items():
                 if value["typename"] == "Precondition":
                     proc_obj = value["type"](env=env, **value["kwargs"])
