@@ -25,6 +25,25 @@ class TestApi:
     def depot(self):
         # A depot with a representative set of areas
         # Create an arrival cleaning process
+        # Generate random time stamps for availability for testing purposes
+
+        # random.seed()
+        # random.getstate()
+        # time_stamps = []
+        # for i in range(2):
+        #     time_stamps.append(
+        #         (
+        #             time(
+        #                 hour=random.randint(0, 23),
+        #                 minute=random.randint(0, 59),
+        #                 second=random.randint(0, 59),
+        #             )
+        #         )
+        #     )
+
+        time_stamps = [time(hour=18), time(hour=22)]
+        print(time_stamps)
+
         arrival_cleaning = Process(
             id=1,
             name="Arrival Cleaning",
@@ -32,6 +51,7 @@ class TestApi:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
+            availability=[(time_stamps[0], time_stamps[1])],
         )
 
         arrival_area = Area(
@@ -41,7 +61,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[arrival_cleaning],
             vehicle_classes=None,
-            capacity=50,
+            capacity=500,
         )
 
         # Connect the areas and processes
@@ -99,7 +119,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=20,
+            capacity=100,
         )
 
         # Create another area that just does standby pre-departure
@@ -251,6 +271,7 @@ class TestApi:
             start_date += timedelta(days=1)
 
         random.setstate(state)
+        VehicleSchedule.visualize(schedules)
 
         return schedules
 
@@ -332,23 +353,15 @@ class TestApi:
         depot_evaluation.path_results = str(tmp_path)
 
         depot_evaluation.vehicle_periods(
-            # periods={
-            #     "depot general": "darkgray",
-            #     "park": "lightgray",
-            #     "serve_supply_clean_daily": "steelblue",
-            #     "serve_clean_ext": "darkblue",
-            #     "charge_dc": "forestgreen",
-            #     "charge_oc": "forestgreen",
-            #     "precondition": "black",
-            # },
             # TODO re-write process names to plot
             periods={
                 "depot general": "darkgray",
                 "park": "lightgray",
                 "Arrival Cleaning": "steelblue",
-                "Charging": "darkblue",
-                "Standby Pre-departure": "forestgreen",
+                "Charging": "forestgreen",
+                "Standby Pre-departure": "darkblue",
                 "precondition": "black",
+                "trip": "wheat",
             },
             save=True,
             show=False,
