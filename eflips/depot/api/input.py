@@ -511,6 +511,10 @@ class Depot:
                         "issink"
                     ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
 
+        # TODO remove this later: flag boolean for whether the time availability is implemented by resource switch or vehicle filter
+
+        is_with_resource_switch = True
+
         for process in list_of_processes:
             # Shared template for all processes
             template["processes"][process.name] = {
@@ -526,20 +530,80 @@ class Depot:
             match process.type:
                 case ProcessType.SERVICE:
                     template["processes"][process.name]["typename"] = "Serve"
-                    # if process.availability is not None:
-                    #    template["processes"][process.name]["vehicle_filter"] = {
-                    #        "filter_names": ["in_period"],
-                    #        "period": process.availability,
-                    #    } TODO: Fix availability
 
-                    # Fill in workers_service of resources
-                    service_capacity = sum([x.capacity for x in process.areas])
+                    # TODO test if multiple "in_period" filters work
 
-                    # Fill in the worker_service
-                    template["resources"]["workers_service"] = {
-                        "typename": "DepotResource",
-                        "capacity": service_capacity,
-                    }
+                    if process.availability is not None:
+                        template["processes"][process.name]["ismandatory"] = False
+
+                        # At first only implement a single time interval
+                        process_start = process.availability[0][0]
+                        process_end = process.availability[0][1]
+                        process_start_in_seconds = (
+                            process_start.hour * 3600
+                            + process_start.minute * 60
+                            + process_start.second
+                        )
+                        process_end_in_seconds = (
+                            process_end.hour * 3600
+                            + process_end.minute * 60
+                            + process_end.second
+                        )
+
+                        # TODO implement multiple time intervals later
+                        # for time_interval in process.availability:
+                        #     process_start = time_interval[0]
+                        #     process_end = time_interval[1]
+                        #
+                        #     process_start_in_seconds = (
+                        #         process_start.hour * 3600
+                        #         + process_start.minute * 60
+                        #         + process_start.second
+                        #     )
+                        #     process_end_in_seconds = (
+                        #         process_end.hour * 3600
+                        #         + process_end.minute * 60
+                        #         + process_end.second
+                        #     )
+
+                        if not is_with_resource_switch:
+                            template["processes"][process.name]["vehicle_filter"] = {
+                                "filter_names": ["in_period"],
+                                "period": [
+                                    process_start_in_seconds,
+                                    process_end_in_seconds,
+                                ],
+                            }
+                            # TODO:  In order to fix availability we need timedelta from Process and start of simulation from init_simulation outside
+                        else:
+                            service_capacity = sum([x.capacity for x in process.areas])
+                            template["processes"][process.name][
+                                "required_resources"
+                            ] = ["workers_service"]
+
+                            # Fill in the worker_service
+                            template["resources"]["workers_service"] = {
+                                "typename": "DepotResource",
+                                "capacity": service_capacity,
+                            }
+
+                            # TODO play around with several attributes of resource_switches
+                            # TODO resource switch requires start time > end time. See how we fit this
+
+                            break_start = min(
+                                process_start_in_seconds, process_end_in_seconds
+                            )
+                            break_end = max(
+                                process_start_in_seconds, process_end_in_seconds
+                            )
+
+                            template["resource_switches"]["service_switch"] = {
+                                "resource": "workers_service",
+                                "breaks": [[break_start, break_end]],
+                                "preempt": True,
+                                "strength": "full",
+                                "resume": True,
+                            }
 
                 case ProcessType.CHARGING:
                     template["processes"][process.name]["typename"] = "Charge"
