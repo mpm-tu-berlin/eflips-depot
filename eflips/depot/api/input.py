@@ -3,7 +3,7 @@ import json
 import numbers
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from numbers import Number
 from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
 
@@ -763,7 +763,12 @@ class Process:
     duration: Optional[int] = None
     """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
 
-    # TODO: Availability is not implemented yet
+    # TODO: Availability is not implemented yet. We suggest to use the timedelta object
+
+    availability: Optional[List[Tuple]] = None
+    """If this process is only available at certain times, this is a list representing start and end time of this 
+    process in hour clock each day. Each entry is an integer between 0 and 23. Crossing the midnight is possible. 
+    Currently only supported for daily recurring processes."""
 
     def __post_init__(self):
         """
@@ -778,6 +783,12 @@ class Process:
 
         if self.duration is not None:
             assert isinstance(self.duration, Number) and self.duration >= 0
+
+        if self.availability is not None:
+            assert isinstance(self.availability, list) and len(self.availability) >= 1
+            assert all(isinstance(x, Tuple) for x in self.availability)
+            # TODO rewrite it
+            # assert all(0 <= x <= 23 for x in self.availability)
 
     @property
     def type(self) -> "ProcessType":
