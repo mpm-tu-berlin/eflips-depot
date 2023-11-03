@@ -21,6 +21,7 @@ class TestDepot:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
+            availability=[time(hour=22, minute=45), time(hour=4, minute=35)],
         )
 
         arrival_area = Area(
