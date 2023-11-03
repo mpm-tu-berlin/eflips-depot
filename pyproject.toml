@@ -19,6 +19,7 @@ eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-c
 django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "personal/ludger" }
 seaborn = "^0.12.2"
 tqdm = "^4.66.1"
+coverage = "^7.3.2"
 
 [tool.pytest.ini_options]
 addopts = [
