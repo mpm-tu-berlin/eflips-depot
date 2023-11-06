@@ -27,22 +27,32 @@ class TestApi:
         # Create an arrival cleaning process
         # Generate random time stamps for availability for testing purposes
 
-        # random.seed()
-        # random.getstate()
-        # time_stamps = []
-        # for i in range(2):
-        #     time_stamps.append(
-        #         (
-        #             time(
-        #                 hour=random.randint(0, 23),
-        #                 minute=random.randint(0, 59),
-        #                 second=random.randint(0, 59),
-        #             )
-        #         )
-        #     )
+        random.seed()
+        random.getstate()
+        time_stamps = []
+        for i in range(4):
+            time_stamps.append(
+                (
+                    time(
+                        hour=random.randint(0, 23),
+                        minute=random.randint(0, 59),
+                        second=random.randint(0, 59),
+                    )
+                )
+            )
 
-        time_stamps = [time(hour=18), time(hour=22)]
-        print(time_stamps)
+        # first try 4 stamps and then add the numbers
+
+        # At first sorting the test list then add more possibilities
+
+        time_stamps.sort()
+
+        list_of_availability = [
+            (time_stamps[0], time_stamps[1]),
+            (time_stamps[2], time_stamps[3]),
+        ]
+
+        print(list_of_availability)
 
         arrival_cleaning = Process(
             id=1,
@@ -51,7 +61,7 @@ class TestApi:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
-            availability=[(time_stamps[0], time_stamps[1])],
+            availability=list_of_availability,
         )
 
         arrival_area = Area(
@@ -353,7 +363,6 @@ class TestApi:
         depot_evaluation.path_results = str(tmp_path)
 
         depot_evaluation.vehicle_periods(
-            # TODO re-write process names to plot
             periods={
                 "depot general": "darkgray",
                 "park": "lightgray",

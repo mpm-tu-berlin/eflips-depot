@@ -1,5 +1,6 @@
 import copy
 from datetime import time
+import random
 
 import pytest
 
@@ -21,7 +22,7 @@ class TestDepot:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
-            availability=[time(hour=22, minute=45), time(hour=4, minute=35)],
+            availability=[(time(hour=22, minute=45), time(hour=4, minute=35))],
         )
 
         arrival_area = Area(
@@ -290,7 +291,6 @@ class TestDepot:
             template_dict["groups"][parking_group_name]["typename"]
             == "ParkingAreaGroup"
         )
-        # TODO check if locations are correct in thie
 
         # Check processes
         for process_name, process_dict in template_dict["processes"].items():
@@ -330,10 +330,6 @@ class TestDepot:
 
             if process_dict["typename"] == "Serve":
                 assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
-
-                # assert isinstance(process_dict["vehicle_filter"]["filter_names"], list)
-                if "in_period" in process_dict:
-                    assert isinstance(process_dict["in_period"], list)
 
             if process_dict["typename"] == "Precondition":
                 assert isinstance(process_dict["dur"], int) and process_dict["dur"] >= 0
@@ -525,3 +521,55 @@ class TestProcessAndPlan:
         """The plan class needs just one test."""
         plan = Plan(id=42, processes=[process])
         assert isinstance(plan, Plan)
+
+    @pytest.fixture
+    def process_with_random_time_availability(self):
+        """Generatea process with random time availability."""
+
+        random.seed()
+        random.getstate()
+        time_stamps = []
+        for i in range(4):
+            time_stamps.append(
+                (
+                    time(
+                        hour=random.randint(0, 23),
+                        minute=random.randint(0, 59),
+                        second=random.randint(0, 59),
+                    )
+                )
+            )
+
+        # first try 4 stamps and then add the numbers
+
+        # At first sorting the test list then add more possibliities
+
+        time_stamps.sort()
+
+        list_of_availability = [
+            (time_stamps[0], time_stamps[1]),
+            (time_stamps[2], time_stamps[3]),
+        ]
+
+        print(list_of_availability)
+
+        arrival_cleaning = Process(
+            id=1,
+            name="Arrival Cleaning",
+            dispatchable=False,
+            areas=[],  # Connect the areas later
+            duration=4800,
+            electric_power=None,
+            availability=list_of_availability,
+        )
+
+        return arrival_cleaning
+
+    def test_generating_break_list(self, process_with_random_time_availability):
+        process_with_random_time_availability._generate_break_intervals()
+
+        print(process_with_random_time_availability._generate_break_intervals())
+
+        assert isinstance(
+            process_with_random_time_availability._generate_break_intervals(), list
+        )
