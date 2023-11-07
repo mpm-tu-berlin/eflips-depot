@@ -528,8 +528,10 @@ class TestProcessAndPlan:
 
         random.seed()
         random.getstate()
+
+        num_interval = random.randint(1, 3)
         time_stamps = []
-        for i in range(4):
+        for i in range(num_interval):
             time_stamps.append(
                 (
                     time(
@@ -540,18 +542,22 @@ class TestProcessAndPlan:
                 )
             )
 
-        # first try 4 stamps and then add the numbers
+            time_stamps.append(
+                (
+                    time(
+                        hour=random.randint(0, 23),
+                        minute=random.randint(0, 59),
+                        second=random.randint(0, 59),
+                    )
+                )
+            )
 
-        # At first sorting the test list then add more possibliities
-
+        # In this test, sort the list to make sure there is no overlap for time intervals
         time_stamps.sort()
 
-        list_of_availability = [
-            (time_stamps[0], time_stamps[1]),
-            (time_stamps[2], time_stamps[3]),
-        ]
-
-        print(list_of_availability)
+        list_of_availability = []
+        for i in range(0, num_interval, 2):
+            list_of_availability.append((time_stamps[i], time_stamps[i + 1]))
 
         arrival_cleaning = Process(
             id=1,
@@ -567,8 +573,6 @@ class TestProcessAndPlan:
 
     def test_generating_break_list(self, process_with_random_time_availability):
         process_with_random_time_availability._generate_break_intervals()
-
-        print(process_with_random_time_availability._generate_break_intervals())
 
         assert isinstance(
             process_with_random_time_availability._generate_break_intervals(), list

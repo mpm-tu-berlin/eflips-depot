@@ -543,9 +543,6 @@ class Depot:
                     }
 
                     if process.availability is not None:
-                        # At first only implement a single time interval
-                        list_of_breaks = []
-
                         template["resource_switches"]["service_switch"] = {
                             "resource": "workers_service",
                             "breaks": [],
@@ -553,18 +550,16 @@ class Depot:
                             if process.preemptable is not None
                             else True,
                             "strength": "full",
-                            "resume": process.resumable
-                            if process.resumable is not None
-                            else True,
+                            "resume": True,
                             # TODO test priority, finish implementation if it works TODO: ask enrico about how
-                            #  priority works and what are the differences between each priority value between -3 and 3
+                            # priority works and what are the differences between each priority value between -3 and 3
                             "priority": -3,
                         }
 
                         list_of_breaks = process._generate_break_intervals()
                         list_of_breaks_in_seconds = []
 
-                        # Coverting the time intervals into seconds
+                        # Converting the time intervals into seconds
 
                         for time_interval in list_of_breaks:
                             start_time = time_interval[0]
@@ -584,34 +579,6 @@ class Depot:
                             list_of_breaks_in_seconds.append(
                                 (start_time_in_seconds, end_time_in_seconds)
                             )
-
-                        # for time_interval in process.availability:
-                        #     process_start = time_interval[0]
-                        #     process_end = time_interval[1]
-                        #     process_start_in_seconds = (
-                        #         process_start.hour * 3600
-                        #         + process_start.minute * 60
-                        #         + process_start.second
-                        #     )
-                        #
-                        #     process_end_in_seconds = (
-                        #         process_end.hour * 3600
-                        #         + process_end.minute * 60
-                        #         + process_end.second
-                        #     )
-                        #
-                        #     # No cross midnight
-                        #     if process_start_in_seconds < process_end_in_seconds:
-                        #         list_of_breaks.append([0, process_start_in_seconds])
-                        #         list_of_breaks.append(
-                        #             [process_end_in_seconds, 24 * 3600]
-                        #         )
-                        #
-                        #     # Cross midnight
-                        #     else:
-                        #         list_of_breaks.append(
-                        #             [process_end_in_seconds, process_start_in_seconds]
-                        #         )
 
                         template["resource_switches"]["service_switch"][
                             "breaks"
@@ -774,24 +741,15 @@ class Process:
     duration: Optional[int] = None
     """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
 
-    # TODO: Availability is not implemented yet. We suggest to use the timedelta object
-
     availability: Optional[List[Tuple]] = None
-    """If this process is only available at certain time intervals, this list of tuples represents start and end times 
-    of this process. Each tuple must be a pair of datetime.time objects. If start time is later than end time, 
-    it represents this time interval passing the midnight. For now it is daily repeated."""
-    # TODO: finish this docstring by determining:
-    # - whether the availability must only be daily repeated
-
-    # - how several time intervals are handled
+    """If this process is only available at certain time intervals, this list of tuples represents start and end 
+    times of this process. Each tuple must be a pair of datetime.time objects. If start time is later than end time, 
+    it represents this time interval passing the midnight. Multiple time intervals without overlapping is supported. 
+    For now it is daily repeated."""
 
     preemptable: Optional[bool] = None
     """If this process can be strictly interrupted when a break begins, this indicator should be set to True. It 
     should be None if availability is None. Set to True by default."""
-
-    resumable: Optional[bool] = None
-    """If this process can be resumed when a break ends, this indicator should be set to True. It should be None if 
-    availability is None. Set to True by default."""
 
     def __post_init__(self):
         """
@@ -818,7 +776,7 @@ class Process:
 
         if self.availability is None:
             assert self.preemptable is None
-            assert self.resumable is None
+            # assert self.resumable is None
 
     def _generate_break_intervals(self) -> List[Tuple]:
         """
@@ -834,10 +792,10 @@ class Process:
             if availability_interval[0] > availability_interval[1]:
                 self.availability.remove(availability_interval)
                 self.availability.append(
-                    time(hour=0, minute=0, second=0), availability_interval[1]
+                    (time(hour=0, minute=0, second=0), availability_interval[1])
                 )
                 self.availability.append(
-                    availability_interval[0], time(hour=23, minute=59, second=59)
+                    (availability_interval[0], time(hour=23, minute=59, second=59))
                 )
 
         # sort the availability by start time
@@ -849,7 +807,7 @@ class Process:
             if self.availability[idx][1] > self.availability[idx + 1][0]:
                 raise ValueError("Overlapping intervals in availability")
 
-        # generate break intervals excpet start and end time stamps
+        # generate break intervals except start and end time stamps
         list_of_breaks = []
         for idx in range(len(self.availability) - 1):
             current_interval = (
