@@ -549,10 +549,11 @@ class Depot:
                             "preempt": process.preemptable
                             if process.preemptable is not None
                             else True,
+                            # Strength 'full' means all workers can take a break at the same time
                             "strength": "full",
+                            # Resume set to True means that the process will continue after the break
                             "resume": True,
-                            # TODO test priority, finish implementation if it works TODO: ask enrico about how
-                            # priority works and what are the differences between each priority value between -3 and 3
+                            # Priority -3 means this process has the highest priority
                             "priority": -3,
                         }
 
@@ -745,7 +746,7 @@ class Process:
     """If this process is only available at certain time intervals, this list of tuples represents start and end 
     times of this process. Each tuple must be a pair of datetime.time objects. If start time is later than end time, 
     it represents this time interval passing the midnight. Multiple time intervals without overlapping is supported. 
-    For now it is daily repeated."""
+    For now it is daily repeated and only implemented for ProcessType.SERVICE."""
 
     preemptable: Optional[bool] = None
     """If this process can be strictly interrupted when a break begins, this indicator should be set to True. It 
@@ -772,11 +773,8 @@ class Process:
             # Each tuple must only include one start time and one end time
             assert all(len(x) == 2 for x in self.availability)
 
-            # Overlapping time intervals are not allowed
-
         if self.availability is None:
             assert self.preemptable is None
-            # assert self.resumable is None
 
     def _generate_break_intervals(self) -> List[Tuple]:
         """
