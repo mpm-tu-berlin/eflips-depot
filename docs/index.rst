@@ -6,7 +6,7 @@
 Welcome to eFLIPS-Depot's documentation!
 ========================================
 
-FLIPS has been developed within several research projects at the Department of Methods of Product Development and Mechatronics at the Technische Universität Berlin (see https://www.tu.berlin/mpm/forschung/projekte/eflips).
+eFLIPS has been developed within several research projects at the Department of Methods of Product Development and Mechatronics at the Technische Universität Berlin (see https://www.tu.berlin/mpm/forschung/projekte/eflips).
 
 With eFLIPS, electric fleets and depots can be simulated, planned and designed.
 This repository contains only the planning and design tool for depots.
