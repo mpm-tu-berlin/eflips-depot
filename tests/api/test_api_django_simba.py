@@ -19,8 +19,8 @@ from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
 from ebustoolbox.views import save_and_simulate
 
 from api import djangosettings
-from depot.api import init_simulation, run_simulation
-from depot.api.django_simba.output import to_simba
+from eflips.depot.api import init_simulation, run_simulation
+from eflips.depot.api.django_simba.output import to_simba
 from eflips.depot.api.django_simba.input import VehicleSchedule
 from eflips.depot.api.django_simba.input import VehicleType as EflipsVehicleType
 

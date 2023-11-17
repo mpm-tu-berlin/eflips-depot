@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from depot.api.enums import AreaType, ProcessType
+from eflips.depot.api.enums import AreaType, ProcessType
 from eflips.depot import DepotControl
 from eflips.depot.simple_vehicle import SimpleVehicle, VehicleType as EflipsVehicleType
 from eflips.depot.standalone import SimpleTrip

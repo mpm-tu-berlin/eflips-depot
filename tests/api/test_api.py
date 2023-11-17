@@ -7,8 +7,8 @@ from typing import List
 import pytest
 
 import eflips
-from depot.api.enums import AreaType
-from depot.api.input import Area, Process, Plan
+from eflips.depot.api.enums import AreaType
+from eflips.depot.api.input import Area, Process, Plan
 from eflips.depot import SimulationHost
 from eflips.depot.api import (
     VehicleSchedule,
