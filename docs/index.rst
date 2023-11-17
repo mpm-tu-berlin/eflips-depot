@@ -13,9 +13,17 @@ This repository contains only the planning and design tool for depots.
 
 The repository contains an example for the simulation and planning of an electric bus depot, which is based on the dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/items/f47662f7-c9ae-4fbf-9e9c-bcd307b73aa7).
 
+License
+-------
+
+This project is licensed under the AGPLv3 license - see the
+`LICENSE <LICENSE.md>`__ file for details.
+
+
 
 .. toctree::
    usage
+   development
    :maxdepth: 2
    :caption: Contents:
 
