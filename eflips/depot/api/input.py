@@ -1,11 +1,9 @@
 """Read and pre-process data from database"""
-import json
 import numbers
-import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from numbers import Number
-from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
+from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 
 import numpy as np
 import seaborn as sns
@@ -14,10 +12,9 @@ from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from depot.api.enums import ProcessType, AreaType
+from depot.api.enums import AreaType, ProcessType
 from eflips.depot import DepotControl
-from eflips.depot.simple_vehicle import SimpleVehicle
-from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
+from eflips.depot.simple_vehicle import SimpleVehicle, VehicleType as EflipsVehicleType
 from eflips.depot.standalone import SimpleTrip
 
 
