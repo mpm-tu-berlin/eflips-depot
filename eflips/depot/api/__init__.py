@@ -191,7 +191,7 @@ def init_simulation(
 
     simulation_host.complete()
 
-    return simulation_host
+    return simulation_host, sim_start_stime
 
 
 def _repeat_vehicle_schedules(

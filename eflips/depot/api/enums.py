@@ -30,3 +30,18 @@ class AreaType(Enum):
 
     LINE = auto()
     """A line area where vehicles are parked in a line. There might be one or more rows in the area."""
+
+
+class EventType(Enum):
+    """This class represents the types of an event in eFLIPS-Depot."""
+
+    SERVICE = auto()
+    """This event represents a vehicle service by workers such as cleaning."""
+    CHARGING = auto()
+    """This event represents a vehicle charging process."""
+    STANDBY = auto()
+    """This event represents an arriving vehicle that is waiting for a service."""
+    STANDBY_DEPARTURE = auto()
+    """This event represents a vehicle ready for departure."""
+    PRECONDITION = auto()
+    """This event represents a vehicle preconditioning process."""

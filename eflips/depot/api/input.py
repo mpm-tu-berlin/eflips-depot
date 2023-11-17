@@ -630,7 +630,7 @@ class Area:
     """A unique identifier of this area."""
 
     type: AreaType
-    """The type of the area. See :class:`eflips.depot.api.input.AreaType` for more information."""
+    """The type of the area. See :class:`eflips.depot.api.enums.AreaType` for more information."""
 
     depot: Depot
     """The depot this area belongs to."""
@@ -660,6 +660,8 @@ class Area:
     row_count: Optional[int] = None
     """For a line area, this is the number of rows in the area. It must be an integer greater than 0 that evenly
     divides the capacity of the area."""
+
+    # TODO add sublocation according to different area types?
 
     def __post_init__(self):
         """

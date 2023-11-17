@@ -19,6 +19,9 @@ from eflips.depot.api import (
     run_simulation,
 )
 
+from eflips.depot.api.output import Vehicle as OutputVehicle
+from eflips.depot.api.output import return_vehicle_list
+
 
 class TestApi:
     @pytest.fixture
@@ -318,18 +321,23 @@ class TestApi:
         simulation_host = init_simulation(vehicle_types, vehicle_schedules, None, depot)
 
     def test_run_simulation(self, vehicle_types, vehicle_schedules, depot, tmp_path):
-        simulation_host = init_simulation(vehicle_types, vehicle_schedules, None, depot)
+        simulation_host, sim_start_time = init_simulation(
+            vehicle_types, vehicle_schedules, None, depot
+        )
         depot_evaluation = run_simulation(simulation_host)
 
         vehicle_counts = depot_evaluation.nvehicles_used_calculation()
 
         # Now run the simulation again, with the knowledge of the vehicle counts
-        simulation_host = init_simulation(
+        simulation_host, sim_start_time = init_simulation(
             vehicle_types, vehicle_schedules, vehicle_counts, depot
         )
+
         depot_evaluation = run_simulation(simulation_host)
 
         depot_evaluation.path_results = str(tmp_path)
+
+        vehicle_list = return_vehicle_list(depot_evaluation, sim_start_time)
 
         depot_evaluation.vehicle_periods(
             # periods={
@@ -359,6 +367,8 @@ class TestApi:
             show_total_power=True,
             show_annotates=True,
         )
+
+        depot_evaluation.battery_level("12 1", save=True, show=True)
 
         # Check if the files were created and are not empty
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
