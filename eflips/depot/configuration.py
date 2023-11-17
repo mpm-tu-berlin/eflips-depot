@@ -7,6 +7,11 @@ Created on Thu Sep  7 09:31:54 2017
 Components for the configuration of a depot.
 
 """
+import json
+import os
+from os.path import basename
+from typing import Dict
+
 import eflips
 from eflips.depot.depot import Depot, LineArea, ParkingAreaGroup, SpecificActivityPlan
 from eflips.depot.filters import VehicleFilter
@@ -753,17 +758,29 @@ class DepotConfigurator:
                 del data["vehicle_types_str"]
             return data
 
-    def load(self, filename):
-        """Reset current depot and load a template from a json file.
-        Return (True, None) if successful, otherwise (False, errormsg).
-        *filename* must be suitable for eflips.settings.load_json (including
-        path, excluding extension).
+    def load(self, template: Dict | str):
+        """
+        Load a depot configuration from a template the template may either be a
+        - dict containing the configuration
+        - a string containing a path without extension to a json file
+
+        :param template: dict or str
         """
         self.reset()
 
-        loaded_data = load_json(filename)
-        self.filename_loaded = filename
-        self.templatename = filename.split("\\")[-1]
+        if isinstance(template, str):
+            loaded_data = load_json(template)
+            self.filename_loaded = template
+            self.templatename = template.split("\\")[-1]
+        elif isinstance(template, dict):
+            loaded_data = template
+            self.filename_loaded = "No filename"
+            self.templatename = "Not template name"
+        else:
+            raise TypeError(
+                "template must be a path-like object defining a JSON file or a dict."
+            )
+
         self.templatename_display = loaded_data["templatename_display"]
         self.depot.ID = loaded_data["general"]["depotID"]
         self.depot.depot_control.dispatch_strategy_name = loaded_data["general"][

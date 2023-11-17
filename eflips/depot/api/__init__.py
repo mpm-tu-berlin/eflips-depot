@@ -1,5 +1,5 @@
 """
-This package contains the public API for eFLIPS-Depot. It is split to ways:
+This package contains the public API for eFLIPS-Depot. It is split two ways:
 
 by function
     The methods for setting up and starting a simulation are in the top-level :mod:`eflips.depot.api` module. The data
@@ -16,6 +16,7 @@ by interface
 
 """
 import os
+import warnings
 from datetime import timedelta, datetime
 from math import ceil
 from typing import List, Optional, Dict, Hashable, Tuple
@@ -44,39 +45,42 @@ def init_simulation(
         number of vehicles needed and once to run the simulation with the correct number of vehicles.
     :param depot: A :class:`eflips.depot.api.input.Depot` object. If `None`, a default depot will be created.
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
-    is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
-    time period before and after oru actual simulation, and then only using the "middle". eFLIPS tries to automatically
-    detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is raised and repetition
-    needs to be specified manually.
+        is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
+        time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
+        automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
+        raised and repetition needs to be specified manually.
 
-    :return A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
+    :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
     """
 
     # Clear the eflips settings
     eflips.settings.reset_settings()
 
-    # Check input data
-    _validate_input_data(vehicle_types, vehicle_schedules)
+    path_to_this_file = os.path.dirname(__file__)
 
-    # For this API version, we only support the implicit depot
+    # Step 1: Set up the depot
     if depot is not None:
-        raise NotImplementedError(
-            "Only implicit depot is supported in this API version"
+        depot.validate()
+
+        # Create an eFlips depot
+        depot_dict = depot._to_template()
+        eflips_depot = eflips.depot.Depotinput(
+            filename_template=depot_dict, show_gui=False
         )
     else:
-        path_to_this_file = os.path.dirname(__file__)
+        warnings.warn("Smart default depot not implemented yet")
         path_to_default_depot = os.path.join(
             path_to_this_file, "defaults", "default_depot"
         )
         eflips_depot = eflips.depot.Depotinput(
             filename_template=path_to_default_depot, show_gui=False
         )
-        depot_id = "DEFAULT"
 
-    # Create simulation host
+    depot_id = "DEFAULT"
+
+    # Step 2: eFLIPS initialization
     simulation_host = SimulationHost([eflips_depot], print_timestamps=False)
-
     # Now we do what is done in `standard_setup()` from the old input files
     # Load the settings
     path_to_default_settings = os.path.join(
@@ -84,62 +88,8 @@ def init_simulation(
     )
     eflips.load_settings(path_to_default_settings)
 
-    # We need to calculate roughly how many vehicles we need
-    # We do that by taking the total trips for each vehicle class and creating 1.1 times the number of vehicles
-    # for each vehicle type in the vehicle class
-    all_vehicle_classes = set(
-        [vehicle_schedule.vehicle_class for vehicle_schedule in vehicle_schedules]
-    )
-    vehicle_count = {}
-    for vehicle_class in all_vehicle_classes:
-        trip_count = sum(
-            [
-                1 if vehicle_schedule.vehicle_class == vehicle_class else 0
-                for vehicle_schedule in vehicle_schedules
-            ]
-        )
-        vehicle_types_with_vehicle_class = [
-            vehicle_type
-            for vehicle_type in vehicle_types
-            if vehicle_type.vehicle_class == vehicle_class
-        ]
-        for vehicle_type in vehicle_types_with_vehicle_class:
-            if vehicle_counts is not None and vehicle_type.id in vehicle_counts:
-                vehicle_count[vehicle_type.id] = vehicle_counts[vehicle_type.id]
-            else:
-                vehicle_count[vehicle_type.id] = int(
-                    ceil(trip_count * 1.1 * len(vehicle_types_with_vehicle_class))
-                )
-    # Now we put the vehicle count into the settings
-    eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
-    for vehicle_type, count in vehicle_count.items():
-        eflips.globalConstants["depot"]["vehicle_count"][depot_id][vehicle_type] = count
-
-    # We  need to put the vehicle type objects into the GlobalConstants
-    for vehicle_type in vehicle_types:
-        eflips.globalConstants["depot"]["vehicle_types"][
-            vehicle_type.id
-        ] = vehicle_type._to_global_constants_dict()
-
-    # We need to fill out the substitutable types, which is a list of lists of vehicle type IDs for a vehicle class
-    for vehicle_class in all_vehicle_classes:
-        vehicle_types_with_vehicle_class = [
-            vehicle_type
-            for vehicle_type in vehicle_types
-            if vehicle_type.vehicle_class == vehicle_class
-        ]
-        eflips.globalConstants["depot"]["substitutable_types"].append(
-            [vehicle_type.id for vehicle_type in vehicle_types_with_vehicle_class]
-        )
-
-    # Run the eflips validity checks
-    eflips.depot.settings_config.check_gc_validity()
-
-    # Complete the eflips settings
-    eflips.depot.settings_config.complete_gc()
-
+    # Step 3: Set up the vehicle schedules
     # Turn API VehicleSchedule objects into eFLIPS TimeTable object
-
     # Get correctly repeated vehicle schedules
     # if total duration time is 1 or 2 days, vehicle schedule will be repeated daily
     # if total duration time is 7 or 8 days, vehicle schedule will be repeated weekly
@@ -168,6 +118,7 @@ def init_simulation(
         )
 
     # Now, we need to repeat the vehicle schedules
+
     vehicle_schedules = _repeat_vehicle_schedules(vehicle_schedules, repetition_period)
 
     sim_start_stime, total_duration_seconds = _start_and_end_times(vehicle_schedules)
@@ -177,6 +128,62 @@ def init_simulation(
         vehicle_schedules, simulation_host.env, sim_start_stime
     )
     simulation_host.timetable = timetable
+
+    # Step 4: Set up the vehicle types
+    # We need to calculate roughly how many vehicles we need
+    # We do that by taking the total trips for each vehicle class and creating 100 times the number of vehicles
+    # for each vehicle type in the vehicle class
+    all_vehicle_classes = set(
+        [vehicle_schedule.vehicle_class for vehicle_schedule in vehicle_schedules]
+    )
+    vehicle_count = {}
+    for vehicle_class in all_vehicle_classes:
+        trip_count = sum(
+            [
+                1 if vehicle_schedule.vehicle_class == vehicle_class else 0
+                for vehicle_schedule in vehicle_schedules
+            ]
+        )
+        vehicle_types_with_vehicle_class = [
+            vehicle_type
+            for vehicle_type in vehicle_types
+            if vehicle_type.vehicle_class == vehicle_class
+        ]
+        for vehicle_type in vehicle_types_with_vehicle_class:
+            if vehicle_counts is not None and vehicle_type.id in vehicle_counts:
+                vehicle_count[vehicle_type.id] = vehicle_counts[vehicle_type.id]
+            else:
+                vehicle_count[vehicle_type.id] = int(
+                    ceil(trip_count * 100 * len(vehicle_types_with_vehicle_class))
+                )
+    # Now we put the vehicle count into the settings
+    eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
+    for vehicle_type, count in vehicle_count.items():
+        eflips.globalConstants["depot"]["vehicle_count"][depot_id][vehicle_type] = count
+
+    # We  need to put the vehicle type objects into the GlobalConstants
+    for vehicle_type in vehicle_types:
+        eflips.globalConstants["depot"]["vehicle_types"][
+            vehicle_type.id
+        ] = vehicle_type._to_global_constants_dict()
+
+    # We need to fill out the substitutable types, which is a list of lists of vehicle type IDs for a vehicle class
+    for vehicle_class in all_vehicle_classes:
+        vehicle_types_with_vehicle_class = [
+            vehicle_type
+            for vehicle_type in vehicle_types
+            if vehicle_type.vehicle_class == vehicle_class
+        ]
+        eflips.globalConstants["depot"]["substitutable_types"].append(
+            [vehicle_type.id for vehicle_type in vehicle_types_with_vehicle_class]
+        )
+
+    # Step 5: Final checks and setup
+    # Run the eflips validity checks
+    eflips.depot.settings_config.check_gc_validity()
+
+    # Complete the eflips settings
+    eflips.depot.settings_config.complete_gc()
 
     # Set up the depots
     for dh, di in zip(simulation_host.depot_hosts, simulation_host.to_simulate):

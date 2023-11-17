@@ -16,7 +16,7 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
-django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "personal/ludger" }
+django-simba = {git = "git@github.com:rl-institut/django-simba.git", rev = "personal/ludger"}
 seaborn = "^0.12.2"
 tqdm = "^4.66.1"
 
@@ -33,6 +33,7 @@ sphinx-autoapi = "^3.0.0"
 black = "^23.7.0"
 django-environ = "^0.11.2"
 pre-commit = "^3.4.0"
+coverage = "^7.3.2"
 
 [build-system]
 requires = ["poetry-core"]

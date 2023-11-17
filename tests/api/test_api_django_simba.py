@@ -1,49 +1,28 @@
-import dataclasses
-import os
-from datetime import datetime
-from numbers import Number
-
-from eflips.depot.api import init_simulation, run_simulation
-from eflips.depot.api.django_simba.output import to_simba
-
-import django
+import django  # These four lines need to be at thevery top of the file
 
 django.setup()
 from django.core import management
 
 management.call_command("migrate")
 
+import dataclasses
+import json
+import os
+import pathlib
+from datetime import datetime
+from numbers import Number
+from typing import Callable
 
+import pytest
+from ebustoolbox.models import VehicleClass, Trip, Rotation
+from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
 from ebustoolbox.views import save_and_simulate
 
 from api import djangosettings
+from eflips.depot.api import init_simulation, run_simulation
+from eflips.depot.api.django_simba.output import to_simba
 from eflips.depot.api.django_simba.input import VehicleSchedule
-
-
-import os
-import pathlib
-import uuid
-from decimal import Decimal
-from typing import Callable
-import json
-
-
-import pytest
-
-from ebustoolbox.models import Scenario, VehicleClass, Trip, Rotation
-from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
-
 from eflips.depot.api.django_simba.input import VehicleType as EflipsVehicleType
-
-from ebustoolbox.tasks import (
-    run_ebus_toolbox,
-    get_args,
-    get_schedule_from_args,
-    stations_to_db,
-    vehicles_to_db,
-    schedule_to_db,
-    add_classes_to_vehicle_types,
-)
 
 
 class TestApiDjangoSimba:
@@ -78,16 +57,6 @@ class TestApiDjangoSimba:
         # Do a manual modification of the result file until RLI figures out how to fix it
         with open(eflips_input_path, "r") as f:
             simba_output = json.load(f)
-
-        # TODO: REMOVE THIS LATER. We are modifying the JSON file's contents after loading
-        # Once django-simba fixes their #28, we can remove this
-        for rotation_id, results in simba_output.items():
-            # Make all the "vehicle_type" lists contain only distinct items
-            if isinstance(results["vehicle_type"], list):
-                results["vehicle_type"] = [results["vehicle_type"][0]]
-                results["delta_soc"] = [results["delta_soc"][0]]
-                if results["delta_soc"][0] > 1:
-                    results["delta_soc"][0] = 1.0
 
         with open(eflips_input_path, "w") as f:
             json.dump(simba_output, f)

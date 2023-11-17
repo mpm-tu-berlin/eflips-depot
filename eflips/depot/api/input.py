@@ -2,7 +2,8 @@
 import numbers
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Callable, Hashable, Optional, Dict, List, Union, Tuple, Any
+from numbers import Number
+from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 
 import numpy as np
 import seaborn as sns
@@ -11,7 +12,9 @@ from matplotlib import pyplot as plt
 from tqdm.auto import tqdm
 
 import eflips.depot.standalone
-from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
+from eflips.depot.api.enums import AreaType, ProcessType
+from eflips.depot import DepotControl
+from eflips.depot.simple_vehicle import SimpleVehicle, VehicleType as EflipsVehicleType
 from eflips.depot.standalone import SimpleTrip
 
 
@@ -37,11 +40,12 @@ class VehicleType:
     The charging curve of the vehicle specifies the charging power as a function of the battery state of charge (SoC).
     
     We accept it in four different formats:
+    
     - A function that takes the SoC as a float [0-1] and returns the charging power in kW.
     - A tuple of two lists. The first list contains the SoC values [0-1] and the second list contains the corresponding
-    charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
+      charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
     - A dictionary mapping SoC values [0-1] to charging power values in kW. The resulting function is a piecewise linear
-    interpolation between the points.
+      interpolation between the points.
     - A float. The charging power is constant at this value over the whole SoC range.
     """
 
@@ -73,6 +77,7 @@ class VehicleType:
         """
         This method is called after the object is initialized. It converts the charging curve and the V2G curve into
         functions, if they were provided in a different format.
+
         :return: Nothing
         """
 
@@ -159,6 +164,7 @@ class VehicleType:
         """
         This converts the VehicleType object into a dictionary, which is the input
         format of the eflips.globalConstants object.
+
         :return: A dictionary describing some of the properties of the vehicle type.
         """
 
@@ -308,7 +314,9 @@ class VehicleSchedule:
     def visualize(vehicle_schedules: List["VehicleSchedule"]):
         """
         Helper method to visualize the vehicle schedules.
+
         :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+
         :return: Nothing for now. May return the plot or offer to save it.
         """
 
@@ -316,7 +324,7 @@ class VehicleSchedule:
         vehicle_classes = set(
             [schedule.vehicle_class for schedule in vehicle_schedules]
         )
-        vehicle_classes = sorted(vehicle_classes)
+        vehicle_classes = sorted(list(vehicle_classes))
         palette = sns.color_palette("husl", len(vehicle_classes))
         colors_for_vehicle_classes = dict(zip(vehicle_classes, palette))
 
@@ -348,19 +356,27 @@ class VehicleSchedule:
                         "start": entry.departure,
                         "end": entry.arrival,
                         "color": colors_for_vehicle_classes[entry.vehicle_class],
+                        "type": entry.vehicle_class,
                     }
                 )
 
         # Create the plot
         fig, ax = plt.subplots(figsize=(10, 5))
+        already_labelled = set()
         for row in plot_data:
             for entry in row:
                 ax.broken_barh(
                     [(entry["start"], entry["end"] - entry["start"])],
                     (plot_data.index(row), 1),
                     facecolors=entry["color"],
+                    label=entry["type"]
+                    if entry["type"] not in already_labelled
+                    else None,
                 )
-        plt.savefig("/tmp/a.pdf")
+                already_labelled.add(
+                    entry["type"]
+                )  # Slightly hacky way to make sure that the labels are only added once
+        plt.legend()
         plt.show()
         plt.close()
 
@@ -375,11 +391,12 @@ class VehicleSchedule:
         is the input format of the depot simulation. This Timetable object is part of the "black box" not covered by
         the API documentation.
 
-        :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
-        :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
-        :param start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
+        :param: vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+        :param: env: The simulation environment object. It should be the `env` of the SimulationHost object.
+        :param: start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
             `departure` time of the first of all vehicle schedules, probably midnight of the first day.
-        :return:
+
+        :return: A :class:`eflips.depot.standalone.Timetable` object.
         """
 
         # Sort the vehicle schedules by departure time
@@ -396,9 +413,349 @@ class VehicleSchedule:
         return timetable
 
 
+@dataclass
 class Depot:
-    """
-    This class represents a depot in eFLIPS-Depot. A depot is a place where vehicles can be charged. It is **WIP**.
+    """This class represent a depot in eFLIPS-Depot. A vehicle arrives at a depot, is processed there and leaves the
+    depot again. In eFLIPS-Depot the processes within a depot is simulated"""
+
+    id: Hashable
+    """A unique identifier of this depot."""
+
+    plan: "Plan"
+    """The default plan for this depot, representing a series of processes that are executed for all the 
+    vehicles at the depot, if there are no requirements of specific plans."""
+
+    areas: List["Area"]
+    """This list represents the areas in this depot, where vehicles can take part in processes."""
+
+    name: str | None = None
+    """The name of this depot. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
+
+    plan_override: Optional[Callable[[DepotControl, SimpleVehicle], "Plan"]] = None
+    """A function that takes a :class:`eflips.depot.api.input.DepotControl` object and a
+    :class:`eflips.depot.standalone.SimpleVehicle` object and returns a :class:`eflips.depot.api.input.Plan` object. It
+    will be called at the `assign_plan()` stage when the vehicle arrives at the depot. It can be used to dynamically assign a
+    plan to a vehicle. 
+    
+    **Note**: This function takes the "black box" :class:`eflips.depot.api.input.DepotControl` and 
+    :class:`eflips.depot.standalone.SimpleVehicle` objects as input, as such it is not covered by the API documentation.
     """
 
-    pass
+    def _to_template(self) -> Dict:
+        """
+        Converts the depot to a template for internal use in the simulation.
+
+        :return: A dict that can be consumed by eFLIPS-Depot.
+        """
+
+        # Initialize the template
+        template = {
+            "templatename_display": "",
+            "general": {"depotID": "", "dispatch_strategy_name": ""},
+            "resources": {},
+            "resource_switches": {},
+            "processes": {},
+            "areas": {},
+            "groups": {},
+            "plans": {},
+        }
+
+        # Set up the general information
+        template["templatename_display"] = self.name
+        template["general"]["depotID"] = "DEFAULT"
+        template["general"]["dispatch_strategy_name"] = "SMART"
+
+        # Helper for adding processes to the template
+        list_of_processes = []
+
+        # Get dictionary of each area
+        for area in self.areas:
+            template["areas"][area.name] = {
+                "typename": (
+                    "LineArea" if area.type == AreaType.LINE else "DirectArea"
+                ),
+                # "amount": 2,  # TODO Check how multiple areas work. For now leave it as default
+                "capacity": area.capacity,
+                "available_processes": [
+                    process.name for process in area.available_processes
+                ],
+                "issink": False,
+                "entry_filter": None,
+            }
+
+            # Fill in vehicle_filter. Now this is only a placeholder
+            if area.vehicle_classes is not None:
+                raise NotImplementedError("Vehicle classes are not implemented yet")
+                # in ebustoolbox, which i don't really want
+                template["areas"][area.name]["entry_filter"] = {
+                    "filter_names": ["vehicle_type"],
+                    "vehicle_types": ["SB_DC"],  # TODO: get correct types via database
+                }
+
+            for process in area.available_processes:
+                # Add process into process list
+                list_of_processes.append(
+                    process
+                ) if process not in list_of_processes else None
+
+                # Charging interfaces
+                if process.type == ProcessType.CHARGING:
+                    ci_per_area = []
+                    for i in range(area.capacity):
+                        ID = "ci_" + str(len(template["resources"]))
+                        template["resources"][ID] = {
+                            "typename": "DepotChargingInterface",
+                            "max_power": process.electric_power,
+                        }
+                        ci_per_area.append(ID)
+
+                    template["areas"][area.name]["charging_interfaces"] = ci_per_area
+
+                # Set issink to True for departure areas
+                if process.type == ProcessType.STANDBY_DEPARTURE:
+                    template["areas"][area.name][
+                        "issink"
+                    ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
+
+        for process in list_of_processes:
+            # Shared template for all processes
+            template["processes"][process.name] = {
+                "typename": "",  # Placeholder for initialization
+                "dur": process.duration,
+                # True if this process will be executed for all vehicles. False if there are available vehicle filters
+                "ismandatory": True,
+                "vehicle_filter": {},
+                # True if this process can be interrupted by a dispatch. False if it cannot be interrupted
+                "cancellable_for_dispatch": False,
+            }
+
+            match process.type:
+                case ProcessType.SERVICE:
+                    template["processes"][process.name]["typename"] = "Serve"
+                    # if process.availability is not None:
+                    #    template["processes"][process.name]["vehicle_filter"] = {
+                    #        "filter_names": ["in_period"],
+                    #        "period": process.availability,
+                    #    } TODO: Fix availability
+
+                    # Fill in workers_service of resources
+                    service_capacity = sum([x.capacity for x in process.areas])
+
+                    # Fill in the worker_service
+                    template["resources"]["workers_service"] = {
+                        "typename": "DepotResource",
+                        "capacity": service_capacity,
+                    }
+
+                case ProcessType.CHARGING:
+                    template["processes"][process.name]["typename"] = "Charge"
+                    del template["processes"][process.name]["dur"]
+
+                case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
+                    template["processes"][process.name]["typename"] = "Standby"
+                    template["processes"][process.name]["dur"] = 0
+                    # template["processes"][process.name]["ismandatory"] = True
+
+                case ProcessType.PRECONDITION:
+                    template["processes"][process.name]["typename"] = "Precondition"
+                    template["processes"][process.name]["dur"] = process.duration
+                    template["processes"][process.name][
+                        "power"
+                    ] = process.electric_power
+                case _:
+                    raise ValueError(f"Invalid process type: {process.type.name}")
+
+        # Initialize the default plan
+        template["plans"]["default"] = {
+            "typename": "DefaultActivityPlan",
+            "locations": [],
+        }
+        # Groups
+        for process in self.plan.processes:
+            group_name = str(process.type) + "_group"
+            template["groups"][group_name] = {
+                "typename": "AreaGroup",
+                "stores": [area.name for area in process.areas],
+            }
+            if process.type == ProcessType.STANDBY_DEPARTURE:
+                template["groups"][group_name]["typename"] = "ParkingAreaGroup"
+                template["groups"][group_name]["parking_strategy_name"] = "SMART2"
+
+            # Fill in locations of the plan
+            template["plans"]["default"]["locations"].append(group_name)
+
+        return template
+
+    def validate(self):
+        """
+        This method cehcks for validity of the depot. Specifically
+
+        - it makes sure that all processes in the plan are available in at least one area (*note: plan_override is not checked*)
+        - it makes sure that all areas have at least one process available
+        - it makes sure that (at least) the last process in the plan is dispatchable
+        - it makes sure that the bidirectional links between e.g. areas and processes are set up correctly
+
+        :return: Nothing. Raises an AssertionError if the depot is invalid.
+        """
+        for process in self.plan.processes:
+            assert any(
+                process in area.available_processes for area in self.areas
+            ), "All processes in the plan must be available in at least one area."
+
+        for area in self.areas:
+            assert (
+                len(area.available_processes) > 0
+            ), "All areas must have at least one process available."
+
+        assert self.plan.processes[
+            -1
+        ].dispatchable, "The last process in the plan must be dispatchable."
+
+        for area in self.areas:
+            assert area.depot == self, "The depot of an area must be set correctly."
+            for process in area.available_processes:
+                assert (
+                    process in self.plan.processes
+                ), "All processes in an area must be part of the plan."
+                assert (
+                    area in process.areas
+                ), "All areas in an area must be part of the area."
+
+
+@dataclass
+class Area:
+    """This class represents an area in eFLIPS-Depot, where a vehicle can be processed."""
+
+    id: Hashable
+    """A unique identifier of this area."""
+
+    type: AreaType
+    """The type of the area. See :class:`eflips.depot.api.input.AreaType` for more information."""
+
+    depot: Depot
+    """The depot this area belongs to."""
+
+    capacity: int
+    """The maximum number of vehicles that can be processed in this area at the same time.
+    
+    - For a LINE area, it must be evenly divisible by the row_count
+    - For a DIRECT_ONESIDE area it can be freely chosen
+    - For a DIRECT_TWOSIDE area it must be a multiple of two.
+    """
+
+    available_processes: List["Process"]
+    """This list represents the processes that can be executed in this area."""
+
+    vehicle_classes: List["VehicleClass"] | None = None
+    """
+    This list represents the vehicle classes that can be allowed to enter this area. This will also be used
+    for size calculation. The sizing of the area will make sure it fits the largest vehicle type in all vehicle classes.
+    If this is `None`, then all vehicle classes are allowed. The sizing will be done based on the largest vehicle type in
+    the database.
+    """
+
+    name: str | None = None
+    """The name of this area. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
+
+    row_count: Optional[int] = None
+    """For a line area, this is the number of rows in the area. It must be an integer greater than 0 that evenly
+    divides the capacity of the area."""
+
+    def __post_init__(self):
+        """
+        This method is called after the object is initialized. It makes sure that the capacity is valid for the given
+        area type
+
+        :return: Nothing
+        """
+
+        match self.type:
+            case AreaType.DIRECT_ONESIDE:
+                assert self.capacity > 0
+            case AreaType.DIRECT_TWOSIDE:
+                assert self.capacity > 0 and self.capacity % 2 == 0
+            case AreaType.LINE:
+                assert (
+                    (self.capacity > 0 and self.row_count is not None)
+                    and (self.row_count > 0)
+                    and (self.capacity % self.row_count == 0)
+                )
+
+
+@dataclass
+class Process:
+    """This class represents a process in eFLIPS-Depot, which is the possible actions for a vehicle in a depot."""
+
+    id: Hashable
+    """The unique identifier of this process."""
+
+    dispatchable: bool
+    """
+    Whether the bus can be dispatched (assigned to a line or a service) during this process. If it is not, then the 
+    process must be completed before the vehicle can be dispatched. At least the last process in a plan must be 
+    dispatchable.
+    """
+
+    areas: List[Area]
+    """This list represents the areas where this process can be executed."""
+
+    name: str | None = None
+    """The name of this process. It is a human-readable string that will be returned in the output of eFLIPS-Depot."""
+
+    electric_power: Optional[float] = None
+    """If this process requires power, this is the power in kW that is required. It must be a positive float."""
+
+    duration: Optional[int] = None
+    """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
+
+    # TODO: Availability is not implemented yet
+
+    def __post_init__(self):
+        """
+        After initializing a class, we need to check that the duration and charging power are valid and
+        correspond to the process type.
+
+        :return: Nothing
+        """
+
+        if self.electric_power is not None:
+            assert isinstance(self.electric_power, Number) and self.electric_power > 0.0
+
+        if self.duration is not None:
+            assert isinstance(self.duration, Number) and self.duration >= 0
+
+    @property
+    def type(self) -> "ProcessType":
+        """
+        The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
+        a process needs a resource or not depends on the type of the process.
+        """
+        if self.duration is not None and self.electric_power is None:
+            return ProcessType.SERVICE
+        elif self.duration is None and self.electric_power is not None:
+            return ProcessType.CHARGING
+        elif self.duration is not None and self.electric_power is not None:
+            return ProcessType.PRECONDITION
+        elif self.duration is None and self.electric_power is None:
+            if self.dispatchable:
+                return ProcessType.STANDBY_DEPARTURE
+            else:
+                return ProcessType.STANDBY
+        else:
+            raise ValueError("Invalid process type")
+
+    def _validate(self):
+        # TODO see if we need to add a validate method
+        pass
+
+
+@dataclass
+class Plan:
+    """This class represents a plan in eFLIPS-Depot. A plan is a series of processes, where a vehicle must be
+    processed in this exact order."""
+
+    id: Hashable
+    """A unique identifier of this plan."""
+
+    processes: List[Process]
+    """This list represents the processes that are executed in order for the vehicles belonging to this plan."""
