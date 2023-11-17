@@ -386,11 +386,12 @@ class VehicleSchedule:
         is the input format of the depot simulation. This Timetable object is part of the "black box" not covered by
         the API documentation.
 
-        :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
-        :param env: The simulation environment object. It should be the `env` of the SimulationHost object.
-        :param start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
+        :param: vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+        :param: env: The simulation environment object. It should be the `env` of the SimulationHost object.
+        :param: start_of_simulation The datetime that will be used as "zero" for the simulation. It should be before the
             `departure` time of the first of all vehicle schedules, probably midnight of the first day.
-        :return:
+
+        :return: A :class:`eflips.depot.standalone.Timetable` object.
         """
 
         # Sort the vehicle schedules by departure time

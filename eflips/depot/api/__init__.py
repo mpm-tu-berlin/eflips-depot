@@ -45,10 +45,10 @@ def init_simulation(
         number of vehicles needed and once to run the simulation with the correct number of vehicles.
     :param depot: A :class:`eflips.depot.api.input.Depot` object. If `None`, a default depot will be created.
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
-    is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
-    time period before and after oru actual simulation, and then only using the "middle". eFLIPS tries to automatically
-    detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is raised and repetition
-    needs to be specified manually.
+        is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
+        time period before and after oru actual simulation, and then only using the "middle". eFLIPS tries to
+        automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
+        raised and repetition needs to be specified manually.
 
     :return A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
