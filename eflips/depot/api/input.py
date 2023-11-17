@@ -40,11 +40,12 @@ class VehicleType:
     The charging curve of the vehicle specifies the charging power as a function of the battery state of charge (SoC).
     
     We accept it in four different formats:
+    
     - A function that takes the SoC as a float [0-1] and returns the charging power in kW.
     - A tuple of two lists. The first list contains the SoC values [0-1] and the second list contains the corresponding
-    charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
+      charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
     - A dictionary mapping SoC values [0-1] to charging power values in kW. The resulting function is a piecewise linear
-    interpolation between the points.
+      interpolation between the points.
     - A float. The charging power is constant at this value over the whole SoC range.
     """
 
@@ -76,6 +77,7 @@ class VehicleType:
         """
         This method is called after the object is initialized. It converts the charging curve and the V2G curve into
         functions, if they were provided in a different format.
+
         :return: Nothing
         """
 
@@ -162,6 +164,7 @@ class VehicleType:
         """
         This converts the VehicleType object into a dictionary, which is the input
         format of the eflips.globalConstants object.
+
         :return: A dictionary describing some of the properties of the vehicle type.
         """
 
@@ -311,7 +314,9 @@ class VehicleSchedule:
     def visualize(vehicle_schedules: List["VehicleSchedule"]):
         """
         Helper method to visualize the vehicle schedules.
+
         :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
+
         :return: Nothing for now. May return the plot or offer to save it.
         """
 
@@ -429,15 +434,18 @@ class Depot:
     plan_override: Optional[Callable[[DepotControl, SimpleVehicle], "Plan"]] = None
     """A function that takes a :class:`eflips.depot.api.input.DepotControl` object and a
     :class:`eflips.depot.standalone.SimpleVehicle` object and returns a :class:`eflips.depot.api.input.Plan` object. It
-    will be called at the assign_plan when the vehicle arrives at the depot. It can be used to dynamically assign a
-    plan to a vehicle. **Note**: This function takes the "black box" :class:`eflips.depot.api.input.DepotControl` and 
+    will be called at the `assign_plan()` stage when the vehicle arrives at the depot. It can be used to dynamically assign a
+    plan to a vehicle. 
+    
+    **Note**: This function takes the "black box" :class:`eflips.depot.api.input.DepotControl` and 
     :class:`eflips.depot.standalone.SimpleVehicle` objects as input, as such it is not covered by the API documentation.
     """
 
     def _to_template(self) -> Dict:
         """
-        Converts the depot to a template
-        :return:
+        Converts the depot to a template for internal use in the simulation.
+
+        :return: A dict that can be consumed by eFLIPS-Depot.
         """
 
         # Initialize the template
@@ -581,6 +589,7 @@ class Depot:
     def validate(self):
         """
         This method cehcks for validity of the depot. Specifically
+
         - it makes sure that all processes in the plan are available in at least one area (*note: plan_override is not checked*)
         - it makes sure that all areas have at least one process available
         - it makes sure that (at least) the last process in the plan is dispatchable
@@ -628,6 +637,7 @@ class Area:
 
     capacity: int
     """The maximum number of vehicles that can be processed in this area at the same time.
+    
     - For a LINE area, it must be evenly divisible by the row_count
     - For a DIRECT_ONESIDE area it can be freely chosen
     - For a DIRECT_TWOSIDE area it must be a multiple of two.
@@ -655,6 +665,7 @@ class Area:
         """
         This method is called after the object is initialized. It makes sure that the capacity is valid for the given
         area type
+
         :return: Nothing
         """
 
