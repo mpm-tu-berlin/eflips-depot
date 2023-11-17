@@ -45,10 +45,6 @@ jobs:
           sudo apt-get install gdal-bin
           echo ogrinfo --version
 
-      # TODO benötigen wir Django und Chrom?
-      #- name: setup-chromedriver
-      #  uses: nanasess/setup-chromedriver@v2.2.0
-
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v3
         with:
@@ -85,20 +81,20 @@ jobs:
           # patterns to process.
           # See @actions/glob for supported patterns.
           path: test-results.xml
-      
+
           # Add a summary of the results at the top of the report
           # Default: true
           summary: true
-      
+
           # Select which results should be included in the report.
           # Follows the same syntax as
           # `pytest -r`
           # Default: fEX
           display-options: fEX
-      
+
           # Fail the workflow if no JUnit XML was found.
           # Default: true
           fail-on-empty: true
-      
-      
-      
+
+
+
