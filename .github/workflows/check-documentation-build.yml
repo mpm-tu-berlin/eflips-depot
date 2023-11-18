@@ -9,7 +9,7 @@ env:
 
 
 jobs:
-  build:
+  build-documentation:
 
     runs-on: ubuntu-latest
 
@@ -31,52 +31,10 @@ jobs:
         run: |
           poetry install --no-root --only dev
 
-      # Note: basically it would be easier to just use the -W flag in the sphinx-build command, but this seems not to work in GH Actions for some reason.
-      # Compile the sphinx doc. If no errors arise, this will result in a green "succeed" mark in GH Actions
-      # If warnings come up, they are put in the "warnings_on_build_XXX.txt" file
+      # Use the -W flag in the sphinx-build command to treat warnings as errors.
+      # Compile the sphinx doc. If no errors or warnings arise, this will result in a green "succeed" mark in GH Actions
+      # Otherwise, GH Action will fail.
       - name: Compile Sphinx Documentation (Check for errors)
         run: |
           cd docs/
           poetry run sphinx-build -b html . _build -W -a
-          
-      #-w "warnings_on_build_XXX.txt" -a
-
-      # This is not working as the Warnings txt from sphinx-build is always created (if no warnings, its just empty.)
-      # Show the warnings in the GH Actions
-      # - name: Check for Warnings and return fail on this GH Action, if any
-      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-      #  run: |
-      #    echo "Some warnings exists"
-      #    echo "::warning title=Warnungen existieren::sphinx_build liefert Warnungen zurück..."
-      #    exit 1
-
-        #echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
-
-      #- name: Read docs/warnings_on_build_XXX.txt
-      #  id: package
-      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-      #  uses: jaywcjlove/github-action-read-file@main
-      #  with:
-      #    path: docs/warnings_on_build_XXX.txt
-
-      #- name: docs/warnings_on_build_XXX.txt
-      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-      #  run: echo "${{ steps.package.outputs.content }}"
-
-      #- name: Read file contents
-      #  id: read_file
-      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-      #  uses: andstor/file-reader-action@v1
-       # with:
-       #   path: "docs/warnings_on_build_XXX.txt"
-
-      #- name: File contents
-      #  run: echo "${ steps.read_file.outputs.contents }"
-          
-
-      #- name: Display the warnings
-      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-      #  run:
-      #    echo ${{ steps.check_warnings.outputs.warnings }}
-      #    # while read -r line; do echo "::warning title=Sphinx Warning::$line"; done < docs/warnings_on_build_XXX.txt
-
