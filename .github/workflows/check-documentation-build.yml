@@ -41,17 +41,27 @@ jobs:
 
       # Show the warnings in the GH Actions
       - name: Check for Warnings and store them temporary, if any
-        id: check_warnings
         if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
         run: |
           echo "Some warnings exists"
           echo "::warning title=Warnungen existieren::sphinx_build liefert warnungen zurück..."
-          echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
+        #echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
+
+      - name: Read docs/warnings_on_build_XXX.txt
+        id: package
+        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+        uses: jaywcjlove/github-action-read-file@main
+        with:
+          path: docs/warnings_on_build_XXX.txt
+
+      - name: docs/warnings_on_build_XXX.txt
+        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+        run: echo "${{ steps.package.outputs.content }}"
           
 
-      - name: Display the warnings
-        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        run:
-          echo ${{ steps.check_warnings.outputs.warnings }}
-          # while read -r line; do echo "::warning title=Sphinx Warning::$line"; done < docs/warnings_on_build_XXX.txt
+      #- name: Display the warnings
+      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+      #  run:
+      #    echo ${{ steps.check_warnings.outputs.warnings }}
+      #    # while read -r line; do echo "::warning title=Sphinx Warning::$line"; done < docs/warnings_on_build_XXX.txt
 
