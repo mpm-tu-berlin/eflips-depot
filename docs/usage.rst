@@ -4,6 +4,9 @@ Usage
 Installation
 ------------
 
+*fefef
+efef
+
 1. Clone this git repository (or `download a specific
    release <https://github.com/mpm-tu-berlin/eflips-depot/releases>`__)
 
