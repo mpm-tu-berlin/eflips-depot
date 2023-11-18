@@ -57,6 +57,16 @@ jobs:
       - name: docs/warnings_on_build_XXX.txt
         if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
         run: echo "${{ steps.package.outputs.content }}"
+
+      - name: Read file contents
+        id: read_file
+        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+        uses: andstor/file-reader-action@v1
+        with:
+          path: "docs/warnings_on_build_XXX.txt"
+
+      - name: File contents
+        run: echo "${ steps.read_file.outputs.contents }"
           
 
       #- name: Display the warnings
