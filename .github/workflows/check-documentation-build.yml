@@ -31,7 +31,8 @@ jobs:
         run: |
           poetry install --no-root --only dev
 
+      # Note: added the -W option to sphinx-build to make this GH Action also fail on warnings (in contrast to the code in the eflips-depot readme)
       - name: Compile Sphinx Documentation
         run: |
           cd docs/
-          poetry run sphinx-build -b html . _build
+          poetry run sphinx-build -W -b html . _build
