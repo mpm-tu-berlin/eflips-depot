@@ -37,15 +37,18 @@ jobs:
       - name: Compile Sphinx Documentation (Check for errors)
         run: |
           cd docs/
-          poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt" -a
+          poetry run sphinx-build -b html . _build -W -a
+          
+      #-w "warnings_on_build_XXX.txt" -a
 
+      # This is not working as the Warnings txt from sphinx-build is always created (if no warnings, its just empty.)
       # Show the warnings in the GH Actions
-      - name: Check for Warnings and return fail on this GH Action, if any
-        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        run: |
-          echo "Some warnings exists"
-          echo "::warning title=Warnungen existieren::sphinx_build liefert Warnungen zurück..."
-          exit 1
+      # - name: Check for Warnings and return fail on this GH Action, if any
+      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+      #  run: |
+      #    echo "Some warnings exists"
+      #    echo "::warning title=Warnungen existieren::sphinx_build liefert Warnungen zurück..."
+      #    exit 1
 
         #echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
 
