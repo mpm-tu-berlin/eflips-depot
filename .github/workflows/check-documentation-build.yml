@@ -40,10 +40,18 @@ jobs:
           poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt"
 
       # Show the warnings in the GH Actions
-      - name: Display warnings, if any
+      - name: Check for Warnings and store them temporary, if any
+        id: check_warnings
         if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
         run: |
           echo "Some warnings exists"
           echo "::warning title=Warnungen existieren::sphinx_build liefert warnungen zurück..."
-          while read -r line; do echo "::warning title=Sphinx Warning::$line"; done < docs/warnings_on_build_XXX.txt
+          echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
+          
+
+      - name: Display the warnings
+        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+        run:
+          echo ${{ steps.check_warnings.outputs.warnings }}
+          # while read -r line; do echo "::warning title=Sphinx Warning::$line"; done < docs/warnings_on_build_XXX.txt
 
