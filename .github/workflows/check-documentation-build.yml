@@ -34,18 +34,19 @@ jobs:
       # Note: basically it would be easier to just use the -W flag in the sphinx-build command, but this seems not to work in GH Actions for some reason.
       # Compile the sphinx doc. If no errors arise, this will result in a green "succeed" mark in GH Actions
       # If warnings come up, they are put in the "warnings_on_build_XXX.txt" file
-      - name: Compile Sphinx Documentation
+      - name: Compile Sphinx Documentation (Check for errors)
         run: |
           cd docs/
           poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt"
 
       # Show the warnings in the GH Actions
-      - name: Check for Warnings and store them temporary, if any
+      - name: Check for Warnings and return fail on this GH Action, if any
         if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
         run: |
           echo "Some warnings exists"
-          echo "::warning title=Warnungen existieren::sphinx_build liefert warnungen zurück..."
-          echo docs/warnings_on_build_XXX.txt
+          echo "::warning title=Warnungen existieren::sphinx_build liefert Warnungen zurück..."
+          exit 1
+
         #echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
 
       #- name: Read docs/warnings_on_build_XXX.txt
