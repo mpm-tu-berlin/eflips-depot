@@ -41,5 +41,5 @@ jobs:
 
       # Show the warnings in the GH Actions
       - name: Display warnings, if any
-        if: ${{ hashFiles('warnings_on_build_XXX.txt') != '' }}
+        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
         run: echo "Some warnings exists"
