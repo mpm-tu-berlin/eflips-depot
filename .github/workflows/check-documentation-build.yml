@@ -37,7 +37,7 @@ jobs:
       - name: Compile Sphinx Documentation (Check for errors)
         run: |
           cd docs/
-          poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt"
+          poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt" -a
 
       # Show the warnings in the GH Actions
       - name: Check for Warnings and return fail on this GH Action, if any
