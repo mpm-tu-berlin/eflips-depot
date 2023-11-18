@@ -45,28 +45,29 @@ jobs:
         run: |
           echo "Some warnings exists"
           echo "::warning title=Warnungen existieren::sphinx_build liefert warnungen zurück..."
+          echo docs/warnings_on_build_XXX.txt
         #echo "::set-output name=warnings::$(cat docs/warnings_on_build_XXX.txt)"
 
-      - name: Read docs/warnings_on_build_XXX.txt
-        id: package
-        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        uses: jaywcjlove/github-action-read-file@main
-        with:
-          path: docs/warnings_on_build_XXX.txt
+      #- name: Read docs/warnings_on_build_XXX.txt
+      #  id: package
+      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+      #  uses: jaywcjlove/github-action-read-file@main
+      #  with:
+      #    path: docs/warnings_on_build_XXX.txt
 
-      - name: docs/warnings_on_build_XXX.txt
-        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        run: echo "${{ steps.package.outputs.content }}"
+      #- name: docs/warnings_on_build_XXX.txt
+      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+      #  run: echo "${{ steps.package.outputs.content }}"
 
-      - name: Read file contents
-        id: read_file
-        if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        uses: andstor/file-reader-action@v1
-        with:
-          path: "docs/warnings_on_build_XXX.txt"
+      #- name: Read file contents
+      #  id: read_file
+      #  if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
+      #  uses: andstor/file-reader-action@v1
+       # with:
+       #   path: "docs/warnings_on_build_XXX.txt"
 
-      - name: File contents
-        run: echo "${ steps.read_file.outputs.contents }"
+      #- name: File contents
+      #  run: echo "${ steps.read_file.outputs.contents }"
           
 
       #- name: Display the warnings
