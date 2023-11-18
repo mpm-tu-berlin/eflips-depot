@@ -34,4 +34,4 @@ jobs:
       - name: Compile Sphinx Documentation
         run: |
           cd docs/
-          sphinx-build -b html . _build
+          poetry run sphinx-build -b html . _build
