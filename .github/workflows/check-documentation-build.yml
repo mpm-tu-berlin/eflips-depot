@@ -42,4 +42,8 @@ jobs:
       # Show the warnings in the GH Actions
       - name: Display warnings, if any
         if: ${{ hashFiles('docs/warnings_on_build_XXX.txt') != '' }}
-        run: echo "Some warnings exists"
+        run: |
+          echo "Some warnings exists"
+          echo "::warning title=Warnungen existieren::sphinx_build liefert warnungen zurück..."
+          while read -r line; do echo ""::warning title=Sphinx Warning::$line""; done < docs/warnings_on_build_XXX.txt
+
