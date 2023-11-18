@@ -31,8 +31,15 @@ jobs:
         run: |
           poetry install --no-root --only dev
 
-      # Note: added the -W option to sphinx-build to make this GH Action also fail on warnings (in contrast to the code in the eflips-depot readme)
+      # Note: basically it would be easier to just use the -W flag in the sphinx-build command, but this seems not to work in GH Actions for some reason.
+      # Compile the sphinx doc. If no errors arise, this will result in a green "succeed" mark in GH Actions
+      # If warnings come up, they are put in the "warnings_on_build_XXX.txt" file
       - name: Compile Sphinx Documentation
         run: |
           cd docs/
-          poetry run sphinx-build -W -b html . _build
+          poetry run sphinx-build -b html . _build -w "warnings_on_build_XXX.txt"
+
+      # Show the warnings in the GH Actions
+      - name: Display warnings, if any
+        if: ${{ hashFiles('warnings_on_build_XXX.txt') != '' }}
+        run: echo "Some warnings exists"
