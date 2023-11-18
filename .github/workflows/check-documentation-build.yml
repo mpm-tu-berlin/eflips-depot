@@ -1,6 +1,6 @@
 name: Check Documentation on Pull Request
 
-on: [push]
+on: [pull_request]
 
 env:
   PYTHON_VERSION: "3.11"
