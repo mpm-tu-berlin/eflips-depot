@@ -19,8 +19,8 @@ from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType
 from ebustoolbox.views import save_and_simulate
 
 from api import djangosettings
-from depot.api import init_simulation, run_simulation
-from depot.api.django_simba.output import to_simba
+from eflips.depot.api import init_simulation, run_simulation
+from eflips.depot.api.django_simba.output import to_simba
 from eflips.depot.api.django_simba.input import VehicleSchedule
 from eflips.depot.api.django_simba.input import VehicleType as EflipsVehicleType
 
@@ -57,16 +57,6 @@ class TestApiDjangoSimba:
         # Do a manual modification of the result file until RLI figures out how to fix it
         with open(eflips_input_path, "r") as f:
             simba_output = json.load(f)
-
-        # TODO: REMOVE THIS LATER. We are modifying the JSON file's contents after loading
-        # Once django-simba fixes their #28, we can remove this
-        for rotation_id, results in simba_output.items():
-            # Make all the "vehicle_type" lists contain only distinct items
-            if isinstance(results["vehicle_type"], list):
-                results["vehicle_type"] = [results["vehicle_type"][0]]
-                results["delta_soc"] = [results["delta_soc"][0]]
-                if results["delta_soc"][0] > 1:
-                    results["delta_soc"][0] = 1.0
 
         with open(eflips_input_path, "w") as f:
             json.dump(simba_output, f)

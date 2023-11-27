@@ -19,12 +19,15 @@ class VehicleType(ApiVehicleType):
     This class represents a vehicle type in eFLIPS-Depot. It is a subclass of
     :class:`eflips.depot.api.input.VehicleType` and overrides the :meth:`__init__()` method to read the data from the
     django-simba database.
+
+
+    :param vehicle_type: A django-simba VehicleType object.
     """
 
     def __init__(self, vehicle_type: DjangoSimbaVehicleType):
         """
         Create a new VehicleType object from a django-simba VehicleType object.
-        :param vehicle_type: A django-simba VehicleType object.
+
         """
 
         self.id = str(vehicle_type.id)
@@ -48,6 +51,26 @@ class VehicleSchedule(ApiVehicleSchedule):
     This class represents a vehicle schedule in eFLIPS-Depot. It is a subclass of
     :class:`eflips.depot.api.input.VehicleSchedule` and overrides the :meth:`__init__()` method to read the data from the
     django-simba database.
+
+    :param rotation_id: The ID of the rotation in the database.
+    :param rotation_info: A dictionary containing the information about the rotation. It is specified as follows:
+        This dictionary for each rotation contains the following keys:
+
+        - `charging_type`: The charging type of the vehicle during the rotation. This is a string, either "oppb" for
+          for vehicles that charge outside of the depot, or "depb" for vehicles that only charge in the depot.
+        - `departure_soc`: The state of charge of the vehicle at the departure from the depot. This is a float between
+          0 and 1.
+        - `arrival_soc`: The state of charge of the vehicle at the arrival at the depot. This is a float between
+          0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
+        - `minimal_soc`: The minimal state of charge of the vehicle during the rotation. This is a float between
+          0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
+        - `delta_soc`: A list of floats, representing the discharge of the vehicle during the rotation. The list
+          contains one float for each vehicle type. Only provided for depb vehicles, not given for oppb vehicles.
+        - `vehicle_type`: An integer (oppb) or a list of integers (depb), representing the vehicle type(s) of the
+          vehicle during the rotation. The integers correspond to the vehicle types in the database.
+
+
+
     """
 
     @classmethod
@@ -56,13 +79,13 @@ class VehicleSchedule(ApiVehicleSchedule):
     ) -> List["VehicleSchedule"]:
         """
         Create a new VehicleSchedule object from a django-simba Rotation object.
+
         :param input_path: A Path-like object pointing to the input file. The input file format is specified below
 
-        The input file format is as follows: It should be a JSON file containing a dictionary, with the key being a
-        "rotation ID" for the database. The format of the dictionary for each rotation is specified in the __init__()
-        method.
+            The input file format is as follows: It should be a JSON file containing a dictionary, with the key being a
+            "rotation ID" for the database. The format of the dictionary for each rotation is specified in the __init__()
+            method.
 
-        :param input_path: A Path-like object pointing to the input file. The input file format is specified below.
         :return: a list of VehicleSchedule objects.
         """
         with open(input_path, "r") as f:
@@ -75,27 +98,6 @@ class VehicleSchedule(ApiVehicleSchedule):
         return result
 
     def __init__(self, rotation_id: int, rotation_info: Dict[str, Any]):
-        """
-        :param rotation_id: The ID of the rotation in the database.
-        :param rotation_info: A dictionary containing the information about the rotation. It is specified as follows:
-
-        This dictionary for each rotation contains the following keys:
-
-        - `charging_type`: The charging type of the vehicle during the rotation. This is a string, either "oppb" for
-            for vehicles that charge outside of the depot, or "depb" for vehicles that only charge in the depot.
-        - `departure_soc`: The state of charge of the vehicle at the departure from the depot. This is a float between
-            0 and 1.
-        - `arrival_soc`: The state of charge of the vehicle at the arrival at the depot. This is a float between
-            0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
-        - `minimal_soc`: The minimal state of charge of the vehicle during the rotation. This is a float between
-            0 and 1. Only provided for oppb vehicles, 'null' for depb vehicles.
-        - `delta_soc`: A list of floats, representing the discharge of the vehicle during the rotation. The list
-        contains one float for each vehicle type. Only provided for depb vehicles, not given for oppb vehicles.
-        - `vehicle_type`: An integer (oppb) or a list of integers (depb), representing the vehicle type(s) of the
-            vehicle during the rotation. The integers correspond to the vehicle types in the database.
-
-        """
-
         # Validate the input file
         self._validate_input_data(rotation_id, rotation_info)
 
