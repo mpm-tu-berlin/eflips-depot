@@ -5,8 +5,8 @@ import random
 import pytest
 
 import eflips
-from depot.api.enums import ProcessType, AreaType
-from depot.api.input import Process, Area, Depot, Plan
+from eflips.depot.api.enums import ProcessType, AreaType
+from eflips.depot.api.input import Process, Area, Depot, Plan
 from eflips.depot.simple_vehicle import VehicleType as EflipsVehicleType
 
 
