@@ -1,0 +1,40 @@
+name: Check Documentation on Pull Request
+
+on: [pull_request]
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.4.2"
+  POETRY_URL: https://install.python-poetry.org
+
+
+jobs:
+  build-documentation:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # We do not need SSH Keys, .. , as we only need the dev dependencies for building sphinx doc, nothing else
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry config experimental.system-git-client true
+      - name: Install Dependencies (dev only)
+        run: |
+          poetry install --no-root --only dev
+
+      # Use the -W flag in the sphinx-build command to treat warnings as errors.
+      # Compile the sphinx doc. If no errors or warnings arise, this will result in a green "succeed" mark in GH Actions
+      # Otherwise, GH Action will fail.
+      - name: Compile Sphinx Documentation (Check for errors)
+        run: |
+          cd docs/
+          poetry run sphinx-build -b html . _build -W -a
