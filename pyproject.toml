@@ -2,8 +2,10 @@
 name = "eflips-depot"
 version = "1.0.0"
 description = "Depot Simulation for eFLIPS"
-authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>"]
-license = "AGPLv3"
+authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
+    "Shuyao Guo <shuyao.guo@tu-berlin.de>",
+    "Ludger Heide <ludger.heide@tu-berlin.de>"]
+license = " AGPL-3.0-or-later"
 readme = "README.md"
 packages = [{ include = "eflips/depot" }]
 
