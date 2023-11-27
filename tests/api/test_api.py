@@ -27,8 +27,9 @@ class TestApi:
         # Create an arrival cleaning process
         # Generate random time stamps for availability for testing purposes
 
-        random.seed()
-        random.getstate()
+        state = random.getstate()
+        random.seed(42)
+
         time_stamps = []
         for i in range(4):
             time_stamps.append(
@@ -40,6 +41,8 @@ class TestApi:
                     )
                 )
             )
+
+        random.setstate(state)
 
         # first try 4 stamps and then add the numbers
 
