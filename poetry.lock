@@ -1064,10 +1064,8 @@ psycopg2-binary = "^2.9.9"
 sqlalchemy = "^2.0.23"
 
 [package.source]
-type = "git"
-url = "git@github.com:mpm-tu-berlin/eflips-db.git"
-reference = "HEAD"
-resolved_reference = "51fc0ca7cc096ecd19393327a1046aa4f956c4f6"
+type = "directory"
+url = "../eflips-db"
 
 [[package]]
 name = "et-xmlfile"
@@ -2884,4 +2882,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d0b08a24f33c8b46ee0b0db4deaf4c45cba5021127ee238f7fa62c0bb82798d4"
+content-hash = "9c229727af8dfb67d8f95bb33880660b61ab5be988bead7757813881fad48e3f"
