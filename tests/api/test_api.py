@@ -236,7 +236,7 @@ class TestApi:
                         id=str(
                             uuid.uuid5(uuid.NAMESPACE_DNS, str(random.randbytes(64)))
                         ),  # Repeatable randomness
-                        vehicle_class=vehicle_type.vehicle_class,
+                        vehicle_classes=vehicle_type.vehicle_classes,
                         departure=departure_time,
                         arrival=departure_time + duration,
                         departure_soc=1.0,
@@ -265,7 +265,7 @@ class TestApi:
         # Create a 12 meter bus
         vehicle_type_12m = VehicleType(
             id="12",
-            vehicle_class="12m",
+            vehicle_classes="12m",
             battery_capacity_total=300,
             charging_curve=150,
             v2g_curve=None,
@@ -274,7 +274,7 @@ class TestApi:
         # Create a 18 meter bus
         vehicle_type_18m = VehicleType(
             id="18",
-            vehicle_class="18m",
+            vehicle_classes="18m",
             battery_capacity_total=120,
             charging_curve=450,
             v2g_curve=None,
@@ -283,7 +283,7 @@ class TestApi:
         # Create another 12 meter bus
         vehicle_type_12m_terminus_charge = VehicleType(
             id="121",
-            vehicle_class="12m terminus_charge",
+            vehicle_classes="12m terminus_charge",
             battery_capacity_total=120,
             charging_curve=450,
             v2g_curve=None,

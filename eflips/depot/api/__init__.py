@@ -23,7 +23,7 @@ from typing import List, Optional, Dict, Hashable, Tuple
 
 import eflips.depot
 from eflips.depot import SimulationHost, DepotEvaluation
-from eflips.depot.api.input import VehicleType, VehicleSchedule, Depot
+from eflips.depot.api.input import ApiVehicleType as VehicleType, VehicleSchedule, Depot
 
 
 def init_simulation(
@@ -133,28 +133,36 @@ def init_simulation(
     # We need to calculate roughly how many vehicles we need
     # We do that by taking the total trips for each vehicle class and creating 100 times the number of vehicles
     # for each vehicle type in the vehicle class
-    all_vehicle_classes = set(
-        [vehicle_schedule.vehicle_class for vehicle_schedule in vehicle_schedules]
-    )
+
+    all_vehicle_classes = []
+    for vehicle_schedule in vehicle_schedules:
+        all_vehicle_classes.extend(vehicle_schedule.vehicle_classes)
+
+    all_vehicle_classes = set(all_vehicle_classes)
+
     vehicle_count = {}
     for vehicle_class in all_vehicle_classes:
         trip_count = sum(
             [
-                1 if vehicle_schedule.vehicle_class == vehicle_class else 0
+                # TODO fix this later and we might need to determine if we need vehicle class in schedule
+                1 if vehicle_class in vehicle_schedule.vehicle_classes else 0
                 for vehicle_schedule in vehicle_schedules
+                # 1 if vehicle_schedule.vehicle_classes == vehicle_class else 0
+                # for vehicle_schedule in vehicle_schedules
             ]
         )
         vehicle_types_with_vehicle_class = [
             vehicle_type
             for vehicle_type in vehicle_types
-            if vehicle_type.vehicle_class == vehicle_class
+            # if vehicle_type.vehicle_classes == vehicle_class
+            if vehicle_class in vehicle_type.vehicle_classes
         ]
         for vehicle_type in vehicle_types_with_vehicle_class:
             if vehicle_counts is not None and vehicle_type.id in vehicle_counts:
                 vehicle_count[vehicle_type.id] = vehicle_counts[vehicle_type.id]
             else:
                 vehicle_count[vehicle_type.id] = int(
-                    ceil(trip_count * 100 * len(vehicle_types_with_vehicle_class))
+                    ceil(trip_count * 10 * len(vehicle_types_with_vehicle_class))
                 )
     # Now we put the vehicle count into the settings
     eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
@@ -172,7 +180,8 @@ def init_simulation(
         vehicle_types_with_vehicle_class = [
             vehicle_type
             for vehicle_type in vehicle_types
-            if vehicle_type.vehicle_class == vehicle_class
+            # if vehicle_type.vehicle_classes == vehicle_class
+            if vehicle_class in vehicle_type.vehicle_classes
         ]
         eflips.globalConstants["depot"]["substitutable_types"].append(
             [vehicle_type.id for vehicle_type in vehicle_types_with_vehicle_class]
@@ -268,15 +277,17 @@ def _validate_input_data(
         VehicleType.
     """
 
+    # TODO check if some vehicle types/classes do not appear in the vehicle schedule at all
+
     for vehicle_schedule in vehicle_schedule:
         if_vehicle_type_found = False
 
         # get vehicle class from vehicle schedule
-        vehicle_class = vehicle_schedule.vehicle_class
+        vehicle_class = vehicle_schedule.vehicle_classes
 
         # search vehicle type with the same vehicle class
         for vehicle_type in vehicle_types:
-            if vehicle_type.vehicle_class == vehicle_class:
+            if vehicle_type.vehicle_classes == vehicle_class:
                 if_vehicle_type_found = True
                 break
 
@@ -287,7 +298,7 @@ def _validate_input_data(
 
         # FOr this API version, we also check that there is only one vehicle type per vehicle class
         # We will move to "at least one" in the future
-        assert len(set([t.vehicle_class for t in vehicle_types])) == len(
+        assert len(set([t.vehicle_classes for t in vehicle_types])) == len(
             vehicle_types
         ), "There should be exactly one vehicle type per vehicle class"
 
