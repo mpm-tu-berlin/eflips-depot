@@ -13,7 +13,7 @@ from eflips.model.general import (
     Vehicle,
 )
 
-from eflips.depot.api.eflips_db.input import VehicleType as EflipsVehicleType
+from eflips.depot.api.input import ApiVehicleType
 
 
 class TestGeneral:
@@ -42,42 +42,62 @@ class TestGeneral:
         session.add(scenario)
 
         # Add a vehicle type with a battery type
-        vehicle_type = VehicleType(
+        vehicle_type_1 = VehicleType(
             scenario=scenario,
             name="Test Vehicle Type",
             battery_capacity=100,
             charging_curve=[[0, 1], [150, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
-        session.add(vehicle_type)
+        # Create a 12 meter bus
+        vehicle_type_12m = VehicleType(
+            scenario=scenario,
+            name="12",
+            battery_capacity=300,
+            charging_curve=[[0, 1], [150, 150]],
+            opportunity_charging_capable=True,
+        )
+        session.add(vehicle_type_12m)
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=15, chemistry={"test": "test"}
         )
         session.add(battery_type)
-        vehicle_type.battery_type = battery_type
+        vehicle_type_12m.battery_type = battery_type
 
         # Add a vehicle type without a battery type
-        vehicle_type = VehicleType(
+        vehicle_type_18m = VehicleType(
             scenario=scenario,
-            name="Test Vehicle Type 2",
-            battery_capacity=100,
+            name="18",
+            battery_capacity=120,
             charging_curve=[[0, 1], [150, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
-        session.add(vehicle_type)
 
+        session.add(vehicle_type_18m)
+
+        vehicle_type_12m_terminus_charge = VehicleType(
+            scenario=scenario,
+            name="12_terminus_charge",
+            battery_capacity=120,
+            charging_curve=[[0, 1], [150, 150]],
+            opportunity_charging_capable=True,
+        )
         # Add a VehicleClass
         vehicle_class = VehicleClass(
             scenario=scenario,
             name="Test Vehicle Class",
-            vehicle_types=[vehicle_type],
+            vehicle_types=[
+                vehicle_type_12m,
+                vehicle_type_18m,
+                vehicle_type_12m_terminus_charge,
+            ],
         )
         session.add(vehicle_class)
 
         # Add a vehicle
         vehicle = Vehicle(
             scenario=scenario,
-            vehicle_type=vehicle_type,
+            vehicle_type=vehicle_type_12m,
             name="Test Vehicle",
             name_short="TV",
         )
@@ -104,19 +124,19 @@ class TestGeneral:
         session.close()
 
 
-class TestQueryEntities(TestGeneral):
+class TestQueryVehicleType(TestGeneral):
     @pytest.fixture()
-    def query_vehicle_type(self, session):
+    def db_vehicle_types(self, session):
         list_of_vehicle_types = []
         stmt = select(VehicleType)
-        for vehicle_type in session.execute(stmt).scalars():
-            eflips_vehicle_type = EflipsVehicleType.from_eflips_db(vehicle_type)
-            list_of_vehicle_types.append(eflips_vehicle_type)
+        for db_vt in session.execute(stmt).scalars():
+            eflips_vt = ApiVehicleType(db_vt)
+            list_of_vehicle_types.append(eflips_vt)
 
         return list_of_vehicle_types
 
-    def test_vehicle_type_validity(self, query_vehicle_type):
-        for vehicle_type in query_vehicle_type:
-            assert isinstance(vehicle_type, EflipsVehicleType)
+    def test_vehicle_type_validity(self, db_vehicle_types):
+        for vehicle_type in db_vehicle_types:
+            assert isinstance(vehicle_type, ApiVehicleType)
+            assert isinstance(vehicle_type.current_charging_power(0.5), float)
             assert isinstance(vehicle_type.charging_curve(0.5), float)
-            print(vehicle_type.charging_curve(0.5))

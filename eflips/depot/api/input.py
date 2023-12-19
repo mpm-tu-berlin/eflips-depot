@@ -17,127 +17,62 @@ from eflips.depot import DepotControl
 from eflips.depot.simple_vehicle import SimpleVehicle, VehicleType as EflipsVehicleType
 from eflips.depot.standalone import SimpleTrip
 
+from eflips.model import VehicleType as ModelVehicleType
 
-@dataclass
-class VehicleType:
-    id: str
-    """A unique identifier for this vehicle type. This identifier will be returned in the output of eFLIPS-Depot."""
 
-    vehicle_class: str
-    """A unique identifier for the vehicle class which this vehicle type belongs to."""
-
-    battery_capacity_total: float
-    """The total battery capacity of the vehicle in kWh. This is the gross capacity, which is actually quite a stupid
-    value, but everybody does it that way. The practical capacity is the net capacity, which id returned in :meth:`net_battery_capacity`."""
-
-    charging_curve: Union[
-        Callable[[float], float],
-        Tuple[List[float], List[float]],
-        Dict[float, float],
-        float,
-    ]
+class ApiVehicleType(ModelVehicleType):
     """
-    The charging curve of the vehicle specifies the charging power as a function of the battery state of charge (SoC).
-    
-    We accept it in four different formats:
-    
-    - A function that takes the SoC as a float [0-1] and returns the charging power in kW.
-    - A tuple of two lists. The first list contains the SoC values [0-1] and the second list contains the corresponding
-      charging power values in kW. The resulting function is a piecewise linear interpolation between the points.
-    - A dictionary mapping SoC values [0-1] to charging power values in kW. The resulting function is a piecewise linear
-      interpolation between the points.
-    - A float. The charging power is constant at this value over the whole SoC range.
+    This class represents a vehicle type in eFLIPS-Depot. It is a subclass of the :class:`eflips.model.VehicleType`.
+
     """
 
-    v2g_curve: Optional[
-        Union[
-            Callable[[float], float],
-            Tuple[List[float], List[float]],
-            Dict[float, float],
-            float,
-        ]
-    ] = None
-    """
-    The (optional) vehicle-to-grid (V2G) curve of the vehicle specifies the discharging power as a function of the b
-    attery state of charge (SoC).
-    
-    We take the same formats as for the charging curve.
-    """
+    def __init__(self, vehicle_type: ModelVehicleType) -> "ApiVehicleType":
+        self.id = vehicle_type.name
+        self.vehicle_classes = vehicle_type.vehicle_classes
+        self.battery_capacity = vehicle_type.battery_capacity
+        self.charging_curve = vehicle_type.charging_curve
+        self.v2g_curve = vehicle_type.v2g_curve if vehicle_type.v2g_curve else None
 
-    soc_max: float = 1.0
-    """The maximum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1]."""
+        self._charge_soc_list = self.charging_curve[0]
+        self._charge_power_list = self.charging_curve[1]
+        self.charging_curve = self._interpolate_charging_curve
 
-    soc_min: float = 0.0
-    """The minimum battery state of charge (SoC) of the vehicle. It must be in the range [0, 1] and smaller than `soc_max`."""
-
-    soh: float = 1.0
-    """The state of health (SoH) of the vehicle. It must be in the range [0, 1]."""
-
-    def __post_init__(self):
-        """
-        This method is called after the object is initialized. It converts the charging curve and the V2G curve into
-        functions, if they were provided in a different format.
-
-        :return: Nothing
-        """
-
-        # Some sanity checks
-        assert self.soc_min >= 0
-        assert self.soc_max <= 1
-        assert self.soc_min < self.soc_max
-
-        assert self.soh >= 0
-        assert self.soh <= 1
-
-        # Convert the charging curve to a function
-        if isinstance(self.charging_curve, Callable):
-            pass
-        elif isinstance(self.charging_curve, tuple):
-            self._charge_soc_list = self.charging_curve[0]
-            self._charge_power_list = self.charging_curve[1]
-            self.charging_curve = self._interpolate_charging_curve
-        elif isinstance(self.charging_curve, dict):
-            self._charge_soc_list = list(self.charging_curve.keys())
-            self._charge_power_list = list(self.charging_curve.values())
-            self.charging_curve = self._interpolate_charging_curve
-        elif isinstance(self.charging_curve, numbers.Number):
-            self._const_charging_curve = float(self.charging_curve)
-            self.charging_curve = lambda x: self._const_charging_curve
-        else:
-            raise ValueError("Invalid charging curve format")
-
-        # Convert the V2G curve to a function
-        if self.v2g_curve is None:
-            pass
-        elif isinstance(self.v2g_curve, Callable):
-            pass
-        elif isinstance(self.v2g_curve, tuple):
+        if self.v2g_curve:
             self._v2g_soc_list = self.v2g_curve[0]
             self._v2g_power_list = self.v2g_curve[1]
             self.v2g_curve = self._interpolate_v2g_curve
-        elif isinstance(self.v2g_curve, dict):
-            self._v2g_soc_list = list(self.v2g_curve.keys())
-            self._v2g_power_list = list(self.v2g_curve.values())
-            self.v2g_curve = self._interpolate_v2g_curve
-        elif isinstance(self.v2g_curve, numbers.Number):
-            self._const_v2g_curve = float(self.v2g_curve)
-            self.v2g_curve = lambda x: self._const_v2g_curve
-        else:
-            raise ValueError("Invalid V2G curve format")
+
+    def current_charging_power(self, soc: float) -> float:
+        """
+        The current charging power of the vehicle in kW. It is calculated by the charging curve.
+
+        :return: The current charging power in kW.
+        """
+
+        return self._interpolate_charging_curve(soc)
+
+    def current_v2g_power(self, soc: float) -> float:
+        """
+        The current discharging power of the vehicle in kW. It is calculated by the V2G curve.
+
+        :return: The current discharging power in kW.
+        """
+
+        return self._interpolate_v2g_curve(soc)
 
     def _interpolate_charging_curve(self, soc: float) -> float:
         """Internal method to calculate the charging power from the charging curve."""
         return float(np.interp(soc, self._charge_soc_list, self._charge_power_list))
 
     def _interpolate_v2g_curve(self, soc: float) -> float:
-        """Internal method to calculate the discharging power from the V2G curve."""
-        return float(np.interp(soc, self._v2g_soc_list, self._v2g_power_list))
+        """Internal method to calculate   discharging power from the V2G curve."""
+        return float(np.interp(soc, self.v2g_curve[0], self.v2g_power_list[1]))
 
     @property
     def net_battery_capacity(self) -> float:
         """The net battery capacity of the vehicle in kWh. This is the battery capacity that is actually available for
         use. It is calculated as `battery_capacity_total * soh * (soc_max-soc_min)`."""
-        return self.battery_capacity_total * self.soh * (self.soc_max - self.soc_min)
+        return self.battery_capacity
 
     def _to_eflips_vehicle_type(self) -> EflipsVehicleType:
         """
@@ -150,11 +85,11 @@ class VehicleType:
         # Create the depot VehicleType object
         eflips_vehicle_type = EflipsVehicleType(
             str(self.id),
-            self.battery_capacity_total,
-            self.soc_min,
-            self.soc_max,
+            self.battery_capacity,
+            0.0,
             1.0,
-            self.soh,
+            1.0,
+            1.0,
             None,
         )
 
@@ -169,11 +104,11 @@ class VehicleType:
         """
 
         the_dict = {
-            "battery_capacity": self.battery_capacity_total,
-            "soc_min": self.soc_min,
-            "soc_max": self.soc_max,
+            "battery_capacity": self.battery_capacity,
+            "soc_min": 0.0,
+            "soc_max": 1.0,
             "soc_init": 1.0,
-            "soh": self.soh,
+            "soh": 1.0,
         }
         return the_dict
 
@@ -189,7 +124,7 @@ class VehicleSchedule:
     id: str
     """Unique ID of this vehicle schedule. This identifier will be returned in the output of eFLIPS-Depot."""
 
-    vehicle_class: Hashable
+    vehicle_classes: Hashable
     """
     The vehicle class of this vehicle schedule. This should match the `vehicle_class` of the corresponding
     :class:`eflips.depot.api.input.VehicleType` objects.
@@ -299,7 +234,7 @@ class VehicleSchedule:
         """
         sched = VehicleSchedule(
             self.id,
-            self.vehicle_class,
+            self.vehicle_classes,
             self.departure + interval,  # Intervals can be negative too, right?
             self.arrival + interval,
             self.departure_soc,
