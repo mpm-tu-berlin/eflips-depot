@@ -1,10 +1,8 @@
 """An example code to show how to start with eFLIPS-depot"""
 
 import os
+
 import depot.api.basic
-
-
-import djangosettings
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.djangosettings")
 import django
@@ -30,7 +28,7 @@ filename_template = os.path.join(
 
 # Setup Simulation Host
 # TODO: replace with read from database
-host = depot.api.basic.init_simulation(
+host = depot.api.api.basic.init_simulation(
     filename_eflips_settings, filename_schedule, filename_template
 )
 
@@ -40,7 +38,7 @@ host = depot.api.basic.init_simulation(
 
 # Run simulation
 # TODO: run_simulation(data_from_database, data_from_simba)
-ev = depot.api.basic.run_simulation(host)
+ev = depot.api.api.basic.run_simulation(host)
 
 # Generate input data for simBA
-data_for_simba = depot.api.basic.to_simba(ev)
+data_for_simba = depot.api.api.basic.to_simba(ev)
