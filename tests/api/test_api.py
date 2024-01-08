@@ -1,7 +1,7 @@
 import os
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import List
 
 import pytest
@@ -25,6 +25,38 @@ class TestApi:
     def depot(self):
         # A depot with a representative set of areas
         # Create an arrival cleaning process
+        # Generate random time stamps for availability for testing purposes
+
+        state = random.getstate()
+        random.seed(42)
+
+        time_stamps = []
+        for i in range(4):
+            time_stamps.append(
+                (
+                    time(
+                        hour=random.randint(0, 23),
+                        minute=random.randint(0, 59),
+                        second=random.randint(0, 59),
+                    )
+                )
+            )
+
+        random.setstate(state)
+
+        # first try 4 stamps and then add the numbers
+
+        # At first sorting the test list then add more possibilities
+
+        time_stamps.sort()
+
+        list_of_availability = [
+            (time_stamps[0], time_stamps[1]),
+            (time_stamps[2], time_stamps[3]),
+        ]
+
+        print(list_of_availability)
+
         arrival_cleaning = Process(
             id=1,
             name="Arrival Cleaning",
@@ -32,6 +64,7 @@ class TestApi:
             areas=[],  # Connect the areas later
             duration=4800,
             electric_power=None,
+            availability=list_of_availability,
         )
 
         arrival_area = Area(
@@ -41,7 +74,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[arrival_cleaning],
             vehicle_classes=None,
-            capacity=50,
+            capacity=500,
         )
 
         # Connect the areas and processes
@@ -99,7 +132,7 @@ class TestApi:
             depot=None,  # we connect the depot later
             available_processes=[charging, preconditioning, standby_pre_departure],
             vehicle_classes=None,
-            capacity=20,
+            capacity=100,
         )
 
         # Create another area that just does standby pre-departure
@@ -251,6 +284,7 @@ class TestApi:
             start_date += timedelta(days=1)
 
         random.setstate(state)
+        VehicleSchedule.visualize(schedules)
 
         return schedules
 
@@ -332,23 +366,14 @@ class TestApi:
         depot_evaluation.path_results = str(tmp_path)
 
         depot_evaluation.vehicle_periods(
-            # periods={
-            #     "depot general": "darkgray",
-            #     "park": "lightgray",
-            #     "serve_supply_clean_daily": "steelblue",
-            #     "serve_clean_ext": "darkblue",
-            #     "charge_dc": "forestgreen",
-            #     "charge_oc": "forestgreen",
-            #     "precondition": "black",
-            # },
-            # TODO re-write process names to plot
             periods={
                 "depot general": "darkgray",
                 "park": "lightgray",
                 "Arrival Cleaning": "steelblue",
-                "Charging": "darkblue",
-                "Standby Pre-departure": "forestgreen",
+                "Charging": "forestgreen",
+                "Standby Pre-departure": "darkblue",
                 "precondition": "black",
+                "trip": "wheat",
             },
             save=True,
             show=False,

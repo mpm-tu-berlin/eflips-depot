@@ -215,8 +215,17 @@ class ResourceSwitch:
     """
 
     def __init__(
-        self, env, ID, resource, breaks, preempt=True, strength="full", resume=False
+        self,
+        env,
+        ID,
+        resource,
+        breaks,
+        preempt=True,
+        strength="full",
+        resume=False,
+        priority=-3,
     ):
+        # TODO temporarily add priority argument
         self.env = env
         self.ID = ID
         self.strength_input = strength
@@ -229,7 +238,7 @@ class ResourceSwitch:
         self.breaks = breaks
         self.preempt = preempt
 
-        self.priority = -3
+        self.priority = priority
         self.resume = resume
 
     @property

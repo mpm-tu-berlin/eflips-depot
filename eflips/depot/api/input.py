@@ -1,7 +1,7 @@
 """Read and pre-process data from database"""
 import numbers
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from numbers import Number
 from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 
@@ -448,6 +448,10 @@ class Depot:
         :return: A dict that can be consumed by eFLIPS-Depot.
         """
 
+        # TODO later:
+        # if we need to pass datetime for second 0 somewhere for the output
+        # if we need to cleanup this function
+
         # Initialize the template
         template = {
             "templatename_display": "",
@@ -532,20 +536,60 @@ class Depot:
             match process.type:
                 case ProcessType.SERVICE:
                     template["processes"][process.name]["typename"] = "Serve"
-                    # if process.availability is not None:
-                    #    template["processes"][process.name]["vehicle_filter"] = {
-                    #        "filter_names": ["in_period"],
-                    #        "period": process.availability,
-                    #    } TODO: Fix availability
-
-                    # Fill in workers_service of resources
-                    service_capacity = sum([x.capacity for x in process.areas])
 
                     # Fill in the worker_service
+                    service_capacity = sum([x.capacity for x in process.areas])
+
+                    template["processes"][process.name]["required_resources"] = [
+                        "workers_service"
+                    ]
                     template["resources"]["workers_service"] = {
                         "typename": "DepotResource",
                         "capacity": service_capacity,
                     }
+
+                    if process.availability is not None:
+                        template["resource_switches"]["service_switch"] = {
+                            "resource": "workers_service",
+                            "breaks": [],
+                            "preempt": process.preemptable
+                            if process.preemptable is not None
+                            else True,
+                            # Strength 'full' means all workers can take a break at the same time
+                            "strength": "full",
+                            # Resume set to True means that the process will continue after the break
+                            "resume": True,
+                            # Priority -3 means this process has the highest priority
+                            "priority": -3,
+                        }
+
+                        list_of_breaks = process._generate_break_intervals()
+                        list_of_breaks_in_seconds = []
+
+                        # Converting the time intervals into seconds
+
+                        for time_interval in list_of_breaks:
+                            start_time = time_interval[0]
+                            end_time = time_interval[1]
+                            start_time_in_seconds = (
+                                start_time.hour * 3600
+                                + start_time.minute * 60
+                                + start_time.second
+                            )
+
+                            end_time_in_seconds = (
+                                end_time.hour * 3600
+                                + end_time.minute * 60
+                                + end_time.second
+                            )
+
+                            list_of_breaks_in_seconds.append(
+                                (start_time_in_seconds, end_time_in_seconds)
+                            )
+
+                        template["resource_switches"]["service_switch"][
+                            "breaks"
+                        ] = list_of_breaks_in_seconds
 
                 case ProcessType.CHARGING:
                     template["processes"][process.name]["typename"] = "Charge"
@@ -554,7 +598,6 @@ class Depot:
                 case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
                     template["processes"][process.name]["typename"] = "Standby"
                     template["processes"][process.name]["dur"] = 0
-                    # template["processes"][process.name]["ismandatory"] = True
 
                 case ProcessType.PRECONDITION:
                     template["processes"][process.name]["typename"] = "Precondition"
@@ -708,7 +751,15 @@ class Process:
     duration: Optional[int] = None
     """If this process has a fixed duration, this is the duration in seconds. It must be a positive integer."""
 
-    # TODO: Availability is not implemented yet
+    availability: Optional[List[Tuple]] = None
+    """If this process is only available at certain time intervals, this list of tuples represents start and end 
+    times of this process. Each tuple must be a pair of datetime.time objects. If start time is later than end time, 
+    it represents this time interval passing the midnight. Multiple time intervals without overlapping is supported. 
+    For now it is daily repeated and only implemented for ProcessType.SERVICE."""
+
+    preemptable: Optional[bool] = None
+    """If this process can be strictly interrupted when a break begins, this indicator should be set to True. It 
+    should be None if availability is None. Set to True by default."""
 
     def __post_init__(self):
         """
@@ -723,6 +774,66 @@ class Process:
 
         if self.duration is not None:
             assert isinstance(self.duration, Number) and self.duration >= 0
+
+        if self.availability is not None:
+            assert isinstance(self.availability, list) and len(self.availability) >= 1
+            assert all(isinstance(x, Tuple) for x in self.availability)
+
+            # Each tuple must only include one start time and one end time
+            assert all(len(x) == 2 for x in self.availability)
+
+        if self.availability is None:
+            assert self.preemptable is None
+
+    def _generate_break_intervals(self) -> List[Tuple]:
+        """
+        This method generates the break intervals for the process, based on the availability and the duration of the
+        process. It is used internally by the :meth:`_to_template` method.
+
+        :return: A list of tuples representing the break intervals.
+        """
+
+        # check midnight crossing and re-write midnight crossing intervals
+
+        for availability_interval in self.availability:
+            if availability_interval[0] > availability_interval[1]:
+                self.availability.remove(availability_interval)
+                self.availability.append(
+                    (time(hour=0, minute=0, second=0), availability_interval[1])
+                )
+                self.availability.append(
+                    (availability_interval[0], time(hour=23, minute=59, second=59))
+                )
+
+        # sort the availability by start time
+
+        self.availability.sort(key=lambda x: x[0])
+
+        # check and report overlapping intervals
+        for idx in range(len(self.availability) - 1):
+            if self.availability[idx][1] > self.availability[idx + 1][0]:
+                raise ValueError("Overlapping intervals in availability")
+
+        # generate break intervals except start and end time stamps
+        list_of_breaks = []
+        for idx in range(len(self.availability) - 1):
+            current_interval = (
+                self.availability[idx][1],
+                self.availability[idx + 1][0],
+            )
+            list_of_breaks.append(current_interval)
+
+        # add start and end time stamps
+        if self.availability[0][0] > time(hour=0, minute=0, second=0):
+            list_of_breaks.insert(
+                0, (time(hour=0, minute=0, second=0), self.availability[0][0])
+            )
+        if self.availability[-1][1] < time(hour=23, minute=59, second=59):
+            list_of_breaks.append(
+                (self.availability[-1][1], time(hour=23, minute=59, second=59))
+            )
+
+        return list_of_breaks
 
     @property
     def type(self) -> "ProcessType":
