@@ -8,10 +8,10 @@ import json
 import os
 from typing import List, Union, Dict, Any
 
-from eflips.depot.api.input import VehicleType as ApiVehicleType
-from eflips.depot.api.input import VehicleSchedule as ApiVehicleSchedule
-
 from ebustoolbox.models import VehicleType as DjangoSimbaVehicleType, Rotation, Trip
+
+from eflips.depot.api.input import VehicleSchedule as ApiVehicleSchedule
+from eflips.depot.api.input import VehicleType as ApiVehicleType
 
 
 class VehicleType(ApiVehicleType):
@@ -31,17 +31,11 @@ class VehicleType(ApiVehicleType):
         """
 
         self.id = str(vehicle_type.id)
-        vehicle_classes = [vc.id for vc in vehicle_type.vehicle_class.all()]
-        assert (
-            len(vehicle_classes) == 1
-        ), "We do not support multiple vehicle classes yet"
-        self.vehicle_class = str(vehicle_classes[0])
         self.battery_capacity_total = vehicle_type.battery_capacity
         self.charging_curve = tuple(zip(*vehicle_type.charging_curve))
-        if vehicle_type.v2g:
-            self.v2g_curve = tuple(zip(*vehicle_type.v2g_curve))
-        else:
-            self.v2g_curve = None
+        self.v2g_curve = None
+
+        self.vehicle_class = self.id
 
         self.__post_init__()
 
@@ -140,7 +134,6 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         # Load the rotation from the database
         rotation = Rotation.objects.get(id=self.id)
-        self.vehicle_class = str(rotation.vehicle_class.id)
 
         # Load the arrival and departure times by looking through the trips
         trips = (
@@ -148,15 +141,16 @@ class VehicleSchedule(ApiVehicleSchedule):
         )  # TODO: Can we filter by rotation_id?
 
         first_trip = trips.first()
-        start_station = first_trip.departure_stop_id
+        start_station = first_trip.route.departure_station_id
         last_trip = trips.last()
-        last_station = last_trip.arrival_stop_id
+        last_station = last_trip.route.arrival_station_id
         assert (
-            first_trip.departure_stop == last_trip.arrival_stop
+            first_trip.route.departure_station == last_trip.route.arrival_station
         ), "First trip departure stop does not match last trip arrival stop"
 
         self.departure = first_trip.departure_time
         self.arrival = last_trip.arrival_time
+        self.vehicle_class = str(rotation.vehicle_type_id)
 
     @staticmethod
     def _validate_input_data(rotation_id: int, rotation_info: Dict[str, Any]) -> bool:
@@ -195,7 +189,7 @@ class VehicleSchedule(ApiVehicleSchedule):
 
         # Check if the trip goes from the same station as the first trip to the same station as the last trip
         assert (
-            first_trip.departure_stop == last_trip.arrival_stop
+            first_trip.route.departure_station == last_trip.route.arrival_station
         ), "First trip departure stop does not match last trip arrival stop"
 
         # For each rotation, the vehicle_type in the rotation_info should be either a string or a list of strings,
@@ -213,18 +207,8 @@ class VehicleSchedule(ApiVehicleSchedule):
         vehicle_type_from_database = DjangoSimbaVehicleType.objects.get(
             id=vehicle_type_id
         )
-        vehicle_class_for_type = [
-            vt.id for vt in vehicle_type_from_database.vehicle_class.all()
-        ]
         assert (
-            len(vehicle_class_for_type) == 1
-        ), "We do not support multiple vehicle classes yet"
-        vehicle_class_for_type = vehicle_class_for_type[0]
-
-        vehicle_class_for_rotation = rotation.vehicle_class.id
-
-        assert (
-            vehicle_class_for_type == vehicle_class_for_rotation
+            rotation.vehicle_type_id == vehicle_type_id
         ), "Vehicle type does not match vehicle class"
 
         # Depending on the charging type, we are either looking for the "delta_soc" for depot chargers ("depb")
