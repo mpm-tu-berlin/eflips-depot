@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "1.0.0"
+version = "0.0.1"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Shuyao Guo <shuyao.guo@tu-berlin.de>",
@@ -18,7 +18,7 @@ pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 xlrd = "1.2.0"
 eflips = {git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility"}
-django-simba = {git = "git@github.com:rl-institut/django-simba.git", rev = "personal/ludger"}
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", rev = "feature/eflips-db-compat" }
 seaborn = "^0.12.2"
 tqdm = "^4.66.1"
 coverage = "^7.3.2"
