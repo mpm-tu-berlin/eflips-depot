@@ -66,7 +66,7 @@ jobs:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
           # Replace with your own database info
-          DATABASE_URL: postgis://user:password@localhost/database
+          DATABASE_URL: postgresql://user:password@localhost/database
           CELERY_USE: False
           DJANGO_SETTINGS_MODULE: tests.api.djangosettings
           # The hostname used to communicate with the PostgreSQL service container
