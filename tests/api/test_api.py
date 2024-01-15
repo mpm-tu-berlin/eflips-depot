@@ -27,7 +27,7 @@ from eflips.model import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from depot.api import init_simulation, run_simulation
+from eflips.depot.api import init_simulation, run_simulation
 
 
 class TestHelpers:

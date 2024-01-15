@@ -9,8 +9,8 @@ from eflips.model import (
 )
 
 from api.test_api import TestHelpers
-from depot import SimpleTrip, Depotinput, SimulationHost
-from depot.api.private import (
+from eflips.depot import SimpleTrip, Depotinput, SimulationHost
+from eflips.depot.api.private import (
     vehicle_type_to_eflips,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
