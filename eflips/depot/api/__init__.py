@@ -19,14 +19,14 @@ from eflips.model import (
 )
 
 import eflips.depot
-from depot.api.private import (
+from eflips.depot import SimulationHost, DepotEvaluation
+from eflips.depot.api.private import (
     VehicleSchedule,
     depot_to_template,
     vehicle_type_to_global_constants_dict,
     repeat_vehicle_schedules,
     start_and_end_times,
 )
-from eflips.depot import SimulationHost, DepotEvaluation
 
 
 def init_simulation(

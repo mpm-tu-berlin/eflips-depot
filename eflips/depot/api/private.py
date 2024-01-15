@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple
 import simpy
 from eflips.model import VehicleType, Rotation, Depot, AreaType, Process
 
-from depot import SimpleTrip
+from eflips.depot import SimpleTrip
 from eflips.depot.simple_vehicle import (
     VehicleType as EflipsVehicleType,
 )
