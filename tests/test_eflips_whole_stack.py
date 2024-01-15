@@ -52,11 +52,11 @@ class TestDepotEvaluation:
             periods={
                 "depot general": "darkgray",
                 "park": "lightgray",
-                "serve_supply_clean_daily": "steelblue",
-                "serve_clean_ext": "darkblue",
-                "charge_dc": "forestgreen",
-                "charge_oc": "forestgreen",
+                "Arrival Cleaning": "steelblue",
+                "Charging": "forestgreen",
+                "Standby Pre-departure": "darkblue",
                 "precondition": "black",
+                "trip": "wheat",
             },
             save=True,
             show=False,
@@ -67,7 +67,6 @@ class TestDepotEvaluation:
             show_total_power=True,
             show_annotates=True,
         )
-
         # Check if the files were created and are not empty
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0

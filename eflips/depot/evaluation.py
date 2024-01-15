@@ -606,6 +606,8 @@ class DepotEvaluation:
                         trip = next(
                             (ti for ti in vehicle.finished_trips if t == ti.ata), None
                         )
+
+                        # TODO there is no clear message on which area is too small
                         assert trip is not None, (
                             "Possible reason: vehicle has a finished trip, "
                             "but never entered the depot because there was "
@@ -714,6 +716,12 @@ class DepotEvaluation:
                                 data[proc.ID]["xranges"].append(
                                     (start, self.SIM_TIME - start)
                                 )
+
+        data["trip"] = {"xranges": [], "yranges": (y, 0.75), "triptexts": []}
+
+        # Read trip data from vehicle
+        for trip in vehicle.finished_trips:
+            data["trip"]["xranges"].append((trip.atd, trip.duration))
 
         return data
 
