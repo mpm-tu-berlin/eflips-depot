@@ -273,7 +273,7 @@ class TestHelpers:
         # Create areas
         cleaning_area = Area(
             scenario=scenario,
-            name="Test Area",
+            name="Arrival & Cleaning Area",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
             capacity=2,
@@ -283,7 +283,7 @@ class TestHelpers:
 
         charging_area = Area(
             scenario=scenario,
-            name="Test Area",
+            name="Line Charging Area",
             depot=depot,
             area_type=AreaType.LINE,
             row_count=2,
@@ -294,7 +294,7 @@ class TestHelpers:
 
         parking_area = Area(
             scenario=scenario,
-            name="Test Area",
+            name="Parking Area",
             depot=depot,
             area_type=AreaType.DIRECT_TWOSIDE,
             capacity=4,
@@ -307,6 +307,7 @@ class TestHelpers:
             name="Standby Arrival",
             scenario=scenario,
             dispatchable=False,
+            duration=timedelta(minutes=5),
         )
 
         clean = Process(
@@ -337,7 +338,7 @@ class TestHelpers:
         cleaning_area.processes.append(clean)
         cleaning_area.processes.append(standby_arrival)
         charging_area.processes.append(charging)
-        parking_area.processes.append(standby_departure)
+        charging_area.processes.append(standby_departure)
 
         assocs = [
             AssocPlanProcess(

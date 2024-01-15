@@ -125,19 +125,23 @@ def depot_to_template(depot: Depot) -> Dict:
 
     # Get dictionary of each area
     for area in depot.areas:
-        template["areas"][area.name] = {
+        area_name = area.name if area.name is not None else str(area.id)
+        template["areas"][area_name] = {
             "typename": (
                 "LineArea" if area.area_type == AreaType.LINE else "DirectArea"
             ),
             # "amount": 2,  # TODO Check how multiple areas work. For now leave it as default
             "capacity": area.capacity,
-            "available_processes": [process.name for process in area.processes],
+            "available_processes": [
+                process.name if process.name is not None else str(process.id)
+                for process in area.processes
+            ],
             "issink": False,
             "entry_filter": None,
         }
 
         # Fill in vehicle_filter.
-        template["areas"][area.name]["entry_filter"] = {
+        template["areas"][area_name]["entry_filter"] = {
             "filter_names": ["vehicle_type"],
             "vehicle_types": [str(area.vehicle_type_id)],
         }
@@ -159,19 +163,20 @@ def depot_to_template(depot: Depot) -> Dict:
                     }
                     ci_per_area.append(ID)
 
-                template["areas"][area.name]["charging_interfaces"] = ci_per_area
+                template["areas"][area_name]["charging_interfaces"] = ci_per_area
 
             # Set issink to True for departure areas
             if process_type(process) == ProcessType.STANDBY_DEPARTURE:
-                template["areas"][area.name][
+                template["areas"][area_name][
                     "issink"
                 ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
 
     for process in list_of_processes:
+        process_name = process.name if process.name is not None else str(process.id)
         # Shared template for all processes
-        template["processes"][process.name] = {
+        template["processes"][process_name] = {
             "typename": "",  # Placeholder for initialization
-            "dur": process.duration,
+            "dur": int(process.duration.total_seconds()) if process.duration else None,
             # True if this process will be executed for all vehicles. False if there are available vehicle filters
             "ismandatory": True,
             "vehicle_filter": {},
@@ -181,12 +186,12 @@ def depot_to_template(depot: Depot) -> Dict:
 
         match process_type(process):
             case ProcessType.SERVICE:
-                template["processes"][process.name]["typename"] = "Serve"
+                template["processes"][process_name]["typename"] = "Serve"
 
                 # Fill in the worker_service
                 service_capacity = sum([x.capacity for x in process.areas])
 
-                template["processes"][process.name]["required_resources"] = [
+                template["processes"][process_name]["required_resources"] = [
                     "workers_service"
                 ]
                 template["resources"]["workers_service"] = {
@@ -238,17 +243,19 @@ def depot_to_template(depot: Depot) -> Dict:
                     ] = list_of_breaks_in_seconds
 
             case ProcessType.CHARGING:
-                template["processes"][process.name]["typename"] = "Charge"
-                del template["processes"][process.name]["dur"]
+                template["processes"][process_name]["typename"] = "Charge"
+                del template["processes"][process_name]["dur"]
 
             case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
-                template["processes"][process.name]["typename"] = "Standby"
-                template["processes"][process.name]["dur"] = 0
+                template["processes"][process_name]["typename"] = "Standby"
+                template["processes"][process_name]["dur"] = 0
 
             case ProcessType.PRECONDITION:
-                template["processes"][process.name]["typename"] = "Precondition"
-                template["processes"][process.name]["dur"] = process.duration
-                template["processes"][process.name]["power"] = process.electric_power
+                template["processes"][process_name]["typename"] = "Precondition"
+                template["processes"][process_name]["dur"] = int(
+                    process.duration.total_seconds()
+                )
+                template["processes"][process_name]["power"] = process.electric_power
             case _:
                 raise ValueError(f"Invalid process type: {process_type(process).name}")
 
@@ -262,7 +269,10 @@ def depot_to_template(depot: Depot) -> Dict:
         group_name = str(process_type(process)) + "_group"
         template["groups"][group_name] = {
             "typename": "AreaGroup",
-            "stores": [area.name for area in process.areas],
+            "stores": [
+                area.name if area.name is not None else str(area.id)
+                for area in process.areas
+            ],
         }
         if process_type(process) == ProcessType.STANDBY_DEPARTURE:
             template["groups"][group_name]["typename"] = "ParkingAreaGroup"
@@ -609,8 +619,10 @@ def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
         hour=0, minute=0, second=0, microsecond=0
     )
     midnight_after_last_arrival_day = midnight_of_last_arrival_day + timedelta(days=1)
-    total_duration_seconds = (
-        midnight_after_last_arrival_day - midnight_of_first_departure_day
-    ).total_seconds()
+    total_duration_seconds = int(
+        (
+            midnight_after_last_arrival_day - midnight_of_first_departure_day
+        ).total_seconds()
+    )
 
     return midnight_of_first_departure_day, total_duration_seconds
