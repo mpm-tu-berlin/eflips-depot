@@ -7,11 +7,8 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import Dict, List, Tuple
 
-import seaborn as sns  # TODO: Remove this dependency
 import simpy
 from eflips.model import VehicleType, Rotation, Depot, AreaType, Process
-from matplotlib import pyplot as plt  # TODO: Remove this dependency
-from tqdm import tqdm  # TODO: Remove this dependency
 
 from depot import SimpleTrip
 from eflips.depot.simple_vehicle import (
@@ -464,76 +461,6 @@ class VehicleSchedule:
         )
         sched._is_copy = True
         return sched
-
-    @staticmethod
-    def visualize(vehicle_schedules: List["VehicleSchedule"]):
-        """
-        Helper method to visualize the vehicle schedules.
-
-        :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
-
-        :return: Nothing for now. May return the plot or offer to save it.
-        """
-
-        # Get a list of all vehicle classes
-        vehicle_classes = set(
-            [schedule.vehicle_class for schedule in vehicle_schedules]
-        )
-        vehicle_classes = sorted(list(vehicle_classes))
-        palette = sns.color_palette("husl", len(vehicle_classes))
-        colors_for_vehicle_classes = dict(zip(vehicle_classes, palette))
-
-        # In order to plot the vehicle schedules in an appealing way, we need to solve a scheduling problem.
-        # We want to minimize the number of rows in the plot, while making sure that no two vehicle schedules overlap.
-        # We create a list for each row and then choose the next vehicle schedule to be in the row with the earliest
-        # departure time that does not overlap with any other vehicle schedule in that row.
-        vehicle_schedules = sorted(vehicle_schedules, key=lambda x: x.departure)
-        progress = tqdm(total=len(vehicle_schedules))
-        rows = []
-        while len(vehicle_schedules) > 0:
-            row = []
-            row.append(vehicle_schedules.pop(0))
-            schedule_copy = vehicle_schedules.copy()
-            while len(schedule_copy) > 0:
-                schedule = schedule_copy.pop(0)
-                if schedule.departure >= row[-1].arrival:
-                    row.append(schedule)
-                    vehicle_schedules.remove(schedule)
-                    progress.update(1)
-            rows.append(row)
-
-        plot_data = []
-        for row in rows:
-            plot_data.append([])
-            for entry in row:
-                plot_data[-1].append(
-                    {
-                        "start": entry.departure,
-                        "end": entry.arrival,
-                        "color": colors_for_vehicle_classes[entry.vehicle_class],
-                        "type": entry.vehicle_class,
-                    }
-                )
-
-        # Create the plot
-        fig, ax = plt.subplots(figsize=(10, 5))
-        already_labelled = set()
-        for row in plot_data:
-            for entry in row:
-                ax.broken_barh(
-                    [(entry["start"], entry["end"] - entry["start"])],
-                    (plot_data.index(row), 1),
-                    facecolors=entry["color"],
-                    label=entry["type"]
-                    if entry["type"] not in already_labelled
-                    else None,
-                )
-                already_labelled.add(
-                    entry["type"]
-                )  # Slightly hacky way to make sure that the labels are only added once
-        plt.legend()
-        plt.show()
-        plt.close()
 
     @staticmethod
     def _to_timetable(
