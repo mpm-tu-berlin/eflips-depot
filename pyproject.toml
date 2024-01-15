@@ -13,7 +13,7 @@ packages = [{ include = "eflips/depot" }]
 python = "^3.11"
 simpy = "^4.0.1"
 eflips = { git = "https://github.com/mpm-tu-berlin/eflips.git", rev = "eflips-depot-compatibility" }
-eflips-model = "^1.0.0rc3"
+eflips-model = "^1.0.0"
 
 [tool.pytest.ini_options]
 addopts = [
