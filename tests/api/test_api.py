@@ -27,7 +27,7 @@ from eflips.model import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from eflips.depot.api import init_simulation, run_simulation
+from eflips.depot.api import _init_simulation, _run_simulation, simulate_scenario
 
 
 class TestHelpers:
@@ -182,81 +182,91 @@ class TestHelpers:
         )
         interval = timedelta(minutes=30)
         duration = timedelta(minutes=20)
-        trips = []
 
-        rotation = Rotation(
-            scenario=scenario,
-            trips=trips,
-            vehicle_type=vehicle_type,
-            allow_opportunity_charging=False,
-        )
-        session.add(rotation)
+        # Create a number of rotations
+        number_of_rotations = 3
+        for rotation_id in range(number_of_rotations):
+            trips = []
 
-        for i in range(15):
-            # forward
-            trips.append(
-                Trip(
-                    scenario=scenario,
-                    route=route_1,
-                    trip_type=TripType.PASSENGER,
-                    departure_time=first_departure + 2 * i * interval,
-                    arrival_time=first_departure + 2 * i * interval + duration,
-                    rotation=rotation,
-                )
+            rotation = Rotation(
+                scenario=scenario,
+                trips=trips,
+                vehicle_type=vehicle_type,
+                allow_opportunity_charging=False,
             )
-            stop_times = [
-                StopTime(
-                    scenario=scenario,
-                    station=stop_1,
-                    arrival_time=first_departure + 2 * i * interval,
-                ),
-                StopTime(
-                    scenario=scenario,
-                    station=stop_2,
-                    arrival_time=first_departure
-                    + 2 * i * interval
-                    + timedelta(minutes=5),
-                ),
-                StopTime(
-                    scenario=scenario,
-                    station=stop_3,
-                    arrival_time=first_departure + 2 * i * interval + duration,
-                ),
-            ]
-            trips[-1].stop_times = stop_times
+            session.add(rotation)
 
-            # backward
-            trips.append(
-                Trip(
-                    scenario=scenario,
-                    route=route_2,
-                    trip_type=TripType.PASSENGER,
-                    departure_time=first_departure + (2 * i + 1) * interval,
-                    arrival_time=first_departure + (2 * i + 1) * interval + duration,
-                    rotation=rotation,
+            for i in range(15):
+                # forward
+                trips.append(
+                    Trip(
+                        scenario=scenario,
+                        route=route_1,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + 2 * i * interval,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                        rotation=rotation,
+                    )
                 )
-            )
-            stop_times = [
-                StopTime(
-                    scenario=scenario,
-                    station=stop_3,
-                    arrival_time=first_departure + (2 * i + 1) * interval,
-                ),
-                StopTime(
-                    scenario=scenario,
-                    station=stop_2,
-                    arrival_time=first_departure
-                    + (2 * i + 1) * interval
-                    + timedelta(minutes=5),
-                ),
-                StopTime(
-                    scenario=scenario,
-                    station=stop_1,
-                    arrival_time=first_departure + (2 * i + 1) * interval + duration,
-                ),
-            ]
-            trips[-1].stop_times = stop_times
-        session.add_all(trips)
+                stop_times = [
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_1,
+                        arrival_time=first_departure + 2 * i * interval,
+                    ),
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_2,
+                        arrival_time=first_departure
+                        + 2 * i * interval
+                        + timedelta(minutes=5),
+                    ),
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_3,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+
+                # backward
+                trips.append(
+                    Trip(
+                        scenario=scenario,
+                        route=route_2,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + (2 * i + 1) * interval,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                        rotation=rotation,
+                    )
+                )
+                stop_times = [
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_3,
+                        arrival_time=first_departure + (2 * i + 1) * interval,
+                    ),
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_2,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + timedelta(minutes=5),
+                    ),
+                    StopTime(
+                        scenario=scenario,
+                        station=stop_1,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+            session.add_all(trips)
+
+            first_departure += timedelta(minutes=20)
 
         # Create a simple depot
 
@@ -271,12 +281,22 @@ class TestHelpers:
         depot.default_plan = plan
 
         # Create areas
-        cleaning_area = Area(
+        arrival_area = Area(
             scenario=scenario,
-            name="Arrival & Cleaning Area",
+            name="Arrival",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=2,
+            capacity=number_of_rotations + 2,
+        )
+        session.add(arrival_area)
+        arrival_area.vehicle_type = vehicle_type
+
+        cleaning_area = Area(
+            scenario=scenario,
+            name="Cleaning Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=1,
         )
         session.add(cleaning_area)
         cleaning_area.vehicle_type = vehicle_type
@@ -286,32 +306,21 @@ class TestHelpers:
             name="Line Charging Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=2,
-            capacity=6,
+            row_count=4,
+            capacity=24,
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
-
-        parking_area = Area(
-            scenario=scenario,
-            name="Parking Area",
-            depot=depot,
-            area_type=AreaType.DIRECT_TWOSIDE,
-            capacity=4,
-        )
-        session.add(parking_area)
-        parking_area.vehicle_type = vehicle_type
 
         # Create processes
         standby_arrival = Process(
             name="Standby Arrival",
             scenario=scenario,
             dispatchable=False,
-            duration=timedelta(minutes=5),
         )
 
         clean = Process(
-            name="Clean",
+            name="Arrival Cleaning",
             scenario=scenario,
             dispatchable=False,
             duration=timedelta(minutes=30),
@@ -321,11 +330,11 @@ class TestHelpers:
             name="Charging",
             scenario=scenario,
             dispatchable=False,
-            electric_power=150,
+            electric_power=15,
         )
 
         standby_departure = Process(
-            name="Standby Departure",
+            name="Standby Pre-departure",
             scenario=scenario,
             dispatchable=True,
         )
@@ -336,7 +345,7 @@ class TestHelpers:
         session.add(standby_departure)
 
         cleaning_area.processes.append(clean)
-        cleaning_area.processes.append(standby_arrival)
+        arrival_area.processes.append(standby_arrival)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
 
@@ -374,13 +383,82 @@ class TestHelpers:
 
 
 class TestApi(TestHelpers):
+    def test_run_simulation_by_id(self, session, full_scenario):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        # Make sure the DATABASE_URL is set
+        assert "DATABASE_URL" in os.environ
+
+        simulate_scenario(
+            scenario=full_scenario.id,
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=False,
+        )
+
+    def test_run_simulation_by_id_and_url(self, session, full_scenario):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        # Make sure the DATABASE_URL is set
+        assert "DATABASE_URL" in os.environ
+
+        simulate_scenario(
+            scenario=full_scenario.id,
+            database_url=os.environ["DATABASE_URL"],
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=False,
+        )
+
+    def test_run_simulation_by_object_with_id_and_url(self, session, full_scenario):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        # Make sure the DATABASE_URL is set
+        assert "DATABASE_URL" in os.environ
+
+        # Create a simple object with an id attribute
+        class ScenarioId:
+            def __init__(self, id):
+                self.id = id
+
+        scen = ScenarioId(full_scenario.id)
+
+        simulate_scenario(
+            scenario=scen.id,
+            database_url=os.environ["DATABASE_URL"],
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=False,
+        )
+
+    def test_simulate_scenario(self, session, full_scenario):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        # Make sure the DATABASE_URL is set
+        assert "DATABASE_URL" in os.environ
+
+        simulate_scenario(
+            scenario=full_scenario,
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=True,
+        )
+
     def test_init_simulation(self, session, full_scenario):
         # We need to set the consumption values for all vehicle types to 1
         for vehicle_type in full_scenario.vehicle_types:
             vehicle_type.consumption = 1
         session.commit()
 
-        simulation_host = init_simulation(
+        simulation_host = _init_simulation(
             full_scenario, simple_consumption_simulation=True
         )
 
@@ -390,11 +468,62 @@ class TestApi(TestHelpers):
             vehicle_type.consumption = 1
         session.commit()
 
-        simulation_host = init_simulation(
+        simulation_host = _init_simulation(
             full_scenario, simple_consumption_simulation=True
         )
 
-        depot_evaluation = run_simulation(simulation_host)
+        depot_evaluation = _run_simulation(simulation_host)
+
+        depot_evaluation.path_results = str(tmp_path)
+
+        depot_evaluation.vehicle_periods(
+            periods={
+                "depot general": "darkgray",
+                "park": "lightgray",
+                "Arrival Cleaning": "steelblue",
+                "Charging": "forestgreen",
+                "Standby Pre-departure": "darkblue",
+                "precondition": "black",
+                "trip": "wheat",
+            },
+            save=True,
+            show=False,
+            formats=(
+                "pdf",
+                "png",
+            ),
+            show_total_power=True,
+            show_annotates=True,
+        )
+
+        # Check if the files were created and are not empty
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
+
+        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
+        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
+
+    def test_run_simulation_correct_vehicle_count(
+        self, session, full_scenario, tmp_path
+    ):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        simulation_host = _init_simulation(
+            full_scenario, simple_consumption_simulation=True
+        )
+
+        depot_evaluation = _run_simulation(simulation_host)
+
+        vehicle_counts = depot_evaluation.nvehicles_used_calculation()
+        simulation_host = _init_simulation(
+            scenario=full_scenario,
+            simple_consumption_simulation=True,
+            vehicle_count_dict=vehicle_counts,
+        )
+        depot_evaluation = _run_simulation(simulation_host)
 
         depot_evaluation.path_results = str(tmp_path)
 
