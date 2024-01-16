@@ -6,17 +6,21 @@ is then passed to the :func:`eflips.depot.api.init_simulation` function, which r
 which returns another (black-box) object, the :class:`DepotEvaluation` object. This object contains the results of
 the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
 function.
-
-
 """
+
+
 import os
+import warnings
 from datetime import timedelta
 from math import ceil
-from typing import Optional
+from typing import Optional, Union, Any, Dict
 
+import sqlalchemy.orm
 from eflips.model import (
     Scenario,
 )
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 import eflips.depot
 from eflips.depot import SimulationHost, DepotEvaluation
@@ -29,10 +33,97 @@ from eflips.depot.api.private import (
 )
 
 
-def init_simulation(
+def simulate_scenario(
+    scenario: Union[Scenario, int, Any],
+    simple_consumption_simulation: bool = False,
+    repetition_period: Optional[timedelta] = None,
+    calculate_exact_vehicle_count: bool = True,
+    database_url: Optional[str] = None,
+) -> None:
+    """
+    This method simulates a scenario and adds the results to the database. It fills in the "Charging Events" in the
+    :class:`eflips.model.Event` table and associates :class:`eflips.model.Vehicle` objects with all the existing
+    "Driving Events" in the :class:`eflips.model.Event` table.
+
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+           an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+           `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
+           parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+           valid database URL.
+
+    :param simple_consumption_simulation: A boolean flag indicating whether the simulation should be run in
+        "simple consumption" mode. In this mode, the vehicle consumption is calculated using a simple formula and
+        existing driving events are ignored. This is useful for testing purposes.
+
+    :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
+        is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
+        time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
+        automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
+        raised and repetition needs to be specified manually.
+
+    :param calculate_exact_vehicle_count: A boolean flag indicating whether the exact number of vehicles should be
+        calculated. If this is set to True, the simulation will be run twice. The first time, the number of vehicles
+        will be calculated using the number of trips for each vehicle type. The second time, the number of vehicles
+        will be set to the calculated number of vehicles.
+
+    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
+        URL.
+
+    :return: Nothing. The results are added to the database.
+    """
+
+    # Step 0: Load the scenario
+    if isinstance(scenario, Scenario):
+        session = None
+    elif isinstance(scenario, int) or hasattr(scenario, "id"):
+        if isinstance(scenario, int):
+            scenario_id = scenario
+        else:
+            scenario_id = scenario.id
+
+        if database_url is None:
+            if "DATABASE_URL" in os.environ:
+                database_url = os.environ.get("DATABASE_URL")
+            else:
+                raise ValueError("No database URL specified.")
+
+        engine = create_engine(database_url)
+        session = Session(engine)
+        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+    else:
+        raise ValueError(
+            "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
+        )
+
+    simulation_host = _init_simulation(
+        scenario=scenario,
+        simple_consumption_simulation=simple_consumption_simulation,
+        repetition_period=repetition_period,
+    )
+
+    ev = _run_simulation(simulation_host)
+
+    if calculate_exact_vehicle_count:
+        vehicle_counts = ev.nvehicles_used_calculation()
+        simulation_host = _init_simulation(
+            scenario=scenario,
+            simple_consumption_simulation=simple_consumption_simulation,
+            repetition_period=repetition_period,
+            vehicle_count_dict=vehicle_counts,
+        )
+
+    _add_evaluation_to_database(ev, session)
+
+    if session is not None:
+        session.close()
+
+
+def _init_simulation(
     scenario: Scenario,
     simple_consumption_simulation: bool = False,
-    repetition_period: Optional[timedelta] = None,  # TODO: Add vehicle count dict
+    repetition_period: Optional[timedelta] = None,
+    vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
     """
     This methods checks the input data for consistency, initializes a simulation host object and returns it. The
@@ -49,6 +140,9 @@ def init_simulation(
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
+
+    :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type. If this
+        is not specified, the number of vehicles is assumed to be 10 times the number of trips for each vehicle type.
 
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
@@ -130,18 +224,28 @@ def init_simulation(
 
     # Step 4: Set up the vehicle types
     # We need to calculate roughly how many vehicles we need
-    # We do that by taking the total trips for each vehicle class and creating 100 times the number of vehicles
+    # We do that by taking the total trips for each vehicle class and creating 10 times the number of vehicles
     # for each vehicle type in the vehicle class
     all_vehicle_types = set([rotation.vehicle_type for rotation in scenario.rotations])
-    vehicle_count = {}
-    for vehicle_type in all_vehicle_types:
-        trip_count = sum(
-            [
-                1 if rotation.vehicle_type == vehicle_type else 0
-                for rotation in scenario.rotations
-            ]
-        )
-        vehicle_count[str(vehicle_type.id)] = 100 * trip_count
+
+    if vehicle_count_dict is not None:
+        if set(vehicle_count_dict.keys()) != set(
+            [str(vehicle_type.id) for vehicle_type in all_vehicle_types]
+        ):
+            raise ValueError(
+                "The vehicle count dictionary does not contain all vehicle types."
+            )
+        vehicle_count = vehicle_count_dict
+    else:
+        vehicle_count = {}
+        for vehicle_type in all_vehicle_types:
+            trip_count = sum(
+                [
+                    1 if rotation.vehicle_type == vehicle_type else 0
+                    for rotation in scenario.rotations
+                ]
+            )
+            vehicle_count[str(vehicle_type.id)] = 10 * trip_count
 
     # Now we put the vehicle count into the settings
     eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
@@ -170,10 +274,11 @@ def init_simulation(
     return simulation_host
 
 
-def run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
+def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
     """Run simulation and return simulation results
 
     :param simulation_host: A "black box" object containing all input data for the simulation.
+
     :return: Object of :class:`eflips.depot.evaluation.DepotEvaluation` containing the simulation results.
     """
     simulation_host.run()
@@ -182,8 +287,10 @@ def run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
     return ev
 
 
-def add_evaluation_to_database(
+def _add_evaluation_to_database(
     depot_evaluation: DepotEvaluation,
-    db_url: str,
+    session: sqlalchemy.orm.Session,
 ) -> None:
-    pass
+    warnings.warn(
+        "NOT adding any events to the database, since this is not implemented yet."
+    )
