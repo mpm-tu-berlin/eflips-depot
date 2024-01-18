@@ -141,6 +141,10 @@ class DepotEvaluation:
 
         self.path_results = globalConstants["depot"]["path_results"]
         self.SIM_TIME = self.gc["general"]["SIMULATION_TIME"]
+
+        # TODO see if this works
+        self.sim_start_datetime = self.gc["general"]["SIMULATION_START_DATETIME"]
+
         self.xlim = (0, self.SIM_TIME)
 
     @property
