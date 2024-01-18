@@ -122,7 +122,9 @@ def depot_to_template(depot: Depot) -> Dict:
 
     # Get dictionary of each area
     for area in depot.areas:
-        area_name = area.name if area.name is not None else str(area.id)
+        # area_name = area.name if area.name is not None else str(area.id)
+        # TODO keep consistent with name/id for each API class
+        area_name = str(area.id)
         template["areas"][area_name] = {
             "typename": (
                 "LineArea" if area.area_type == AreaType.LINE else "DirectArea"
@@ -267,7 +269,8 @@ def depot_to_template(depot: Depot) -> Dict:
         template["groups"][group_name] = {
             "typename": "AreaGroup",
             "stores": [
-                area.name if area.name is not None else str(area.id)
+                # area.name if area.name is not None else str(area.id)
+                str(area.id)
                 for area in process.areas
             ],
         }
