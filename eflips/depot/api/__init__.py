@@ -7,17 +7,24 @@ which returns another (black-box) object, the :class:`DepotEvaluation` object. T
 the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
 function.
 """
-
-
+import json
 import os
 import warnings
 from datetime import timedelta
 from math import ceil
 from typing import Optional, Union, Any, Dict
+from datetime import timedelta, datetime
+from math import ceil, floor
+from typing import Optional, List, Dict
+from matplotlib import pyplot as plt
 
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
+    EventType,
+    Event,
+    Vehicle,
+    Rotation,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -75,6 +82,7 @@ def simulate_scenario(
 
     # Step 0: Load the scenario
     if isinstance(scenario, Scenario):
+        # TODO ?
         session = None
     elif isinstance(scenario, int) or hasattr(scenario, "id"):
         if isinstance(scenario, int):
@@ -113,7 +121,8 @@ def simulate_scenario(
             vehicle_count_dict=vehicle_counts,
         )
 
-    _add_evaluation_to_database(ev, session)
+    if session is not None:
+        _add_evaluation_to_database(scenario.id, ev, session)
 
     if session is not None:
         session.close()
@@ -217,6 +226,8 @@ def _init_simulation(
     sim_start_stime, total_duration_seconds = start_and_end_times(vehicle_schedules)
     eflips.globalConstants["general"]["SIMULATION_TIME"] = int(total_duration_seconds)
 
+    eflips.globalConstants["general"]["SIMULATION_START_DATETIME"] = sim_start_stime
+
     timetable = VehicleSchedule._to_timetable(
         vehicle_schedules, simulation_host.env, sim_start_stime
     )
@@ -288,9 +299,284 @@ def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
 
 
 def _add_evaluation_to_database(
+    scenario_id: int,
     depot_evaluation: DepotEvaluation,
     session: sqlalchemy.orm.Session,
 ) -> None:
-    warnings.warn(
-        "NOT adding any events to the database, since this is not implemented yet."
-    )
+    """
+
+
+    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating :class:`eflips.model.Event` objects.
+    :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation results.
+    :param session: a SQLAlchemy session object. This is used to add all the simulation results to the database.
+    :return:
+    """
+
+    # Read simulation start time
+    simulation_start_time = depot_evaluation.sim_start_datetime
+
+    # Initialization of empty lists
+
+    list_of_vehicles = []
+
+    list_of_events = []
+
+    list_of_assigned_schedules = []
+
+    # Read results from depot_evaluation categorized by vehicle
+    for current_vehicle in depot_evaluation.vehicle_generator.items:
+        list_of_events_per_vehicle = []
+
+        vehicle_type_id = int(current_vehicle.vehicle_type.ID)
+
+        vehicle_id = depot_evaluation.vehicle_generator.items.index(current_vehicle) + 1
+
+        # Create a Vehicle object for database
+        current_vehicle_db = Vehicle(
+            id=vehicle_id,
+            vehicle_type_id=vehicle_type_id,
+            scenario_id=scenario_id,
+            name=current_vehicle.ID,
+            name_short=None,
+        )
+        list_of_vehicles.append(current_vehicle_db)
+
+        # TODO temporarily take the second schedule id and see if we need to change it later
+        if len(current_vehicle.finished_trips) > 1:
+            assigned_schedule_id = int(current_vehicle.finished_trips[1].ID)
+            list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
+
+        # Read processes of this vehicle
+        list_of_timekeys = list(
+            current_vehicle.logger.loggedData["dwd.active_processes_copy"].keys()
+        )
+        list_of_timekeys.sort()
+
+        for time_key in list_of_timekeys:
+            process_list = current_vehicle.logger.loggedData[
+                "dwd.active_processes_copy"
+            ][time_key]
+            current_area = current_vehicle.logger.loggedData["dwd.current_area"][
+                time_key
+            ]
+            # Only concerning processes not being cancelled
+
+            if process_list is not None and current_area is not None:
+                for current_process in process_list:
+                    # TODO back at it later with better test samples
+                    if (
+                        len(current_process.starts) is not 1
+                        or len(current_process.ends) is not 1
+                    ):
+                        raise NotImplementedError(
+                            f"Restart of process {current_process.ID} is not implemented."
+                        )
+
+                    # Get start time
+
+                    # if it is a standby event starting at the same time with other processes
+                    if (
+                        len(process_list) is not 1
+                        and type(current_process).__name__ == "Standby"
+                    ):
+                        event_start_after_simulation = simseconds_to_timedelta(
+                            process_list[0].ends[0]
+                        )
+
+                    else:
+                        event_start_after_simulation = simseconds_to_timedelta(
+                            current_process.starts[0]
+                        )
+                    time_start = simulation_start_time + event_start_after_simulation
+
+                    # Get end time
+                    if current_process.dur > 0:
+                        # If this process has a valid duration then directly use end time
+                        event_end_after_simulation = simseconds_to_timedelta(
+                            current_process.ends[0]
+                        )
+                        time_end = simulation_start_time + event_end_after_simulation
+
+                    else:
+                        # If this process has a duration of 0, then use the next process start time as end time
+
+                        start_time_index = list_of_timekeys.index(
+                            current_process.starts[0]
+                        )
+                        if start_time_index == len(list_of_timekeys) - 1:
+                            # This is the last process in the list
+                            end_time_sec = depot_evaluation.SIM_TIME
+
+                        else:
+                            end_time_sec = list_of_timekeys[start_time_index + 1]
+
+                        event_end_after_simulation = simseconds_to_timedelta(
+                            end_time_sec
+                        )
+                        time_end = simulation_start_time + event_end_after_simulation
+
+                    # Get EventType
+                    match type(current_process).__name__:
+                        case "Serve":
+                            event_type = EventType.SERVICE
+                        case "Charge":
+                            event_type = EventType.CHARGING_DEPOT
+                        case "Standby":
+                            if current_area.issink is True:
+                                event_type = EventType.STANDBY_DEPARTURE
+                            else:
+                                event_type = EventType.STANDBY
+                        case "Precondition":
+                            event_type = EventType.PRECONDITIONING
+                        case _:
+                            raise ValueError(
+                                """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
+                                "Precondition"""
+                            )
+
+                    # Get proper area and subloc id
+
+                    area_id = int(current_area.ID)
+
+                    # TODO: use subloc_id for now. Implement it correctly later
+
+                    slot_id = current_vehicle.logger.loggedData["dwd.current_slot"][
+                        time_key
+                    ]
+                    subloc_id = slot_id if slot_id is not None else None
+
+                    # Read battery logs for timeseries
+                    battery_logs = current_vehicle.battery_logs
+                    # TODO: linear interpolation for now. Using advanced curves later
+                    # TODO may still have potential bugs
+                    timeseries = {"time": [], "soc": []}
+                    for log in battery_logs:
+                        # Charging starts
+                        if (
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_start"
+                        ):
+                            soc_start = log.energy / log.energy_real
+
+                            timeseries["time"].append(time_start)
+                            timeseries["soc"].append(soc_start)
+
+                        # Charging ends
+                        if (
+                            log.t == current_process.ends[0]
+                            and log.event_name == "charge_end"
+                        ):
+                            soc_end = log.energy / log.energy_real
+                            timeseries["time"].append(time_end)
+                            timeseries["soc"].append(soc_end)
+
+                        # Vehicle on a trip
+                        if log.t == time_key and log.event_name == "consume_start":
+                            pass
+
+                        if (
+                            # Vehicle arrives
+                            log.t == current_process.starts[0]
+                            and log.event_name == "consume_end"
+                        ) or (
+                            # Preconditioning
+                            log.t == current_process.ends[0]
+                            and log.event_name == "consume_start"
+                        ):
+                            # No battery consumption
+                            soc_start = log.energy / log.energy_real
+                            timeseries["time"].append(time_start)
+                            timeseries["soc"].append(soc_start)
+                            soc_end = soc_start
+                            timeseries["time"].append(time_end)
+                            timeseries["soc"].append(soc_end)
+
+                    # Generate timeseries with resolution of 1 second by linear interpolation
+                    for t in range(int((time_end - time_start).total_seconds()) - 2):
+                        timeseries["time"].append(time_start + timedelta(seconds=t + 1))
+                        timeseries["soc"].append(
+                            soc_start
+                            + (soc_end - soc_start)
+                            * (t / (time_end - time_start).total_seconds())
+                        )
+
+                    time_soc_list = sorted(
+                        zip(timeseries["time"], timeseries["soc"]), key=lambda x: x[0]
+                    )
+                    timeseries["time"] = [x[0] for x in time_soc_list]
+                    timeseries["soc"] = [x[1] for x in time_soc_list]
+                    timeseries = json.dumps(timeseries, default=str)
+
+                    if time_end <= time_start:
+                        # end of the simulation
+                        time_end = time_start + timedelta(seconds=1)
+
+                    current_event = Event(
+                        scenario_id=scenario_id,
+                        vehicle_type_id=vehicle_type_id,
+                        vehicle_id=vehicle_id,
+                        station_id=None,
+                        area_id=area_id,
+                        subloc_no=subloc_id,
+                        trip_id=None,
+                        time_start=time_start,
+                        time_end=time_end - timedelta(seconds=1),
+                        soc_start=soc_start,
+                        soc_end=soc_end,
+                        event_type=event_type,
+                        description=None,
+                        timeseries=timeseries,
+                    )
+
+                    list_of_events_per_vehicle.append(current_event)
+
+        list_of_events.extend(list_of_events_per_vehicle)
+
+    # Write into database
+
+    # Write Vehicles first
+    session.add_all(list_of_vehicles)
+
+    # Update rotation table with vehicle ids
+    for vehicle_id, schedule_id in list_of_assigned_schedules:
+        session.query(Rotation).filter(
+            Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
+        ).update(
+            {Rotation.vehicle_id: vehicle_id},
+            synchronize_session=False,
+        )
+
+    # Write Events
+    session.add_all(list_of_events)
+
+    if session is not None:
+        session.commit()
+
+
+def simseconds_to_timedelta(simseconds: int) -> timedelta:
+    """This function converts a number representing seconds after simulation start to a timedelta object.
+    :param simseconds: A number representing seconds after simulation start.
+    :return: A timedelta object representing the time after simulation start."""
+    days = floor(simseconds / 86400)
+    hours = floor((simseconds % 86400) / 3600)
+    minutes = floor((simseconds % 3600) / 60)
+    seconds = simseconds % 60
+    return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+
+
+def visualize_event_list(list_of_events: List[Event], colors: Dict, path: str) -> None:
+    """This function visualize the event list. For debugging purpose only."""
+
+    fig, ax = plt.subplots()
+    vehicle_no = 0
+    y_range = 10
+
+    for event in list_of_events:
+        ax.broken_barh(
+            [(event.time_start, event.time_end - event.time_start)],
+            ((event.vehicle_id - 1) * y_range + 1, y_range - 2),
+            color=colors[event.event_type.name],
+        )
+
+    # plt.show()
+    plt.savefig(path)

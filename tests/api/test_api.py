@@ -23,11 +23,18 @@ from eflips.model import (
     Process,
     AssocPlanProcess,
     Base,
+    Event,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from eflips.depot.api import _init_simulation, _run_simulation, simulate_scenario
+from eflips.depot.api import (
+    _init_simulation,
+    _run_simulation,
+    simulate_scenario,
+    _add_evaluation_to_database,
+    visualize_event_list,
+)
 
 
 class TestHelpers:
@@ -89,13 +96,14 @@ class TestHelpers:
         session.add(vehicle_class)
 
         # Add a vehicle
-        vehicle = Vehicle(
-            scenario=scenario,
-            vehicle_type=vehicle_type,
-            name="Test Vehicle",
-            name_short="TV",
-        )
-        session.add(vehicle)
+        # TODO vehicle should be added by eflips-depot as output
+        # vehicle = Vehicle(
+        #     scenario=scenario,
+        #     vehicle_type=vehicle_type,
+        #     name="Test Vehicle",
+        #     name_short="TV",
+        # )
+        # session.add(vehicle)
 
         line = Line(
             scenario=scenario,
@@ -525,31 +533,21 @@ class TestApi(TestHelpers):
         )
         depot_evaluation = _run_simulation(simulation_host)
 
-        depot_evaluation.path_results = str(tmp_path)
+        _add_evaluation_to_database(full_scenario.id, depot_evaluation, session)
 
-        depot_evaluation.vehicle_periods(
-            periods={
-                "depot general": "darkgray",
-                "park": "lightgray",
-                "Arrival Cleaning": "steelblue",
-                "Charging": "forestgreen",
-                "Standby Pre-departure": "darkblue",
-                "precondition": "black",
-                "trip": "wheat",
-            },
-            save=True,
-            show=False,
-            formats=(
-                "pdf",
-                "png",
-            ),
-            show_total_power=True,
-            show_annotates=True,
+        # Query eventlist from database and plot for testing
+
+        event_list = session.query(Event).all()
+
+        colors = {
+            "SERVICE": "steelblue",
+            "CHARGING_DEPOT": "green",
+            "STANDBY": "lightcoral",
+            "STANDBY_DEPARTURE": "lightcyan",
+            "PRECONDITION": "black",
+        }
+
+        visualize_event_list(
+            event_list, colors, os.path.join(tmp_path, "event_list.png")
         )
-
-        # Check if the files were created and are not empty
-        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
-        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
-
-        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
-        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
+        assert os.path.isfile(os.path.join(tmp_path, "event_list.png"))
