@@ -304,12 +304,19 @@ def _add_evaluation_to_database(
     session: sqlalchemy.orm.Session,
 ) -> None:
     """
+    This method reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and
+    adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
 
+    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
+    :class:`eflips.model.Event` objects.
 
-    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating :class:`eflips.model.Event` objects.
-    :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation results.
-    :param session: a SQLAlchemy session object. This is used to add all the simulation results to the database.
-    :return:
+    :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation
+    results.
+
+    :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
+    database.
+
+    :return: Nothing. The results are added to the database.
     """
 
     # Read simulation start time
@@ -352,6 +359,8 @@ def _add_evaluation_to_database(
         )
         list_of_timekeys.sort()
 
+        battery_logs = current_vehicle.battery_logs
+
         for time_key in list_of_timekeys:
             process_list = current_vehicle.logger.loggedData[
                 "dwd.active_processes_copy"
@@ -379,6 +388,7 @@ def _add_evaluation_to_database(
                         len(process_list) is not 1
                         and type(current_process).__name__ == "Standby"
                     ):
+                        # Start time of this event is the end time of the previous event
                         event_start_after_simulation = simseconds_to_timedelta(
                             process_list[0].ends[0]
                         )
@@ -387,6 +397,7 @@ def _add_evaluation_to_database(
                         event_start_after_simulation = simseconds_to_timedelta(
                             current_process.starts[0]
                         )
+
                     time_start = simulation_start_time + event_start_after_simulation
 
                     # Get end time
@@ -398,13 +409,13 @@ def _add_evaluation_to_database(
                         time_end = simulation_start_time + event_end_after_simulation
 
                     else:
-                        # If this process has a duration of 0, then use the next process start time as end time
+                        # If this process has a duration of 0, then end time is the start time of the next process
 
                         start_time_index = list_of_timekeys.index(
                             current_process.starts[0]
                         )
                         if start_time_index == len(list_of_timekeys) - 1:
-                            # This is the last process in the list
+                            # This is the last process in the list. Use end of simulation time as event end time
                             end_time_sec = depot_evaluation.SIM_TIME
 
                         else:
@@ -446,15 +457,18 @@ def _add_evaluation_to_database(
                     subloc_id = slot_id if slot_id is not None else None
 
                     # Read battery logs for timeseries
-                    battery_logs = current_vehicle.battery_logs
                     # TODO: linear interpolation for now. Using advanced curves later
                     # TODO may still have potential bugs
                     timeseries = {"time": [], "soc": []}
+
+                    # TODO re-write this in better way
+
                     for log in battery_logs:
                         # Charging starts
                         if (
                             log.t == current_process.starts[0]
                             and log.event_name == "charge_start"
+                            and type(current_process).__name__ == "Charge"
                         ):
                             soc_start = log.energy / log.energy_real
 
@@ -465,8 +479,25 @@ def _add_evaluation_to_database(
                         if (
                             log.t == current_process.ends[0]
                             and log.event_name == "charge_end"
+                            and type(current_process).__name__ == "Charge"
                         ):
                             soc_end = log.energy / log.energy_real
+                            timeseries["time"].append(time_end)
+                            timeseries["soc"].append(soc_end)
+
+                        if (
+                            # Vehicle stands by for departure
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_start"
+                            and type(current_process).__name__ == "Standby"
+                        ):
+                            # get the charge_end event
+                            idx = battery_logs.index(log)
+                            charge_end_log = battery_logs[idx + 1]
+                            soc_start = charge_end_log.energy / log.energy_real
+                            soc_end = soc_start
+                            timeseries["time"].append(time_start)
+                            timeseries["soc"].append(soc_start)
                             timeseries["time"].append(time_end)
                             timeseries["soc"].append(soc_end)
 
@@ -507,10 +538,6 @@ def _add_evaluation_to_database(
                     timeseries["soc"] = [x[1] for x in time_soc_list]
                     timeseries = json.dumps(timeseries, default=str)
 
-                    if time_end <= time_start:
-                        # end of the simulation
-                        time_end = time_start + timedelta(seconds=1)
-
                     current_event = Event(
                         scenario_id=scenario_id,
                         vehicle_type_id=vehicle_type_id,
@@ -520,7 +547,8 @@ def _add_evaluation_to_database(
                         subloc_no=subloc_id,
                         trip_id=None,
                         time_start=time_start,
-                        time_end=time_end - timedelta(seconds=1),
+                        time_end=time_end
+                        - timedelta(seconds=1),  # Avoiding overlapping
                         soc_start=soc_start,
                         soc_end=soc_end,
                         event_type=event_type,
