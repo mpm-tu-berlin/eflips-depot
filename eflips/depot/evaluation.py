@@ -118,6 +118,7 @@ class DepotEvaluation:
 
         self.SIM_TIME = None
         self.xlim = None
+        self.sim_start_datetime = None
 
         self.power_logs = {0: 0}
         self.arrival_logs = []
@@ -142,8 +143,8 @@ class DepotEvaluation:
         self.path_results = globalConstants["depot"]["path_results"]
         self.SIM_TIME = self.gc["general"]["SIMULATION_TIME"]
 
-        # TODO see if this works
-        self.sim_start_datetime = self.gc["general"]["SIMULATION_START_DATETIME"]
+        if "SIMULATION_START_DATETIME" in self.gc["general"]:
+            self.sim_start_datetime = self.gc["general"]["SIMULATION_START_DATETIME"]
 
         self.xlim = (0, self.SIM_TIME)
 
