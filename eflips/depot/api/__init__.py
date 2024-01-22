@@ -348,7 +348,6 @@ def _add_evaluation_to_database(
         )
         list_of_vehicles.append(current_vehicle_db)
 
-        # TODO temporarily take the second schedule id and see if we need to change it later
         if len(current_vehicle.finished_trips) > 1:
             assigned_schedule_id = int(current_vehicle.finished_trips[1].ID)
             list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
@@ -372,7 +371,6 @@ def _add_evaluation_to_database(
 
             if process_list is not None and current_area is not None:
                 for current_process in process_list:
-                    # TODO back at it later with better test samples
                     if (
                         len(current_process.starts) is not 1
                         or len(current_process.ends) is not 1
@@ -389,13 +387,13 @@ def _add_evaluation_to_database(
                         and type(current_process).__name__ == "Standby"
                     ):
                         # Start time of this event is the end time of the previous event
-                        event_start_after_simulation = simseconds_to_timedelta(
-                            process_list[0].ends[0]
+                        event_start_after_simulation = timedelta(
+                            seconds=process_list[0].ends[0]
                         )
 
                     else:
-                        event_start_after_simulation = simseconds_to_timedelta(
-                            current_process.starts[0]
+                        event_start_after_simulation = timedelta(
+                            seconds=current_process.starts[0]
                         )
 
                     time_start = simulation_start_time + event_start_after_simulation
@@ -403,8 +401,8 @@ def _add_evaluation_to_database(
                     # Get end time
                     if current_process.dur > 0:
                         # If this process has a valid duration then directly use end time
-                        event_end_after_simulation = simseconds_to_timedelta(
-                            current_process.ends[0]
+                        event_end_after_simulation = timedelta(
+                            seconds=current_process.ends[0]
                         )
                         time_end = simulation_start_time + event_end_after_simulation
 
@@ -421,9 +419,7 @@ def _add_evaluation_to_database(
                         else:
                             end_time_sec = list_of_timekeys[start_time_index + 1]
 
-                        event_end_after_simulation = simseconds_to_timedelta(
-                            end_time_sec
-                        )
+                        event_end_after_simulation = timedelta(seconds=end_time_sec)
                         time_end = simulation_start_time + event_end_after_simulation
 
                     # Get EventType
@@ -449,19 +445,15 @@ def _add_evaluation_to_database(
 
                     area_id = int(current_area.ID)
 
-                    # TODO: use subloc_id for now. Implement it correctly later
-
                     slot_id = current_vehicle.logger.loggedData["dwd.current_slot"][
                         time_key
                     ]
                     subloc_id = slot_id if slot_id is not None else None
 
                     # Read battery logs for timeseries
-                    # TODO: linear interpolation for now. Using advanced curves later
-                    # TODO may still have potential bugs
-                    timeseries = {"time": [], "soc": []}
 
-                    # TODO re-write this in better way
+                    if len(battery_logs) == 0:
+                        raise ValueError("No battery logs found.")
 
                     for log in battery_logs:
                         # Charging starts
@@ -472,8 +464,12 @@ def _add_evaluation_to_database(
                         ):
                             soc_start = log.energy / log.energy_real
 
-                            timeseries["time"].append(time_start)
-                            timeseries["soc"].append(soc_start)
+                        if (
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_step"
+                            and type(current_process).__name__ == "Charge"
+                        ):
+                            raise NotImplementedError("Charge step is not implemented.")
 
                         # Charging ends
                         if (
@@ -482,8 +478,6 @@ def _add_evaluation_to_database(
                             and type(current_process).__name__ == "Charge"
                         ):
                             soc_end = log.energy / log.energy_real
-                            timeseries["time"].append(time_end)
-                            timeseries["soc"].append(soc_end)
 
                         if (
                             # Vehicle stands by for departure
@@ -496,10 +490,6 @@ def _add_evaluation_to_database(
                             charge_end_log = battery_logs[idx + 1]
                             soc_start = charge_end_log.energy / log.energy_real
                             soc_end = soc_start
-                            timeseries["time"].append(time_start)
-                            timeseries["soc"].append(soc_start)
-                            timeseries["time"].append(time_end)
-                            timeseries["soc"].append(soc_end)
 
                         # Vehicle on a trip
                         if log.t == time_key and log.event_name == "consume_start":
@@ -516,27 +506,8 @@ def _add_evaluation_to_database(
                         ):
                             # No battery consumption
                             soc_start = log.energy / log.energy_real
-                            timeseries["time"].append(time_start)
-                            timeseries["soc"].append(soc_start)
+
                             soc_end = soc_start
-                            timeseries["time"].append(time_end)
-                            timeseries["soc"].append(soc_end)
-
-                    # Generate timeseries with resolution of 1 second by linear interpolation
-                    for t in range(int((time_end - time_start).total_seconds()) - 2):
-                        timeseries["time"].append(time_start + timedelta(seconds=t + 1))
-                        timeseries["soc"].append(
-                            soc_start
-                            + (soc_end - soc_start)
-                            * (t / (time_end - time_start).total_seconds())
-                        )
-
-                    time_soc_list = sorted(
-                        zip(timeseries["time"], timeseries["soc"]), key=lambda x: x[0]
-                    )
-                    timeseries["time"] = [x[0] for x in time_soc_list]
-                    timeseries["soc"] = [x[1] for x in time_soc_list]
-                    timeseries = json.dumps(timeseries, default=str)
 
                     current_event = Event(
                         scenario_id=scenario_id,
@@ -553,7 +524,7 @@ def _add_evaluation_to_database(
                         soc_end=soc_end,
                         event_type=event_type,
                         description=None,
-                        timeseries=timeseries,
+                        timeseries=None,
                     )
 
                     list_of_events_per_vehicle.append(current_event)
@@ -579,32 +550,3 @@ def _add_evaluation_to_database(
 
     if session is not None:
         session.commit()
-
-
-def simseconds_to_timedelta(simseconds: int) -> timedelta:
-    """This function converts a number representing seconds after simulation start to a timedelta object.
-    :param simseconds: A number representing seconds after simulation start.
-    :return: A timedelta object representing the time after simulation start."""
-    days = floor(simseconds / 86400)
-    hours = floor((simseconds % 86400) / 3600)
-    minutes = floor((simseconds % 3600) / 60)
-    seconds = simseconds % 60
-    return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
-
-
-def visualize_event_list(list_of_events: List[Event], colors: Dict, path: str) -> None:
-    """This function visualize the event list. For debugging purpose only."""
-
-    fig, ax = plt.subplots()
-    vehicle_no = 0
-    y_range = 10
-
-    for event in list_of_events:
-        ax.broken_barh(
-            [(event.time_start, event.time_end - event.time_start)],
-            ((event.vehicle_id - 1) * y_range + 1, y_range - 2),
-            color=colors[event.event_type.name],
-        )
-
-    # plt.show()
-    plt.savefig(path)

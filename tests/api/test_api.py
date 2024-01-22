@@ -33,7 +33,6 @@ from eflips.depot.api import (
     _run_simulation,
     simulate_scenario,
     _add_evaluation_to_database,
-    visualize_event_list,
 )
 
 
@@ -539,15 +538,14 @@ class TestApi(TestHelpers):
 
         event_list = session.query(Event).all()
 
-        colors = {
-            "SERVICE": "steelblue",
-            "CHARGING_DEPOT": "green",
-            "STANDBY": "lightcoral",
-            "STANDBY_DEPARTURE": "lightcyan",
-            "PRECONDITION": "black",
-        }
+        assert len(event_list) > 0
 
-        visualize_event_list(
-            event_list, colors, os.path.join(tmp_path, "event_list.png")
+        # Check that the vehicles have been created and assigned
+        assert (
+            len(
+                session.query(Vehicle)
+                .filter(Vehicle.scenario_id == full_scenario.id)
+                .all()
+            )
+            == 3
         )
-        assert os.path.isfile(os.path.join(tmp_path, "event_list.png"))
