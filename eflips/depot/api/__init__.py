@@ -10,28 +10,21 @@ function.
 import os
 from datetime import timedelta
 from math import ceil
-from typing import Optional, Dict
-from typing import Union, Any
+from typing import Any, Dict, Optional, Union
 
 import sqlalchemy.orm
-from eflips.model import (
-    Scenario,
-    EventType,
-    Event,
-    Vehicle,
-    Rotation,
-)
-from sqlalchemy import create_engine
+from eflips.model import Event, EventType, Rotation, Scenario, Vehicle
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
 import eflips.depot
-from eflips.depot import SimulationHost, DepotEvaluation
+from eflips.depot import DepotEvaluation, SimulationHost
 from eflips.depot.api.private import (
-    VehicleSchedule,
     depot_to_template,
-    vehicle_type_to_global_constants_dict,
     repeat_vehicle_schedules,
     start_and_end_times,
+    vehicle_type_to_global_constants_dict,
+    VehicleSchedule,
 )
 
 
@@ -77,8 +70,10 @@ def simulate_scenario(
 
     # Step 0: Load the scenario
     if isinstance(scenario, Scenario):
-        session = None
+        session = inspect(scenario).session
+        do_close_session = False
     elif isinstance(scenario, int) or hasattr(scenario, "id"):
+        do_close_session = True
         if isinstance(scenario, int):
             scenario_id = scenario
         else:
@@ -116,10 +111,9 @@ def simulate_scenario(
         )
         ev = _run_simulation(simulation_host)
 
-    if session is not None:
-        _add_evaluation_to_database(scenario.id, ev, session)
+    _add_evaluation_to_database(scenario.id, ev, session)
 
-    if session is not None:
+    if do_close_session:
         session.close()
 
 
@@ -570,8 +564,6 @@ def _add_evaluation_to_database(
 
         list_of_events.extend(list_of_events_per_vehicle)
 
-    # Write into database
-
     # Write Vehicles first
     session.add_all(list_of_vehicles)
 
@@ -591,12 +583,9 @@ def _add_evaluation_to_database(
                     assert event.vehicle_id is None
                     assert event.event_type == EventType.DRIVING
                     event.vehicle_id = vehicle_id
-                    if event == trip.events[-1]:
-                        event.time_end = event.time_end - timedelta(seconds=1)
+                    event.time_end = event.time_end - timedelta(seconds=1)
 
     # Write Events
     session.add_all(list_of_events)
-    session.flush()
 
-    if session is not None:
-        session.commit()
+    session.commit()
