@@ -357,7 +357,7 @@ class VehicleSchedule:
 
         id = str(rot.id)
         departure = rot.trips[0].departure_time
-        arrival = rot.trips[-1].departure_time
+        arrival = rot.trips[-1].arrival_time
 
         if use_builtin_consumption_model:
             arrival_soc, departure_soc, minimal_soc = self.calculate_socs(rot)
