@@ -7,16 +7,11 @@ which returns another (black-box) object, the :class:`DepotEvaluation` object. T
 the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
 function.
 """
-import json
 import os
-import warnings
 from datetime import timedelta
 from math import ceil
-from typing import Optional, Union, Any, Dict
-from datetime import timedelta, datetime
-from math import ceil, floor
-from typing import Optional, List, Dict
-from matplotlib import pyplot as plt
+from typing import Optional, Dict
+from typing import Union, Any
 
 import sqlalchemy.orm
 from eflips.model import (
@@ -119,6 +114,7 @@ def simulate_scenario(
             repetition_period=repetition_period,
             vehicle_count_dict=vehicle_counts,
         )
+        ev = _run_simulation(simulation_host)
 
     if session is not None:
         _add_evaluation_to_database(scenario.id, ev, session)
@@ -163,7 +159,7 @@ def _init_simulation(
     # Step 1: Set up the depot
     if len(scenario.depots) == 1:
         # Create an eFlips depot
-        depot_dict = depot_to_template(scenario.depots[0])
+        depot_dict = depot_to_template(scenario.depots[0])  # type: ignore
         eflips_depot = eflips.depot.Depotinput(
             filename_template=depot_dict, show_gui=False
         )
@@ -307,13 +303,13 @@ def _add_evaluation_to_database(
     adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
 
     :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
-    :class:`eflips.model.Event` objects.
+           :class:`eflips.model.Event` objects.
 
     :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation
-    results.
+           results.
 
     :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
-    database.
+           database.
 
     :return: Nothing. The results are added to the database.
     """
