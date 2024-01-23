@@ -122,7 +122,9 @@ def depot_to_template(depot: Depot) -> Dict:
 
     # Get dictionary of each area
     for area in depot.areas:
-        area_name = area.name if area.name is not None else str(area.id)
+        # area_name = area.name if area.name is not None else str(area.id)
+        # TODO keep consistent with name/id for each API class
+        area_name = str(area.id)
         template["areas"][area_name] = {
             "typename": (
                 "LineArea" if area.area_type == AreaType.LINE else "DirectArea"
@@ -267,7 +269,8 @@ def depot_to_template(depot: Depot) -> Dict:
         template["groups"][group_name] = {
             "typename": "AreaGroup",
             "stores": [
-                area.name if area.name is not None else str(area.id)
+                # area.name if area.name is not None else str(area.id)
+                str(area.id)
                 for area in process.areas
             ],
         }
@@ -326,11 +329,7 @@ class VehicleSchedule:
     minimal_soc: float
     """
     The minimal battery state of charge (SoC) of the vehicle during the trip. It must be in the range [-inf, 1]. This
-    value is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It may be
-    left `None` if the consumption model does not provide this information.
-
-    **NOTE**: For the current API version, we only support a single vehicle type per vehicle schedule. This means that
-    the dictionary must contain exactly one entry.
+    value is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package.
     """
 
     opportunity_charging: bool
@@ -358,23 +357,11 @@ class VehicleSchedule:
 
         id = str(rot.id)
         departure = rot.trips[0].departure_time
-        arrival = rot.trips[-1].departure_time
+        arrival = rot.trips[-1].arrival_time
 
         if use_builtin_consumption_model:
-            if rot.vehicle_type.consumption is None:
-                raise ValueError(
-                    f"Vehicle type {rot.vehicle_type.id} has no consumption value."
-                )
+            arrival_soc, departure_soc, minimal_soc = self.calculate_socs(rot)
 
-            total_distance = 0
-            for trip in rot.trips:
-                total_distance += trip.route.distance
-            energy = (total_distance / 1000) * rot.vehicle_type.consumption  # kWh
-            delta_soc = energy / rot.vehicle_type.battery_capacity
-
-            departure_soc = 1.0
-            arrival_soc = departure_soc - delta_soc
-            minimal_soc = arrival_soc
         else:
             # Find the event for each trip
             events = []
@@ -405,6 +392,22 @@ class VehicleSchedule:
             minimal_soc=minimal_soc,
             opportunity_charging=opportunity_charging,
         )
+
+    @classmethod
+    def calculate_socs(cls, rot):
+        if rot.vehicle_type.consumption is None:
+            raise ValueError(
+                f"Vehicle type {rot.vehicle_type.id} has no consumption value."
+            )
+        total_distance = 0
+        for trip in rot.trips:
+            total_distance += trip.route.distance
+        energy = (total_distance / 1000) * rot.vehicle_type.consumption  # kWh
+        delta_soc = energy / rot.vehicle_type.battery_capacity
+        departure_soc = 1.0
+        arrival_soc = departure_soc - delta_soc
+        minimal_soc = arrival_soc
+        return arrival_soc, departure_soc, minimal_soc
 
     def _to_simple_trip(
         self, simulation_start_time: datetime, env: simpy.Environment

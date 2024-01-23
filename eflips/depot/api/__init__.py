@@ -7,17 +7,19 @@ which returns another (black-box) object, the :class:`DepotEvaluation` object. T
 the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
 function.
 """
-
-
 import os
-import warnings
 from datetime import timedelta
 from math import ceil
-from typing import Optional, Union, Any, Dict
+from typing import Optional, Dict
+from typing import Union, Any
 
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
+    EventType,
+    Event,
+    Vehicle,
+    Rotation,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -112,8 +114,10 @@ def simulate_scenario(
             repetition_period=repetition_period,
             vehicle_count_dict=vehicle_counts,
         )
+        ev = _run_simulation(simulation_host)
 
-    _add_evaluation_to_database(ev, session)
+    if session is not None:
+        _add_evaluation_to_database(scenario.id, ev, session)
 
     if session is not None:
         session.close()
@@ -155,7 +159,7 @@ def _init_simulation(
     # Step 1: Set up the depot
     if len(scenario.depots) == 1:
         # Create an eFlips depot
-        depot_dict = depot_to_template(scenario.depots[0])
+        depot_dict = depot_to_template(scenario.depots[0])  # type: ignore
         eflips_depot = eflips.depot.Depotinput(
             filename_template=depot_dict, show_gui=False
         )
@@ -216,6 +220,8 @@ def _init_simulation(
 
     sim_start_stime, total_duration_seconds = start_and_end_times(vehicle_schedules)
     eflips.globalConstants["general"]["SIMULATION_TIME"] = int(total_duration_seconds)
+
+    eflips.globalConstants["general"]["SIMULATION_START_DATETIME"] = sim_start_stime
 
     timetable = VehicleSchedule._to_timetable(
         vehicle_schedules, simulation_host.env, sim_start_stime
@@ -288,9 +294,308 @@ def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
 
 
 def _add_evaluation_to_database(
+    scenario_id: int,
     depot_evaluation: DepotEvaluation,
     session: sqlalchemy.orm.Session,
 ) -> None:
-    warnings.warn(
-        "NOT adding any events to the database, since this is not implemented yet."
+    """
+    This method reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and
+    adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
+
+    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
+           :class:`eflips.model.Event` objects.
+
+    :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation
+           results.
+
+    :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
+           database.
+
+    :return: Nothing. The results are added to the database.
+    """
+
+    # Read simulation start time
+    simulation_start_time = depot_evaluation.sim_start_datetime
+
+    # Initialization of empty lists
+
+    list_of_vehicles = []
+
+    list_of_events = []
+
+    list_of_assigned_schedules = []
+
+    # If the database already contains non-driving events for this scenario, then we cannot add driving events
+    non_driving_event_q = (
+        session.query(Event)
+        .filter(Event.scenario_id == scenario_id)
+        .filter(Event.event_type != EventType.DRIVING)
     )
+    if non_driving_event_q.count() > 0:
+        raise ValueError(
+            "The database already contains non-driving events for this scenario. Please delete them first."
+        )
+
+    # If the database contains no driving events for this scenario, then we need to add them
+    driving_event_q = (
+        session.query(Event)
+        .filter(Event.scenario_id == scenario_id)
+        .filter(Event.event_type == EventType.DRIVING)
+    )
+    if driving_event_q.count() == 0:
+        for rot in (
+            session.query(Rotation).filter(Rotation.scenario_id == scenario_id).all()
+        ):
+            current_soc = 1.0
+            for trip in rot.trips:
+                energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
+                soc_start = current_soc
+                soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
+                current_soc = soc_end
+
+                # Create a driving event
+                current_event = Event(
+                    scenario_id=scenario_id,
+                    vehicle_type_id=rot.vehicle_type_id,
+                    trip_id=trip.id,
+                    time_start=trip.departure_time,
+                    time_end=trip.arrival_time,
+                    soc_start=soc_start,
+                    soc_end=soc_end,
+                    event_type=EventType.DRIVING,
+                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
+                    timeseries=None,
+                )
+                session.add(current_event)
+
+    # Read results from depot_evaluation categorized by vehicle
+    for current_vehicle in depot_evaluation.vehicle_generator.items:
+        list_of_events_per_vehicle = []
+
+        vehicle_type_id = int(current_vehicle.vehicle_type.ID)
+
+        vehicle_id = depot_evaluation.vehicle_generator.items.index(current_vehicle) + 1
+
+        # Create a Vehicle object for database
+        current_vehicle_db = Vehicle(
+            id=vehicle_id,
+            vehicle_type_id=vehicle_type_id,
+            scenario_id=scenario_id,
+            name=current_vehicle.ID,
+            name_short=None,
+        )
+        list_of_vehicles.append(current_vehicle_db)
+
+        if len(current_vehicle.finished_trips) > 1:
+            assigned_schedule_id = int(current_vehicle.finished_trips[1].ID)
+            list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
+
+        # Read processes of this vehicle
+        list_of_timekeys = list(
+            current_vehicle.logger.loggedData["dwd.active_processes_copy"].keys()
+        )
+        list_of_timekeys.sort()
+
+        battery_logs = current_vehicle.battery_logs
+
+        for time_key in list_of_timekeys:
+            process_list = current_vehicle.logger.loggedData[
+                "dwd.active_processes_copy"
+            ][time_key]
+            current_area = current_vehicle.logger.loggedData["dwd.current_area"][
+                time_key
+            ]
+            # Only concerning processes not being cancelled
+
+            if process_list is not None and current_area is not None:
+                for current_process in process_list:
+                    if (
+                        len(current_process.starts) is not 1
+                        or len(current_process.ends) is not 1
+                    ):
+                        raise NotImplementedError(
+                            f"Restart of process {current_process.ID} is not implemented."
+                        )
+
+                    # Get start time
+
+                    # if it is a standby event starting at the same time with other processes
+                    if (
+                        len(process_list) is not 1
+                        and type(current_process).__name__ == "Standby"
+                    ):
+                        # Start time of this event is the end time of the previous event
+                        event_start_after_simulation = timedelta(
+                            seconds=process_list[0].ends[0]
+                        )
+
+                    else:
+                        event_start_after_simulation = timedelta(
+                            seconds=current_process.starts[0]
+                        )
+
+                    time_start = simulation_start_time + event_start_after_simulation
+
+                    # Get end time
+                    if current_process.dur > 0:
+                        # If this process has a valid duration then directly use end time
+                        event_end_after_simulation = timedelta(
+                            seconds=current_process.ends[0]
+                        )
+                        time_end = simulation_start_time + event_end_after_simulation
+
+                    else:
+                        # If this process has a duration of 0, then end time is the start time of the next process
+
+                        start_time_index = list_of_timekeys.index(
+                            current_process.starts[0]
+                        )
+                        if start_time_index == len(list_of_timekeys) - 1:
+                            # This is the last process in the list. Use end of simulation time as event end time
+                            end_time_sec = depot_evaluation.SIM_TIME
+
+                        else:
+                            end_time_sec = list_of_timekeys[start_time_index + 1]
+
+                        event_end_after_simulation = timedelta(seconds=end_time_sec)
+                        time_end = simulation_start_time + event_end_after_simulation
+
+                    # Get EventType
+                    match type(current_process).__name__:
+                        case "Serve":
+                            event_type = EventType.SERVICE
+                        case "Charge":
+                            event_type = EventType.CHARGING_DEPOT
+                        case "Standby":
+                            if current_area.issink is True:
+                                event_type = EventType.STANDBY_DEPARTURE
+                            else:
+                                event_type = EventType.STANDBY
+                        case "Precondition":
+                            event_type = EventType.PRECONDITIONING
+                        case _:
+                            raise ValueError(
+                                """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
+                                "Precondition"""
+                            )
+
+                    # Get proper area and subloc id
+
+                    area_id = int(current_area.ID)
+
+                    slot_id = current_vehicle.logger.loggedData["dwd.current_slot"][
+                        time_key
+                    ]
+                    subloc_id = slot_id if slot_id is not None else None
+
+                    # Read battery logs for timeseries
+
+                    if len(battery_logs) == 0:
+                        raise ValueError("No battery logs found.")
+
+                    for log in battery_logs:
+                        # Charging starts
+                        if (
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_start"
+                            and type(current_process).__name__ == "Charge"
+                        ):
+                            soc_start = log.energy / log.energy_real
+
+                        if (
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_step"
+                            and type(current_process).__name__ == "Charge"
+                        ):
+                            raise NotImplementedError("Charge step is not implemented.")
+
+                        # Charging ends
+                        if (
+                            log.t == current_process.ends[0]
+                            and log.event_name == "charge_end"
+                            and type(current_process).__name__ == "Charge"
+                        ):
+                            soc_end = log.energy / log.energy_real
+
+                        if (
+                            # Vehicle stands by for departure
+                            log.t == current_process.starts[0]
+                            and log.event_name == "charge_start"
+                            and type(current_process).__name__ == "Standby"
+                        ):
+                            # get the charge_end event
+                            idx = battery_logs.index(log)
+                            charge_end_log = battery_logs[idx + 1]
+                            soc_start = charge_end_log.energy / log.energy_real
+                            soc_end = soc_start
+
+                        # Vehicle on a trip
+                        if log.t == time_key and log.event_name == "consume_start":
+                            pass
+
+                        if (
+                            # Vehicle arrives
+                            log.t == current_process.starts[0]
+                            and log.event_name == "consume_end"
+                        ) or (
+                            # Preconditioning
+                            log.t == current_process.ends[0]
+                            and log.event_name == "consume_start"
+                        ):
+                            # No battery consumption
+                            soc_start = log.energy / log.energy_real
+
+                            soc_end = soc_start
+
+                    current_event = Event(
+                        scenario_id=scenario_id,
+                        vehicle_type_id=vehicle_type_id,
+                        vehicle_id=vehicle_id,
+                        station_id=None,
+                        area_id=area_id,
+                        subloc_no=subloc_id,
+                        trip_id=None,
+                        time_start=time_start,
+                        time_end=time_end
+                        - timedelta(seconds=1),  # Avoiding overlapping
+                        soc_start=soc_start,
+                        soc_end=soc_end,
+                        event_type=event_type,
+                        description=None,
+                        timeseries=None,
+                    )
+
+                    list_of_events_per_vehicle.append(current_event)
+
+        list_of_events.extend(list_of_events_per_vehicle)
+
+    # Write into database
+
+    # Write Vehicles first
+    session.add_all(list_of_vehicles)
+
+    # Update rotation table with vehicle ids
+    for vehicle_id, schedule_id in list_of_assigned_schedules:
+        rotation_q = session.query(Rotation).filter(
+            Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
+        )
+        if rotation_q.count() == 0:
+            raise ValueError(
+                f"Could not find Rotation {schedule_id} in scenario {scenario_id}."
+            )
+        else:
+            rotation_q.update({"vehicle_id": vehicle_id})
+            for trip in rotation_q.one().trips:
+                for event in trip.events:
+                    assert event.vehicle_id is None
+                    assert event.event_type == EventType.DRIVING
+                    event.vehicle_id = vehicle_id
+                    if event == trip.events[-1]:
+                        event.time_end = event.time_end - timedelta(seconds=1)
+
+    # Write Events
+    session.add_all(list_of_events)
+    session.flush()
+
+    if session is not None:
+        session.commit()
