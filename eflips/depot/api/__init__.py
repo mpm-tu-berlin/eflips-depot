@@ -82,7 +82,6 @@ def simulate_scenario(
 
     # Step 0: Load the scenario
     if isinstance(scenario, Scenario):
-        # TODO ?
         session = None
     elif isinstance(scenario, int) or hasattr(scenario, "id"):
         if isinstance(scenario, int):
@@ -330,6 +329,49 @@ def _add_evaluation_to_database(
 
     list_of_assigned_schedules = []
 
+    # If the database already contains non-driving events for this scenario, then we cannot add driving events
+    non_driving_event_q = (
+        session.query(Event)
+        .filter(Event.scenario_id == scenario_id)
+        .filter(Event.event_type != EventType.DRIVING)
+    )
+    if non_driving_event_q.count() > 0:
+        raise ValueError(
+            "The database already contains non-driving events for this scenario. Please delete them first."
+        )
+
+    # If the database contains no driving events for this scenario, then we need to add them
+    driving_event_q = (
+        session.query(Event)
+        .filter(Event.scenario_id == scenario_id)
+        .filter(Event.event_type == EventType.DRIVING)
+    )
+    if driving_event_q.count() == 0:
+        for rot in (
+            session.query(Rotation).filter(Rotation.scenario_id == scenario_id).all()
+        ):
+            current_soc = 1.0
+            for trip in rot.trips:
+                energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
+                soc_start = current_soc
+                soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
+                current_soc = soc_end
+
+                # Create a driving event
+                current_event = Event(
+                    scenario_id=scenario_id,
+                    vehicle_type_id=rot.vehicle_type_id,
+                    trip_id=trip.id,
+                    time_start=trip.departure_time,
+                    time_end=trip.arrival_time,
+                    soc_start=soc_start,
+                    soc_end=soc_end,
+                    event_type=EventType.DRIVING,
+                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
+                    timeseries=None,
+                )
+                session.add(current_event)
+
     # Read results from depot_evaluation categorized by vehicle
     for current_vehicle in depot_evaluation.vehicle_generator.items:
         list_of_events_per_vehicle = []
@@ -538,15 +580,26 @@ def _add_evaluation_to_database(
 
     # Update rotation table with vehicle ids
     for vehicle_id, schedule_id in list_of_assigned_schedules:
-        session.query(Rotation).filter(
+        rotation_q = session.query(Rotation).filter(
             Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
-        ).update(
-            {Rotation.vehicle_id: vehicle_id},
-            synchronize_session=False,
         )
+        if rotation_q.count() == 0:
+            raise ValueError(
+                f"Could not find Rotation {schedule_id} in scenario {scenario_id}."
+            )
+        else:
+            rotation_q.update({"vehicle_id": vehicle_id})
+            for trip in rotation_q.one().trips:
+                for event in trip.events:
+                    assert event.vehicle_id is None
+                    assert event.event_type == EventType.DRIVING
+                    event.vehicle_id = vehicle_id
+                    if event == trip.events[-1]:
+                        event.time_end = event.time_end - timedelta(seconds=1)
 
     # Write Events
     session.add_all(list_of_events)
+    session.flush()
 
     if session is not None:
         session.commit()
