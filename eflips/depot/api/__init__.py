@@ -386,9 +386,10 @@ def _add_evaluation_to_database(
         )
         list_of_vehicles.append(current_vehicle_db)
 
-        if len(current_vehicle.finished_trips) > 1:
-            assigned_schedule_id = int(current_vehicle.finished_trips[1].ID)
-            list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
+        for finished_trip in current_vehicle.finished_trips:
+            if finished_trip.is_copy is False:
+                assigned_schedule_id = int(finished_trip.ID)
+                list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
 
         # Read processes of this vehicle
         list_of_timekeys = list(
