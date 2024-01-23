@@ -568,7 +568,7 @@ def _add_evaluation_to_database(
     session.add_all(list_of_vehicles)
 
     # Update rotation table with vehicle ids
-    for vehicle_id, schedule_id in list_of_assigned_schedules:
+    for schedule_id, vehicle_id in list_of_assigned_schedules:
         rotation_q = session.query(Rotation).filter(
             Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
         )
