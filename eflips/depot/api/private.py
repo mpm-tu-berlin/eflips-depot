@@ -423,9 +423,7 @@ class VehicleSchedule:
         :return: A :class:`eflips.depot.standalone.SimpleTrip` object.
         """
 
-        vehicle_types = list(
-            self.vehicle_type
-        )  # The vehicle type ids are the keys of the arrival_soc dictionary
+        vehicle_types = [self.vehicle_type]
         departure = int((self.departure - simulation_start_time).total_seconds())
         arrival = int((self.arrival - simulation_start_time).total_seconds())
         simple_trip = SimpleTrip(

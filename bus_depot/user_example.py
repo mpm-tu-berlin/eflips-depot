@@ -201,5 +201,7 @@ if __name__ == "__main__":
             show_total_power=True,
             show_annotates=True,
         )
-
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
+        session.commit()
