@@ -587,5 +587,3 @@ def _add_evaluation_to_database(
 
     # Write Events
     session.add_all(list_of_events)
-
-    session.commit()
