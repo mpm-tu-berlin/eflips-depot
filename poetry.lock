@@ -458,13 +458,13 @@ resolved_reference = "e7a23e9f1e68202f8332b6432e3804f7983f73da"
 
 [[package]]
 name = "eflips-model"
-version = "1.1.1"
+version = "1.1.4"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    { file = "eflips_model-1.1.1-py3-none-any.whl", hash = "sha256:052a3fbfb62c1cbfb407a0b0684c483ebbcba0264c9f945cd617efe728be2905" },
-    { file = "eflips_model-1.1.1.tar.gz", hash = "sha256:e105b2a4042b559f7a1d51456998735eb2fac5f3283e95b84ed7ef35e0b41cbc" },
+    {file = "eflips_model-1.1.4-py3-none-any.whl", hash = "sha256:8c94c8fa3dd9c9ac51ee5962317adad3acc77ea30169dbdbb415df30a9f8f23d"},
+    {file = "eflips_model-1.1.4.tar.gz", hash = "sha256:a45b98ff6f8b2e5f5942993f9b7edaebbfb5bce810c35878ee5dbc7b77734d5e"},
 ]
 
 [package.dependencies]
@@ -1782,7 +1782,7 @@ files = [
 ]
 
 [package.dependencies]
-greenlet = { version = "!=0.4.17", markers = "platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\"" }
+greenlet = {version = "!=0.4.17", markers = "platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\""}
 typing-extensions = ">=4.6.0"
 
 [package.extras]
@@ -1893,4 +1893,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "09d2c66674ce0964519a345c074793fdeb98f8078d7b2757b884ad78e2267ccd"
+content-hash = "bc75435b9d542aab4462670728afa15997f9b30bee50c4cd957252fc23f55c20"
