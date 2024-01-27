@@ -77,6 +77,12 @@ def prune_scenario(station: Station, scenario_id: int, session: Session) -> None
         session.query(Rotation).filter(Rotation.scenario_id == scenario_id).all()
     )
     for rotation in tqdm(rotations):
+        if (
+            rotation.trips[0].route.departure_station_id == station.id
+            and rotation.trips[-1].route.arrival_station_id == station.id
+        ):
+            continue
+
         for trip in rotation.trips:
             for stop_time in trip.stop_times:
                 session.delete(stop_time)
