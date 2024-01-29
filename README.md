@@ -1,6 +1,15 @@
 [![Tests](https://github.com/mpm-tu-berlin/eflips-depot/actions/workflows/postgres_eflips_depot.yml/badge.svg)](https://github.com/mpm-tu-berlin/eflips-depot/actions/workflows/postgres_eflips_depot.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 # eflips-depot
+
+---
+
+Part of the [eFLIPS/simBA](https://github.com/stars/ludgerheide/lists/ebus2030) list of projects.
+
+---
+
 
 eFLIPS has been developed within several research projects at the Department of Methods of Product Development and
 Mechatronics at the Technische Universität Berlin (see https://www.tu.berlin/mpm/forschung/projekte/eflips).
@@ -22,7 +31,6 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
     ```
 2. Install the packages listed in `poetry.lock` and `pyproject.toml` into your Python environment. Notes:
     - The suggested Python version os 3.11.*, it may work with other versions, but this is not tested.
-    - The supported platforms are macOS and Windows, Linux should work, but is not tested.
     - Using the [poetry](https://python-poetry.org/) package manager is recommended. It can be installed accoring to the
       instructions listed [here](https://python-poetry.org/docs/#installing-with-the-official-installer).
    #### macOS
@@ -37,18 +45,7 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
    poetry install
    ```
 
-3. To start a simulation, the script `bus_depot/STARTSIM_busdepot.py` needs to be executed. This loads the 3 necessary files for
-   settings, schedule and template for depot layout. After the execution, all relevant results are in the `ev` variable
-   in the workspace (e.g. if you are using PyCharm as your IDE, if the script is run with the "Run with Python Console" option). To analyse or plot
-   results the example calls for the console in ```eflips/depot/plots.py``` can be used.
-    ```python
-    import os
-    os.chdir('bus_depot') # Optional, if not already in the bus_depot folder
-    exec(open(os.path.join('STARTSIM_busdepot.py')).read())
-    
-    ev.sl_all() # For example to plot a result
-    ```
-4. To use eFLIPS-Depot API, see script `bus_depot/user_example.py`
+4. To start a simulation, an existing [eFLIPS-Model](https://github.com/mpm-tu-berlin/eflips-model) database is requires. Once you have that, you can run the script `bus_depot/user_example.py`
 
 ## Usage
 
@@ -56,8 +53,7 @@ Please refer to the [Documentation section](#documentation) of this Readme for i
 on how to use eFLIPS-Depot.
 
 The API of eFLIPS-Depot can be accessed via ```eFLIPS.depot.api```. A usage example can be found in the
-script `bus_depot/user_example.py`. Furthermore, until an official documentation of the API
-is available, you can manually check the files inside the ```eflips/depot/api``` folder to get more insights on how to use the API. 
+script `bus_depot/user_example.py`.
 
 ## Testing
 
@@ -91,8 +87,6 @@ We utilize the [GitHub Flow](https://docs.github.com/get-started/quickstart/gith
 that the `main` branch is always deployable and that all development happens in feature branches. The feature branches
 are merged into `main` via pull requests.
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
 We use [black](https://black.readthedocs.io/en/stable/) for code formatting. You can use 
 [pre-commit](https://pre-commit.com/) to ensure the code is formatted correctly before committing. You are also free to
 use other methods to format the code, but please ensure that the code is formatted correctly before committing.
@@ -102,3 +96,7 @@ Please make sure that your `poetry.lock` and `pyproject.toml` files are consiste
 ## License
 
 This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md) file for details.
+
+## Funding Notice
+
+This code was developed as part of the project [eBus2030+](https://www.eflip.de/) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
