@@ -124,16 +124,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--scenario_id",
+        "--scenario-id",
         type=int,
         help="The id of the scenario to be simulated. Run with --list-scenarios to see all available scenarios.",
     )
     parser.add_argument(
+        "--list_scenarios",
         "--list-scenarios",
         action="store_true",
         help="List all available scenarios.",
     )
     parser.add_argument(
         "--database_url",
+        "--database-url",
         type=str,
         help="The url of the database to be used. If it is not specified, the environment variable DATABASE_URL is used.",
         required=False,
@@ -153,7 +156,7 @@ if __name__ == "__main__":
 
     if args.scenario_id is None:
         raise ValueError(
-            "The scenario id must be specified. Use --list-scenarios to see all available scenarios."
+            "The scenario id must be specified. Use --list-scenarios to see all available scenarios, then run with --scenario-id <id>."
         )
 
     engine = create_engine(args.database_url, echo=False)
