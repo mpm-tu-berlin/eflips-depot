@@ -214,7 +214,7 @@ if __name__ == "__main__":
         # Delete all vehicles and events, also disconnect the vehicles from the rotations
         rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
         rotation_q.update({"vehicle_id": None})
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
         session.commit()
