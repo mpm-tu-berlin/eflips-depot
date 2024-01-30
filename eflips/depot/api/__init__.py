@@ -372,7 +372,6 @@ def _add_evaluation_to_database(
 
         # Create a Vehicle object for database
         current_vehicle_db = Vehicle(
-            id=vehicle_id,
             vehicle_type_id=vehicle_type_id,
             scenario_id=scenario_id,
             name=current_vehicle.ID,
