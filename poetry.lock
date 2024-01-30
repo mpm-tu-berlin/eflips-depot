@@ -438,23 +438,19 @@ files = [
 
 [[package]]
 name = "eflips"
-version = "1.0.0"
+version = "0.1.0"
 description = "eFLIPS: Electric Fleet and Infrastructure Planning/Simulation"
 optional = false
-python-versions = "^3.11"
-files = []
-develop = false
+python-versions = ">=3.11,<4.0"
+files = [
+    { file = "eflips-0.1.0-py3-none-any.whl", hash = "sha256:0b36dd9e43ccf40a7546aa769d86d8c3b082e0d23a1435f5da6afdad98a27343" },
+    { file = "eflips-0.1.0.tar.gz", hash = "sha256:3210bee0a04c6c598460d45c7bef1b25808dc9ac2c033696731f42aa57d09e9c" },
+]
 
 [package.dependencies]
-matplotlib = "^3.7.1"
-openpyxl = "^3.1.2"
-simpy = "^4.0.1"
-
-[package.source]
-type = "git"
-url = "https://github.com/mpm-tu-berlin/eflips.git"
-reference = "eflips-depot-compatibility"
-resolved_reference = "e7a23e9f1e68202f8332b6432e3804f7983f73da"
+matplotlib = ">=3.7.1,<4.0.0"
+openpyxl = ">=3.1.2,<4.0.0"
+simpy = ">=4.0.1,<5.0.0"
 
 [[package]]
 name = "eflips-model"
@@ -1894,4 +1890,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "3c52d0dce3f3dca01cf598f6554ded35fbd489d50bf5b75a75c105cfa7640893"
+content-hash = "b448c222f316a422dcbe1e935d2fcf3987d17458c4c5b88287330a697752417e"
