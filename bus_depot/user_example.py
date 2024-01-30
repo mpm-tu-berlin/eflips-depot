@@ -183,7 +183,8 @@ if __name__ == "__main__":
         )
         depot_evaluation = _run_simulation(simulation_host)
 
-        depot_evaluation.path_results = "/tmp"
+        os.makedirs(os.path.join("output", scenario.name), exist_ok=True)
+        depot_evaluation.path_results = os.path.join("output", scenario.name)
 
         depot_evaluation.vehicle_periods(
             periods={
