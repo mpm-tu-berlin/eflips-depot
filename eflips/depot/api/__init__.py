@@ -372,18 +372,22 @@ def _add_evaluation_to_database(
 
         # Create a Vehicle object for database
         current_vehicle_db = Vehicle(
-            id=vehicle_id,
             vehicle_type_id=vehicle_type_id,
             scenario_id=scenario_id,
             name=current_vehicle.ID,
             name_short=None,
         )
+        # Flush the vehicle object to get the vehicle id
+        session.add(current_vehicle_db)
+        session.flush()
         list_of_vehicles.append(current_vehicle_db)
 
         for finished_trip in current_vehicle.finished_trips:
             if finished_trip.is_copy is False:
                 assigned_schedule_id = int(finished_trip.ID)
-                list_of_assigned_schedules.append((assigned_schedule_id, vehicle_id))
+                list_of_assigned_schedules.append(
+                    (assigned_schedule_id, current_vehicle_db.id)
+                )
 
         # Read processes of this vehicle
         list_of_timekeys = list(
@@ -545,7 +549,7 @@ def _add_evaluation_to_database(
                     current_event = Event(
                         scenario_id=scenario_id,
                         vehicle_type_id=vehicle_type_id,
-                        vehicle_id=vehicle_id,
+                        vehicle=current_vehicle_db,
                         station_id=None,
                         area_id=area_id,
                         subloc_no=subloc_id,
@@ -563,9 +567,6 @@ def _add_evaluation_to_database(
                     list_of_events_per_vehicle.append(current_event)
 
         list_of_events.extend(list_of_events_per_vehicle)
-
-    # Write Vehicles first
-    session.add_all(list_of_vehicles)
 
     # Update rotation table with vehicle ids
     for schedule_id, vehicle_id in list_of_assigned_schedules:

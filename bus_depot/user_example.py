@@ -29,6 +29,11 @@ def list_scenarios(database_url: str):
 
 def add_simple_depot(scenario: Scenario, session: Session):
     # Create a simple depot
+    # See if a depot already exists
+    depot_q = session.query(Depot).filter(Depot.scenario_id == scenario.id)
+    if depot_q.count() > 0:
+        return depot_q.one()
+
     depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
     session.add(depot)
 
@@ -183,7 +188,8 @@ if __name__ == "__main__":
         )
         depot_evaluation = _run_simulation(simulation_host)
 
-        depot_evaluation.path_results = "/tmp"
+        os.makedirs(os.path.join("output", scenario.name), exist_ok=True)
+        depot_evaluation.path_results = os.path.join("output", scenario.name)
 
         depot_evaluation.vehicle_periods(
             periods={
@@ -204,7 +210,11 @@ if __name__ == "__main__":
             show_total_power=True,
             show_annotates=True,
         )
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
         session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
         session.commit()
