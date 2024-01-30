@@ -29,6 +29,11 @@ def list_scenarios(database_url: str):
 
 def add_simple_depot(scenario: Scenario, session: Session):
     # Create a simple depot
+    # See if a depot already exists
+    depot_q = session.query(Depot).filter(Depot.scenario_id == scenario.id)
+    if depot_q.count() > 0:
+        return depot_q.one()
+
     depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
     session.add(depot)
 
