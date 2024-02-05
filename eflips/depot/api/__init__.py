@@ -727,9 +727,6 @@ def _add_evaluation_to_database(
         for start_time, process_dict in dict_of_events.items():
             if process_dict["type"] == "trip":
                 is_copy = process_dict["is_copy"]
-                finished_trip_id = process_dict["id"]
-                # Get trip_id
-                # Here or elsewhere get db v id
             else:
                 if is_copy is False:
                     # Generate EventType
@@ -780,7 +777,7 @@ def _add_evaluation_to_database(
                         time_start=timedelta(seconds=start_time)
                         + simulation_start_time,
                         time_end=timedelta(seconds=process_dict["end"])
-                        + simulation_start_time,  # Avoiding overlapping
+                        + simulation_start_time,
                         soc_start=soc_start if soc_start is not None else soc_end,
                         soc_end=soc_end
                         if soc_end is not None
