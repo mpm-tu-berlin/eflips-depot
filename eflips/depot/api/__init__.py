@@ -729,9 +729,6 @@ def _add_evaluation_to_database(
         for start_time, process_dict in dict_of_events.items():
             if process_dict["type"] == "trip":
                 is_copy = process_dict["is_copy"]
-                finished_trip_id = process_dict["id"]
-                # Get trip_id
-                # Here or elsewhere get db v id
             else:
                 if is_copy is False:
                     # Generate EventType
