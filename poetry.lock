@@ -454,13 +454,13 @@ simpy = ">=4.0.1,<5.0.0"
 
 [[package]]
 name = "eflips-model"
-version = "2.1.0"
+version = "2.1.1"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    { file = "eflips_model-2.1.0-py3-none-any.whl", hash = "sha256:77b0a110670aaa9d1442b454f5a775915bd5f247c9612e565cca2657d4982588" },
-    { file = "eflips_model-2.1.0.tar.gz", hash = "sha256:0d204181ee8293b2d7df39744ff94e7ab8c10c26fb4f34e46f6d5d39af59d0c8" },
+    { file = "eflips_model-2.1.1-py3-none-any.whl", hash = "sha256:59ece7b594b64fd466d3ee90ee5c3b252c45189b4bbf282f98211d75c384656d" },
+    { file = "eflips_model-2.1.1.tar.gz", hash = "sha256:686d5a633f4967162affd2b63bf22a6bd54fc59fc2a7e18a12e2681eda474f28" },
 ]
 
 [package.dependencies]
@@ -1890,4 +1890,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "110dc261df68416b48189bd9f57a22dae23c0b42fde617abe68286f1ed76365e"
+content-hash = "e01af903d8d36bf7e8234879775803bd8d53204482713e3e078d1bd99de8d68b"
