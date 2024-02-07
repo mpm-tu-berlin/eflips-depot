@@ -8,12 +8,26 @@ the simulation, which can be added to the database using the :func:`eflips.depot
 function.
 """
 import os
+from contextlib import contextmanager
 from datetime import timedelta
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, Tuple
 
 import sqlalchemy.orm
-from eflips.model import Event, EventType, Rotation, Scenario, Vehicle
+from eflips.model import (
+    Event,
+    EventType,
+    Rotation,
+    Scenario,
+    Vehicle,
+    Depot,
+    Plan,
+    Process,
+    AssocPlanProcess,
+    AssocAreaProcess,
+    Area,
+    AreaType,
+)
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
@@ -26,6 +40,272 @@ from eflips.depot.api.private import (
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
 )
+
+
+@contextmanager
+def create_session(
+    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
+) -> Tuple[Session, Scenario]:
+    """
+    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying
+    the ID of a scenario in the database, or any other object that has an attribute `id` that is an integer. It then
+    creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
+    session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
+    is created, returned and closed after the context manager is exited.
+    :param scenario:
+    :return: Yield a Tuple of the session and the scenario.
+    """
+    if isinstance(scenario, Scenario):
+        session = inspect(scenario).session
+        do_close_session = False
+    elif isinstance(scenario, int) or hasattr(scenario, "id"):
+        do_close_session = True
+        if isinstance(scenario, int):
+            scenario_id = scenario
+        else:
+            scenario_id = scenario.id
+
+        if database_url is None:
+            if "DATABASE_URL" in os.environ:
+                database_url = os.environ.get("DATABASE_URL")
+            else:
+                raise ValueError("No database URL specified.")
+
+        engine = create_engine(database_url)
+        session = Session(engine)
+        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+    else:
+        raise ValueError(
+            "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
+        )
+
+    try:
+        yield session, scenario
+    finally:
+        if do_close_session:
+            session.commit()
+            session.close()
+            engine.dispose()
+
+
+def _delete_depot(scenario: Scenario, session: Session):
+    """This function deletes all depot-related data from the database for a given scenario. Used before a new depot
+    in this scenario is created.
+
+    :param scenario: The scenario to be simulated
+    :param session: The database session
+
+    :return: None. The depot-related data will be deleted from the database.
+    """
+
+    # Delete assocs
+    session.query(AssocPlanProcess).filter(
+        AssocPlanProcess.scenario_id == scenario.id
+    ).delete()
+    list_of_area = session.query(Area).filter(Area.scenario_id == scenario.id).all()
+
+    for area in list_of_area:
+        session.query(AssocAreaProcess).filter(
+            AssocAreaProcess.area_id == area.id
+        ).delete()
+        session.query(Event).filter(Event.area_id == area.id).delete()
+
+    # delete processes
+    session.query(Process).filter(Process.scenario_id == scenario.id).delete()
+
+    # delete areas
+    session.query(Area).filter(Area.scenario_id == scenario.id).delete()
+    # delete depot
+    session.query(Depot).filter(Depot.scenario_id == scenario.id).delete()
+    # delete plan
+    session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
+    # delete assoc_plan_process
+
+    session.commit()
+
+
+def generate_depot_layout(
+    scenario: Union[Scenario, int, Any],
+    charging_power: float,
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+    capacity: Optional[int] = None,
+):
+    """
+    This function generates a simple depot layout according to the vehicle types and rotations in the scenario.
+
+    For each vehicle type, it generates 3 areas: arrival_area, charging_area, and standby-departure_area, all with type
+    DIRECT_ONESIDE. The capacity of each area can be specified by user, or generated according to number of
+    rotations. Each area has a list of available processes. When specified by user, the capacity of all areas will be
+    the same.
+
+    A default plan will also be generated, which includes the following default processes: standby_arrival, cleaning,
+    charging and standby_departure. Each vehicle will be processed with this exact order (stancby_arrival is optional
+    because it only happens if a vehicle needs to wait for the next process).
+
+    Using this function causes deleting the original depot in this scenario.
+
+
+    :param scenario: The scenario to be simulated
+    :param session: The database session
+    :param charging_power: the charging power of the charging area in kW
+    :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
+        existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
+    :param capacity: capacity of each area. If not specified, the capacity will be generated according to the rotation.
+
+    :return: None. The depot layout will be added to the database.
+    """
+
+    with create_session(scenario, database_url) as (session, scenario):
+        # Handles existing depot
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError("Depot already exists.")
+            else:
+                _delete_depot(scenario, session)
+
+        # Create a simple depot
+        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
+        session.add(depot)
+
+        # Create plan
+        plan = Plan(scenario=scenario, name="Test Plan")
+        session.add(plan)
+
+        depot.default_plan = plan
+
+        # Create processes
+        standby_arrival = Process(
+            name="Standby Arrival",
+            scenario=scenario,
+            dispatchable=False,
+        )
+        clean = Process(
+            name="Arrival Cleaning",
+            scenario=scenario,
+            dispatchable=False,
+            duration=timedelta(minutes=30),
+        )
+        charging = Process(
+            name="Charging",
+            scenario=scenario,
+            dispatchable=False,
+            electric_power=charging_power,
+        )
+        standby_departure = Process(
+            name="Standby Pre-departure",
+            scenario=scenario,
+            dispatchable=True,
+        )
+        session.add(standby_arrival)
+        session.add(clean)
+        session.add(charging)
+        session.add(standby_departure)
+
+        for vehicle_type in scenario.vehicle_types:
+            list_of_rotations = [
+                rotation
+                for rotation in scenario.rotations
+                if rotation.vehicle_type_id == vehicle_type.id
+            ]
+
+            max_vehicle_num = (
+                session.query(Rotation)
+                .filter(Rotation.vehicle_type_id == vehicle_type.id)
+                .filter(Rotation.scenario_id == scenario.id)
+                .count()
+            )
+
+            # Create areas
+            if max_vehicle_num != 0:
+                if capacity is None:
+                    # Assuming each vehicle only be assigned to one rotation
+                    parking_capacity = max_vehicle_num
+
+                else:
+                    parking_capacity = capacity
+
+                # Create stand by arrival area
+                arrival_area = Area(
+                    scenario=scenario,
+                    name=f"Arrival for {vehicle_type.name_short}",
+                    depot=depot,
+                    area_type=AreaType.DIRECT_ONESIDE,
+                    capacity=parking_capacity,
+                )
+                session.add(arrival_area)
+                arrival_area.vehicle_type = vehicle_type
+
+                # Create charging area
+                charging_area = Area(
+                    scenario=scenario,
+                    name=f"Direct Charging Area for {vehicle_type.name_short}",
+                    depot=depot,
+                    area_type=AreaType.DIRECT_ONESIDE,
+                    capacity=parking_capacity,
+                )
+                session.add(charging_area)
+                charging_area.vehicle_type = vehicle_type
+
+                # Create cleaning area
+
+                list_of_rotations.sort(key=lambda x: x.trips[-1].arrival_time)
+
+                if capacity is None:
+                    clean_capacity = 1
+
+                    # Maximum number of vehicles that can park in the cleaning area according to rotation
+                    for rot_idx in range(0, len(list_of_rotations)):
+                        cleaning_interval_start = (
+                            list_of_rotations[rot_idx].trips[-1].arrival_time
+                        )
+
+                        # Potential improvement: the "edge" between copy and non-copy schedules might need higher cleaning
+                        #  capacity than real, causing standby-arrival events. Considering adding repetition_period here
+                        # This could be solved by implementing a sliging window that rolls over from e.g. sunday (last
+                        # day to monday (first day) again, to calculate the load from both the beginning and end of the
+                        # data.
+                        for next_rot_idx in range(rot_idx + 1, len(list_of_rotations)):
+                            arrival_time = (
+                                list_of_rotations[next_rot_idx].trips[-1].arrival_time
+                            )
+
+                            if arrival_time > cleaning_interval_start + clean.duration:
+                                clean_capacity = max(
+                                    clean_capacity, next_rot_idx - rot_idx
+                                )
+                                break
+
+                else:
+                    clean_capacity = capacity
+
+                cleaning_area = Area(
+                    scenario=scenario,
+                    name=f"Cleaning Area for {vehicle_type.name_short}",
+                    depot=depot,
+                    area_type=AreaType.DIRECT_ONESIDE,
+                    capacity=clean_capacity,
+                )
+
+                session.add(cleaning_area)
+                cleaning_area.vehicle_type = vehicle_type
+
+                arrival_area.processes.append(standby_arrival)
+                cleaning_area.processes.append(clean)
+                charging_area.processes.append(charging)
+                charging_area.processes.append(standby_departure)
+
+        assocs = [
+            AssocPlanProcess(
+                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
+            ),
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
+            AssocPlanProcess(
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+            ),
+        ]
+        session.add_all(assocs)
 
 
 def simulate_scenario(
@@ -69,31 +349,7 @@ def simulate_scenario(
     """
 
     # Step 0: Load the scenario
-    if isinstance(scenario, Scenario):
-        session = inspect(scenario).session
-        do_close_session = False
-    elif isinstance(scenario, int) or hasattr(scenario, "id"):
-        do_close_session = True
-        if isinstance(scenario, int):
-            scenario_id = scenario
-        else:
-            scenario_id = scenario.id
-
-        if database_url is None:
-            if "DATABASE_URL" in os.environ:
-                database_url = os.environ.get("DATABASE_URL")
-            else:
-                raise ValueError("No database URL specified.")
-
-        engine = create_engine(database_url)
-        session = Session(engine)
-        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-    else:
-        raise ValueError(
-            "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
-        )
-
-    try:
+    with create_session(scenario, database_url) as (session, scenario):
         simulation_host = _init_simulation(
             scenario=scenario,
             simple_consumption_simulation=simple_consumption_simulation,
@@ -113,12 +369,6 @@ def simulate_scenario(
             ev = _run_simulation(simulation_host)
 
         _add_evaluation_to_database(scenario.id, ev, session)
-    except:
-        raise
-    finally:
-        if do_close_session:
-            session.close()
-            engine.dispose()
 
 
 def _init_simulation(
@@ -328,6 +578,7 @@ def _add_evaluation_to_database(
         session.query(Event)
         .filter(Event.scenario_id == scenario_id)
         .filter(Event.event_type != EventType.DRIVING)
+        .filter(Event.area_id != None)
     )
     if non_driving_event_q.count() > 0:
         raise ValueError(

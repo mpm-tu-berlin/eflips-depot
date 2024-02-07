@@ -11,6 +11,7 @@ from eflips.depot.api import (
     _add_evaluation_to_database,
     _init_simulation,
     _run_simulation,
+    generate_depot_layout,
 )
 
 
@@ -168,7 +169,11 @@ if __name__ == "__main__":
     with Session(engine) as session:
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
         assert isinstance(scenario, Scenario)
-        add_simple_depot(scenario, session)
+
+        generate_depot_layout(
+            scenario=scenario, charging_power=90, delete_existing_depot=True
+        )
+
         for vehicle_type in scenario.vehicle_types:
             vehicle_type.consumption = 1
 
