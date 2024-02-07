@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone, timedelta
 
+import eflips.model
 import pytest
 from eflips.model import (
     Scenario,
@@ -384,7 +385,7 @@ class TestHelpers:
             url, echo=False
         )  # Change echo to True to see SQL queries
         Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
+        eflips.model.setup_database(engine)
         session = Session(bind=engine)
         yield session
         session.close()

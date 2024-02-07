@@ -198,7 +198,7 @@ def depot_to_template(depot: Depot) -> Dict:
                     "capacity": service_capacity,
                 }
 
-                if process.availability is not None:
+                if process.availability is not None and len(process.availability) > 0:
                     template["resource_switches"]["service_switch"] = {
                         "resource": "workers_service",
                         "breaks": [],
