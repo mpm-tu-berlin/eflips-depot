@@ -33,6 +33,7 @@ from eflips.depot.api import (
     _run_simulation,
     simulate_scenario,
     _add_evaluation_to_database,
+    generate_depot_layout,
 )
 
 
@@ -549,3 +550,53 @@ class TestApi(TestHelpers):
             )
             == 3
         )
+
+    def test_create_depot(self, session, full_scenario):
+        generate_depot_layout(full_scenario, session, 90)
+
+        # Check that the depot was created
+        assert (
+            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
+            == 1
+        )
+
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        assert isinstance(areas, list) and len(areas) != 0
+
+        processes = (
+            session.query(Process).filter(Area.scenario_id == full_scenario.id).all()
+        )
+        assert isinstance(processes, list) and len(processes) != 0
+
+        plans = session.query(Plan).filter(Area.scenario_id == full_scenario.id).all()
+        assert isinstance(plans, list) and len(plans) != 0
+
+        # Generate a depot with user-defined capacity
+        generate_depot_layout(full_scenario, session, 90, 200)
+
+        # Check if depot was created
+        assert (
+            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
+            == 1
+        )
+
+        # Check if areas have correct capacity
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+
+        for area in areas:
+            assert area.capacity == 200
+
+    def test_simulate_scenario_with_depot_generation(self, session, full_scenario):
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        generate_depot_layout(full_scenario, session, 90)
+
+        simulate_scenario(
+            scenario=full_scenario,
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=True,
+        )
+        session.commit()
