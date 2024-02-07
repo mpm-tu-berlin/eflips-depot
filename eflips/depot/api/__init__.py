@@ -82,8 +82,9 @@ def _delete_depot(scenario: Scenario, session: Session):
 def generate_depot_layout(
     scenario: Scenario,
     session: Session,
-    charging_power,
-    capacity=None,
+    delete_existing_depot: bool,
+    charging_power: float,
+    capacity: int = None,
 ):
     """
     This function generates a simple depot layout according to the vehicle types and rotations in the scenario.
@@ -103,15 +104,21 @@ def generate_depot_layout(
     :param scenario: The scenario to be simulated
     :param session: The database session
     :param charging_power: the charging power of the charging area in kW
+    :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
+        existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
     :param capacity: capacity of each area. If not specified, the capacity will be generated according to the rotation.
 
     :return: None. The depot layout will be added to the database.
     """
-    # Create a simple depot
 
+    # Handles existing depot
     if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
-        _delete_depot(scenario, session)
+        if delete_existing_depot is False:
+            raise ValueError("Depot already exists.")
+        else:
+            _delete_depot(scenario, session)
 
+    # Create a simple depot
     depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
     session.add(depot)
 
