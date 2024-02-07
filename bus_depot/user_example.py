@@ -170,7 +170,9 @@ if __name__ == "__main__":
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
         assert isinstance(scenario, Scenario)
 
-        generate_depot_layout(scenario, session, True, 90)
+        generate_depot_layout(
+            scenario=scenario, charging_power=90, delete_existing_depot=True
+        )
 
         for vehicle_type in scenario.vehicle_types:
             vehicle_type.consumption = 1
