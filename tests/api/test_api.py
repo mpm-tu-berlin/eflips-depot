@@ -553,7 +553,7 @@ class TestApi(TestHelpers):
         )
 
     def test_create_depot(self, session, full_scenario):
-        generate_depot_layout(full_scenario, session, 90)
+        generate_depot_layout(full_scenario, session, True, 90)
 
         # Check that the depot was created
         assert (
@@ -573,7 +573,7 @@ class TestApi(TestHelpers):
         assert isinstance(plans, list) and len(plans) != 0
 
         # Generate a depot with user-defined capacity
-        generate_depot_layout(full_scenario, session, 90, 200)
+        generate_depot_layout(full_scenario, session, True, 90, 200)
 
         # Check if depot was created
         assert (
@@ -593,7 +593,7 @@ class TestApi(TestHelpers):
             vehicle_type.consumption = 1
         session.commit()
 
-        generate_depot_layout(full_scenario, session, 90)
+        generate_depot_layout(full_scenario, session, True, 90)
 
         simulate_scenario(
             scenario=full_scenario,
