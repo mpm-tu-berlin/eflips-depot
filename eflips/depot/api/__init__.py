@@ -313,28 +313,31 @@ def simulate_scenario(
             "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
         )
 
-    simulation_host = _init_simulation(
-        scenario=scenario,
-        simple_consumption_simulation=simple_consumption_simulation,
-        repetition_period=repetition_period,
-    )
-
-    ev = _run_simulation(simulation_host)
-
-    if calculate_exact_vehicle_count:
-        vehicle_counts = ev.nvehicles_used_calculation()
+    try:
         simulation_host = _init_simulation(
             scenario=scenario,
             simple_consumption_simulation=simple_consumption_simulation,
             repetition_period=repetition_period,
-            vehicle_count_dict=vehicle_counts,
         )
+
         ev = _run_simulation(simulation_host)
 
-    _add_evaluation_to_database(scenario.id, ev, session)
+        if calculate_exact_vehicle_count:
+            vehicle_counts = ev.nvehicles_used_calculation()
+            simulation_host = _init_simulation(
+                scenario=scenario,
+                simple_consumption_simulation=simple_consumption_simulation,
+                repetition_period=repetition_period,
+                vehicle_count_dict=vehicle_counts,
+            )
+            ev = _run_simulation(simulation_host)
 
-    if do_close_session:
-        session.close()
+        _add_evaluation_to_database(scenario.id, ev, session)
+    except:
+        raise
+    finally:
+        if do_close_session:
+            session.close()
 
 
 def _init_simulation(
