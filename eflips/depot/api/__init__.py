@@ -118,6 +118,7 @@ def simulate_scenario(
     finally:
         if do_close_session:
             session.close()
+            engine.dispose()
 
 
 def _init_simulation(
