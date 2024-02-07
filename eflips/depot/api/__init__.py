@@ -578,6 +578,7 @@ def _add_evaluation_to_database(
         session.query(Event)
         .filter(Event.scenario_id == scenario_id)
         .filter(Event.event_type != EventType.DRIVING)
+        .filter(Event.area_id != None)
     )
     if non_driving_event_q.count() > 0:
         raise ValueError(
