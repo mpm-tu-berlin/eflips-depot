@@ -839,13 +839,20 @@ def _add_evaluation_to_database(
                 f"Could not find Rotation {schedule_id} in scenario {scenario_id}."
             )
         else:
-            rotation_q.update({"vehicle_id": vehicle_id})
-            for trip in rotation_q.one().trips:
-                for event in trip.events:
-                    assert event.vehicle_id is None
-                    assert event.event_type == EventType.DRIVING
-                    event.vehicle_id = vehicle_id
-                    event.time_end = event.time_end - timedelta(seconds=1)
+            old_vehicle_id = rotation_q.one().vehicle_id
+            if old_vehicle_id is None:
+                rotation_q.update({"vehicle_id": vehicle_id})
+                for trip in rotation_q.one().trips:
+                    for event in trip.events:
+                        event.vehicle_id = vehicle_id
+            else:
+                # If there already is a vehicle assigned to this rotation, we need to change all teh events by this
+                # vehicle to the new vehicle
+                event_q = session.query(Event).filter(
+                    Event.vehicle_id == old_vehicle_id
+                )
+                event_q.update({"vehicle_id": vehicle_id})
+                rotation_q.update({"vehicle_id": vehicle_id})
 
     # Write Events
     session.add_all(list_of_events)
