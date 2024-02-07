@@ -12,10 +12,10 @@
     ],
     "FLEXPRINT_SWITCHES": {
       "operations": false,
-      "dispatch": true,
+      "dispatch": false,
       "objID": false,
       "timetable": false,
-      "dispatch2": true,
+      "dispatch2": false,
       "processes": false,
       "res_break": false,
       "parking_full": false,
