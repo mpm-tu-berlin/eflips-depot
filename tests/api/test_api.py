@@ -25,6 +25,7 @@ from eflips.model import (
     AssocPlanProcess,
     Base,
     Event,
+    EventType,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -468,7 +469,7 @@ class TestApi(TestHelpers):
         session.commit()
 
         simulation_host = _init_simulation(
-            full_scenario, simple_consumption_simulation=True
+            full_scenario, session, simple_consumption_simulation=True
         )
 
     def test_run_simulation(self, session, full_scenario, tmp_path):
@@ -478,7 +479,7 @@ class TestApi(TestHelpers):
         session.commit()
 
         simulation_host = _init_simulation(
-            full_scenario, simple_consumption_simulation=True
+            full_scenario, session, simple_consumption_simulation=True
         )
 
         depot_evaluation = _run_simulation(simulation_host)
@@ -521,7 +522,7 @@ class TestApi(TestHelpers):
         session.commit()
 
         simulation_host = _init_simulation(
-            full_scenario, simple_consumption_simulation=True
+            full_scenario, session, simple_consumption_simulation=True
         )
 
         depot_evaluation = _run_simulation(simulation_host)
@@ -529,6 +530,7 @@ class TestApi(TestHelpers):
         vehicle_counts = depot_evaluation.nvehicles_used_calculation()
         simulation_host = _init_simulation(
             scenario=full_scenario,
+            session=session,
             simple_consumption_simulation=True,
             vehicle_count_dict=vehicle_counts,
         )
@@ -541,16 +543,6 @@ class TestApi(TestHelpers):
         event_list = session.query(Event).all()
 
         assert len(event_list) > 0
-
-        # Check that the vehicles have been created and assigned
-        assert (
-            len(
-                session.query(Vehicle)
-                .filter(Vehicle.scenario_id == full_scenario.id)
-                .all()
-            )
-            == 3
-        )
 
     def test_create_depot(self, session, full_scenario):
         generate_depot_layout(

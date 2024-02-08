@@ -53,7 +53,8 @@ def create_session(
     creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
     session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
     is created, returned and closed after the context manager is exited.
-    :param scenario:
+    :param scenario: Either a :class:`eflips.model.Scenario` object, an integer specifying the ID of a scenario in the
+        database, or any other object that has an attribute `id` that is an integer.
     :return: Yield a Tuple of the session and the scenario.
     """
     managed_session = False
@@ -355,16 +356,19 @@ def simulate_scenario(
     with create_session(scenario, database_url) as (session, scenario):
         simulation_host = _init_simulation(
             scenario=scenario,
+            session=session,
             simple_consumption_simulation=simple_consumption_simulation,
             repetition_period=repetition_period,
         )
 
         ev = _run_simulation(simulation_host)
+        # TODO Only commit second simulation results into the database
 
         if calculate_exact_vehicle_count:
             vehicle_counts = ev.nvehicles_used_calculation()
             simulation_host = _init_simulation(
                 scenario=scenario,
+                session=session,
                 simple_consumption_simulation=simple_consumption_simulation,
                 repetition_period=repetition_period,
                 vehicle_count_dict=vehicle_counts,
@@ -376,6 +380,7 @@ def simulate_scenario(
 
 def _init_simulation(
     scenario: Scenario,
+    session: Session,
     simple_consumption_simulation: bool = False,
     repetition_period: Optional[timedelta] = None,
     vehicle_count_dict: Optional[Dict[str, int]] = None,
@@ -385,6 +390,7 @@ def _init_simulation(
     simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :param session: A SQLAlchemy session object. This is used to add all the simulation results to the database.
 
     :param simple_consumption_simulation: A boolean flag indicating whether the simulation should be run in
         "simple consumption" mode. In this mode, the vehicle consumption is calculated using a simple formula and
@@ -440,7 +446,10 @@ def _init_simulation(
     # time in the vehicle schedule
     vehicle_schedules = [
         VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=simple_consumption_simulation
+            rotation,
+            scenario=scenario,
+            session=session,
+            use_builtin_consumption_model=simple_consumption_simulation,
         )
         for rotation in scenario.rotations
     ]

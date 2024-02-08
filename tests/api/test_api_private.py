@@ -65,7 +65,7 @@ class TestVehicleSchedule(TestHelpers):
         rotation = full_scenario.rotations[0]
 
         vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
+            rotation, full_scenario, session, use_builtin_consumption_model=True
         )
         return vehicle_schedule
 
@@ -83,7 +83,7 @@ class TestVehicleSchedule(TestHelpers):
         rotation = full_scenario.rotations[0]
 
         vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
+            rotation, full_scenario, session, use_builtin_consumption_model=True
         )
         assert vehicle_schedule is not None
         assert isinstance(vehicle_schedule, VehicleSchedule)
@@ -100,7 +100,7 @@ class TestVehicleSchedule(TestHelpers):
 
         with pytest.raises(ValueError):
             vehicle_schedule = VehicleSchedule.from_rotation(
-                rotation, use_builtin_consumption_model=True
+                rotation, full_scenario, session, use_builtin_consumption_model=True
             )
 
     def test_vehicle_schedule_events(self, session, full_scenario):
@@ -136,7 +136,7 @@ class TestVehicleSchedule(TestHelpers):
         session.commit()
 
         vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
+            rotation, full_scenario, session, use_builtin_consumption_model=True
         )
         assert vehicle_schedule is not None
         assert isinstance(vehicle_schedule, VehicleSchedule)
@@ -188,7 +188,7 @@ class TestVehicleSchedule(TestHelpers):
         for rotation in full_scenario.rotations:
             vehicle_schedules.append(
                 VehicleSchedule.from_rotation(
-                    rotation, use_builtin_consumption_model=True
+                    rotation, full_scenario, session, use_builtin_consumption_model=True
                 )
             )
 
