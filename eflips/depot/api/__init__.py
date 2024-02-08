@@ -32,6 +32,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
 import eflips.depot
+from eflips.depot import ProcessStatus
 from eflips.depot import DepotEvaluation, SimulationHost
 from eflips.depot.api.private import (
     depot_to_template,
@@ -573,57 +574,11 @@ def _add_evaluation_to_database(
 
     list_of_assigned_schedules = []
 
-    # If the database already contains non-driving events for this scenario, then we cannot add driving events
-    non_driving_event_q = (
-        session.query(Event)
-        .filter(Event.scenario_id == scenario_id)
-        .filter(Event.event_type != EventType.DRIVING)
-        .filter(Event.area_id != None)
-    )
-    if non_driving_event_q.count() > 0:
-        raise ValueError(
-            "The database already contains non-driving events for this scenario. Please delete them first."
-        )
-
-    # If the database contains no driving events for this scenario, then we need to add them
-    driving_event_q = (
-        session.query(Event)
-        .filter(Event.scenario_id == scenario_id)
-        .filter(Event.event_type == EventType.DRIVING)
-    )
-    if driving_event_q.count() == 0:
-        for rot in (
-            session.query(Rotation).filter(Rotation.scenario_id == scenario_id).all()
-        ):
-            current_soc = 1.0
-            for trip in rot.trips:
-                energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
-                soc_start = current_soc
-                soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
-                current_soc = soc_end
-
-                # Create a driving event
-                current_event = Event(
-                    scenario_id=scenario_id,
-                    vehicle_type_id=rot.vehicle_type_id,
-                    trip_id=trip.id,
-                    time_start=trip.departure_time,
-                    time_end=trip.arrival_time,
-                    soc_start=soc_start,
-                    soc_end=soc_end,
-                    event_type=EventType.DRIVING,
-                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
-                    timeseries=None,
-                )
-                session.add(current_event)
-
     # Read results from depot_evaluation categorized by vehicle
     for current_vehicle in depot_evaluation.vehicle_generator.items:
         list_of_events_per_vehicle = []
 
         vehicle_type_id = int(current_vehicle.vehicle_type.ID)
-
-        vehicle_id = depot_evaluation.vehicle_generator.items.index(current_vehicle) + 1
 
         # Create a Vehicle object for database
         current_vehicle_db = Vehicle(
@@ -637,91 +592,145 @@ def _add_evaluation_to_database(
         session.flush()
         list_of_vehicles.append(current_vehicle_db)
 
+        dict_of_events = {}
+
         for finished_trip in current_vehicle.finished_trips:
+            dict_of_events[finished_trip.atd] = {
+                "type": "trip",
+                "is_copy": finished_trip.is_copy,
+                "id": finished_trip.ID,
+            }
+
             if finished_trip.is_copy is False:
                 assigned_schedule_id = int(finished_trip.ID)
                 list_of_assigned_schedules.append(
                     (assigned_schedule_id, current_vehicle_db.id)
                 )
 
-        # Read processes of this vehicle
-        list_of_timekeys = list(
-            current_vehicle.logger.loggedData["dwd.active_processes_copy"].keys()
-        )
-        list_of_timekeys.sort()
+        # Generate a dictionary of data logs from DepotEvaluation with time as keys. Logs for repeated schedules
+        # and their depot processes are included but will not be written into database.
 
-        battery_logs = current_vehicle.battery_logs
+        last_standby_departure_start = 0
 
-        for time_key in list_of_timekeys:
-            process_list = current_vehicle.logger.loggedData[
-                "dwd.active_processes_copy"
-            ][time_key]
-            current_area = current_vehicle.logger.loggedData["dwd.current_area"][
-                time_key
-            ]
-            # Only concerning processes not being cancelled
+        # For convenience
+        area_log = current_vehicle.logger.loggedData["dwd.current_area"]
+        slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
 
-            if process_list is not None and current_area is not None:
-                for current_process in process_list:
-                    if (
-                        len(current_process.starts) is not 1
-                        or len(current_process.ends) is not 1
-                    ):
-                        raise NotImplementedError(
-                            f"Restart of process {current_process.ID} is not implemented."
-                        )
+        # For future uses
+        waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
+        battery_log = current_vehicle.battery_logs
 
-                    # Get start time
+        for start_time, process_log in current_vehicle.logger.loggedData[
+            "dwd.active_processes_copy"
+        ].items():
+            if len(process_log) == 0:
+                # A departure happens
+                if last_standby_departure_start != 0:
+                    # Update the last standby-departure end time
+                    dict_of_events[last_standby_departure_start]["end"] = start_time
+                else:
+                    continue
 
-                    # if it is a standby event starting at the same time with other processes
-                    if (
-                        len(process_list) is not 1
-                        and type(current_process).__name__ == "Standby"
-                    ):
-                        # Start time of this event is the end time of the previous event
-                        event_start_after_simulation = timedelta(
-                            seconds=process_list[0].ends[0]
-                        )
+            else:
+                for process in process_log:
+                    match process.status:
+                        case ProcessStatus.CANCELLED:
+                            raise NotImplementedError(
+                                f"Cancelled processes {process.ID} are not implemented."
+                            )
+                        case ProcessStatus.COMPLETED:
+                            assert (
+                                len(process.starts) == 1 and len(process.ends) == 1
+                            ), (
+                                f"Current process {process.ID} is completed and should only contain one start and one "
+                                f"end time."
+                            )
+                            current_area = area_log[start_time]
+                            current_slot = slot_log[start_time]
 
-                    else:
-                        event_start_after_simulation = timedelta(
-                            seconds=current_process.starts[0]
-                        )
+                            if current_area is None or current_slot is None:
+                                raise ValueError(
+                                    f"For process {process.ID} Area and slot should not be None."
+                                )
 
-                    time_start = simulation_start_time + event_start_after_simulation
+                            if process.dur > 0:
+                                # Valid duration
+                                dict_of_events[start_time] = {
+                                    "type": type(process).__name__,
+                                    "end": process.ends[0],
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
+                            else:
+                                # Duration is 0
 
-                    # Get end time
-                    if current_process.dur > 0:
-                        # If this process has a valid duration then directly use end time
-                        event_end_after_simulation = timedelta(
-                            seconds=current_process.ends[0]
-                        )
-                        time_end = simulation_start_time + event_end_after_simulation
+                                if start_time in dict_of_events:
+                                    assert current_area.issink is True
+                                    # Standby departure
+                                    actual_start_time = dict_of_events[start_time][
+                                        "end"
+                                    ]
+                                    dict_of_events[actual_start_time] = {
+                                        "type": type(process).__name__,
+                                        "area": current_area.ID,
+                                        "is_area_sink": current_area.issink,
+                                        "slot": current_slot,
+                                        "id": process.ID,
+                                    }
 
-                    else:
-                        # If this process has a duration of 0, then end time is the start time of the next process
+                                    last_standby_departure_start = actual_start_time
 
-                        start_time_index = list_of_timekeys.index(
-                            current_process.starts[0]
-                        )
-                        if start_time_index == len(list_of_timekeys) - 1:
-                            # This is the last process in the list. Use end of simulation time as event end time
-                            end_time_sec = depot_evaluation.SIM_TIME
+                                else:
+                                    # Standby arrival
+                                    assert current_area.issink is False
+                                    dict_of_events[start_time] = {
+                                        "type": type(process).__name__,
+                                        "area": current_area.ID,
+                                        "is_area_sink": current_area.issink,
+                                        "slot": current_slot,
+                                        "id": process.ID,
+                                    }
+                        case ProcessStatus.IN_PROGRESS:
+                            raise NotImplementedError(
+                                f"Current process {process.ID} is in progress. Not implemented yet."
+                            )
+                        case ProcessStatus.WAITING:
+                            raise NotImplementedError(
+                                f"Current process {process.ID} is waiting. Not implemented yet."
+                            )
 
-                        else:
-                            end_time_sec = list_of_timekeys[start_time_index + 1]
+                        case ProcessStatus.NOT_STARTED:
+                            raise NotImplementedError(
+                                f"Current process {process.ID} is not started. Not implemented yet."
+                            )
 
-                        event_end_after_simulation = timedelta(seconds=end_time_sec)
-                        time_end = simulation_start_time + event_end_after_simulation
+                        case _:
+                            raise ValueError(
+                                f"Invalid process status {process.status} for process {process.ID}."
+                            )
 
-                    # Get EventType
-                    match type(current_process).__name__:
+        dict_of_events = dict(sorted(dict_of_events.items()))
+
+        # Generating valid event-list
+        is_copy = True
+
+        for start_time, process_dict in dict_of_events.items():
+            if process_dict["type"] == "trip":
+                is_copy = process_dict["is_copy"]
+                finished_trip_id = process_dict["id"]
+                # Get trip_id
+                # Here or elsewhere get db v id
+            else:
+                if is_copy is False:
+                    # Generate EventType
+                    match process_dict["type"]:
                         case "Serve":
                             event_type = EventType.SERVICE
                         case "Charge":
                             event_type = EventType.CHARGING_DEPOT
                         case "Standby":
-                            if current_area.issink is True:
+                            if process_dict["is_area_sink"] is True:
                                 event_type = EventType.STANDBY_DEPARTURE
                             else:
                                 event_type = EventType.STANDBY
@@ -733,87 +742,41 @@ def _add_evaluation_to_database(
                                 "Precondition"""
                             )
 
-                    # Get proper area and subloc id
+                    # End time of 0-duration processes are start time of the next process
 
-                    area_id = int(current_area.ID)
+                    if "end" not in process_dict:
+                        # TODO might optimise performance
+                        end_time = list(dict_of_events.keys())[
+                            list(dict_of_events.keys()).index(start_time) + 1
+                        ]
+                        process_dict["end"] = end_time
 
-                    slot_id = current_vehicle.logger.loggedData["dwd.current_slot"][
-                        time_key
-                    ]
-                    subloc_id = slot_id if slot_id is not None else None
-
-                    # Read battery logs for timeseries
-
-                    if len(battery_logs) == 0:
-                        raise ValueError("No battery logs found.")
-
-                    for log in battery_logs:
-                        # Charging starts
-                        if (
-                            log.t == current_process.starts[0]
-                            and log.event_name == "charge_start"
-                            and type(current_process).__name__ == "Charge"
-                        ):
+                    # Get soc
+                    soc_start = None
+                    soc_end = None
+                    for log in battery_log:
+                        if log.t == start_time:
                             soc_start = log.energy / log.energy_real
-
-                        if (
-                            log.t == current_process.starts[0]
-                            and log.event_name == "charge_step"
-                            and type(current_process).__name__ == "Charge"
-                        ):
-                            raise NotImplementedError("Charge step is not implemented.")
-
-                        # Charging ends
-                        if (
-                            log.t == current_process.ends[0]
-                            and log.event_name == "charge_end"
-                            and type(current_process).__name__ == "Charge"
-                        ):
+                        if log.t == process_dict["end"]:
                             soc_end = log.energy / log.energy_real
-
-                        if (
-                            # Vehicle stands by for departure
-                            log.t == current_process.starts[0]
-                            and log.event_name == "charge_start"
-                            and type(current_process).__name__ == "Standby"
-                        ):
-                            # get the charge_end event
-                            idx = battery_logs.index(log)
-                            charge_end_log = battery_logs[idx + 1]
-                            soc_start = charge_end_log.energy / log.energy_real
-                            soc_end = soc_start
-
-                        # Vehicle on a trip
-                        if log.t == time_key and log.event_name == "consume_start":
-                            pass
-
-                        if (
-                            # Vehicle arrives
-                            log.t == current_process.starts[0]
-                            and log.event_name == "consume_end"
-                        ) or (
-                            # Preconditioning
-                            log.t == current_process.ends[0]
-                            and log.event_name == "consume_start"
-                        ):
-                            # No battery consumption
-                            soc_start = log.energy / log.energy_real
-
-                            soc_end = soc_start
 
                     current_event = Event(
                         scenario_id=scenario_id,
                         vehicle_type_id=vehicle_type_id,
                         vehicle=current_vehicle_db,
                         station_id=None,
-                        area_id=area_id,
-                        subloc_no=subloc_id,
+                        area_id=int(process_dict["area"]),
+                        subloc_no=int(process_dict["slot"]),
                         trip_id=None,
-                        time_start=time_start,
-                        time_end=time_end
-                        - timedelta(seconds=1),  # Avoiding overlapping
-                        soc_start=soc_start,
-                        soc_end=soc_end,
+                        time_start=timedelta(seconds=start_time)
+                        + simulation_start_time,
+                        time_end=timedelta(seconds=process_dict["end"])
+                        + simulation_start_time,  # Avoiding overlapping
+                        soc_start=soc_start if soc_start is not None else soc_end,
+                        soc_end=soc_end
+                        if soc_end is not None
+                        else soc_start,  # if only one battery log is found,
+                        # then this is not an event with soc change
                         event_type=event_type,
                         description=None,
                         timeseries=None,
@@ -824,29 +787,27 @@ def _add_evaluation_to_database(
         list_of_events.extend(list_of_events_per_vehicle)
 
     # Update rotation table with vehicle ids
+    old_new_vehicle = []
+    matched_vehicle_id = 0
     for schedule_id, vehicle_id in list_of_assigned_schedules:
-        rotation_q = session.query(Rotation).filter(
-            Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
-        )
-        if rotation_q.count() == 0:
-            raise ValueError(
-                f"Could not find Rotation {schedule_id} in scenario {scenario_id}."
+        if vehicle_id != matched_vehicle_id:
+            matched_vehicle_id = vehicle_id
+            # Get rotation from db with id
+            rotation_q = (
+                session.query(Rotation)
+                .filter(Rotation.scenario_id == scenario_id, Rotation.id == schedule_id)
+                .one()
             )
-        else:
-            old_vehicle_id = rotation_q.one().vehicle_id
-            if old_vehicle_id is None:
-                rotation_q.update({"vehicle_id": vehicle_id})
-                for trip in rotation_q.one().trips:
-                    for event in trip.events:
-                        event.vehicle_id = vehicle_id
-            else:
-                # If there already is a vehicle assigned to this rotation, we need to change all teh events by this
-                # vehicle to the new vehicle
-                event_q = session.query(Event).filter(
-                    Event.vehicle_id == old_vehicle_id
-                )
-                event_q.update({"vehicle_id": vehicle_id})
-                rotation_q.update({"vehicle_id": vehicle_id})
+            old_vehicle_id = rotation_q.vehicle_id
+            old_new_vehicle.append((old_vehicle_id, vehicle_id))
+
+    # Update depot events with old vehicle id
 
     # Write Events
     session.add_all(list_of_events)
+
+    for old_vehicle_id, new_vehicle_id in old_new_vehicle:
+        session.query(Event).filter(
+            Event.scenario_id == scenario_id,
+            Event.vehicle_id == new_vehicle_id,
+        ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)
