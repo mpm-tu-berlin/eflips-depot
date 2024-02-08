@@ -8,7 +8,16 @@ from enum import Enum, auto
 from typing import Dict, List, Tuple
 
 import simpy
-from eflips.model import VehicleType, Rotation, Depot, AreaType, Process
+from eflips.model import (
+    VehicleType,
+    Rotation,
+    Depot,
+    AreaType,
+    Process,
+    Vehicle,
+    Event,
+    EventType,
+)
 
 from eflips.depot import SimpleTrip
 from eflips.depot.simple_vehicle import (
@@ -344,12 +353,20 @@ class VehicleSchedule:
     """
 
     @classmethod
-    def from_rotation(self, rot: Rotation, use_builtin_consumption_model: bool = False):
+    def from_rotation(
+        self,
+        rot: Rotation,
+        scenario,
+        session,
+        use_builtin_consumption_model: bool = False,
+    ):
         """
         This constructor creates a VehicleSchedule object from a Rotation object. It is intended to be used by the
         eflips-depot API.
 
         :param rot: The Rotation object from which the VehicleSchedule is created.
+        :param scenario: The Scenario object to which the Rotation belongs.
+        :param session: The database session object.
         :param use_builtin_consumption_model: Whether to use the built-in consumption model of eflips-depot. If set
             to `True`, the `VehicleType.consumption` field is used. If set to `False`, consumption is calculated
             from the `Event` table in the database. This (and an external consumption model) is the recommended way.
@@ -360,7 +377,9 @@ class VehicleSchedule:
         arrival = rot.trips[-1].arrival_time
 
         if use_builtin_consumption_model:
-            arrival_soc, departure_soc, minimal_soc = self.calculate_socs(rot)
+            arrival_soc, departure_soc, minimal_soc = self.calculate_socs(
+                rot, scenario, session
+            )
 
         else:
             # Find the event for each trip
@@ -394,11 +413,55 @@ class VehicleSchedule:
         )
 
     @classmethod
-    def calculate_socs(cls, rot):
+    def calculate_socs(cls, rot, scenario, session):
         if rot.vehicle_type.consumption is None:
             raise ValueError(
                 f"Vehicle type {rot.vehicle_type.id} has no consumption value."
             )
+
+        # Create new vehicles
+        vehicle = Vehicle(
+            scenario_id=scenario.id,
+            vehicle_type_id=rot.vehicle_type_id,
+            name="vehicle for rot" + str(rot.id),
+            name_short=None,
+        )
+
+        session.add(vehicle)
+
+        # Flush to get valid vehicle id
+        session.flush()
+
+        # Update rotation table
+        rot_q = session.query(Rotation).filter(Rotation.id == rot.id)
+        rot_q.update({"vehicle_id": vehicle.id})
+
+        current_soc = 1.0
+
+        # Write event tables
+        for trip in rot.trips:
+            energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
+            soc_start = current_soc
+            soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
+            current_soc = soc_end
+
+            # Create a driving event
+            current_event = Event(
+                scenario_id=scenario.id,
+                vehicle_type_id=rot.vehicle_type_id,
+                vehicle=vehicle,
+                trip_id=trip.id,
+                time_start=trip.departure_time,
+                time_end=trip.arrival_time,
+                soc_start=soc_start,
+                soc_end=soc_end,
+                event_type=EventType.DRIVING,
+                description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
+                timeseries=None,
+            )
+
+            session.add(current_event)
+
         total_distance = 0
         for trip in rot.trips:
             total_distance += trip.route.distance
