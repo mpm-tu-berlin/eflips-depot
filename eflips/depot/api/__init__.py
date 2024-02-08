@@ -576,57 +576,11 @@ def _add_evaluation_to_database(
 
     list_of_assigned_schedules = []
 
-    # If the database already contains non-driving events for this scenario, then we cannot add driving events
-    non_driving_event_q = (
-        session.query(Event)
-        .filter(Event.scenario_id == scenario_id)
-        .filter(Event.event_type != EventType.DRIVING)
-        .filter(Event.area_id != None)
-    )
-    if non_driving_event_q.count() > 0:
-        raise ValueError(
-            "The database already contains non-driving events for this scenario. Please delete them first."
-        )
-
-    # If the database contains no driving events for this scenario, then we need to add them
-    driving_event_q = (
-        session.query(Event)
-        .filter(Event.scenario_id == scenario_id)
-        .filter(Event.event_type == EventType.DRIVING)
-    )
-    if driving_event_q.count() == 0:
-        for rot in (
-            session.query(Rotation).filter(Rotation.scenario_id == scenario_id).all()
-        ):
-            current_soc = 1.0
-            for trip in rot.trips:
-                energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
-                soc_start = current_soc
-                soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
-                current_soc = soc_end
-
-                # Create a driving event
-                current_event = Event(
-                    scenario_id=scenario_id,
-                    vehicle_type_id=rot.vehicle_type_id,
-                    trip_id=trip.id,
-                    time_start=trip.departure_time,
-                    time_end=trip.arrival_time,
-                    soc_start=soc_start,
-                    soc_end=soc_end,
-                    event_type=EventType.DRIVING,
-                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
-                    timeseries=None,
-                )
-                session.add(current_event)
-
     # Read results from depot_evaluation categorized by vehicle
     for current_vehicle in depot_evaluation.vehicle_generator.items:
         list_of_events_per_vehicle = []
 
         vehicle_type_id = int(current_vehicle.vehicle_type.ID)
-
-        # vehicle_id = depot_evaluation.vehicle_generator.items.index(current_vehicle) + 1
 
         # Create a Vehicle object for database
         current_vehicle_db = Vehicle(
@@ -766,6 +720,9 @@ def _add_evaluation_to_database(
         for start_time, process_dict in dict_of_events.items():
             if process_dict["type"] == "trip":
                 is_copy = process_dict["is_copy"]
+                finished_trip_id = process_dict["id"]
+                # Get trip_id
+                # Here or elsewhere get db v id
             else:
                 if is_copy is False:
                     # Generate EventType
@@ -815,8 +772,8 @@ def _add_evaluation_to_database(
                         trip_id=None,
                         time_start=timedelta(seconds=start_time)
                         + simulation_start_time,
-                        time_end=timedelta(seconds=(process_dict["end"] - 1))
-                        + simulation_start_time,  # Avoiding overlapping
+                        time_end=timedelta(seconds=process_dict["end"])
+                        + simulation_start_time,
                         soc_start=soc_start if soc_start is not None else soc_end,
                         soc_end=soc_end
                         if soc_end is not None
@@ -832,29 +789,27 @@ def _add_evaluation_to_database(
         list_of_events.extend(list_of_events_per_vehicle)
 
     # Update rotation table with vehicle ids
+    old_new_vehicle = []
+    matched_vehicle_id = 0
     for schedule_id, vehicle_id in list_of_assigned_schedules:
-        rotation_q = session.query(Rotation).filter(
-            Rotation.id == schedule_id, Rotation.scenario_id == scenario_id
-        )
-        if rotation_q.count() == 0:
-            raise ValueError(
-                f"Could not find Rotation {schedule_id} in scenario {scenario_id}."
+        if vehicle_id != matched_vehicle_id:
+            matched_vehicle_id = vehicle_id
+            # Get rotation from db with id
+            rotation_q = (
+                session.query(Rotation)
+                .filter(Rotation.scenario_id == scenario_id, Rotation.id == schedule_id)
+                .one()
             )
-        else:
-            old_vehicle_id = rotation_q.one().vehicle_id
-            if old_vehicle_id is None:
-                rotation_q.update({"vehicle_id": vehicle_id})
-                for trip in rotation_q.one().trips:
-                    for event in trip.events:
-                        event.vehicle_id = vehicle_id
-            else:
-                # If there already is a vehicle assigned to this rotation, we need to change all teh events by this
-                # vehicle to the new vehicle
-                event_q = session.query(Event).filter(
-                    Event.vehicle_id == old_vehicle_id
-                )
-                event_q.update({"vehicle_id": vehicle_id})
-                rotation_q.update({"vehicle_id": vehicle_id})
+            old_vehicle_id = rotation_q.vehicle_id
+            old_new_vehicle.append((old_vehicle_id, vehicle_id))
+
+    # Update depot events with old vehicle id
 
     # Write Events
     session.add_all(list_of_events)
+
+    for old_vehicle_id, new_vehicle_id in old_new_vehicle:
+        session.query(Event).filter(
+            Event.scenario_id == scenario_id,
+            Event.vehicle_id == new_vehicle_id,
+        ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)

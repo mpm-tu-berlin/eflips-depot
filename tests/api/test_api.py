@@ -610,3 +610,40 @@ class TestApi(TestHelpers):
             calculate_exact_vehicle_count=True,
         )
         session.commit()
+
+    def test_reassign_vehicle_id(self, session, full_scenario):
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.commit()
+
+        generate_depot_layout(
+            scenario=full_scenario, charging_power=90, delete_existing_depot=True
+        )
+
+        simulate_scenario(
+            scenario=full_scenario,
+            simple_consumption_simulation=True,
+            calculate_exact_vehicle_count=True,
+        )
+        session.commit()
+
+        # check if there are any gaps bewteen vehicle driving and depot processes. Only suitable for simple
+        # consumption simulation for now
+
+        vehicle_list = session.query(Vehicle).all()
+
+        for vehicle in vehicle_list:
+            list_of_events = (
+                session.query(Event)
+                .filter(Event.vehicle_id == vehicle.id)
+                .order_by(Event.time_start)
+                .all()
+            )
+            for i in range(len(list_of_events) - 1):
+                if (
+                    list_of_events[i].event_type == EventType.DRIVING
+                    and list_of_events[i + 1].event_type != EventType.DRIVING
+                ):
+                    assert (
+                        list_of_events[i].time_end == list_of_events[i + 1].time_start
+                    )
