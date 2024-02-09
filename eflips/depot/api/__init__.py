@@ -56,37 +56,40 @@ def create_session(
     :param scenario:
     :return: Yield a Tuple of the session and the scenario.
     """
-    if isinstance(scenario, Scenario):
-        session = inspect(scenario).session
-        do_close_session = False
-    elif isinstance(scenario, int) or hasattr(scenario, "id"):
-        do_close_session = True
-        if isinstance(scenario, int):
-            scenario_id = scenario
-        else:
-            scenario_id = scenario.id
-
-        if database_url is None:
-            if "DATABASE_URL" in os.environ:
-                database_url = os.environ.get("DATABASE_URL")
-            else:
-                raise ValueError("No database URL specified.")
-
-        engine = create_engine(database_url)
-        session = Session(engine)
-        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-    else:
-        raise ValueError(
-            "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
-        )
-
+    managed_session = False
+    engine = None
+    session = None
     try:
+        if isinstance(scenario, Scenario):
+            session = inspect(scenario).session
+        elif isinstance(scenario, int) or hasattr(scenario, "id"):
+            if isinstance(scenario, int):
+                scenario_id = scenario
+            else:
+                scenario_id = scenario.id
+
+            if database_url is None:
+                if "DATABASE_URL" in os.environ:
+                    database_url = os.environ.get("DATABASE_URL")
+                else:
+                    raise ValueError("No database URL specified.")
+
+            managed_session = True
+            engine = create_engine(database_url)
+            session = Session(engine)
+            scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+        else:
+            raise ValueError(
+                "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
+            )
         yield session, scenario
     finally:
-        if do_close_session:
-            session.commit()
-            session.close()
-            engine.dispose()
+        if managed_session:
+            if session is not None:
+                session.commit()
+                session.close()
+            if engine is not None:
+                engine.dispose()
 
 
 def _delete_depot(scenario: Scenario, session: Session):
@@ -148,7 +151,6 @@ def generate_depot_layout(
 
 
     :param scenario: The scenario to be simulated
-    :param session: The database session
     :param charging_power: the charging power of the charging area in kW
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
