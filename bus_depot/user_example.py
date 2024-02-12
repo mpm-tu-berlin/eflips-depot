@@ -177,6 +177,11 @@ if __name__ == "__main__":
         for vehicle_type in scenario.vehicle_types:
             vehicle_type.consumption = 1
 
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
@@ -190,7 +195,7 @@ if __name__ == "__main__":
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
-            simple_consumption_simulation=True,
+            simple_consumption_simulation=False,
             vehicle_count_dict=vehicle_counts,
         )
         depot_evaluation = _run_simulation(simulation_host)
@@ -218,10 +223,5 @@ if __name__ == "__main__":
             show_annotates=True,
         )
 
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
         session.commit()
