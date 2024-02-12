@@ -17,6 +17,7 @@ from eflips.model import (
     Vehicle,
     Event,
     EventType,
+    Trip,
 )
 
 from eflips.depot import SimpleTrip
@@ -383,17 +384,26 @@ class VehicleSchedule:
 
         else:
             # Find the event for each trip
-            events = []
-            for trip in rot.trips:
-                if len(trip.events) == 0:
-                    raise ValueError(
-                        f"Trip {trip.id} has no events. Has the energy consumption simulation been run?"
-                    )
-                elif len(trip.events) > 1:
-                    raise ValueError(
-                        f"Trip {trip.id} has more than one event. This is not supported."
-                    )
-                events.append(trip.events[0])
+            events = (
+                session.query(Event)
+                .filter(Event.event_type == EventType.DRIVING)
+                .join(Trip)
+                .join(Rotation)
+                .filter(Rotation.id == rot.id)
+                .order_by(Event.time_start)
+                .all()
+            )
+            trips = session.query(Trip).filter(Trip.rotation_id == rot.id).all()
+            if len(events) != len(trips):
+                raise ValueError(
+                    f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
+                )
+            if set([event.trip_id for event in events]) != set(
+                [trip.id for trip in trips]
+            ):
+                raise ValueError(
+                    f"The events of rotation {rot.id} do not match the trips."
+                )
 
             departure_soc = events[0].soc_start
             arrival_soc = events[-1].soc_end
@@ -435,6 +445,8 @@ class VehicleSchedule:
         # Update rotation table
         rot_q = session.query(Rotation).filter(Rotation.id == rot.id)
         rot_q.update({"vehicle_id": vehicle.id})
+
+        session.flush()
 
         current_soc = 1.0
 
