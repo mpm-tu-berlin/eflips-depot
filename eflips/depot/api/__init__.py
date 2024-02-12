@@ -53,6 +53,7 @@ def create_session(
     creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
     session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
     is created, returned and closed after the context manager is exited.
+
     :param scenario: Either a :class:`eflips.model.Scenario` object, an integer specifying the ID of a scenario in the
         database, or any other object that has an attribute `id` that is an integer.
     :return: Yield a Tuple of the session and the scenario.
@@ -325,10 +326,10 @@ def simulate_scenario(
     "Driving Events" in the :class:`eflips.model.Event` table.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-           an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-           `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-           parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
-           valid database URL.
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
+        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+        valid database URL.
 
     :param simple_consumption_simulation: A boolean flag indicating whether the simulation should be run in
         "simple consumption" mode. In this mode, the vehicle consumption is calculated using a simple formula and
@@ -362,7 +363,6 @@ def simulate_scenario(
         )
 
         ev = _run_simulation(simulation_host)
-        # TODO Only commit second simulation results into the database
 
         if calculate_exact_vehicle_count:
             vehicle_counts = ev.nvehicles_used_calculation()
