@@ -794,28 +794,40 @@ def _add_evaluation_to_database(
 
         list_of_events.extend(list_of_events_per_vehicle)
 
-    # Update rotation table with vehicle ids
-    old_new_vehicle = []
+    new_old_vehicle = {}
     matched_vehicle_id = 0
     for schedule_id, vehicle_id in list_of_assigned_schedules:
         if vehicle_id != matched_vehicle_id:
             matched_vehicle_id = vehicle_id
             # Get rotation from db with id
-            rotation_q = (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == scenario_id, Rotation.id == schedule_id)
-                .one()
-            )
-            old_vehicle_id = rotation_q.vehicle_id
-            old_new_vehicle.append((old_vehicle_id, vehicle_id))
+            rotation_q = session.query(Rotation).filter(Rotation.id == schedule_id)
+            # Match old and new vehicle id
+            old_vehicle_id = rotation_q.one().vehicle_id
+            new_old_vehicle[vehicle_id] = old_vehicle_id
+
+    # New rotation assignment
+
+    for schedule_id, vehicle_id in list_of_assigned_schedules:
+        # Get corresponding old vehicle id
+        old_vehicle_id = new_old_vehicle[vehicle_id]
+        session.query(Rotation).filter(Rotation.id == schedule_id).update(
+            {"vehicle_id": old_vehicle_id}
+        )
 
     # Update depot events with old vehicle id
 
     # Write Events
     session.add_all(list_of_events)
+    session.flush()
 
-    for old_vehicle_id, new_vehicle_id in old_new_vehicle:
+    for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
         session.query(Event).filter(
             Event.scenario_id == scenario_id,
             Event.vehicle_id == new_vehicle_id,
-        ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)
+        ).update({"vehicle_id": old_vehicle_id})
+
+        session.query(Vehicle).filter(
+            Vehicle.id == new_vehicle_id,
+        ).delete()
+
+        session.flush()
