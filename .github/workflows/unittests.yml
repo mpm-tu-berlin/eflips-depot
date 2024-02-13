@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        PYTHON_VERSION: [ "3.9", "3.10", "3.11", "3.12" ]
+        PYTHON_VERSION: [ "3.10", "3.11", "3.12" ]
     services:
       postgres:
         image: postgis/postgis
@@ -48,10 +48,10 @@ jobs:
       - name: Add `btree_gist` to postgreSQL
         run: |
           sudo -u postgres psql "postgresql://user:password@localhost/database" -c "CREATE EXTENSION btree_gist;"
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: Set up Python ${{ matrix.PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.PYTHON_VERSION }}
       - name: Install poetry
         run: |
           python -m pip install --upgrade pip

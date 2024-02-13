@@ -10,7 +10,7 @@ readme = "README.md"
 packages = [{ include = "eflips/depot" }]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 simpy = "^4.0.1"
 eflips-model = "^2.1.2"
 # Legacy dependencies, which are still needed until we refactor the code
