@@ -10,11 +10,11 @@ readme = "README.md"
 packages = [{ include = "eflips/depot" }]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.9"
 simpy = "^4.0.1"
 eflips-model = "^2.1.2"
 # Legacy dependencies, which are still needed until we refactor the code
-eflips = "^0.1.0"
+eflips = { git = "git@github.com:mpm-tu-berlin/eflips.git", rev = "451a92a447ab51282765395588553347bb40c7bc" } # TODO: Change to pypi once the new version is released
 xlsxwriter = "^3.1.9"
 pandas = "^2.1.4"
 xlrd = "<=1.2.0"
