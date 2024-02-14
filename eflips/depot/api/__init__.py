@@ -32,8 +32,8 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
 import eflips.depot
-from eflips.depot import ProcessStatus
 from eflips.depot import DepotEvaluation, SimulationHost
+from eflips.depot import ProcessStatus
 from eflips.depot.api.private import (
     depot_to_template,
     repeat_vehicle_schedules,
@@ -128,6 +128,144 @@ def _delete_depot(scenario: Scenario, session: Session):
     # delete assoc_plan_process
 
     session.commit()
+
+
+def simple_consumption_simulation(
+    scenario: Union[Scenario, int, Any],
+    initialize_vehicles: bool,
+    database_url: Optional[str] = None,
+    calculate_timeseries: bool = False,
+) -> None:
+    """
+    This implements a simple consumption simulation, by multiplying the vehicle's total distance by a constant
+    `VehicleType.consumption`. This is useful for testing purposes.
+
+    If run with `initialize_vehicles=True`, the method will also initialize the vehicles in the database with the
+    correct vehicle type and assign them to rotations. If this is false, it will assume that there are already vehicle
+    entries and Rotation.vehicle_id is already set.
+
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
+        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+        valid database URL.
+    :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
+    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
+        URL.
+    :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
+        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this is
+        set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
+        significantly speed up the simulation.
+    :return: Nothing. The results are added to the database.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        rotations = (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == scenario.id)
+            .order_by(Rotation.id)
+        )
+        if initialize_vehicles:
+            for rotation in rotations:
+                vehicle = Vehicle(
+                    vehicle_type_id=rotation.vehicle_type_id,
+                    scenario_id=scenario.id,
+                    name=f"Vehicle for rotation {rotation.id}",
+                )
+                session.add(vehicle)
+                rotation.vehicle = vehicle
+
+                # Additionally, add a short STANDBY event with 100% SoC immediately before the first trip
+                first_trip_start = rotation.trips[0].departure_time
+                standby_start = first_trip_start - timedelta(seconds=1)
+                standby_event = Event(
+                    scenario_id=scenario.id,
+                    vehicle_type_id=rotation.vehicle_type_id,
+                    vehicle=vehicle,
+                    station_id=rotation.trips[0].route.departure_station_id,
+                    subloc_no=0,
+                    time_start=standby_start,
+                    time_end=first_trip_start,
+                    soc_start=1,
+                    soc_end=1,
+                    event_type=EventType.CHARGING_OPPORTUNITY,
+                    description=f"DUMMY Initial standby event for rotation {rotation.id}.",
+                    timeseries=None,
+                )
+                session.add(standby_event)
+        else:
+            for rotation in rotations:
+                if rotation.vehicle is None:
+                    raise ValueError(
+                        "The rotation does not have a vehicle assigned to it."
+                    )
+
+        for rotation in rotations:
+            vehicle_type = rotation.vehicle_type
+            vehicle = rotation.vehicle
+            if vehicle_type.consumption is None:
+                raise ValueError(
+                    "The vehicle type does not have a consumption value set."
+                )
+            consumption = vehicle_type.consumption
+
+            # The departure SoC for this rotation is the SoC of the last event preceding the first trip
+            current_soc = (
+                session.query(Event.soc_end)
+                .filter(Event.vehicle_id == rotation.vehicle_id)
+                .filter(Event.time_end <= rotation.trips[0].departure_time)
+                .order_by(Event.time_end.desc())
+                .first()[0]
+            )
+
+            for trip in rotation.trips:
+                # Set up a timeseries
+                soc_start = current_soc
+                if trip.stop_times is not None and calculate_timeseries is True:
+                    timeseries = {
+                        "time": [],
+                        "soc": [],
+                        "distance": [],
+                    }
+                    for i in range(len(trip.stop_times)):
+                        current_time = trip.stop_times[i].arrival_time
+                        dwell_duration = trip.stop_times[i].dwell_duration
+                        elapsed_distance = trip.route.assoc_route_stations[
+                            i
+                        ].elapsed_distance
+                        elapsed_energy = consumption * (elapsed_distance / 1000)  # kWh
+                        soc = (
+                            current_soc - elapsed_energy / vehicle_type.battery_capacity
+                        )
+                        timeseries["time"].append(current_time.isoformat())
+                        timeseries["soc"].append(soc)
+                        timeseries["distance"].append(elapsed_distance)
+                        if dwell_duration > timedelta(seconds=0):
+                            timeseries["time"].append(
+                                (current_time + dwell_duration).isoformat()
+                            )
+                            timeseries["soc"].append(soc)
+                            timeseries["distance"].append(elapsed_distance)
+                else:
+                    timeseries = None
+                energy_used = consumption * trip.route.distance / 1000  # kWh
+                current_soc = soc_start - energy_used / vehicle_type.battery_capacity
+
+                # Create a driving event
+                current_event = Event(
+                    scenario_id=scenario.id,
+                    vehicle_type_id=rotation.vehicle_type_id,
+                    vehicle=vehicle,
+                    trip_id=trip.id,
+                    time_start=trip.departure_time,
+                    time_end=trip.arrival_time,
+                    soc_start=soc_start,
+                    soc_end=current_soc,
+                    event_type=EventType.DRIVING,
+                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
+                    timeseries=timeseries,
+                )
+                session.add(current_event)
 
 
 def generate_depot_layout(

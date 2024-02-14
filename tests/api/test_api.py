@@ -36,6 +36,7 @@ from eflips.depot.api import (
     simulate_scenario,
     _add_evaluation_to_database,
     generate_depot_layout,
+    simple_consumption_simulation,
 )
 
 
@@ -177,7 +178,7 @@ class TestHelpers:
                 scenario=scenario, station=stop_3, route=route_2, elapsed_distance=0
             ),
             AssocRouteStation(
-                scenario=scenario, station=stop_2, route=route_2, elapsed_distance=500
+                scenario=scenario, station=stop_2, route=route_2, elapsed_distance=100
             ),
             AssocRouteStation(
                 scenario=scenario, station=stop_1, route=route_2, elapsed_distance=1000
@@ -230,6 +231,7 @@ class TestHelpers:
                         arrival_time=first_departure
                         + 2 * i * interval
                         + timedelta(minutes=5),
+                        dwell_duration=timedelta(minutes=1),
                     ),
                     StopTime(
                         scenario=scenario,
@@ -639,3 +641,196 @@ class TestApi(TestHelpers):
                     assert (
                         list_of_events[i].time_end == list_of_events[i + 1].time_start
                     )
+
+
+class TestSimpleConsumptionSimulation(TestHelpers):
+    def test_consumption_simulation_initial(self, session, full_scenario):
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+
+        assert (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            == 0
+        )
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            > 0
+        )
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+            == 0
+        )
+
+        simple_consumption_simulation(
+            scenario=full_scenario, initialize_vehicles=True, calculate_timeseries=True
+        )
+
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+        )
+        assert (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
+        )
+
+        for rotation in (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
+        ):
+            assert rotation.vehicle_id is not None
+            for trip in rotation.trips:
+                assert len(trip.events) == 1
+                if trip == rotation.trips[0]:
+                    assert trip.events[0].soc_start == 1
+                else:
+                    assert trip.events[0].soc_start < 1
+                assert trip.events[0].soc_end < 1
+
+    def test_consumption_simulation_initial_no_timeseries(self, session, full_scenario):
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+
+        assert (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            == 0
+        )
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            > 0
+        )
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+            == 0
+        )
+
+        simple_consumption_simulation(
+            scenario=full_scenario, initialize_vehicles=True, calculate_timeseries=False
+        )
+
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+        )
+        assert (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
+        )
+
+        for rotation in (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
+        ):
+            assert rotation.vehicle_id is not None
+            for trip in rotation.trips:
+                assert len(trip.events) == 1
+                if trip == rotation.trips[0]:
+                    assert trip.events[0].soc_start == 1
+                else:
+                    assert trip.events[0].soc_start < 1
+                assert trip.events[0].soc_end < 1
+
+    def test_consumption_simulation_initial_no_consumption(
+        self, session, full_scenario
+    ):
+        # Skip the consumption setting step
+        # for vehicle_type in full_scenario.vehicle_types:
+        #    vehicle_type.consumption = 1
+        with pytest.raises(ValueError):
+            simple_consumption_simulation(
+                scenario=full_scenario,
+                initialize_vehicles=True,
+                calculate_timeseries=True,
+            )
+
+    def test_consumption_simulation_subsequent(self, session, full_scenario):
+        for vehicle_type in full_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+
+        # Run the "initial" step manually to validate the "subsequent" step
+        rotations = (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
+        )
+        for rotation in rotations:
+            vehicle = Vehicle(
+                vehicle_type_id=rotation.vehicle_type_id,
+                scenario_id=full_scenario.id,
+                name=f"Vehicle for rotation {rotation.id}",
+            )
+            session.add(vehicle)
+            rotation.vehicle = vehicle
+
+            # Additionally, add a short STANDBY event with 100% SoC immediately before the first trip
+            first_trip_start = rotation.trips[0].departure_time
+            standby_start = first_trip_start - timedelta(seconds=1)
+            standby_event = Event(
+                scenario_id=full_scenario.id,
+                vehicle_type_id=rotation.vehicle_type_id,
+                vehicle=vehicle,
+                station_id=rotation.trips[0].route.departure_station_id,
+                subloc_no=0,
+                time_start=standby_start,
+                time_end=first_trip_start,
+                soc_start=1,
+                soc_end=1,
+                event_type=EventType.CHARGING_OPPORTUNITY,
+                description=f"DUMMY Initial standby event for rotation {rotation.id}.",
+                timeseries=None,
+            )
+            session.add(standby_event)
+
+        simple_consumption_simulation(
+            scenario=full_scenario, initialize_vehicles=False, calculate_timeseries=True
+        )  # This is the "subsequent" step
+
+        assert (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+        )
+        assert (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
+        )
+
+        for rotation in (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
+        ):
+            assert rotation.vehicle_id is not None
+            for trip in rotation.trips:
+                assert len(trip.events) == 1
+                if trip == rotation.trips[0]:
+                    assert trip.events[0].soc_start == 1
+                else:
+                    assert trip.events[0].soc_start < 1
+                assert trip.events[0].soc_end < 1
