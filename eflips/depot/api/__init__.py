@@ -27,6 +27,7 @@ from eflips.model import (
     AssocAreaProcess,
     Area,
     AreaType,
+    Trip,
 )
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
@@ -198,38 +199,42 @@ def simple_consumption_simulation(
                         "The rotation does not have a vehicle assigned to it."
                     )
 
-            # Also add a dummy standby-departure event as experiment before the first trip each vehicle
             vehicles = (
                 session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).all()
             )
             for vehicle in vehicles:
-                rotation_per_vehicle = sorted(
-                    vehicle.rotations, key=lambda r: r.trips[0].departure_time
-                )
-                earliest_trip = rotation_per_vehicle[0].trips[0]
-                area = (
-                    session.query(Area)
-                    .filter(Area.scenario_id == scenario.id)
-                    .filter(Area.vehicle_type_id == Vehicle.vehicle_type_id)
-                    .first()
-                )
+                if (
+                    session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
+                    == 0
+                ):
+                    # Also add a dummy standby-departure event if this vehicle has no events
+                    rotation_per_vehicle = sorted(
+                        vehicle.rotations, key=lambda r: r.trips[0].departure_time
+                    )
+                    earliest_trip = rotation_per_vehicle[0].trips[0]
+                    area = (
+                        session.query(Area)
+                        .filter(Area.scenario_id == scenario.id)
+                        .filter(Area.vehicle_type_id == Vehicle.vehicle_type_id)
+                        .first()
+                    )
 
-                standby_start = earliest_trip.departure_time - timedelta(seconds=1)
-                standby_event = Event(
-                    scenario_id=scenario.id,
-                    vehicle_type_id=rotation.vehicle_type_id,
-                    vehicle=vehicle,
-                    area_id=area.id,
-                    subloc_no=area.capacity,
-                    time_start=standby_start,
-                    time_end=earliest_trip.departure_time,
-                    soc_start=1,
-                    soc_end=1,
-                    event_type=EventType.STANDBY_DEPARTURE,
-                    description=f"DUMMY Initial standby event for rotation {earliest_trip.rotation_id}.",
-                    timeseries=None,
-                )
-                session.add(standby_event)
+                    standby_start = earliest_trip.departure_time - timedelta(seconds=1)
+                    standby_event = Event(
+                        scenario_id=scenario.id,
+                        vehicle_type_id=rotation.vehicle_type_id,
+                        vehicle=vehicle,
+                        area_id=area.id,
+                        subloc_no=area.capacity,
+                        time_start=standby_start,
+                        time_end=earliest_trip.departure_time,
+                        soc_start=1,
+                        soc_end=1,
+                        event_type=EventType.STANDBY_DEPARTURE,
+                        description=f"DUMMY Initial standby event for rotation {earliest_trip.rotation_id}.",
+                        timeseries=None,
+                    )
+                    session.add(standby_event)
 
         for rotation in rotations:
             vehicle_type = rotation.vehicle_type
