@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Give GH Actions access to django-simba repo
-        uses: webfactory/ssh-agent@v0.8.0
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: |
             ${{ secrets.EFLIPS_KEY }}
@@ -49,7 +49,7 @@ jobs:
         run: |
           sudo -u postgres psql "postgresql://user:password@localhost/database" -c "CREATE EXTENSION btree_gist;"
       - name: Set up Python ${{ matrix.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.PYTHON_VERSION }}
       - name: Install poetry
