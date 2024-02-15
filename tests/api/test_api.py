@@ -784,25 +784,6 @@ class TestSimpleConsumptionSimulation(TestHelpers):
             session.add(vehicle)
             rotation.vehicle = vehicle
 
-            # Additionally, add a short STANDBY event with 100% SoC immediately before the first trip
-            first_trip_start = rotation.trips[0].departure_time
-            standby_start = first_trip_start - timedelta(seconds=1)
-            standby_event = Event(
-                scenario_id=full_scenario.id,
-                vehicle_type_id=rotation.vehicle_type_id,
-                vehicle=vehicle,
-                station_id=rotation.trips[0].route.departure_station_id,
-                subloc_no=0,
-                time_start=standby_start,
-                time_end=first_trip_start,
-                soc_start=1,
-                soc_end=1,
-                event_type=EventType.CHARGING_OPPORTUNITY,
-                description=f"DUMMY Initial standby event for rotation {rotation.id}.",
-                timeseries=None,
-            )
-            session.add(standby_event)
-
         simple_consumption_simulation(
             scenario=full_scenario, initialize_vehicles=False, calculate_timeseries=True
         )  # This is the "subsequent" step
