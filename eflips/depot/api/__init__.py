@@ -893,78 +893,123 @@ def _add_evaluation_to_database(
                                 f"Invalid process status {process.status} for process {process.ID}."
                             )
 
-        dict_of_events = dict(sorted(dict_of_events.items()))
+        time_keys = sorted(dict_of_events.keys(), reverse=True)
+        if len(time_keys) != 0:
+            # Generating valid event-list
+            is_copy = True
+            for start_time in time_keys:
+                process_dict = dict_of_events[start_time]
+                if process_dict["type"] == "trip":
+                    is_copy = process_dict["is_copy"]
+                else:
+                    if is_copy is False:
+                        # Generate EventType
+                        match process_dict["type"]:
+                            case "Serve":
+                                event_type = EventType.SERVICE
+                            case "Charge":
+                                event_type = EventType.CHARGING_DEPOT
+                            case "Standby":
+                                if process_dict["is_area_sink"] is True:
+                                    event_type = EventType.STANDBY_DEPARTURE
+                                else:
+                                    event_type = EventType.STANDBY
+                            case "Precondition":
+                                event_type = EventType.PRECONDITIONING
+                            case _:
+                                raise ValueError(
+                                    """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
+                                    "Precondition"""
+                                )
 
-        # Generating valid event-list
-        is_copy = True
+                        # End time of 0-duration processes are start time of the next process
 
-        for start_time, process_dict in dict_of_events.items():
-            if process_dict["type"] == "trip":
-                is_copy = process_dict["is_copy"]
-            else:
-                if is_copy is False:
-                    # Generate EventType
-                    match process_dict["type"]:
-                        case "Serve":
-                            event_type = EventType.SERVICE
-                        case "Charge":
-                            event_type = EventType.CHARGING_DEPOT
-                        case "Standby":
-                            if process_dict["is_area_sink"] is True:
-                                event_type = EventType.STANDBY_DEPARTURE
-                            else:
-                                event_type = EventType.STANDBY
-                        case "Precondition":
-                            event_type = EventType.PRECONDITIONING
-                        case _:
-                            raise ValueError(
-                                """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
-                                "Precondition"""
-                            )
+                        if "end" not in process_dict:
+                            # TODO might optimise performance
+                            end_time = time_keys[time_keys.index(start_time) - 1]
+                            process_dict["end"] = end_time
 
-                    # End time of 0-duration processes are start time of the next process
+                        # Get soc
+                        soc_start = None
+                        soc_end = None
+                        for log in battery_log:
+                            if log.t == start_time:
+                                soc_start = log.energy / log.energy_real
+                            if log.t == process_dict["end"]:
+                                soc_end = log.energy / log.energy_real
 
-                    if "end" not in process_dict:
-                        # TODO might optimise performance
-                        end_time = list(dict_of_events.keys())[
-                            list(dict_of_events.keys()).index(start_time) + 1
-                        ]
-                        process_dict["end"] = end_time
+                        current_event = Event(
+                            scenario_id=scenario_id,
+                            vehicle_type_id=vehicle_type_id,
+                            vehicle=current_vehicle_db,
+                            station_id=None,
+                            area_id=int(process_dict["area"]),
+                            subloc_no=int(process_dict["slot"]),
+                            trip_id=None,
+                            time_start=timedelta(seconds=start_time)
+                            + simulation_start_time,
+                            time_end=timedelta(seconds=process_dict["end"])
+                            + simulation_start_time,
+                            soc_start=soc_start if soc_start is not None else soc_end,
+                            soc_end=soc_end
+                            if soc_end is not None
+                            else soc_start,  # if only one battery log is found,
+                            # then this is not an event with soc change
+                            event_type=event_type,
+                            description=None,
+                            timeseries=None,
+                        )
 
-                    # Get soc
-                    soc_start = None
-                    soc_end = None
-                    for log in battery_log:
-                        if log.t == start_time:
-                            soc_start = log.energy / log.energy_real
-                        if log.t == process_dict["end"]:
-                            soc_end = log.energy / log.energy_real
+                        list_of_events_per_vehicle.append(current_event)
 
-                    current_event = Event(
-                        scenario_id=scenario_id,
-                        vehicle_type_id=vehicle_type_id,
-                        vehicle=current_vehicle_db,
-                        station_id=None,
-                        area_id=int(process_dict["area"]),
-                        subloc_no=int(process_dict["slot"]),
-                        trip_id=None,
-                        time_start=timedelta(seconds=start_time)
-                        + simulation_start_time,
-                        time_end=timedelta(seconds=process_dict["end"])
-                        + simulation_start_time,
-                        soc_start=soc_start if soc_start is not None else soc_end,
-                        soc_end=soc_end
-                        if soc_end is not None
-                        else soc_start,  # if only one battery log is found,
-                        # then this is not an event with soc change
-                        event_type=event_type,
-                        description=None,
-                        timeseries=None,
-                    )
+            list_of_events.extend(list_of_events_per_vehicle)
 
-                    list_of_events_per_vehicle.append(current_event)
+            # For non-copy schedules with no predecessor events, adding a dummy standby-departure
+            if (
+                dict_of_events[time_keys[-1]]["type"] == "trip"
+                and dict_of_events[time_keys[-1]]["is_copy"] is False
+            ):
+                standby_start = time_keys[-1] - 1
+                standby_end = time_keys[-1]
+                rotation_id = str(dict_of_events[time_keys[-1]]["id"])
+                area = (
+                    session.query(Area)
+                    .filter(Area.vehicle_type_id == vehicle_type_id)
+                    .first()
+                )
 
-        list_of_events.extend(list_of_events_per_vehicle)
+                first_trip = (
+                    session.query(Trip)
+                    .filter(Trip.rotation_id == rotation_id)
+                    .order_by(Trip.departure_time)
+                    .first()
+                )
+
+                soc = (
+                    session.query(Event.soc_end)
+                    .filter(Event.scenario_id == scenario_id)
+                    .filter(Event.trip_id == first_trip.id)
+                    .first()[0]
+                )
+
+                standby_event = Event(
+                    scenario_id=scenario_id,
+                    vehicle_type_id=vehicle_type_id,
+                    vehicle=current_vehicle_db,
+                    station_id=None,
+                    area_id=area.id,
+                    subloc_no=area.capacity,
+                    trip_id=None,
+                    time_start=timedelta(seconds=standby_start) + simulation_start_time,
+                    time_end=timedelta(seconds=standby_end) + simulation_start_time,
+                    soc_start=soc,
+                    soc_end=soc,
+                    event_type=EventType.STANDBY_DEPARTURE,
+                    description=f"DUMMY Standby event for {rotation_id}.",
+                    timeseries=None,
+                )
+
+                list_of_events.append(standby_event)
 
     new_old_vehicle = {}
     matched_vehicle_id = 0
@@ -986,12 +1031,19 @@ def _add_evaluation_to_database(
             {"vehicle_id": old_vehicle_id}, synchronize_session=False
         )
 
-    # Update depot events with old vehicle id
-
     # Write Events
     session.add_all(list_of_events)
     session.flush()
 
+    # Delete all non-depot events
+    session.query(Event).filter(
+        Event.scenario_id == scenario_id,
+        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+    ).delete()
+
+    session.flush()
+
+    # Update depot events with old vehicle id
     for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
         session.query(Event).filter(
             Event.scenario_id == scenario_id,
