@@ -373,6 +373,13 @@ class TestHelpers:
         ]
         session.add_all(assocs)
 
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.flush()
+
+        simple_consumption_simulation(scenario, initialize_vehicles=True)
+
         session.commit()
         return scenario
 
@@ -396,42 +403,25 @@ class TestHelpers:
 
 class TestApi(TestHelpers):
     def test_run_simulation_by_id(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         # Make sure the DATABASE_URL is set
         assert "DATABASE_URL" in os.environ
 
         simulate_scenario(
             scenario=full_scenario.id,
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=False,
         )
 
     def test_run_simulation_by_id_and_url(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         # Make sure the DATABASE_URL is set
         assert "DATABASE_URL" in os.environ
 
         simulate_scenario(
             scenario=full_scenario.id,
             database_url=os.environ["DATABASE_URL"],
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=False,
         )
 
     def test_run_simulation_by_object_with_id_and_url(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         # Make sure the DATABASE_URL is set
         assert "DATABASE_URL" in os.environ
 
@@ -445,43 +435,28 @@ class TestApi(TestHelpers):
         simulate_scenario(
             scenario=scen.id,
             database_url=os.environ["DATABASE_URL"],
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=False,
         )
 
     def test_simulate_scenario(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         # Make sure the DATABASE_URL is set
         assert "DATABASE_URL" in os.environ
 
         simulate_scenario(
             scenario=full_scenario,
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=True,
         )
 
     def test_init_simulation(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         simulation_host = _init_simulation(
-            full_scenario, session, simple_consumption_simulation=True
+            full_scenario,
+            session,
         )
 
     def test_run_simulation(self, session, full_scenario, tmp_path):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         simulation_host = _init_simulation(
-            full_scenario, session, simple_consumption_simulation=True
+            full_scenario,
+            session,
         )
 
         depot_evaluation = _run_simulation(simulation_host)
@@ -515,16 +490,10 @@ class TestApi(TestHelpers):
         assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
 
-    def test_run_simulation_correct_vehicle_count(
-        self, session, full_scenario, tmp_path
-    ):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
+    def test_run_simulation_correct_vehicle_count(self, session, full_scenario):
         simulation_host = _init_simulation(
-            full_scenario, session, simple_consumption_simulation=True
+            full_scenario,
+            session,
         )
 
         depot_evaluation = _run_simulation(simulation_host)
@@ -533,7 +502,6 @@ class TestApi(TestHelpers):
         simulation_host = _init_simulation(
             scenario=full_scenario,
             session=session,
-            simple_consumption_simulation=True,
             vehicle_count_dict=vehicle_counts,
         )
         depot_evaluation = _run_simulation(simulation_host)
@@ -589,34 +557,23 @@ class TestApi(TestHelpers):
             assert area.capacity == 200
 
     def test_simulate_scenario_with_depot_generation(self, session, full_scenario):
-        # We need to set the consumption values for all vehicle types to 1
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         generate_depot_layout(
             scenario=full_scenario, charging_power=90, delete_existing_depot=True
         )
 
         simulate_scenario(
             scenario=full_scenario,
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=True,
         )
         session.commit()
 
     def test_reassign_vehicle_id(self, session, full_scenario):
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
-        session.commit()
-
         generate_depot_layout(
             scenario=full_scenario, charging_power=90, delete_existing_depot=True
         )
 
         simulate_scenario(
             scenario=full_scenario,
-            simple_consumption_simulation=True,
             calculate_exact_vehicle_count=True,
         )
         session.commit()
@@ -645,8 +602,12 @@ class TestApi(TestHelpers):
 
 class TestSimpleConsumptionSimulation(TestHelpers):
     def test_consumption_simulation_initial(self, session, full_scenario):
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
+        # Delete old events, rotation-id-assignments and vehicle-id-assignments
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Rotation).filter(Rotation.scenario_id == full_scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
 
         assert (
             session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
@@ -699,8 +660,12 @@ class TestSimpleConsumptionSimulation(TestHelpers):
                 assert trip.events[0].soc_end < 1
 
     def test_consumption_simulation_initial_no_timeseries(self, session, full_scenario):
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
+        # Delete old events, rotation-id-assignments and vehicle-id-assignments
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Rotation).filter(Rotation.scenario_id == full_scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
 
         assert (
             session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
@@ -755,9 +720,16 @@ class TestSimpleConsumptionSimulation(TestHelpers):
     def test_consumption_simulation_initial_no_consumption(
         self, session, full_scenario
     ):
-        # Skip the consumption setting step
-        # for vehicle_type in full_scenario.vehicle_types:
-        #    vehicle_type.consumption = 1
+        # Delete old events, rotation-id-assignments and vehicle-id-assignments
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Rotation).filter(Rotation.scenario_id == full_scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
+
+        # Unset consumption for all vehicle types
+        session.query(VehicleType).update({"consumption": None})
+
         with pytest.raises(ValueError):
             simple_consumption_simulation(
                 scenario=full_scenario,
@@ -766,8 +738,12 @@ class TestSimpleConsumptionSimulation(TestHelpers):
             )
 
     def test_consumption_simulation_subsequent(self, session, full_scenario):
-        for vehicle_type in full_scenario.vehicle_types:
-            vehicle_type.consumption = 1
+        # Delete old events, rotation-id-assignments and vehicle-id-assignments
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Rotation).filter(Rotation.scenario_id == full_scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
 
         # Run the "initial" step manually to validate the "subsequent" step
         rotations = (
