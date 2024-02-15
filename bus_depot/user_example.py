@@ -12,6 +12,7 @@ from eflips.depot.api import (
     _init_simulation,
     _run_simulation,
     generate_depot_layout,
+    simple_consumption_simulation,
 )
 
 
@@ -182,10 +183,14 @@ if __name__ == "__main__":
         rotation_q.update({"vehicle_id": None})
         session.query(Event).filter(Event.scenario_id == scenario.id).delete()
         session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        # Using simple consumption simulation
+
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
-            simple_consumption_simulation=True,
+            simple_consumption_simulation=False,
             repetition_period=timedelta(days=7),
         )
 
@@ -224,4 +229,9 @@ if __name__ == "__main__":
         )
 
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
+
+        session.commit()
+
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+
         session.commit()
