@@ -983,7 +983,7 @@ def _add_evaluation_to_database(
         # Get corresponding old vehicle id
         old_vehicle_id = new_old_vehicle[vehicle_id]
         session.query(Rotation).filter(Rotation.id == schedule_id).update(
-            {"vehicle_id": old_vehicle_id}
+            {"vehicle_id": old_vehicle_id}, synchronize_session=False
         )
 
     # Update depot events with old vehicle id
@@ -996,11 +996,11 @@ def _add_evaluation_to_database(
         session.query(Event).filter(
             Event.scenario_id == scenario_id,
             Event.vehicle_id == new_vehicle_id,
-        ).update({"vehicle_id": old_vehicle_id})
+        ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)
 
         session.query(Vehicle).filter(
             Vehicle.id == new_vehicle_id,
-        ).delete()
+        ).delete(synchronize_session=False)
 
         session.flush()
 
@@ -1008,7 +1008,7 @@ def _add_evaluation_to_database(
     session.query(Event).filter(
         Event.scenario_id == scenario_id,
         Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-    ).delete()
+    ).delete(synchronize_session=False)
 
     session.flush()
 
