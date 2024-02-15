@@ -127,8 +127,6 @@ def _delete_depot(scenario: Scenario, session: Session):
     session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
     # delete assoc_plan_process
 
-    session.commit()
-
 
 def simple_consumption_simulation(
     scenario: Union[Scenario, int, Any],
