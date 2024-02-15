@@ -252,7 +252,7 @@ def simple_consumption_simulation(
             for trip in rotation.trips:
                 # Set up a timeseries
                 soc_start = current_soc
-                if trip.stop_times is not None and calculate_timeseries is True:
+                if calculate_timeseries and len(trip.stop_times) > 0:
                     timeseries = {
                         "time": [],
                         "soc": [],
