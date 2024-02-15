@@ -715,6 +715,22 @@ def _add_evaluation_to_database(
     # Read simulation start time
     simulation_start_time = depot_evaluation.sim_start_datetime
 
+    all_trips = depot_evaluation.timetable.trips
+    repetition_period_seconds = 0
+    latest_arrival_seconds = all_trips[-1].ata
+
+    for i in range(len(all_trips)):
+        if all_trips[i].is_copy is True and all_trips[i + 1].is_copy is False:
+            repetition_period = timedelta(
+                seconds=all_trips[i + 1].std - all_trips[0].std
+            )
+            latest_arrival_time = (
+                timedelta(seconds=all_trips[i].ata)
+                + simulation_start_time
+                + repetition_period
+            )
+            break
+
     # Initialization of empty lists
 
     list_of_vehicles = []
@@ -969,3 +985,26 @@ def _add_evaluation_to_database(
         ).delete()
 
         session.flush()
+
+    # Delete all non-depot events
+    session.query(Event).filter(
+        Event.scenario_id == scenario_id,
+        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+    ).delete()
+
+    session.flush()
+
+    # Delete all vehicles without rotations
+
+    vehicle_assigned_sq = (
+        session.query(Rotation.vehicle_id)
+        .filter(Rotation.scenario_id == scenario_id)
+        .distinct()
+        .subquery()
+    )
+
+    session.query(Vehicle).filter(Vehicle.scenario_id == scenario_id).filter(
+        Vehicle.id.not_in(vehicle_assigned_sq)
+    ).delete()
+
+    session.flush()
