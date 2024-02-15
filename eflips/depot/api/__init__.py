@@ -484,7 +484,6 @@ def generate_depot_layout(
 
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
-    simple_consumption_simulation: bool = False,
     repetition_period: Optional[timedelta] = None,
     calculate_exact_vehicle_count: bool = True,
     database_url: Optional[str] = None,
@@ -499,10 +498,6 @@ def simulate_scenario(
         `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
         parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
         valid database URL.
-
-    :param simple_consumption_simulation: A boolean flag indicating whether the simulation should be run in
-        "simple consumption" mode. In this mode, the vehicle consumption is calculated using a simple formula and
-        existing driving events are ignored. This is useful for testing purposes.
 
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
@@ -527,7 +522,6 @@ def simulate_scenario(
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
-            simple_consumption_simulation=simple_consumption_simulation,
             repetition_period=repetition_period,
         )
 
@@ -538,7 +532,6 @@ def simulate_scenario(
             simulation_host = _init_simulation(
                 scenario=scenario,
                 session=session,
-                simple_consumption_simulation=simple_consumption_simulation,
                 repetition_period=repetition_period,
                 vehicle_count_dict=vehicle_counts,
             )
@@ -550,7 +543,6 @@ def simulate_scenario(
 def _init_simulation(
     scenario: Scenario,
     session: Session,
-    simple_consumption_simulation: bool = False,
     repetition_period: Optional[timedelta] = None,
     vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
@@ -560,10 +552,6 @@ def _init_simulation(
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
     :param session: A SQLAlchemy session object. This is used to add all the simulation results to the database.
-
-    :param simple_consumption_simulation: A boolean flag indicating whether the simulation should be run in
-        "simple consumption" mode. In this mode, the vehicle consumption is calculated using a simple formula and
-        existing driving events are ignored. This is useful for testing purposes.
 
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
@@ -618,7 +606,6 @@ def _init_simulation(
             rotation,
             scenario=scenario,
             session=session,
-            use_builtin_consumption_model=simple_consumption_simulation,
         )
         for rotation in scenario.rotations
     ]

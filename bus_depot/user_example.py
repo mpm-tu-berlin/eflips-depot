@@ -190,7 +190,6 @@ if __name__ == "__main__":
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
-            simple_consumption_simulation=False,
             repetition_period=timedelta(days=7),
         )
 
@@ -200,7 +199,6 @@ if __name__ == "__main__":
         simulation_host = _init_simulation(
             scenario=scenario,
             session=session,
-            simple_consumption_simulation=False,
             vehicle_count_dict=vehicle_counts,
         )
         depot_evaluation = _run_simulation(simulation_host)

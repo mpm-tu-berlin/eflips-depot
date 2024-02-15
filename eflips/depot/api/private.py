@@ -14,7 +14,6 @@ from eflips.model import (
     Depot,
     AreaType,
     Process,
-    Vehicle,
     Event,
     EventType,
     Trip,
@@ -359,7 +358,6 @@ class VehicleSchedule:
         rot: Rotation,
         scenario,
         session,
-        use_builtin_consumption_model: bool = False,
     ):
         """
         This constructor creates a VehicleSchedule object from a Rotation object. It is intended to be used by the
@@ -377,37 +375,27 @@ class VehicleSchedule:
         departure = rot.trips[0].departure_time
         arrival = rot.trips[-1].arrival_time
 
-        if use_builtin_consumption_model:
-            arrival_soc, departure_soc, minimal_soc = self.calculate_socs(
-                rot, scenario, session
+        # Find the event for each trip
+        events = (
+            session.query(Event)
+            .filter(Event.event_type == EventType.DRIVING)
+            .join(Trip)
+            .join(Rotation)
+            .filter(Rotation.id == rot.id)
+            .order_by(Event.time_start)
+            .all()
+        )
+        trips = session.query(Trip).filter(Trip.rotation_id == rot.id).all()
+        if len(events) != len(trips):
+            raise ValueError(
+                f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
             )
+        if set([event.trip_id for event in events]) != set([trip.id for trip in trips]):
+            raise ValueError(f"The events of rotation {rot.id} do not match the trips.")
 
-        else:
-            # Find the event for each trip
-            events = (
-                session.query(Event)
-                .filter(Event.event_type == EventType.DRIVING)
-                .join(Trip)
-                .join(Rotation)
-                .filter(Rotation.id == rot.id)
-                .order_by(Event.time_start)
-                .all()
-            )
-            trips = session.query(Trip).filter(Trip.rotation_id == rot.id).all()
-            if len(events) != len(trips):
-                raise ValueError(
-                    f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
-                )
-            if set([event.trip_id for event in events]) != set(
-                [trip.id for trip in trips]
-            ):
-                raise ValueError(
-                    f"The events of rotation {rot.id} do not match the trips."
-                )
-
-            departure_soc = events[0].soc_start
-            arrival_soc = events[-1].soc_end
-            minimal_soc = min([event.soc_end for event in events])
+        departure_soc = events[0].soc_start
+        arrival_soc = events[-1].soc_end
+        minimal_soc = min([event.soc_end for event in events])
 
         opportunity_charging = rot.allow_opportunity_charging
 
@@ -421,68 +409,6 @@ class VehicleSchedule:
             minimal_soc=minimal_soc,
             opportunity_charging=opportunity_charging,
         )
-
-    @classmethod
-    def calculate_socs(cls, rot, scenario, session):
-        if rot.vehicle_type.consumption is None:
-            raise ValueError(
-                f"Vehicle type {rot.vehicle_type.id} has no consumption value."
-            )
-
-        # Create new vehicles
-        vehicle = Vehicle(
-            scenario_id=scenario.id,
-            vehicle_type_id=rot.vehicle_type_id,
-            name="vehicle for rot" + str(rot.id),
-            name_short=None,
-        )
-
-        session.add(vehicle)
-
-        # Flush to get valid vehicle id
-        session.flush()
-
-        # Update rotation table
-        rot_q = session.query(Rotation).filter(Rotation.id == rot.id)
-        rot_q.update({"vehicle_id": vehicle.id})
-
-        session.flush()
-
-        current_soc = 1.0
-
-        # Write event tables
-        for trip in rot.trips:
-            energy = (trip.route.distance / 1000) * rot.vehicle_type.consumption
-            soc_start = current_soc
-            soc_end = current_soc - (energy / rot.vehicle_type.battery_capacity)
-            current_soc = soc_end
-
-            # Create a driving event
-            current_event = Event(
-                scenario_id=scenario.id,
-                vehicle_type_id=rot.vehicle_type_id,
-                vehicle=vehicle,
-                trip_id=trip.id,
-                time_start=trip.departure_time,
-                time_end=trip.arrival_time,
-                soc_start=soc_start,
-                soc_end=soc_end,
-                event_type=EventType.DRIVING,
-                description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
-                timeseries=None,
-            )
-
-            session.add(current_event)
-
-        total_distance = 0
-        for trip in rot.trips:
-            total_distance += trip.route.distance
-        energy = (total_distance / 1000) * rot.vehicle_type.consumption  # kWh
-        delta_soc = energy / rot.vehicle_type.battery_capacity
-        departure_soc = 1.0
-        arrival_soc = departure_soc - delta_soc
-        minimal_soc = arrival_soc
-        return arrival_soc, departure_soc, minimal_soc
 
     def _to_simple_trip(
         self, simulation_start_time: datetime, env: simpy.Environment
