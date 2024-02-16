@@ -52,6 +52,9 @@ files = [
     {file = "astroid-3.0.2.tar.gz", hash = "sha256:4a61cf0a59097c7bb52689b0fd63717cd2a8a14dc9f1eee97b82d814881c8c91"},
 ]
 
+[package.dependencies]
+typing-extensions = { version = ">=4.0.0", markers = "python_version < \"3.11\"" }
+
 [[package]]
 name = "babel"
 version = "2.14.0"
@@ -103,6 +106,8 @@ mypy-extensions = ">=0.4.3"
 packaging = ">=22.0"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
+tomli = { version = ">=1.1.0", markers = "python_version < \"3.11\"" }
+typing-extensions = { version = ">=4.0.1", markers = "python_version < \"3.11\"" }
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -438,29 +443,33 @@ files = [
 
 [[package]]
 name = "eflips"
-version = "0.1.0"
+version = "0.1.1"
 description = "eFLIPS: Electric Fleet and Infrastructure Planning/Simulation"
 optional = false
-python-versions = ">=3.11,<4.0"
-files = [
-    { file = "eflips-0.1.0-py3-none-any.whl", hash = "sha256:0b36dd9e43ccf40a7546aa769d86d8c3b082e0d23a1435f5da6afdad98a27343" },
-    { file = "eflips-0.1.0.tar.gz", hash = "sha256:3210bee0a04c6c598460d45c7bef1b25808dc9ac2c033696731f42aa57d09e9c" },
-]
+python-versions = "^3.9"
+files = []
+develop = false
 
 [package.dependencies]
-matplotlib = ">=3.7.1,<4.0.0"
-openpyxl = ">=3.1.2,<4.0.0"
-simpy = ">=4.0.1,<5.0.0"
+matplotlib = "^3.7.1"
+openpyxl = "^3.1.2"
+simpy = "^4.0.1"
+
+[package.source]
+type = "git"
+url = "git@github.com:mpm-tu-berlin/eflips.git"
+reference = "451a92a447ab51282765395588553347bb40c7bc"
+resolved_reference = "451a92a447ab51282765395588553347bb40c7bc"
 
 [[package]]
 name = "eflips-model"
-version = "2.1.2"
+version = "2.2.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    { file = "eflips_model-2.1.2-py3-none-any.whl", hash = "sha256:04e433eaacfeafef0143067fe08983fda9a90c70cfc25e1d8b843f115a88c443" },
-    { file = "eflips_model-2.1.2.tar.gz", hash = "sha256:2674ff70c9a5ff8064dd56c61a2408711d42668a27f0c49484dc2f11ae458ff7" },
+    { file = "eflips_model-2.2.0-py3-none-any.whl", hash = "sha256:d0ddf13fed35a84a3fdf04fe0650e2a94a6724087c667d1bbf08e2adac8b68c5" },
+    { file = "eflips_model-2.2.0.tar.gz", hash = "sha256:1e4b748fc54d05709c226aa72be03a7ebab3f922403e06f657f55570950e2527" },
 ]
 
 [package.dependencies]
@@ -479,6 +488,20 @@ files = [
     {file = "et_xmlfile-1.1.0-py3-none-any.whl", hash = "sha256:a2ba85d1d6a74ef63837eed693bcb89c3f752169b0e3e7ae5b16ca5e1b3deada"},
     {file = "et_xmlfile-1.1.0.tar.gz", hash = "sha256:8eb9e2bc2f8c97e37a2dc85a09ecdcdec9d8a396530a6d5a33b30b9a92da0c5c"},
 ]
+
+[[package]]
+name = "exceptiongroup"
+version = "1.2.0"
+description = "Backport of PEP 654 (exception groups)"
+optional = false
+python-versions = ">=3.7"
+files = [
+    { file = "exceptiongroup-1.2.0-py3-none-any.whl", hash = "sha256:4bfd3996ac73b41e9b9628b04e079f193850720ea5945fc96a08633c66912f14" },
+    { file = "exceptiongroup-1.2.0.tar.gz", hash = "sha256:91f5c769735f051a4290d52edd0858999b57e5876e9f85937691bd4c9fa3ed68" },
+]
+
+[package.extras]
+test = ["pytest (>=6)"]
 
 [[package]]
 name = "filelock"
@@ -1094,6 +1117,7 @@ files = [
 
 [package.dependencies]
 numpy = [
+    { version = ">=1.22.4,<2", markers = "python_version < \"3.11\"" },
     {version = ">=1.23.2,<2", markers = "python_version == \"3.11\""},
     {version = ">=1.26.0,<2", markers = "python_version >= \"3.12\""},
 ]
@@ -1392,9 +1416,11 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
+exceptiongroup = { version = ">=1.0.0rc8", markers = "python_version < \"3.11\"" }
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
+tomli = { version = ">=1.0.0", markers = "python_version < \"3.11\"" }
 
 [package.extras]
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
@@ -1808,6 +1834,17 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
+name = "tomli"
+version = "2.0.1"
+description = "A lil' TOML parser"
+optional = false
+python-versions = ">=3.7"
+files = [
+    { file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc" },
+    { file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.9.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -1889,5 +1926,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "e6582ad3a74a7e38c2ee36435a02ede32d828447767bfbde883776be4b7b7099"
+python-versions = "^3.10"
+content-hash = "576c2674999c83935a1e57fe832fd56300e44cf7d29029496fa33231d6fc2a7c"

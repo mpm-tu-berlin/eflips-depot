@@ -2,11 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 import simpy
-from eflips.model import (
-    Event,
-    EventType,
-    VehicleType,
-)
+from eflips.model import Event, EventType, VehicleType, Rotation, Vehicle
 
 from api.test_api import TestHelpers
 from eflips.depot import SimpleTrip, Depotinput, SimulationHost
@@ -65,30 +61,18 @@ class TestVehicleSchedule(TestHelpers):
         rotation = full_scenario.rotations[0]
 
         vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
+            rotation, full_scenario, session
         )
         return vehicle_schedule
 
-    def test_vehicle_schedule_no_events(self, session, full_scenario):
-        # Delete all events
-        session.query(Event).delete()
-
-        # Set the vehicle types consumption values
-        for vt in full_scenario.vehicle_types:
-            vt.consumption = 1.0
-
-        session.commit()
-
-        # Create an eflips vehicle schedule from a rotation
-        rotation = full_scenario.rotations[0]
-
-        vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
-        )
-        assert vehicle_schedule is not None
-        assert isinstance(vehicle_schedule, VehicleSchedule)
-
     def test_vehicle_schedule_no_events_fail(self, session, full_scenario):
+        # Delete old events, rotation-id-assignments and vehicle-id-assignments
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Rotation).filter(Rotation.scenario_id == full_scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
+
         # Unset the vehicle types consumption values
         for vt in full_scenario.vehicle_types:
             vt.consumption = None
@@ -100,7 +84,7 @@ class TestVehicleSchedule(TestHelpers):
 
         with pytest.raises(ValueError):
             vehicle_schedule = VehicleSchedule.from_rotation(
-                rotation, use_builtin_consumption_model=True
+                rotation, full_scenario, session
             )
 
     def test_vehicle_schedule_events(self, session, full_scenario):
@@ -136,7 +120,7 @@ class TestVehicleSchedule(TestHelpers):
         session.commit()
 
         vehicle_schedule = VehicleSchedule.from_rotation(
-            rotation, use_builtin_consumption_model=True
+            rotation, full_scenario, session
         )
         assert vehicle_schedule is not None
         assert isinstance(vehicle_schedule, VehicleSchedule)
@@ -177,9 +161,6 @@ class TestVehicleSchedule(TestHelpers):
             assert new_schedule._is_copy == True
 
     def test_to_timetable(self, session, full_scenario):
-        # Delete all events
-        session.query(Event).delete()
-
         # Set the vehicle types consumption values
         for vt in full_scenario.vehicle_types:
             vt.consumption = 1.0
@@ -187,9 +168,7 @@ class TestVehicleSchedule(TestHelpers):
         vehicle_schedules = []
         for rotation in full_scenario.rotations:
             vehicle_schedules.append(
-                VehicleSchedule.from_rotation(
-                    rotation, use_builtin_consumption_model=True
-                )
+                VehicleSchedule.from_rotation(rotation, full_scenario, session)
             )
 
         env = simpy.Environment()

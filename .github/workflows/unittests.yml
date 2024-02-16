@@ -1,0 +1,76 @@
+name: Unit Tests
+on:
+  - pull_request
+  - workflow_dispatch
+env:
+  POETRY_VERSION: "1.7.1"
+  POETRY_URL: https://install.python-poetry.org
+
+jobs:
+  # Label
+  unittests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        PYTHON_VERSION: [ "3.10", "3.11", "3.12" ]
+    services:
+      postgres:
+        image: postgis/postgis
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: database
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    steps:
+      - name: Give GH Actions access to django-simba repo
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.EFLIPS_KEY }}
+            ${{ secrets.EFLIPS_DEPOT_KEY }}
+      # Downloads a copy of the code in your repository before running CI tests
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set Up Gdal
+        run: |
+          sudo apt-get update
+          sudo apt-get install gdal-bin
+          echo ogrinfo --version
+      - name: Add `btree_gist` to postgreSQL
+        run: |
+          sudo -u postgres psql "postgresql://user:password@localhost/database" -c "CREATE EXTENSION btree_gist;"
+      - name: Set up Python ${{ matrix.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.PYTHON_VERSION }}
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry config experimental.system-git-client true
+      - name: Install Dependencies
+        run: |
+          poetry install --no-root
+      - name: Run Tests
+        run:
+          poetry run pytest
+        env:
+          # To make sure that the tests can find the eflips package
+          PYTHONPATH: "tests:."
+          # Replace with your own database info
+          DATABASE_URL: postgresql://user:password@localhost/database
+          # The hostname used to communicate with the PostgreSQL service container
+          POSTGRES_HOST: localhost
+          # The default PostgreSQL port
+          POSTGRES_PORT: 5432
+
+

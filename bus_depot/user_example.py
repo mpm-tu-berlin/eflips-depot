@@ -12,6 +12,7 @@ from eflips.depot.api import (
     _init_simulation,
     _run_simulation,
     generate_depot_layout,
+    simple_consumption_simulation,
 )
 
 
@@ -177,9 +178,18 @@ if __name__ == "__main__":
         for vehicle_type in scenario.vehicle_types:
             vehicle_type.consumption = 1
 
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        # Using simple consumption simulation
+
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
         simulation_host = _init_simulation(
             scenario=scenario,
-            simple_consumption_simulation=True,
+            session=session,
             repetition_period=timedelta(days=7),
         )
 
@@ -188,7 +198,7 @@ if __name__ == "__main__":
         vehicle_counts = depot_evaluation.nvehicles_used_calculation()
         simulation_host = _init_simulation(
             scenario=scenario,
-            simple_consumption_simulation=True,
+            session=session,
             vehicle_count_dict=vehicle_counts,
         )
         depot_evaluation = _run_simulation(simulation_host)
@@ -216,10 +226,10 @@ if __name__ == "__main__":
             show_annotates=True,
         )
 
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
         _add_evaluation_to_database(scenario.id, depot_evaluation, session)
+
+        session.commit()
+
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+
         session.commit()

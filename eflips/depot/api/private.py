@@ -8,7 +8,16 @@ from enum import Enum, auto
 from typing import Dict, List, Tuple
 
 import simpy
-from eflips.model import VehicleType, Rotation, Depot, AreaType, Process
+from eflips.model import (
+    VehicleType,
+    Rotation,
+    Depot,
+    AreaType,
+    Process,
+    Event,
+    EventType,
+    Trip,
+)
 
 from eflips.depot import SimpleTrip
 from eflips.depot.simple_vehicle import (
@@ -344,12 +353,19 @@ class VehicleSchedule:
     """
 
     @classmethod
-    def from_rotation(self, rot: Rotation, use_builtin_consumption_model: bool = False):
+    def from_rotation(
+        self,
+        rot: Rotation,
+        scenario,
+        session,
+    ):
         """
         This constructor creates a VehicleSchedule object from a Rotation object. It is intended to be used by the
         eflips-depot API.
 
         :param rot: The Rotation object from which the VehicleSchedule is created.
+        :param scenario: The Scenario object to which the Rotation belongs.
+        :param session: The database session object.
         :param use_builtin_consumption_model: Whether to use the built-in consumption model of eflips-depot. If set
             to `True`, the `VehicleType.consumption` field is used. If set to `False`, consumption is calculated
             from the `Event` table in the database. This (and an external consumption model) is the recommended way.
@@ -359,26 +375,27 @@ class VehicleSchedule:
         departure = rot.trips[0].departure_time
         arrival = rot.trips[-1].arrival_time
 
-        if use_builtin_consumption_model:
-            arrival_soc, departure_soc, minimal_soc = self.calculate_socs(rot)
+        # Find the event for each trip
+        events = (
+            session.query(Event)
+            .filter(Event.event_type == EventType.DRIVING)
+            .join(Trip)
+            .join(Rotation)
+            .filter(Rotation.id == rot.id)
+            .order_by(Event.time_start)
+            .all()
+        )
+        trips = session.query(Trip).filter(Trip.rotation_id == rot.id).all()
+        if len(events) != len(trips):
+            raise ValueError(
+                f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
+            )
+        if set([event.trip_id for event in events]) != set([trip.id for trip in trips]):
+            raise ValueError(f"The events of rotation {rot.id} do not match the trips.")
 
-        else:
-            # Find the event for each trip
-            events = []
-            for trip in rot.trips:
-                if len(trip.events) == 0:
-                    raise ValueError(
-                        f"Trip {trip.id} has no events. Has the energy consumption simulation been run?"
-                    )
-                elif len(trip.events) > 1:
-                    raise ValueError(
-                        f"Trip {trip.id} has more than one event. This is not supported."
-                    )
-                events.append(trip.events[0])
-
-            departure_soc = events[0].soc_start
-            arrival_soc = events[-1].soc_end
-            minimal_soc = min([event.soc_end for event in events])
+        departure_soc = events[0].soc_start
+        arrival_soc = events[-1].soc_end
+        minimal_soc = min([event.soc_end for event in events])
 
         opportunity_charging = rot.allow_opportunity_charging
 
@@ -392,22 +409,6 @@ class VehicleSchedule:
             minimal_soc=minimal_soc,
             opportunity_charging=opportunity_charging,
         )
-
-    @classmethod
-    def calculate_socs(cls, rot):
-        if rot.vehicle_type.consumption is None:
-            raise ValueError(
-                f"Vehicle type {rot.vehicle_type.id} has no consumption value."
-            )
-        total_distance = 0
-        for trip in rot.trips:
-            total_distance += trip.route.distance
-        energy = (total_distance / 1000) * rot.vehicle_type.consumption  # kWh
-        delta_soc = energy / rot.vehicle_type.battery_capacity
-        departure_soc = 1.0
-        arrival_soc = departure_soc - delta_soc
-        minimal_soc = arrival_soc
-        return arrival_soc, departure_soc, minimal_soc
 
     def _to_simple_trip(
         self, simulation_start_time: datetime, env: simpy.Environment
