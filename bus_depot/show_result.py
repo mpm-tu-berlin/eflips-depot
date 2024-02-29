@@ -1,37 +1,36 @@
 import os
 
-from typing import Dict
 from dash import Dash, html, dcc, callback, Input, Output
 import plotly.express as px
-from eflips.model import Base, Event, EventType, Scenario, Vehicle
+from dash.exceptions import PreventUpdate
+from eflips.model import Event, EventType, Scenario, Vehicle
 
 import sqlalchemy
 from sqlalchemy.orm import Session
 
 
-import plotly.graph_objects as go
+# TODO possibly existing a better way to "share" sessions between callbacks
 
 
 @callback(
     Output("gantt-chart", "figure"),
+    Input("color-scheme-dropdown", "value"),
     Input("scenario-id-dropdown", "value"),
 )
-def get_ganttchart_scenario(value: int):
+def get_ganttchart_scenario(color_scheme: str, scenario_id: int):
     """This function takes a value from dropdown as scenario id and returns a :class:`plotly.express.timeline` object
     representing the gantt chart of the scenario to be used in a html layout.
-    :param value: The output from dropdown as scenario id
+    :param scenario_id: The output from dropdown as scenario id
     :return: A :class:`plotly.express.timeline` object
     """
 
     # Pass dropdown value to the scenario_id
-    scenario_id = value
+    # scenario_id = value
 
     # Create a connection to the database
-    engine = sqlalchemy.create_engine(os.environ["DATABASE_URL"])
+
+    engine = sqlalchemy.create_engine(os.environ.get("DATABASE_URL"))
     with Session(engine) as session:
-        scenario_name = (
-            session.query(Scenario.name).filter(Scenario.id == scenario_id).first()
-        )
         event_list = (
             session.query(Event.__table__)
             .filter(Event.scenario_id == scenario_id)
@@ -46,21 +45,37 @@ def get_ganttchart_scenario(value: int):
             d["vehicle_id"] = str(d["vehicle_id"])
             event_dict.append(d)
 
-    num_vehicles = len(set([event["vehicle_id"] for event in event_dict]))
+        num_vehicles = len(set([event["vehicle_id"] for event in event_dict]))
 
     color_map = {
         EventType.CHARGING_DEPOT: "forestgreen",
-        EventType.DRIVING: "steelblue",
+        EventType.DRIVING: "skyblue",
         EventType.SERVICE: "salmon",
-        EventType.STANDBY_DEPARTURE: "tan",
+        EventType.STANDBY_DEPARTURE: "orange",
     }
+
+    if color_scheme == "Event type":
+        color = "event_type"
+        color_discrete_map = {
+            EventType.CHARGING_DEPOT: "forestgreen",
+            EventType.DRIVING: "skyblue",
+            EventType.SERVICE: "salmon",
+            EventType.STANDBY_DEPARTURE: "orange",
+        }
+        color_continuous_scale = None
+    else:
+        color = "soc_end"
+        color_discrete_map = None
+        color_continuous_scale = px.colors.sequential.Viridis
+
     fig = px.timeline(
         event_dict,
         x_start="time_start",
         x_end="time_end",
         y="vehicle_id",
-        color="event_type",
-        color_discrete_map=color_map,
+        color=color,
+        color_discrete_map=color_discrete_map,
+        color_continuous_scale=color_continuous_scale,
         hover_data=[
             "time_start",
             "time_end",
@@ -73,6 +88,7 @@ def get_ganttchart_scenario(value: int):
         height=num_vehicles * 20,
     )
     fig.update_traces(width=0.5)
+
     return fig
 
 
@@ -81,9 +97,8 @@ def get_ganttchart_scenario(value: int):
     Output("num-vehicles", "children"),
     Input("scenario-id-dropdown", "value"),
 )
-def get_scenario_name(value: int):
-    scenario_id = value
-    engine = sqlalchemy.create_engine(os.environ["DATABASE_URL"])
+def get_scenario_name(scenario_id: int):
+    engine = sqlalchemy.create_engine(os.environ.get("DATABASE_URL"))
     with Session(engine) as session:
         scenario_name = (
             session.query(Scenario.name).filter(Scenario.id == scenario_id).first()
@@ -100,7 +115,47 @@ def get_scenario_name(value: int):
     Input("gantt-chart", "clickData"),
 )
 def get_vehicle_by_click(clickData):
-    return clickData
+    if clickData is None:
+        raise PreventUpdate
+    vehicle_id = clickData["points"][0]["y"]
+    return vehicle_id
+
+
+@callback(
+    Output("vehicle-soc-plot", "figure"),
+    Input("click-data", "children"),
+)
+def get_vehicle_soc_plot(vehicle_id: int):
+    if vehicle_id is None:
+        raise PreventUpdate
+
+    engine = sqlalchemy.create_engine(os.environ.get("DATABASE_URL"))
+
+    with Session(engine) as session:
+        all_events = (
+            session.query(Event)
+            .filter(Event.vehicle_id == vehicle_id)
+            .order_by(Event.time_start)
+            .all()
+        )
+        # Go through all events and connect the soc_start and soc_end and time_start and time_end
+        all_times = []
+        all_soc = []
+        for event in all_events:
+            all_times.append(event.time_start)
+            all_times.append(event.time_end)
+            all_soc.append(event.soc_start)
+            all_soc.append(event.soc_end)
+
+            fig = px.line(
+                x=all_times,
+                y=all_soc,
+                width=2500,
+                height=500,
+                labels={"x": "Time", "y": "SOC"},
+            )
+
+    return fig
 
 
 if __name__ == "__main__":
@@ -112,13 +167,24 @@ if __name__ == "__main__":
             dcc.Dropdown(
                 ["8", "7", "6"], "8", id="scenario-id-dropdown", style={"width": "30%"}
             ),
+            html.Div("Select a color-scheme:"),
+            dcc.Dropdown(
+                ["Event type", "SOC"],
+                "Event type",
+                id="color-scheme-dropdown",
+                style={"width": "30%"},
+            ),
             html.Div(id="scenario-name"),
             html.Div(id="num-vehicles"),
             dcc.Graph(id="gantt-chart"),
             html.Div(
-                id="click-data",
-                children="Click on the gantt chart to see the data of the clicked event",
+                children=[
+                    html.Div(children="Selected vehicle id"),
+                    html.Pre(id="click-data"),
+                    dcc.Graph(id="vehicle-soc-plot"),
+                ]
             ),
         ]
     )
+
     app.run_server(debug=True)
