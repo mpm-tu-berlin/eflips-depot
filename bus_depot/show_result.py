@@ -147,13 +147,13 @@ def get_vehicle_soc_plot(vehicle_id: int):
             all_soc.append(event.soc_start)
             all_soc.append(event.soc_end)
 
-            fig = px.line(
-                x=all_times,
-                y=all_soc,
-                width=2500,
-                height=500,
-                labels={"x": "Time", "y": "SOC"},
-            )
+        fig = px.line(
+            x=all_times,
+            y=all_soc,
+            width=2500,
+            height=500,
+            labels={"x": "Time", "y": "SOC"},
+        )
 
     return fig
 
