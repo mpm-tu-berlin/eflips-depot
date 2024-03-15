@@ -822,11 +822,11 @@ def _add_evaluation_to_database(
             else:
                 for process in process_log:
                     match process.status:
-                        case ProcessStatus.CANCELLED:
-                            raise NotImplementedError(
-                                f"Cancelled processes {process.ID} are not implemented."
-                            )
-                        case ProcessStatus.COMPLETED:
+                        # case ProcessStatus.CANCELLED:
+                        #    raise NotImplementedError(
+                        #        f"Cancelled processes {process.ID} are not implemented."
+                        #    )
+                        case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
                             assert (
                                 len(process.starts) == 1 and len(process.ends) == 1
                             ), (
@@ -859,6 +859,13 @@ def _add_evaluation_to_database(
                                     actual_start_time = dict_of_events[start_time][
                                         "end"
                                     ]
+                                    last_standby_departure_start = actual_start_time
+                                    if (
+                                        actual_start_time in dict_of_events.keys()
+                                        and dict_of_events[actual_start_time]["type"]
+                                        == "trip"
+                                    ):
+                                        continue
                                     dict_of_events[actual_start_time] = {
                                         "type": type(process).__name__,
                                         "area": current_area.ID,
@@ -866,8 +873,6 @@ def _add_evaluation_to_database(
                                         "slot": current_slot,
                                         "id": process.ID,
                                     }
-
-                                    last_standby_departure_start = actual_start_time
 
                                 else:
                                     # Standby arrival
@@ -880,9 +885,30 @@ def _add_evaluation_to_database(
                                         "id": process.ID,
                                     }
                         case ProcessStatus.IN_PROGRESS:
-                            raise NotImplementedError(
-                                f"Current process {process.ID} is in progress. Not implemented yet."
-                            )
+                            assert (
+                                len(process.starts) == 1 and len(process.ends) == 0
+                            ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
+                            current_area = area_log[start_time]
+                            current_slot = slot_log[start_time]
+
+                            if current_area is None or current_slot is None:
+                                raise ValueError(
+                                    f"For process {process.ID} Area and slot should not be None."
+                                )
+
+                            if process.dur > 0:
+                                # Valid duration
+                                dict_of_events[start_time] = {
+                                    "type": type(process).__name__,
+                                    "end": process.etc,
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
+                            else:
+                                raise NotImplementedError(
+                                    "We believe this should never happen. If it happens, handle it here."
+                                )
                         case ProcessStatus.WAITING:
                             raise NotImplementedError(
                                 f"Current process {process.ID} is waiting. Not implemented yet."

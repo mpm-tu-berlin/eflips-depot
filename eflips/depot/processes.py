@@ -891,7 +891,9 @@ class Charge(ChargeAbstract):
 
         except simpy.Interrupt:
             flexprint("charge interrupted", env=self.env, switch="processes")
-            self.update_battery("charge_interrupt")
+            actual_charging_duration = self.env.now - self.starts[0]
+            actual_charged_energy = (effective_power * actual_charging_duration) / 3600
+            self.update_battery("charge_interrupt", amount=actual_charged_energy)
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
