@@ -5,9 +5,16 @@ run charging simulations on a given scenario.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum, auto
+from math import ceil
 from typing import Dict, List, Tuple
 
 import simpy
+import sqlalchemy.orm.session
+from eflips.depot import SimpleTrip
+from eflips.depot.simple_vehicle import (
+    VehicleType as EflipsVehicleType,
+)
+from eflips.depot.standalone import Timetable as EflipsTimeTable
 from eflips.model import (
     VehicleType,
     Rotation,
@@ -17,13 +24,12 @@ from eflips.model import (
     Event,
     EventType,
     Trip,
+    Station,
+    Scenario,
+    Plan,
+    Area,
+    AssocPlanProcess,
 )
-
-from eflips.depot import SimpleTrip
-from eflips.depot.simple_vehicle import (
-    VehicleType as EflipsVehicleType,
-)
-from eflips.depot.standalone import Timetable as EflipsTimeTable
 
 
 def vehicle_type_to_eflips(vt: VehicleType) -> EflipsVehicleType:
@@ -131,8 +137,6 @@ def depot_to_template(depot: Depot) -> Dict:
 
     # Get dictionary of each area
     for area in depot.areas:
-        # area_name = area.name if area.name is not None else str(area.id)
-        # TODO keep consistent with name/id for each API class
         area_name = str(area.id)
         template["areas"][area_name] = {
             "typename": (
@@ -140,10 +144,7 @@ def depot_to_template(depot: Depot) -> Dict:
             ),
             # "amount": 2,  # TODO Check how multiple areas work. For now leave it as default
             "capacity": area.capacity,
-            "available_processes": [
-                process.name if process.name is not None else str(process.id)
-                for process in area.processes
-            ],
+            "available_processes": [str(process.id) for process in area.processes],
             "issink": False,
             "entry_filter": None,
         }
@@ -180,7 +181,7 @@ def depot_to_template(depot: Depot) -> Dict:
                 ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
 
     for process in list_of_processes:
-        process_name = process.name if process.name is not None else str(process.id)
+        process_name = str(process.id)
         # Shared template for all processes
         template["processes"][process_name] = {
             "typename": "",  # Placeholder for initialization
@@ -277,11 +278,7 @@ def depot_to_template(depot: Depot) -> Dict:
         group_name = str(process_type(process)) + "_group"
         template["groups"][group_name] = {
             "typename": "AreaGroup",
-            "stores": [
-                # area.name if area.name is not None else str(area.id)
-                str(area.id)
-                for area in process.areas
-            ],
+            "stores": [str(area.id) for area in process.areas],
         }
         if process_type(process) == ProcessType.STANDBY_DEPARTURE:
             template["groups"][group_name]["typename"] = "ParkingAreaGroup"
@@ -555,3 +552,174 @@ def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
     )
 
     return midnight_of_first_departure_day, total_duration_seconds
+
+
+def find_first_last_stop_for_rotation_id(
+    rotation: Rotation, session: sqlalchemy.orm.session.Session
+) -> Tuple[Station, Station, VehicleType]:
+    """
+    Identifies the first stop, last stop and vehicle type for a given rotation.
+    :param rotation:
+    :param session:
+    :return: A tuple of the first stop, last stop and vehicle type
+    """
+
+    first_stop = rotation.trips[0].route.departure_station
+    last_stop = rotation.trips[-1].route.arrival_station
+    vehicle_type = rotation.vehicle_type
+    return first_stop, last_stop, vehicle_type
+
+
+def group_rotations_by_start_end_stop(
+    scenario_id: int,
+    session: sqlalchemy.orm.session.Session,
+) -> Dict[Tuple[Station, Station], Dict[VehicleType, List[Rotation]]]:
+    """
+    For a given scenario, create a list of rotations and group them by their start and end stops.
+    :param session: An SQLAlchemy session object
+    :return: A dictionary of rotations grouped by their start and end stops, with each group further grouped by vehicle
+        type.
+    """
+    rotations = (
+        session.query(Rotation)
+        .filter(Rotation.scenario_id == scenario_id)
+        .options(sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route))
+        .options(sqlalchemy.orm.joinedload(Rotation.vehicle_type))
+    )
+    grouped_rotations: Dict[
+        Tuple[Station, Station], Dict[VehicleType, List[Rotation]]
+    ] = {}
+    for rotation in rotations:
+        first_stop, last_stop, vehicle_type = find_first_last_stop_for_rotation_id(
+            rotation, session
+        )
+        if (first_stop, last_stop) not in grouped_rotations:
+            grouped_rotations[(first_stop, last_stop)] = {}
+        if vehicle_type not in grouped_rotations[(first_stop, last_stop)]:
+            grouped_rotations[(first_stop, last_stop)][vehicle_type] = []
+        grouped_rotations[(first_stop, last_stop)][vehicle_type].append(rotation)
+
+    return grouped_rotations
+
+
+def create_simple_depot(
+    scenario: Scenario,
+    station: Station,
+    charging_capacities: Dict[VehicleType, int],
+    cleaning_capacities: Dict[VehicleType, int],
+    charging_power: float,
+    session: sqlalchemy.orm.session.Session,
+    cleaning_duration: timedelta = timedelta(minutes=30),
+) -> None:
+    """
+    Creates a simple depot for a given scenario. It has one area for each vehicle type and a charging process for each
+    area. Also an arrival area for each vehicle type.
+
+    :param scenario:
+    :param station:
+    :param vehicle_type_dict:
+    :param session:
+    :return: Nothing. Depots are created in the database.
+    """
+
+    # Create a simple depot
+    depot = Depot(
+        scenario=scenario,
+        name=f"Depot at {station.name}",
+        name_short=station.name_short,
+        station=station,
+    )
+    session.add(depot)
+
+    # Create plan
+    plan = Plan(scenario=scenario, name=f"Default Plan")
+    session.add(plan)
+
+    depot.default_plan = plan
+
+    # Create processes
+    standby_arrival = Process(
+        name="Standby Arrival",
+        scenario=scenario,
+        dispatchable=False,
+    )
+    clean = Process(
+        name="Arrival Cleaning",
+        scenario=scenario,
+        dispatchable=False,
+        duration=cleaning_duration,
+    )
+    charging = Process(
+        name="Charging",
+        scenario=scenario,
+        dispatchable=False,
+        electric_power=charging_power,
+    )
+    standby_departure = Process(
+        name="Standby Pre-departure",
+        scenario=scenario,
+        dispatchable=True,
+    )
+    session.add(standby_arrival)
+    session.add(clean)
+    session.add(charging)
+    session.add(standby_departure)
+
+    for vehicle_type in charging_capacities.keys():
+        charging_count = charging_capacities[vehicle_type]
+        # Add a safety margin of 20% to the parking capacity
+        charging_count = int(ceil(charging_count * 1.2))
+
+        # Create stand by arrival area
+        arrival_area = Area(
+            scenario=scenario,
+            name=f"Arrival for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=charging_count,
+        )
+        session.add(arrival_area)
+        arrival_area.vehicle_type = vehicle_type
+
+        # Create charging area
+        charging_area = Area(
+            scenario=scenario,
+            name=f"Direct Charging Area for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=charging_count,
+        )
+        session.add(charging_area)
+        charging_area.vehicle_type = vehicle_type
+
+        # Create cleaning area
+        cleaning_count = cleaning_capacities[vehicle_type]
+        # Add a safety margin of 20% to the parking capacity
+        cleaning_count = int(ceil(cleaning_count * 1.2))
+
+        cleaning_area = Area(
+            scenario=scenario,
+            name=f"Cleaning Area for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=cleaning_count,
+        )
+        session.add(cleaning_area)
+        cleaning_area.vehicle_type = vehicle_type
+
+        arrival_area.processes.append(standby_arrival)
+        cleaning_area.processes.append(clean)
+        charging_area.processes.append(charging)
+        charging_area.processes.append(standby_departure)
+
+        assocs = [
+            AssocPlanProcess(
+                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
+            ),
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
+            AssocPlanProcess(
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+            ),
+        ]
+        session.add_all(assocs)

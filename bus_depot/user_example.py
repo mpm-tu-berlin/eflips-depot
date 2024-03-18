@@ -3,10 +3,6 @@ import argparse
 import os
 from datetime import timedelta
 
-from eflips.model import *
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from eflips.depot.api import (
     _add_evaluation_to_database,
     _init_simulation,
@@ -14,6 +10,9 @@ from eflips.depot.api import (
     generate_depot_layout,
     simple_consumption_simulation,
 )
+from eflips.model import *
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def list_scenarios(database_url: str):
@@ -27,104 +26,6 @@ def list_scenarios(database_url: str):
                 .count()
             )
             print(f"{scenario.id}: {scenario.name} with {rotation_count} rotations.")
-
-
-def add_simple_depot(scenario: Scenario, session: Session):
-    # Create a simple depot
-    # See if a depot already exists
-    depot_q = session.query(Depot).filter(Depot.scenario_id == scenario.id)
-    if depot_q.count() > 0:
-        return depot_q.one()
-
-    depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
-    session.add(depot)
-
-    # Create plan
-
-    plan = Plan(scenario=scenario, name="Test Plan")
-    session.add(plan)
-
-    depot.default_plan = plan
-
-    # Create processes
-    standby_arrival = Process(
-        name="Standby Arrival",
-        scenario=scenario,
-        dispatchable=False,
-    )
-    clean = Process(
-        name="Arrival Cleaning",
-        scenario=scenario,
-        dispatchable=False,
-        duration=timedelta(minutes=30),
-    )
-    charging = Process(
-        name="Charging",
-        scenario=scenario,
-        dispatchable=False,
-        electric_power=90,
-    )
-    standby_departure = Process(
-        name="Standby Pre-departure",
-        scenario=scenario,
-        dispatchable=True,
-    )
-    session.add(standby_arrival)
-    session.add(clean)
-    session.add(charging)
-    session.add(standby_departure)
-
-    # Create areas for each vehicle type
-    for vehicle_type in scenario.vehicle_types:
-        CAPACITY = 2000
-        # Create areas
-        arrival_area = Area(
-            scenario=scenario,
-            name=f"Arrival for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=CAPACITY,
-        )
-        session.add(arrival_area)
-        arrival_area.vehicle_type = vehicle_type
-
-        cleaning_area = Area(
-            scenario=scenario,
-            name=f"Cleaning Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=CAPACITY,
-        )
-        session.add(cleaning_area)
-        cleaning_area.vehicle_type = vehicle_type
-
-        charging_area = Area(
-            scenario=scenario,
-            name=f"Direct Charging Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=CAPACITY,
-        )
-        session.add(charging_area)
-        charging_area.vehicle_type = vehicle_type
-
-        cleaning_area.processes.append(clean)
-        arrival_area.processes.append(standby_arrival)
-        charging_area.processes.append(charging)
-        charging_area.processes.append(standby_departure)
-
-    assocs = [
-        AssocPlanProcess(
-            scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-        ),
-        AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-        AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-        AssocPlanProcess(
-            scenario=scenario, process=standby_departure, plan=plan, ordinal=3
-        ),
-    ]
-    session.add_all(assocs)
-    session.flush()
 
 
 if __name__ == "__main__":

@@ -13,7 +13,20 @@ from datetime import timedelta
 from math import ceil
 from typing import Any, Dict, Optional, Union, Tuple
 
+import eflips.depot
+import numpy as np
 import sqlalchemy.orm
+from eflips.depot import DepotEvaluation, SimulationHost
+from eflips.depot import ProcessStatus
+from eflips.depot.api.private import (
+    depot_to_template,
+    repeat_vehicle_schedules,
+    start_and_end_times,
+    vehicle_type_to_global_constants_dict,
+    VehicleSchedule,
+    group_rotations_by_start_end_stop,
+    create_simple_depot,
+)
 from eflips.model import (
     Event,
     EventType,
@@ -26,22 +39,10 @@ from eflips.model import (
     AssocPlanProcess,
     AssocAreaProcess,
     Area,
-    AreaType,
     Trip,
 )
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
-
-import eflips.depot
-from eflips.depot import DepotEvaluation, SimulationHost
-from eflips.depot import ProcessStatus
-from eflips.depot.api.private import (
-    depot_to_template,
-    repeat_vehicle_schedules,
-    start_and_end_times,
-    vehicle_type_to_global_constants_dict,
-    VehicleSchedule,
-)
 
 
 @contextmanager
@@ -306,34 +307,35 @@ def simple_consumption_simulation(
 
 def generate_depot_layout(
     scenario: Union[Scenario, int, Any],
-    charging_power: float,
+    charging_power: float = 150,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
-    capacity: Optional[int] = None,
 ):
     """
-    This function generates a simple depot layout according to the vehicle types and rotations in the scenario.
+    This function generates one or more depots for the scenario. First, it scans the rotations to identify all the spots
+    that serve as start *and* end of a rotation. Then it checks the set of rotations for these spots for the kinds of
+    vehicle types that are used there. Next, the amount of vehicles that are simultaneously present at the depot is
+    calculated. Then it creates a depot layout with an arrival and a charging area for each vehicle type. The capacity
+    if each area is taken from the calculated amount of vehicles. The depot layout is then added to the database.
 
-    For each vehicle type, it generates 3 areas: arrival_area, charging_area, and standby-departure_area, all with type
-    DIRECT_ONESIDE. The capacity of each area can be specified by user, or generated according to number of
-    rotations. Each area has a list of available processes. When specified by user, the capacity of all areas will be
-    the same.
 
     A default plan will also be generated, which includes the following default processes: standby_arrival, cleaning,
-    charging and standby_departure. Each vehicle will be processed with this exact order (stancby_arrival is optional
+    charging and standby_departure. Each vehicle will be processed with this exact order (standby_arrival is optional
     because it only happens if a vehicle needs to wait for the next process).
 
-    Using this function causes deleting the original depot in this scenario.
+    The function only deletes the depot if the `delete_existing_depot` parameter is set to True. If there is already a
+    depot existing in this scenario and this parameter is set to False, a ValueError will be raised.
 
-
-    :param scenario: The scenario to be simulated
+    :param scenario: The scenario to be simulated. Can be either a :class:`eflips.model.Scenario` object (with a live
+           session) or an integer specifying the ID of a scenario in the database. If it is not a
+           :class:`eflips.model.Scenario`, the `database_url` parameter must be set to a valid database URL.
     :param charging_power: the charging power of the charging area in kW
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
-    :param capacity: capacity of each area. If not specified, the capacity will be generated according to the rotation.
 
     :return: None. The depot layout will be added to the database.
     """
+    CLEAN_DURATION = 30 * 60  # 30 minutes in seconds
 
     with create_session(scenario, database_url) as (session, scenario):
         # Handles existing depot
@@ -343,148 +345,57 @@ def generate_depot_layout(
             else:
                 _delete_depot(scenario, session)
 
-        # Create a simple depot
-        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
-        session.add(depot)
+        # Identify all the spots that serve as start *and* end of a rotation
+        for (
+            first_last_stop_tup,
+            vehicle_type_dict,
+        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+            first_stop, last_stop = first_last_stop_tup
+            if first_stop != last_stop:
+                raise ValueError("First and last stop of a rotation are not the same.")
+            max_occupancies: Dict[eflips.model.VehicleType, int] = {}
+            max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
+            for vehicle_type, rotations in vehicle_type_dict.items():
+                # Slightly convoulted vehicle summation
+                start_time = min(
+                    [rotation.trips[0].departure_time for rotation in rotations]
+                ).timestamp()
+                end_time = max(
+                    [rotation.trips[-1].arrival_time for rotation in rotations]
+                ).timestamp()
+                timestamps_to_sample = np.arange(start_time, end_time, 60)
+                occupancy = np.zeros_like(timestamps_to_sample)
+                clean_occupancy = np.zeros_like(timestamps_to_sample)
+                for rotation in rotations:
+                    rotation_start = rotation.trips[0].departure_time.timestamp()
+                    rotation_end = rotation.trips[-1].arrival_time.timestamp()
+                    occupancy += np.interp(
+                        timestamps_to_sample,
+                        [rotation_start, rotation_end],
+                        [1, 1],
+                        left=0,
+                        right=0,
+                    )
+                    clean_occupancy += np.interp(
+                        timestamps_to_sample,
+                        [rotation_end, rotation_end + CLEAN_DURATION],
+                        [1, 1],
+                        left=0,
+                        right=0,
+                    )
+                max_occupancies[vehicle_type] = max(occupancy)
+                max_clean_occupancies[vehicle_type] = max(clean_occupancy)
 
-        # Create plan
-        plan = Plan(scenario=scenario, name="Test Plan")
-        session.add(plan)
-
-        depot.default_plan = plan
-
-        # Create processes
-        standby_arrival = Process(
-            name="Standby Arrival",
-            scenario=scenario,
-            dispatchable=False,
-        )
-        clean = Process(
-            name="Arrival Cleaning",
-            scenario=scenario,
-            dispatchable=False,
-            duration=timedelta(minutes=30),
-        )
-        charging = Process(
-            name="Charging",
-            scenario=scenario,
-            dispatchable=False,
-            electric_power=charging_power,
-        )
-        standby_departure = Process(
-            name="Standby Pre-departure",
-            scenario=scenario,
-            dispatchable=True,
-        )
-        session.add(standby_arrival)
-        session.add(clean)
-        session.add(charging)
-        session.add(standby_departure)
-
-        for vehicle_type in scenario.vehicle_types:
-            list_of_rotations = [
-                rotation
-                for rotation in scenario.rotations
-                if rotation.vehicle_type_id == vehicle_type.id
-            ]
-
-            max_vehicle_num = (
-                session.query(Rotation)
-                .filter(Rotation.vehicle_type_id == vehicle_type.id)
-                .filter(Rotation.scenario_id == scenario.id)
-                .count()
+            # Create a simple depot at this station
+            create_simple_depot(
+                scenario=scenario,
+                station=first_stop,
+                charging_capacities=max_occupancies,
+                cleaning_capacities=max_clean_occupancies,
+                charging_power=charging_power,
+                session=session,
+                cleaning_duration=timedelta(seconds=CLEAN_DURATION),
             )
-
-            # Create areas
-            if max_vehicle_num != 0:
-                if capacity is None:
-                    # Assuming each vehicle only be assigned to one rotation
-                    parking_capacity = max_vehicle_num
-
-                else:
-                    parking_capacity = capacity
-
-                # Create stand by arrival area
-                arrival_area = Area(
-                    scenario=scenario,
-                    name=f"Arrival for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=parking_capacity,
-                )
-                session.add(arrival_area)
-                arrival_area.vehicle_type = vehicle_type
-
-                # Create charging area
-                charging_area = Area(
-                    scenario=scenario,
-                    name=f"Direct Charging Area for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=parking_capacity,
-                )
-                session.add(charging_area)
-                charging_area.vehicle_type = vehicle_type
-
-                # Create cleaning area
-
-                list_of_rotations.sort(key=lambda x: x.trips[-1].arrival_time)
-
-                if capacity is None:
-                    clean_capacity = 1
-
-                    # Maximum number of vehicles that can park in the cleaning area according to rotation
-                    for rot_idx in range(0, len(list_of_rotations)):
-                        cleaning_interval_start = (
-                            list_of_rotations[rot_idx].trips[-1].arrival_time
-                        )
-
-                        # Potential improvement: the "edge" between copy and non-copy schedules might need higher cleaning
-                        #  capacity than real, causing standby-arrival events. Considering adding repetition_period here
-                        # This could be solved by implementing a sliging window that rolls over from e.g. sunday (last
-                        # day to monday (first day) again, to calculate the load from both the beginning and end of the
-                        # data.
-                        for next_rot_idx in range(rot_idx + 1, len(list_of_rotations)):
-                            arrival_time = (
-                                list_of_rotations[next_rot_idx].trips[-1].arrival_time
-                            )
-
-                            if arrival_time > cleaning_interval_start + clean.duration:
-                                clean_capacity = max(
-                                    clean_capacity, next_rot_idx - rot_idx
-                                )
-                                break
-
-                else:
-                    clean_capacity = capacity
-
-                cleaning_area = Area(
-                    scenario=scenario,
-                    name=f"Cleaning Area for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=clean_capacity,
-                )
-
-                session.add(cleaning_area)
-                cleaning_area.vehicle_type = vehicle_type
-
-                arrival_area.processes.append(standby_arrival)
-                cleaning_area.processes.append(clean)
-                charging_area.processes.append(charging)
-                charging_area.processes.append(standby_departure)
-
-        assocs = [
-            AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
-            ),
-        ]
-        session.add_all(assocs)
 
 
 def simulate_scenario(
