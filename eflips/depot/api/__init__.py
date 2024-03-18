@@ -782,6 +782,7 @@ def _add_evaluation_to_database(
 
         dict_of_events = {}
 
+        # Added all trips in dict_of_events
         for finished_trip in current_vehicle.finished_trips:
             dict_of_events[finished_trip.atd] = {
                 "type": "trip",
@@ -820,6 +821,7 @@ def _add_evaluation_to_database(
                     continue
 
             else:
+                # for each process starts are the same time
                 for process in process_log:
                     match process.status:
                         # case ProcessStatus.CANCELLED:
@@ -852,14 +854,30 @@ def _add_evaluation_to_database(
                                 }
                             else:
                                 # Duration is 0
-
-                                if start_time in dict_of_events:
-                                    assert current_area.issink is True
+                                if current_area.issink is True:
                                     # Standby departure
-                                    actual_start_time = dict_of_events[start_time][
-                                        "end"
-                                    ]
+                                    if start_time in dict_of_events:
+                                        # Actual start time should be the end time of the other positive duration
+                                        # process starting at the same time
+                                        actual_start_time = dict_of_events[start_time][
+                                            "end"
+                                        ]
+                                    else:
+                                        for other_process in process_log:
+                                            if (
+                                                other_process.dur > 0
+                                                and len(other_process.ends) != 0
+                                            ):
+                                                actual_start_time = other_process.ends[
+                                                    0
+                                                ]
+                                            else:
+                                                # Invalid standby before a process in progress will be ignored
+                                                continue
+
                                     last_standby_departure_start = actual_start_time
+
+                                    # If this standby event lasts actually 0 seconds, it is not a real event
                                     if (
                                         actual_start_time in dict_of_events.keys()
                                         and dict_of_events[actual_start_time]["type"]
@@ -876,7 +894,9 @@ def _add_evaluation_to_database(
 
                                 else:
                                     # Standby arrival
-                                    assert current_area.issink is False
+                                    assert (
+                                        current_area.issink is False
+                                    ), f"A bus cannot go from Area {current_area.ID} to other areas. A Parking Area for standby arrival should be added."
                                     dict_of_events[start_time] = {
                                         "type": type(process).__name__,
                                         "area": current_area.ID,
