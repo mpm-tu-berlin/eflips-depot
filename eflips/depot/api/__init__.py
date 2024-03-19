@@ -60,18 +60,18 @@ def simple_consumption_simulation(
     entries and Rotation.vehicle_id is already set.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
-        valid database URL.
+            an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+            `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
+            parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+            valid database URL.
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
-        URL.
+            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
+            URL.
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this is
-        set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
-        significantly speed up the simulation.
+            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this is
+            set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
+            significantly speed up the simulation.
     :return: Nothing. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -79,6 +79,9 @@ def simple_consumption_simulation(
             session.query(Rotation)
             .filter(Rotation.scenario_id == scenario.id)
             .order_by(Rotation.id)
+            .options(sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route))
+            .options(sqlalchemy.orm.joinedload(Rotation.vehicle_type))
+            .options(sqlalchemy.orm.joinedload(Rotation.vehicle))
         )
         if initialize_vehicles:
             for rotation in rotations:
@@ -153,8 +156,9 @@ def simple_consumption_simulation(
                     session.add(standby_event)
 
         for rotation in rotations:
-            vehicle_type = rotation.vehicle_type
-            vehicle = rotation.vehicle
+            with session.no_autoflush:
+                vehicle_type = rotation.vehicle_type
+                vehicle = rotation.vehicle
             if vehicle_type.consumption is None:
                 raise ValueError(
                     "The vehicle type does not have a consumption value set."
@@ -162,13 +166,14 @@ def simple_consumption_simulation(
             consumption = vehicle_type.consumption
 
             # The departure SoC for this rotation is the SoC of the last event preceding the first trip
-            current_soc = (
-                session.query(Event.soc_end)
-                .filter(Event.vehicle_id == rotation.vehicle_id)
-                .filter(Event.time_end <= rotation.trips[0].departure_time)
-                .order_by(Event.time_end.desc())
-                .first()[0]
-            )
+            with session.no_autoflush:
+                current_soc = (
+                    session.query(Event.soc_end)
+                    .filter(Event.vehicle_id == rotation.vehicle_id)
+                    .filter(Event.time_end <= rotation.trips[0].departure_time)
+                    .order_by(Event.time_end.desc())
+                    .first()[0]
+                )
 
             for trip in rotation.trips:
                 # Set up a timeseries
