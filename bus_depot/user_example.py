@@ -3,16 +3,17 @@ import argparse
 import os
 from datetime import timedelta
 
-from eflips.depot.api import (
-    _add_evaluation_to_database,
-    _init_simulation,
-    _run_simulation,
-    generate_depot_layout,
-    simple_consumption_simulation,
-)
 from eflips.model import *
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+from eflips.depot.api import (
+    add_evaluation_to_database,
+    init_simulation,
+    run_simulation,
+    generate_depot_layout,
+    simple_consumption_simulation,
+)
 
 
 def list_scenarios(database_url: str):
@@ -88,21 +89,21 @@ if __name__ == "__main__":
         # Using simple consumption simulation
 
         simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             repetition_period=timedelta(days=7),
         )
 
-        depot_evaluation = _run_simulation(simulation_host)
+        depot_evaluation = run_simulation(simulation_host)
 
         vehicle_counts = depot_evaluation.nvehicles_used_calculation()
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             vehicle_count_dict=vehicle_counts,
         )
-        depot_evaluation = _run_simulation(simulation_host)
+        depot_evaluation = run_simulation(simulation_host)
 
         os.makedirs(os.path.join("output", scenario.name), exist_ok=True)
         depot_evaluation.path_results = os.path.join("output", scenario.name)
@@ -127,7 +128,7 @@ if __name__ == "__main__":
             show_annotates=True,
         )
 
-        _add_evaluation_to_database(scenario.id, depot_evaluation, session)
+        add_evaluation_to_database(scenario.id, depot_evaluation, session)
 
         session.commit()
 

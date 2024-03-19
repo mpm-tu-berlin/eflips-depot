@@ -31,10 +31,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
-    _init_simulation,
-    _run_simulation,
+    init_simulation,
+    run_simulation,
     simulate_scenario,
-    _add_evaluation_to_database,
+    add_evaluation_to_database,
     generate_depot_layout,
     simple_consumption_simulation,
 )
@@ -448,18 +448,18 @@ class TestApi(TestHelpers):
         )
 
     def test_init_simulation(self, session, full_scenario):
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             full_scenario,
             session,
         )
 
     def test_run_simulation(self, session, full_scenario, tmp_path):
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             full_scenario,
             session,
         )
 
-        depot_evaluation = _run_simulation(simulation_host)
+        depot_evaluation = run_simulation(simulation_host)
 
         depot_evaluation.path_results = str(tmp_path)
 
@@ -491,22 +491,22 @@ class TestApi(TestHelpers):
         assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
 
     def test_run_simulation_correct_vehicle_count(self, session, full_scenario):
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             full_scenario,
             session,
         )
 
-        depot_evaluation = _run_simulation(simulation_host)
+        depot_evaluation = run_simulation(simulation_host)
 
         vehicle_counts = depot_evaluation.nvehicles_used_calculation()
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             scenario=full_scenario,
             session=session,
             vehicle_count_dict=vehicle_counts,
         )
-        depot_evaluation = _run_simulation(simulation_host)
+        depot_evaluation = run_simulation(simulation_host)
 
-        _add_evaluation_to_database(full_scenario.id, depot_evaluation, session)
+        add_evaluation_to_database(full_scenario.id, depot_evaluation, session)
 
         # Query eventlist from database and plot for testing
 

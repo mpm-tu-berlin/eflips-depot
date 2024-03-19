@@ -8,25 +8,13 @@ the simulation, which can be added to the database using the :func:`eflips.depot
 function.
 """
 import os
-from contextlib import contextmanager
+import warnings
 from datetime import timedelta
 from math import ceil
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, Optional, Union
 
-import eflips.depot
 import numpy as np
 import sqlalchemy.orm
-from eflips.depot import DepotEvaluation, SimulationHost
-from eflips.depot import ProcessStatus
-from eflips.depot.api.private import (
-    depot_to_template,
-    repeat_vehicle_schedules,
-    start_and_end_times,
-    vehicle_type_to_global_constants_dict,
-    VehicleSchedule,
-    group_rotations_by_start_end_stop,
-    create_simple_depot,
-)
 from eflips.model import (
     Event,
     EventType,
@@ -34,100 +22,27 @@ from eflips.model import (
     Scenario,
     Vehicle,
     Depot,
-    Plan,
-    Process,
-    AssocPlanProcess,
-    AssocAreaProcess,
     Area,
     Trip,
 )
-from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
-
-@contextmanager
-def create_session(
-    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
-) -> Tuple[Session, Scenario]:
-    """
-    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying
-    the ID of a scenario in the database, or any other object that has an attribute `id` that is an integer. It then
-    creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
-    session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
-    is created, returned and closed after the context manager is exited.
-
-    :param scenario: Either a :class:`eflips.model.Scenario` object, an integer specifying the ID of a scenario in the
-        database, or any other object that has an attribute `id` that is an integer.
-    :return: Yield a Tuple of the session and the scenario.
-    """
-    managed_session = False
-    engine = None
-    session = None
-    try:
-        if isinstance(scenario, Scenario):
-            session = inspect(scenario).session
-        elif isinstance(scenario, int) or hasattr(scenario, "id"):
-            if isinstance(scenario, int):
-                scenario_id = scenario
-            else:
-                scenario_id = scenario.id
-
-            if database_url is None:
-                if "DATABASE_URL" in os.environ:
-                    database_url = os.environ.get("DATABASE_URL")
-                else:
-                    raise ValueError("No database URL specified.")
-
-            managed_session = True
-            engine = create_engine(database_url)
-            session = Session(engine)
-            scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-        else:
-            raise ValueError(
-                "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
-            )
-        yield session, scenario
-    finally:
-        if managed_session:
-            if session is not None:
-                session.commit()
-                session.close()
-            if engine is not None:
-                engine.dispose()
-
-
-def _delete_depot(scenario: Scenario, session: Session):
-    """This function deletes all depot-related data from the database for a given scenario. Used before a new depot
-    in this scenario is created.
-
-    :param scenario: The scenario to be simulated
-    :param session: The database session
-
-    :return: None. The depot-related data will be deleted from the database.
-    """
-
-    # Delete assocs
-    session.query(AssocPlanProcess).filter(
-        AssocPlanProcess.scenario_id == scenario.id
-    ).delete()
-    list_of_area = session.query(Area).filter(Area.scenario_id == scenario.id).all()
-
-    for area in list_of_area:
-        session.query(AssocAreaProcess).filter(
-            AssocAreaProcess.area_id == area.id
-        ).delete()
-        session.query(Event).filter(Event.area_id == area.id).delete()
-
-    # delete processes
-    session.query(Process).filter(Process.scenario_id == scenario.id).delete()
-
-    # delete areas
-    session.query(Area).filter(Area.scenario_id == scenario.id).delete()
-    # delete depot
-    session.query(Depot).filter(Depot.scenario_id == scenario.id).delete()
-    # delete plan
-    session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
-    # delete assoc_plan_process
+import eflips.depot
+from eflips.depot import DepotEvaluation, SimulationHost
+from eflips.depot import ProcessStatus
+from eflips.depot.api.private.depot import (
+    depot_to_template,
+    group_rotations_by_start_end_stop,
+    create_simple_depot,
+    delete_depot,
+)
+from eflips.depot.api.private.util import VehicleSchedule
+from eflips.depot.api.private.util import create_session
+from eflips.depot.api.private.util import (
+    repeat_vehicle_schedules,
+    start_and_end_times,
+    vehicle_type_to_global_constants_dict,
+)
 
 
 def simple_consumption_simulation(
@@ -343,7 +258,7 @@ def generate_depot_layout(
             if delete_existing_depot is False:
                 raise ValueError("Depot already exists.")
             else:
-                _delete_depot(scenario, session)
+                delete_depot(scenario, session)
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (
@@ -435,28 +350,47 @@ def simulate_scenario(
 
     # Step 0: Load the scenario
     with create_session(scenario, database_url) as (session, scenario):
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             repetition_period=repetition_period,
         )
 
-        ev = _run_simulation(simulation_host)
+        ev = run_simulation(simulation_host)
 
         if calculate_exact_vehicle_count:
             vehicle_counts = ev.nvehicles_used_calculation()
-            simulation_host = _init_simulation(
+            simulation_host = init_simulation(
                 scenario=scenario,
                 session=session,
                 repetition_period=repetition_period,
                 vehicle_count_dict=vehicle_counts,
             )
-            ev = _run_simulation(simulation_host)
+            ev = run_simulation(simulation_host)
 
-        _add_evaluation_to_database(scenario.id, ev, session)
+        add_evaluation_to_database(scenario.id, ev, session)
 
 
 def _init_simulation(
+    scenario: Scenario,
+    session: Session,
+    repetition_period: Optional[timedelta] = None,
+    vehicle_count_dict: Optional[Dict[str, int]] = None,
+) -> SimulationHost:
+    """Deprecated stub for init_simulation"""
+    warnings.warn(
+        "The function _init_simulation is deprecated. Please use init_simulation instead.",
+        DeprecationWarning,
+    )
+    return init_simulation(
+        scenario=scenario,
+        session=session,
+        repetition_period=repetition_period,
+        vehicle_count_dict=vehicle_count_dict,
+    )
+
+
+def init_simulation(
     scenario: Scenario,
     session: Session,
     repetition_period: Optional[timedelta] = None,
@@ -613,6 +547,15 @@ def _init_simulation(
 
 
 def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
+    """Deprecated stub for run_simulation"""
+    warnings.warn(
+        "The function _run_simulation is deprecated. Please use run_simulation instead.",
+        DeprecationWarning,
+    )
+    return run_simulation(simulation_host)
+
+
+def run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
     """Run simulation and return simulation results
 
     :param simulation_host: A "black box" object containing all input data for the simulation.
@@ -626,6 +569,19 @@ def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
 
 
 def _add_evaluation_to_database(
+    scenario_id: int,
+    depot_evaluation: DepotEvaluation,
+    session: sqlalchemy.orm.Session,
+) -> None:
+    """Deprecated stub for add_evaluation_to_database"""
+    warnings.warn(
+        "The function _add_evaluation_to_database is deprecated. Please use add_evaluation_to_database instead.",
+        DeprecationWarning,
+    )
+    return add_evaluation_to_database(scenario_id, depot_evaluation, session)
+
+
+def add_evaluation_to_database(
     scenario_id: int,
     depot_evaluation: DepotEvaluation,
     session: sqlalchemy.orm.Session,
