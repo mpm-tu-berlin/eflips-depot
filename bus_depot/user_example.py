@@ -95,40 +95,50 @@ if __name__ == "__main__":
             repetition_period=timedelta(days=7),
         )
 
-        depot_evaluation = run_simulation(simulation_host)
+        depot_evaluations = run_simulation(simulation_host)
 
-        vehicle_counts = depot_evaluation.nvehicles_used_calculation()
-        simulation_host = init_simulation(
-            scenario=scenario,
-            session=session,
-            vehicle_count_dict=vehicle_counts,
-        )
-        depot_evaluation = run_simulation(simulation_host)
+        # vehicle_counts: Dict[str, Dict[str, int]] = {}
+        # for depot_id, depot_evaluation in depot_evaluations.items():
+        #    vehicle_counts[depot_id] = depot_evaluation.nvehicles_used_calculation()
 
-        os.makedirs(os.path.join("output", scenario.name), exist_ok=True)
-        depot_evaluation.path_results = os.path.join("output", scenario.name)
+        # simulation_host = init_simulation(
+        #    scenario=scenario,
+        #    session=session,
+        #    vehicle_count_dict=vehicle_counts,
+        # )
+        # depot_evaluations = run_simulation(simulation_host)
 
-        depot_evaluation.vehicle_periods(
-            periods={
-                "depot general": "darkgray",
-                "park": "lightgray",
-                "Arrival Cleaning": "steelblue",
-                "Charging": "forestgreen",
-                "Standby Pre-departure": "darkblue",
-                "precondition": "black",
-                "trip": "wheat",
-            },
-            save=True,
-            show=False,
-            formats=(
-                "pdf",
-                "png",
-            ),
-            show_total_power=True,
-            show_annotates=True,
-        )
+        if True:
+            os.makedirs(os.path.join("output", scenario.name), exist_ok=True)
+            for depot_id, depot_evaluation in depot_evaluations.items():
+                os.makedirs(
+                    os.path.join("output", scenario.name, depot_id), exist_ok=True
+                )
+                depot_evaluation.path_results = os.path.join(
+                    "output", scenario.name, depot_id
+                )
 
-        add_evaluation_to_database(scenario.id, depot_evaluation, session)
+                depot_evaluation.vehicle_periods(
+                    periods={
+                        "depot general": "darkgray",
+                        "park": "lightgray",
+                        "Arrival Cleaning": "steelblue",
+                        "Charging": "forestgreen",
+                        "Standby Pre-departure": "darkblue",
+                        "precondition": "black",
+                        "trip": "wheat",
+                    },
+                    save=True,
+                    show=False,
+                    formats=(
+                        "pdf",
+                        "png",
+                    ),
+                    show_total_power=True,
+                    show_annotates=True,
+                )
+
+        add_evaluation_to_database(scenario.id, depot_evaluations, session)
 
         session.commit()
 

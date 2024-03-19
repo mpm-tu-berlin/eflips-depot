@@ -58,15 +58,10 @@ def delete_depot(scenario: Scenario, session: Session):
 
 def depot_to_template(depot: Depot) -> Dict:
     """
-    Converts the depot to a template for internal use in the simulation.
+    Converts the depot to a template for internal use in the simulation core.
 
     :return: A dict that can be consumed by eFLIPS-Depot.
     """
-
-    # TODO later:
-    # if we need to pass datetime for second 0 somewhere for the output
-    # if we need to cleanup this function
-
     # Initialize the template
     template = {
         "templatename_display": "",
@@ -81,7 +76,7 @@ def depot_to_template(depot: Depot) -> Dict:
 
     # Set up the general information
     template["templatename_display"] = depot.name
-    template["general"]["depotID"] = "DEFAULT"
+    template["general"]["depotID"] = str(depot.id)
     template["general"]["dispatch_strategy_name"] = "SMART"
 
     # Helper for adding processes to the template
@@ -94,7 +89,6 @@ def depot_to_template(depot: Depot) -> Dict:
             "typename": (
                 "LineArea" if area.area_type == AreaType.LINE else "DirectArea"
             ),
-            # "amount": 2,  # TODO Check how multiple areas work. For now leave it as default
             "capacity": area.capacity,
             "available_processes": [str(process.id) for process in area.processes],
             "issink": False,
@@ -128,9 +122,7 @@ def depot_to_template(depot: Depot) -> Dict:
 
             # Set issink to True for departure areas
             if process_type(process) == ProcessType.STANDBY_DEPARTURE:
-                template["areas"][area_name][
-                    "issink"
-                ] = True  # TODO LU: Can a vehicle go on from an area that is a sink?
+                template["areas"][area_name]["issink"] = True
 
     for process in list_of_processes:
         process_name = str(process.id)

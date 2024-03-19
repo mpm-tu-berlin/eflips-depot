@@ -211,6 +211,16 @@ class VehicleSchedule:
     Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip.
     """
 
+    start_depot_id: str
+    """
+    The ID of the depot where the vehicle starts its trip.
+    """
+
+    end_depot_id: str
+    """
+    The ID of the depot where the vehicle ends its trip.
+    """
+
     _is_copy: bool = False
     """
     Whether this vehicle schedule is a copy of another vehicle schedule. It should not be set manually, but only by
@@ -250,7 +260,12 @@ class VehicleSchedule:
             .order_by(Event.time_start)
             .all()
         )
-        trips = session.query(Trip).filter(Trip.rotation_id == rot.id).all()
+        trips = (
+            session.query(Trip)
+            .filter(Trip.rotation_id == rot.id)
+            .order_by(Trip.departure_time)
+            .all()
+        )
         if len(events) != len(trips):
             raise ValueError(
                 f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
@@ -264,8 +279,17 @@ class VehicleSchedule:
 
         opportunity_charging = rot.allow_opportunity_charging
 
+        # Find the depot at the start and end of the rotation
+        start_depot = trips[0].route.departure_station.depot
+        end_depot = trips[-1].route.arrival_station.depot
+
+        if start_depot is None or end_depot is None:
+            raise ValueError(f"Rotation {rot.id} has no depot at the start or end.")
+
         return VehicleSchedule(
             id=id,
+            start_depot_id=str(start_depot.id),
+            end_depot_id=str(end_depot.id),
             vehicle_type=str(rot.vehicle_type.id),
             departure=departure,
             arrival=arrival,
@@ -296,8 +320,8 @@ class VehicleSchedule:
             env,
             self.id,
             None,
-            "DEFAULT",
-            "DEFAULT",
+            self.start_depot_id,
+            self.end_depot_id,
             vehicle_types,
             departure,
             arrival,
@@ -325,6 +349,8 @@ class VehicleSchedule:
             self.arrival_soc,
             self.minimal_soc,
             self.opportunity_charging,
+            start_depot_id=self.start_depot_id,
+            end_depot_id=self.end_depot_id,
         )
         sched._is_copy = True
         return sched
