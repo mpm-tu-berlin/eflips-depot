@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 13 11:12:00 2017
+Created on Fri Oct 13 11:12:00 2017.
 
 @author: P.Mundt, E.Lauth
 
 Core components of the depot simulation model.
-
 """
 
 from collections import Counter
@@ -43,6 +42,7 @@ from warnings import warn
 
 class DepotWorkingData:
     """Data container for communication between vehicle and depot.
+
     Attribute of a SimpleVehicle object.
 
     Parameters:
@@ -87,7 +87,9 @@ class DepotWorkingData:
 
     @property
     def current_slot(self):
-        """Return slot number [int] if on an area, else None. The lowest slot
+        """Return slot number [int] if on an area, else None.
+
+        The lowest slot
         number is 0. Note that slot_no is not the list index.
         """
         if self.current_area is not None:
@@ -97,7 +99,8 @@ class DepotWorkingData:
 
     @property
     def current_charging_interface(self):
-        """Return [ChargingInterface] object of current slot on current area,
+        """Return [ChargingInterface] object of current slot on current area,.
+
         if any, else None.
         """
         if self.current_area is not None and self.current_area.charging_interfaces:
@@ -108,7 +111,8 @@ class DepotWorkingData:
 
     @property
     def etc_processes(self):
-        """Return simulation time estimate [int or EstimateValue] of when all
+        """Return simulation time estimate [int or EstimateValue] of when all.
+
         currently active processes will be completed.
         """
         etcs = [process.etc for process in self.active_processes]
@@ -134,7 +138,8 @@ class DepotWorkingData:
 
     @property
     def etc_processes_uncertain(self):
-        """Return estimate [int or EstimateValue] of when all currently active
+        """Return estimate [int or EstimateValue] of when all currently active.
+
         processes will be completed. Unlike self.etc_processes, get a rough
         estimate if an etc value is EstimateValue.UNKNOWN.
         """
@@ -203,7 +208,8 @@ class BackgroundStoreGet(FilterStoreExtGet):
 
 
 class BackgroundStore(FilterStoreExt):
-    """Virtual area for background tasks that require functionalities such as
+    """Virtual area for background tasks that require functionalities such as.
+
     logging.
     """
 
@@ -216,7 +222,9 @@ class BackgroundStore(FilterStoreExt):
     get = BoundClass(BackgroundStoreGet)
 
     def select(self, ID, print_missing=True):
-        """Return the item with *ID* in self.items. Return None if the ID is
+        """Return the item with *ID* in self.items.
+
+        Return None if the ID is
         not found.
         Relies on *ID* to be unique.
 
@@ -252,7 +260,9 @@ class UnassignedTrips(SortedList):
 
 
 class Depot:
-    """Representation of a depot. Owns all related objects such as areas
+    """Representation of a depot.
+
+    Owns all related objects such as areas
     and the DepotControl as attributes.
     A depot must be created and configured using a DepotConfigurator and may
     be empty upon instantation. Before simulation start, the validity of the
@@ -377,14 +387,16 @@ class Depot:
 
     @property
     def vacant_accessible(self):
-        """Return the sum of slots that are unoccupied and accessible
+        """Return the sum of slots that are unoccupied and accessible.
+
         (not blocked) from the default entrance side on all areas.
         """
         return sum(area.vacant_accessible for area in self.list_areas)
 
     @property
     def count(self):
-        """Return the amount of vehicles in the depot, i.e. the amount of
+        """Return the amount of vehicles in the depot, i.e. the amount of.
+
         occupied slots.
         """
         return self._count
@@ -397,14 +409,16 @@ class Depot:
 
     @property
     def max_count(self):
-        """Return the maximum number of vehicles that were in the depot at the
+        """Return the maximum number of vehicles that were in the depot at the.
+
         same time.
         """
         return self._max_count
 
     @property
     def maxOccupiedSlots(self):
-        """Return the total number of slots that have been occupied up to this
+        """Return the total number of slots that have been occupied up to this.
+
         point of time. Only functional if the simulation is run with the GUI.
         """
         totalUsedSlots = 0
@@ -414,7 +428,8 @@ class Depot:
 
     @property
     def urgent_trips(self):
-        """Return a list of trips that are urgent: due or delayed and no
+        """Return a list of trips that are urgent: due or delayed and no.
+
         vehicle assigned to.
         Relies on self.unassigned_trips to be sorted by std.
         """
@@ -430,7 +445,8 @@ class Depot:
 
     @property
     def overdue_trips(self):
-        """Return a list of trips that are overdue, i.e. have not started yet
+        """Return a list of trips that are overdue, i.e. have not started yet.
+
         although the target departure time has passed. Includes trips that have
         a scheduled vehicle.
         """
@@ -442,12 +458,14 @@ class Depot:
 
     def checkin(self, vehicle):
         """Redirect to checkin() of the depot's depot_control.
+
         Don't add code here.
         """
         self.depot_control.checkin(vehicle)
 
     def checkout(self, vehicle):
         """Redirect to checkout() of the depot's depot_control.
+
         Don't add code here.
         """
         self.depot_control.checkout(vehicle)
@@ -477,7 +495,9 @@ class BaseDispatchStrategy(ABC):
 
     @staticmethod
     def next_trips(depot):
-        """Return depot.urgent_trips, if not empty. Else return a list
+        """Return depot.urgent_trips, if not empty.
+
+        Else return a list
         containing only the unassigned trip with the lowest scheduled time of
         departure (std), if any. Otherwise return an empty list.
         Relies on depot.unassigned_trips to be sorted by std.
@@ -636,7 +656,8 @@ class BaseDispatchStrategy(ABC):
 
     @staticmethod
     def trigger_until_found(depot, trip, interval=60):
-        """Periodically trigger the *depot*'s dispatch until a vehicle is found
+        """Periodically trigger the *depot*'s dispatch until a vehicle is found.
+
         for *trip*. This triggering should be used for special cases only and
         *interval* [s] should be set with care due to a potentially high
         impact on sim time.
@@ -666,6 +687,7 @@ class DSFirst(BaseDispatchStrategy):
     @staticmethod
     def get_pending_vehicles(depot, trip):
         """Return a dict of pending vehicles.
+
         A vehicle is pending if it's at an area in a parking area group and has
         no trip assigned to, or its assigned trip's std is later than
         *trip*.std.
@@ -708,6 +730,7 @@ class DSFirst(BaseDispatchStrategy):
     @staticmethod
     def find_match(depot):
         """Find a matching vehicle for the next trip.
+
         Is called recursively while DSFirst.try_assign is successful.
         """
 
@@ -762,7 +785,9 @@ class DSFirst(BaseDispatchStrategy):
 
     @staticmethod
     def try_assign(vehicle, trip, depot):
-        """Try to match *vehicle* and *trip*. Return True if successful, else
+        """Try to match *vehicle* and *trip*.
+
+        Return True if successful, else
         False.
         """
         urgent = trip.vehicle is None and trip.std <= trip.env.now
@@ -833,6 +858,7 @@ class DSSmart(BaseDispatchStrategy):
     @staticmethod
     def get_suitable_vehicles(depot, trip, vf):
         """Return a list of vehicles that are suitable for *trip*.
+
         A vehicle is suitable if it's at an area in a parking area group and
         has no trip assigned to, or its assigned trip's std is later than
         *trip*.std. Furthermore, a vehicle must pass all criteria of *vf*. For
@@ -882,6 +908,7 @@ class DSSmart(BaseDispatchStrategy):
     @staticmethod
     def find_match(depot):
         """Find a matching vehicle for the next trip.
+
         Is called recursively while successful.
         """
         next_trips = DSSmart.next_trips(depot)
@@ -963,7 +990,8 @@ class DSSmart(BaseDispatchStrategy):
 
     @staticmethod
     def scheduling_delay(env, trip):
-        """Return the interval [int] from now until *lead_time_match* before
+        """Return the interval [int] from now until *lead_time_match* before.
+
         departure time of *trip*. Return 0 if the departure time is in less
         than *lead_time_match*.
         """
@@ -977,6 +1005,7 @@ class DSSmart(BaseDispatchStrategy):
 
 class DepotControl:
     """Control of vehicle movement and actions in the depot.
+
     Instantiated as attribute of the corresponding depot.
 
     Attributes:
@@ -990,8 +1019,10 @@ class DepotControl:
     dispatch_strategies = {DSFirst.name: DSFirst, DSSmart.name: DSSmart}
 
     parking_congestion_event_cls = None
-    """Event that succeeds if parking congestion occurs because no slot can be 
-    found at a parking area upon request."""
+    """Event that succeeds if parking congestion occurs because no slot can be.
+
+    found at a parking area upon request.
+    """
 
     def __init__(self, env, depot, dispatch_strategy_name="FIRST"):
         self.depot = depot
@@ -1004,7 +1035,8 @@ class DepotControl:
         self.departure_areas = AreaGroup(self.env, [], "departure_areas")
 
     def _complete(self):
-        """Actions that must take place before simulation start, but may not be
+        """Actions that must take place before simulation start, but may not be.
+
         possible during the depot configuration phase.
         """
         # Set self.process_request based on prioritize_init_store option. Not
@@ -1017,7 +1049,7 @@ class DepotControl:
 
     @property
     def dispatch_strategy_name(self):
-        """'name' attribute of set dispatch strategy"""
+        """'name' attribute of set dispatch strategy."""
         return self._dispatch_strategy_name
 
     @dispatch_strategy_name.setter
@@ -1030,7 +1062,7 @@ class DepotControl:
 
     @property
     def dispatch_strategy(self):
-        """[BaseDispatchStrategy] subclass"""
+        """[BaseDispatchStrategy] subclass."""
         return self._dispatch_strategy
 
     @dispatch_strategy.setter
@@ -1042,7 +1074,8 @@ class DepotControl:
         )
 
     def checkin(self, vehicle):
-        """Reset and set several variables upon arrival of a vehicle and
+        """Reset and set several variables upon arrival of a vehicle and.
+
         trigger follow-up actions.
         """
         # if vehicle.trip_at_departure is not vehicle.trip:
@@ -1088,7 +1121,9 @@ class DepotControl:
             vehicle.dwd.plan = self.depot.default_plan.copy()
 
     def proceed(self, vehicle):
-        """Main function to move a vehicle to the next area. Splits into
+        """Main function to move a vehicle to the next area.
+
+        Splits into
         proceed_area and proceed_group for further actions.
         """
         # an = vehicle.dwd.current_area.ID if vehicle.dwd.current_area is not None else None
@@ -1124,8 +1159,9 @@ class DepotControl:
                 current_area.trigger_get(None)
             self.trigger_dispatch()
 
-            if globalConstants["general"]["LOG_ATTRIBUTES"]:
-                current_area.logger.steplog()
+            # This was removed cause it triggered an Exception after fixing #90
+            # if globalConstants["general"]["LOG_ATTRIBUTES"]:
+            #    current_area.logger.steplog()
 
     def proceed_area(self, vehicle, current_area, next_area):
         """Proceed with *next_area* as a BaseArea subtype."""
@@ -1295,6 +1331,7 @@ class DepotControl:
 
     def get_process_need(self, vehicle, area):
         """Check what processes a vehicle will request at an area.
+
         Return a list of processes by ID to request, which can be empty.
         """
         flexprint(
@@ -1320,7 +1357,8 @@ class DepotControl:
         return process_IDs
 
     def run_processes(self, vehicle, process_IDs):
-        """Initialize and run processes marked in process_IDs for a vehicle at
+        """Initialize and run processes marked in process_IDs for a vehicle at.
+
         an area.
         If more than one process is requested, then all processes will be
         started simultaneously. Call proceed() when all processes have
@@ -1437,7 +1475,8 @@ class DepotControl:
         self.trigger_dispatch()
 
     def trigger_dispatch(self):
-        """Trigger the matching of trips and vehicles of
+        """Trigger the matching of trips and vehicles of.
+
         self.dispatch_strategy.
         """
         self.dispatch_strategy.trigger(self.depot)
@@ -1452,8 +1491,10 @@ class DepotControl:
         self.env.process(self.process_request(trip, filter=filter))
 
     def register_for_dispatch(self, trip):
-        """Prepare processing the vehicle request for *trip* by the regular
-        dispatch."""
+        """Prepare processing the vehicle request for *trip* by the regular.
+
+        dispatch.
+        """
         self.depot.pending_departures.append(trip)
         self.env.process(self.schedule_for_matching(trip))
 
@@ -1473,6 +1514,7 @@ class DepotControl:
 
     def process_request_prio_parking(self, trip, filter=lambda item: True):
         """Return a vehicle from the depot for which *filter* returns True.
+
         If there is no matching vehicle available immediately at
         self.departure_areas, try to get a vehicle from depot.init_store.
         If there is no matching vehicle either, issue requests at
@@ -1546,6 +1588,7 @@ class DepotControl:
 
     def process_request_prio_init(self, trip, filter=lambda item: True):
         """Return a vehicle from the depot for which *filter* returns True.
+
         Try to get a vehicle from depot.init_store first. If there is no
         match available, issue requests at self.departure_areas.
         """
@@ -1597,6 +1640,7 @@ def assert_after_checkout(env, vehicle):
 
 def update_relations(put_event):
     """Updater to be called as callback of a successful put event for an area.
+
     Relies on a corresponding get event to succeed in the same simulation
     time step.
     """
@@ -1612,7 +1656,9 @@ def update_relations(put_event):
 
 
 class BaseArea(ABC):
-    """Abstract base class for an area in a depot. Subclasses must inherit from
+    """Abstract base class for an area in a depot.
+
+    Subclasses must inherit from
     a SimPy Store subclass that has attributes 'capacity', 'items' and
     'vacant'.
 
@@ -1647,7 +1693,6 @@ class BaseArea(ABC):
     slot_orientation: [str] orientation of slots. Used for display purposes
         in the GUI only, has no functional purpose. See
         gui.area_view.DepotAreaView for documentation.
-
     """
 
     @abstractmethod
@@ -1700,7 +1745,8 @@ class BaseArea(ABC):
 
     @property
     def vacant_accessible(self):
-        """Helper function to distinguish between direct and line areas for the
+        """Helper function to distinguish between direct and line areas for the.
+
         determination of vacant accessible slots.
         """
         if isinstance(self, LineArea):
@@ -1714,7 +1760,8 @@ class BaseArea(ABC):
 
     @property
     def charge_proc(self):
-        """Return the type of the Charge or subclass process available at this
+        """Return the type of the Charge or subclass process available at this.
+
         area. Return None if there is None. Relies on the assumption that there
         is only one charging process at an area at max.
         """
@@ -1737,14 +1784,13 @@ class BaseArea(ABC):
 
     @property
     def scheduledVehicles(self):
-        """
-        Returns list of scheduled vehicles (trips assigned).
-        """
+        """Returns list of scheduled vehicles (trips assigned)."""
         return [vehicle for vehicle in self.vehicle if vehicle.trip is not None]
 
     @property
     def count_rfd(self):
-        """Return the number of vehicles that are ready for departure at this
+        """Return the number of vehicles that are ready for departure at this.
+
         area.
         """
         return sum(item.dwd.isrfd for item in self.vehicles)
@@ -1752,12 +1798,14 @@ class BaseArea(ABC):
     @property
     @abstractmethod
     def count_rfd_unblocked(self):
-        """Return the number of vehicles that are ready for departure and not
+        """Return the number of vehicles that are ready for departure and not.
+
         blocked from departure at this area.
         """
 
     def istypestack(self, substitution=True):
-        """Return a tuple (istypestack [bool or None], vehicle_type
+        """Return a tuple (istypestack [bool or None], vehicle_type.
+
         [VehicleType or None]).
 
         istypestack is True if all vehicles are of the same type. vehicle_type
@@ -1779,7 +1827,8 @@ class BaseArea(ABC):
             return None, None
 
     def istypestack_with(self, vehicle, substitution=True):
-        """Return True if current vehicles would be a typestack together with
+        """Return True if current vehicles would be a typestack together with.
+
         *vehicle*. Extenuate the comparison with subsitutable types if
         *substitution* is True. Return None if the area is empty. Otherwise
         return False.
@@ -1795,7 +1844,9 @@ class BaseArea(ABC):
             return all(vi.vehicle_type is vehicle.vehicle_type for vi in self.vehicles)
 
     def select(self, ID, print_missing=True):
-        """Return the item with *ID* in self.items. Return None if the ID is
+        """Return the item with *ID* in self.items.
+
+        Return None if the ID is
         not found.
         Relies on *ID* to be unique.
 
@@ -1840,7 +1891,8 @@ class BaseAreaPut(ABC):
         if globalConstants["general"]["LOG_ATTRIBUTES"]:
 
             def calc_waiting_time(request):
-                """Log the waiting time from init until success of *request*
+                """Log the waiting time from init until success of *request*.
+
                 in the vehicle's data logger.
                 """
                 waiting_time = request.item.env.now - request.init_time
@@ -1893,11 +1945,12 @@ class BaseAreaGet(ABC):
 
 
 class DirectAreaPut(BaseAreaPut, ExclusiveRequest, StorePutExt):
-    """Request to put *item* into the *store*. The request is triggered once
+    """Request to put *item* into the *store*.
+
+    The request is triggered once
     there is space for the item in the store.
 
     Callbacks by BaseAreaPut are added last.
-
     """
 
     def __init__(self, store, item, other_requests=None):
@@ -1907,7 +1960,9 @@ class DirectAreaPut(BaseAreaPut, ExclusiveRequest, StorePutExt):
 
 
 class DirectAreaGet(BaseAreaGet, ExclusiveRequest, FilterStoreExtGet):
-    """Request to get an *item* from the *store* matching the *filter*. The
+    """Request to get an *item* from the *store* matching the *filter*.
+
+    The
     request is triggered once there is such an item available in the store.
 
     *filter* is a function receiving one item. It should return ``True`` for
@@ -1916,7 +1971,6 @@ class DirectAreaGet(BaseAreaGet, ExclusiveRequest, FilterStoreExtGet):
     :class:`StoreGet`.
 
     Callbacks by BaseAreaGet are added last.
-
     """
 
     def __init__(self, store, filter=lambda item: True, other_requests=None, **kwargs):
@@ -1926,11 +1980,11 @@ class DirectAreaGet(BaseAreaGet, ExclusiveRequest, FilterStoreExtGet):
 
 
 class DirectArea(BaseArea, PositionalFilterStore):
-    """Depot area where vehicles don't block each other and therefore direct
+    """Depot area where vehicles don't block each other and therefore direct.
+
     access on all stored vehicles is possible.
 
     See parent class descriptions for more details.
-
     """
 
     def __init__(
@@ -1963,20 +2017,21 @@ class DirectArea(BaseArea, PositionalFilterStore):
 
     @property
     def pendingVehicles(self):
-        """
-        Returns list of pending vehicles (potentially blocking vehicles).
-        """
+        """Returns list of pending vehicles (potentially blocking vehicles)."""
         return []
 
     @property
     def count_rfd_unblocked(self):
-        """Return the number of vehicles that are ready for departure and not
+        """Return the number of vehicles that are ready for departure and not.
+
         blocked from departure at this area.
         """
         return sum(vehicle.dwd.isrfd for vehicle in self.vehicles)
 
     def slot_no(self, item):
-        """Return the slot number of *item*. Return None if item is not in
+        """Return the slot number of *item*.
+
+        Return None if item is not in
         self.items.
         Unlike list indexing, slot number counting starts at 1. Therefore only
         meant for display purposes, otherwise use items.index(vehicle).
@@ -1988,20 +2043,22 @@ class DirectArea(BaseArea, PositionalFilterStore):
 
     @staticmethod
     def index2slot_no(index):
-        """Convert *index* (correct value for indexing list self.items) to slot
-        number (for display purposes)."""
+        """Convert *index* (correct value for indexing list self.items) to slot.
+
+        number (for display purposes).
+        """
         return index + 1
 
 
 class LineAreaPut(BaseAreaPut, ExclusiveRequest, LineStorePut):
-    """Request to put *item* onto deepest accessible slot from *side* in
+    """Request to put *item* onto deepest accessible slot from *side* in.
+
     *store*. The request is triggered once there is accessible space for the
     item in the store.
 
     side: [str] Same as in LineStorePut.
 
     Callbacks by BaseAreaPut are added last.
-
     """
 
     def __init__(self, store, item, side="default", other_requests=None):
@@ -2011,7 +2068,8 @@ class LineAreaPut(BaseAreaPut, ExclusiveRequest, LineStorePut):
 
 
 class LineAreaGet(BaseAreaGet, ExclusiveRequest, LineFilterStoreGet):
-    """Request to get the first accessible *item* from *side* in *store*
+    """Request to get the first accessible *item* from *side* in *store*.
+
     matching *filter*(item). The request is triggered once there is an
     accessible item available in the store.
 
@@ -2024,7 +2082,6 @@ class LineAreaGet(BaseAreaGet, ExclusiveRequest, LineFilterStoreGet):
     interface for customization.
 
     Callbacks by BaseAreaGet are added last.
-
     """
 
     def __init__(
@@ -2036,14 +2093,14 @@ class LineAreaGet(BaseAreaGet, ExclusiveRequest, LineFilterStoreGet):
 
 
 class LineArea(BaseArea, LineFilterStore):
-    """Depot area where vehicles are arranged in a line and can block each
+    """Depot area where vehicles are arranged in a line and can block each.
+
     other (feature of LineFilterStore). Therefore not all stored vehicles may
     be directly accessible.
     See parent class descriptions for more details.
 
     At the moment, only areas where issink is True (e.g. typically False for a
     service area, True for parking areas) can reliably be of this area type.
-
     """
 
     def __init__(
@@ -2086,14 +2143,13 @@ class LineArea(BaseArea, LineFilterStore):
 
     @property
     def pendingVehicles(self):
-        """
-        Returns list of pending vehicles (potentially blocking vehicles).
-        """
+        """Returns list of pending vehicles (potentially blocking vehicles)."""
         return [item for item in self.items if item is not None and item.trip is None]
 
     @property
     def count_rfd_unblocked(self):
-        """Return the number of vehicles that are ready for departure and not
+        """Return the number of vehicles that are ready for departure and not.
+
         blocked from departure at this area.
         """
         return sum(
@@ -2101,7 +2157,9 @@ class LineArea(BaseArea, LineFilterStore):
         )
 
     def slot_no(self, item):
-        """Return the slot number of *item*. Return None if item is not in
+        """Return the slot number of *item*.
+
+        Return None if item is not in
         self.items.
         The slot closest to the front has the lowest number, which is the
         reverse of items.index. Unlike list indexing, slot number counting
@@ -2114,8 +2172,10 @@ class LineArea(BaseArea, LineFilterStore):
             return None
 
     def index2slot_no(self, index):
-        """Convert *index* (correct value for indexing self.items) to slot
-        number (for display purposes)."""
+        """Convert *index* (correct value for indexing self.items) to slot.
+
+        number (for display purposes).
+        """
         return self.capacity - index
 
 
@@ -2135,7 +2195,9 @@ class BaseParkingStrategy(ABC):
     @staticmethod
     @abstractmethod
     def determine_store(*args, **kwargs):
-        """Return the most suitable area for parking a vehicle. A put request
+        """Return the most suitable area for parking a vehicle.
+
+        A put request
         to this area must be immediately successful.
         """
 
@@ -2215,7 +2277,6 @@ class PSSmart(BaseParkingStrategy):
 
     Note: This strategy only makes sense with stores that don't restrict by
     vehicle type, since it wont have any effect on typed stores.
-
     """
 
     name = "SMART"
@@ -2251,7 +2312,8 @@ class PSSmart(BaseParkingStrategy):
     @staticmethod
     def rate_stores(preselected_stores, vehicle):
         """
-        Rate [preselected_stores] by accessibility for [vehicle] and
+        Rate [preselected_stores] by accessibility for [vehicle] and.
+
         return a dict (key: result, value: list of stores having this result).
 
         Called by DSFirst.find_match.
@@ -2271,7 +2333,8 @@ class PSSmart(BaseParkingStrategy):
     @staticmethod
     def rate_store(store, vehicle):
         """
-        Rate [store] by accessibility for [vehicle]: 0 means directly
+        Rate [store] by accessibility for [vehicle]: 0 means directly.
+
         accessible, higher values mean lower accessibility (lower => better).
 
         Called by DSFirst.rate_stores.
@@ -2382,6 +2445,7 @@ class PSSmart2(BaseParkingStrategy):
     @staticmethod
     def log_best(parking_area_group, rating):
         """Add the best value of a rating to parking_area_group.pssmart2_logs.
+
         rating: [ParkRating]
         """
         if globalConstants["general"]["LOG_ATTRIBUTES"]:
@@ -2408,7 +2472,6 @@ class AreaGroup(StoreConnector):
     max_capacity_line: [int] maximum capacity among Line areas in this group
     capacity_direct: [int] total cacpacity of Direct areas in this group
     capacity_line: [int] total cacpacity of Line areas in this group
-
     """
 
     def __init__(self, env, stores, ID):
@@ -2423,13 +2486,16 @@ class AreaGroup(StoreConnector):
         self.ID = ID
 
     def clear(self):
-        """Remove all entries from self.stores and update. self.depot is
+        """Remove all entries from self.stores and update.
+
+        self.depot is
         unaffected.
         """
         super().clear()
 
     def check_entry_filters(self, vehicle):
-        """Return a list of booleans that are the results of entry permission
+        """Return a list of booleans that are the results of entry permission.
+
         checks at areas in self.stores. Has the same length as
         self.stores.
         """
@@ -2437,7 +2503,8 @@ class AreaGroup(StoreConnector):
         return permissions
 
     def update_defaults(self):
-        """Update attributes after relevant changes such as the amount of areas
+        """Update attributes after relevant changes such as the amount of areas.
+
         in the group.
         """
         self.default_selection_put = [True] * len(self.stores)
@@ -2478,7 +2545,9 @@ class AreaGroup(StoreConnector):
 
 
 class ParkingAreaGroup(AreaGroup):
-    """Group specifically for parking areas. Provides various algorithms to
+    """Group specifically for parking areas.
+
+    Provides various algorithms to
     decide in which area to put a vehicle.
 
     Parameters:
@@ -2491,7 +2560,6 @@ class ParkingAreaGroup(AreaGroup):
         simulation start. None if there are no charging interfaces.
     put_queue: [dict] Container for keeping count and time of pending put
         requests to the group. Provisional, may be changed.
-
     """
 
     parking_strategies = {
@@ -2533,7 +2601,7 @@ class ParkingAreaGroup(AreaGroup):
 
     @property
     def parking_strategy_name(self):
-        """'name' attribute of set parking strategy"""
+        """'name' attribute of set parking strategy."""
         return self._parking_strategy_name
 
     @parking_strategy_name.setter
@@ -2545,7 +2613,7 @@ class ParkingAreaGroup(AreaGroup):
 
     @property
     def parking_strategy(self):
-        """[BaseParkingStrategy] subclass"""
+        """[BaseParkingStrategy] subclass."""
         return self._parking_strategy
 
     @parking_strategy.setter
@@ -2576,7 +2644,9 @@ class ParkingAreaGroup(AreaGroup):
             store.parking_area_group = None
 
     def clear(self):
-        """Remove all entries from self.stores and update. self.depot,
+        """Remove all entries from self.stores and update.
+
+        self.depot,
         self.depot.parking_area_groups and self.parking_strategy are
         unaffected.
         """
@@ -2616,7 +2686,9 @@ class ParkingAreaGroup(AreaGroup):
                 max_power = None
 
     def put(self, item, selection=None):
-        """Summarize put_imm and put_wait. A parking strategy is applied here.
+        """Summarize put_imm and put_wait.
+
+        A parking strategy is applied here.
 
         In this method strategies can be determined before calling the actual
         put() methods, e.g. by modifying the *selection* parameter.
@@ -2679,11 +2751,11 @@ class ParkingAreaGroup(AreaGroup):
 
 class BaseActivityPlan(ABC):
     """Base class for the guidance of a vehicle inside a depot.
+
     A copied instance is assigned to a vehicle at check-in.
 
     Parameters:
     locations: [list] of DepotArea or AreaGroup objects
-
     """
 
     def __init__(self, ID, locations=None, vehicle_filter=None):
@@ -2735,9 +2807,10 @@ class BaseActivityPlan(ABC):
 
 
 class DefaultActivityPlan(BaseActivityPlan):
-    """Default plan applicable for every vehicle. One plan is mandatory for a
-    depot configuration.
+    """Default plan applicable for every vehicle.
 
+    One plan is mandatory for a
+    depot configuration.
     """
 
     def __init__(self, locations=None):
@@ -2749,9 +2822,10 @@ class DefaultActivityPlan(BaseActivityPlan):
 
 
 class SpecificActivityPlan(BaseActivityPlan):
-    """Plan that is applicable to vehicles passing vehicle_filter only. A depot
-    configuration may include zero or more specific plans.
+    """Plan that is applicable to vehicles passing vehicle_filter only.
 
+    A depot
+    configuration may include zero or more specific plans.
     """
 
     def __init__(self, ID, locations=None, vehicle_filter=None):

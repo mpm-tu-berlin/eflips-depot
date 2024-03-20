@@ -137,7 +137,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             "ismandatory": True,
             "vehicle_filter": {},
             # True if this process can be interrupted by a dispatch. False if it cannot be interrupted
-            "cancellable_for_dispatch": False,
+            "cancellable_for_dispatch": process.dispatchable,
         }
 
         match process_type(process):

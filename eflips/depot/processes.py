@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Components for processes in a depot.
-
-"""
+"""Components for processes in a depot."""
 from enum import auto, Enum
 import simpy
 from abc import ABC, abstractmethod
@@ -31,9 +28,9 @@ class ProcessStatus(Enum):
 
 
 class EstimateValue(Enum):
-    """Values for process completion time estimates in addition to an int
-    value.
+    """Values for process completion time estimates in addition to an int.
 
+    value.
     """
 
     UNKNOWN = auto()  # process not completed but an estimate is not possible
@@ -41,7 +38,9 @@ class EstimateValue(Enum):
 
 
 class BaseDepotProcess(ABC):
-    """Base class for processes in a depot. Core functionalities are:
+    """Base class for processes in a depot.
+
+    Core functionalities are:
      - wrapping the execution of a simpy process and handling of required
         resources,
      - providing the option to resume the process after interruption.
@@ -87,7 +86,6 @@ class BaseDepotProcess(ABC):
         and won't be resumed, resulting in self.__call__ to proceed.
     etc: [int or EstimateValue] estimated simulation time of completion. See
         method self._estimate_time_of_completion for details.
-
     """
 
     @abstractmethod
@@ -141,7 +139,7 @@ class BaseDepotProcess(ABC):
 
     @property
     def resIDs(self):
-        """Return a list of IDs of self.required_resources"""
+        """Return a list of IDs of self.required_resources."""
         return [res.ID for res in self.required_resources]
 
     @property
@@ -178,7 +176,9 @@ class BaseDepotProcess(ABC):
 
     @abstractmethod
     def _action(self, *args, **kwargs):
-        """Generator function that characterizes the process. Subclasses must
+        """Generator function that characterizes the process.
+
+        Subclasses must
         implement this method. It must catch the exception simpy.Interrupt and
         let it pass or implement custom follow-ups. If this method yields a
         timeout, the duration must be set as self.dur before the yield
@@ -188,7 +188,8 @@ class BaseDepotProcess(ABC):
     @staticmethod
     @abstractmethod
     def estimate_duration(*args, **kwargs):
-        """Return an estimate of the process duration in seconds based on given
+        """Return an estimate of the process duration in seconds based on given.
+
         parameters as as if it could start immediately. Must be int, not float.
         Possible waiting time for resources are not considered. Therefore the
         estimate is reliable only if the process is started immediately. Static
@@ -196,8 +197,10 @@ class BaseDepotProcess(ABC):
         """
 
     def _pre(self, *args, **kwargs):
-        """Space for actions before calling self._pem that may not be possible
-        upon init."""
+        """Space for actions before calling self._pem that may not be possible.
+
+        upon init.
+        """
         pass
 
     def _post(self, *args, **kwargs):
@@ -206,6 +209,7 @@ class BaseDepotProcess(ABC):
 
     def __call__(self, *args, **kwargs):
         """Generator that starts the execution of this process.
+
         Note that all parameters required by self._action() have to be passed
         as keyword arguments.
         """
@@ -225,7 +229,8 @@ class BaseDepotProcess(ABC):
         self._post(*args, **kwargs)
 
     def _pem(self, recall=False, *args, **kwargs):
-        """Process execution method (pem) that wraps waiting for required
+        """Process execution method (pem) that wraps waiting for required.
+
         resources (if any) and self._action in a single generator. Is called
         again for the remaining duration after interruption if self.resume is
         True.
@@ -417,7 +422,9 @@ class BaseDepotProcess(ABC):
             )
 
     def cancel(self):
-        """Immediately stop the current process execution. No restart is
+        """Immediately stop the current process execution.
+
+        No restart is
         scheduled, even if self.resume was set to True before.
         """
         if hasattr(
@@ -457,7 +464,9 @@ class BaseDepotProcess(ABC):
         self.finished.succeed()
 
     def interrupt(self):
-        """Immediately stop the current process execution. If self.resume is
+        """Immediately stop the current process execution.
+
+        If self.resume is
         True, a restart is scheduled and may be successful immediately if
         required resources are available. If self.resume is False, same effect
         as self.cancel.
@@ -482,7 +491,6 @@ class VehicleProcess(BaseDepotProcess, ABC):
     request_immediately: [bool] if True, a vehicle will request this process to
         start immediately after entering the area this process is available at.
         There might still be waiting time due to resource requirements.
-
     """
 
     request_immediately = True
@@ -644,7 +652,6 @@ class ChargeAbstract(VehicleProcess, ABC):
 
     Attributes:
     last_update: [int] time of last call to self.update_battery.
-
     """
 
     @abstractmethod
@@ -723,7 +730,9 @@ class ChargeAbstract(VehicleProcess, ABC):
 
     @classmethod
     def get_chargedata(cls, vehicle):
-        """Get data for charging process of class *cls*. Not robust if there
+        """Get data for charging process of class *cls*.
+
+        Not robust if there
         are multiple data sets using *cls* with different parameters and
         vehicle filters that can return True for the same vehicle.
         """
@@ -738,7 +747,9 @@ class ChargeAbstract(VehicleProcess, ABC):
         )
 
     def update_battery(self, event_name, amount=None):
-        """Update the energy level of self.vehicle.battery. Can be called
+        """Update the energy level of self.vehicle.battery.
+
+        Can be called
         during the execution of the process to provide an interim update.
 
         Parameters:
@@ -780,7 +791,9 @@ class ChargeAbstract(VehicleProcess, ABC):
 
 
 class Charge(ChargeAbstract):
-    """Process of charging a vehicle's battery. Charging is constant during the
+    """Process of charging a vehicle's battery.
+
+    Charging is constant during the
     whole charging process with maximum power provided by the charging
     interface.
 
@@ -788,7 +801,6 @@ class Charge(ChargeAbstract):
     soc_target: [int or float or str] the charging process will stop at this
         soc. Must be 0 < soc_target <= 1 or 'soc_max'. For soc_max,
         vehicle.battery.soc_max will be used as soc_target.
-
     """
 
     def __init__(
@@ -900,7 +912,8 @@ class Charge(ChargeAbstract):
 
     @staticmethod
     def estimate_duration(vehicle, charging_interface, *args, **kwargs):
-        """Return a duration estimate [int] assuming constant charging at
+        """Return a duration estimate [int] assuming constant charging at.
+
         maximum power until soc_target is reached.
         """
         chargedata = Charge.get_chargedata(vehicle)
@@ -952,7 +965,6 @@ class ChargeSteps(ChargeAbstract):
         from the class ChargeAbstract/Charge.
         Note that the power values must not be higher than the maximum power of
         the charging interface.
-
     """
 
     def __init__(
@@ -1169,7 +1181,8 @@ class ChargeSteps(ChargeAbstract):
 
 
 class ChargeEquationSteps(ChargeAbstract):
-    """Process of charging a vehicle's battery based on a linearized function
+    """Process of charging a vehicle's battery based on a linearized function.
+
     for power.
 
     Parameters:
@@ -1183,7 +1196,6 @@ class ChargeEquationSteps(ChargeAbstract):
         significantly increase simulation runtime. Precision is capped to
         intervals resulting in step durations >= 1 second.
     soc_target: same as for class Charge
-
     """
 
     def __init__(
@@ -1343,6 +1355,9 @@ class ChargeEquationSteps(ChargeAbstract):
         except simpy.Interrupt:
             flexprint("charge interrupted", env=self.env, switch="processes")
             self.update_battery("charge_interrupt")
+            actual_charging_duration = self.env.now - self.starts[0]
+            actual_charged_energy = (effective_power * actual_charging_duration) / 3600
+            self.update_battery("charge_interrupt", amount=actual_charged_energy)
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
@@ -1390,7 +1405,6 @@ def exponential_power(vehicle, charging_interface, peq_params, *args, **kwargs):
     charging_interface: [DepotChargingInterface]
     peq_params: [dict] with parameters for this function in addition to what is
         accessible via vehicle and charging_interface
-
     """
     SoC = vehicle.battery.soc
     P_max = charging_interface.max_power
@@ -1584,7 +1598,6 @@ class Precondition(VehicleProcess):
     Attributes:
     request_immediately: is False for this class because preconditioning is
         scheduled depending on departure time instead of entry time at an area.
-
     """
 
     request_immediately = False
