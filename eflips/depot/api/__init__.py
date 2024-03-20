@@ -362,19 +362,7 @@ def simulate_scenario(
             session=session,
             repetition_period=repetition_period,
         )
-
         ev = run_simulation(simulation_host)
-
-        if calculate_exact_vehicle_count:
-            vehicle_counts = ev.nvehicles_used_calculation()
-            simulation_host = init_simulation(
-                scenario=scenario,
-                session=session,
-                repetition_period=repetition_period,
-                vehicle_count_dict=vehicle_counts,
-            )
-            ev = run_simulation(simulation_host)
-
         add_evaluation_to_database(scenario.id, ev, session)
 
 
