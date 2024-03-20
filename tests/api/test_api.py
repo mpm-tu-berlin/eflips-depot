@@ -574,7 +574,7 @@ class TestApi(TestHelpers):
 
         # Run simulation
 
-        simulation_host = run_simulation(full_scenario)
+        simulation_host = simulate_scenario(full_scenario)
 
         # Query all charging events and see if there is an increase in Soc
         all_charging_events = (
