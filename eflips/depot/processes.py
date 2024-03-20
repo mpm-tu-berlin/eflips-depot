@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Components for processes in a depot."""
 import math
+import warnings
 from abc import ABC, abstractmethod
 from enum import auto, Enum
 from warnings import warn
@@ -1359,9 +1360,10 @@ class ChargeEquationSteps(ChargeAbstract):
         except simpy.Interrupt:
             flexprint("charge interrupted", env=self.env, switch="processes")
             self.update_battery("charge_interrupt")
-            actual_charging_duration = self.env.now - self.starts[0]
-            actual_charged_energy = (effective_power * actual_charging_duration) / 3600
-            self.update_battery("charge_interrupt", amount=actual_charged_energy)
+            warnings.warn(
+                "It is unclear whether interrupting a charging process of this type returns the desired "
+                "result. Double-check the battery state after the simulation."
+            )
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
