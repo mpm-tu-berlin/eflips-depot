@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """Components for processes in a depot."""
-from enum import auto, Enum
-import simpy
+import math
 from abc import ABC, abstractmethod
+from enum import auto, Enum
 from warnings import warn
-from eflips.settings import globalConstants
+
+import simpy
 from eflips.helperFunctions import flexprint
+from eflips.settings import globalConstants
+
+import eflips
 from eflips.depot.evaluation import (
     BatteryLog,
     ChargeStart,
@@ -13,8 +17,6 @@ from eflips.depot.evaluation import (
     ProcessFinished,
 )
 from eflips.depot.filters import VehicleFilter
-import eflips
-import math
 
 
 class ProcessStatus(Enum):
@@ -903,7 +905,9 @@ class Charge(ChargeAbstract):
 
         except simpy.Interrupt:
             flexprint("charge interrupted", env=self.env, switch="processes")
-            self.update_battery("charge_interrupt")
+            actual_charging_duration = self.env.now - self.starts[0]
+            actual_charged_energy = (effective_power * actual_charging_duration) / 3600
+            self.update_battery("charge_interrupt", amount=actual_charged_energy)
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
