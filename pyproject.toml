@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "2.0.0"
+version = "3.0.0"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -12,7 +12,7 @@ packages = [{ include = "eflips/depot" }]
 [tool.poetry.dependencies]
 python = "^3.10"
 simpy = "^4.0.1"
-eflips-model = "^2.2.0"
+eflips-model = "^3.1.0"
 # Legacy dependencies, which are still needed until we refactor the code
 eflips = "^0.1.1"
 xlsxwriter = "^3.1.9"
@@ -23,6 +23,11 @@ xlrd = "<=1.2.0"
 addopts = [
     "--import-mode=importlib",
 ]
+
+[tool.pydocstringformatter]
+write = true
+max-line-length = 100
+exclude = ["eflips/depot/*", "eflips/depot/layout_opt/**", "tests/**"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

@@ -1,132 +1,65 @@
 """
-This package contains the public API for eFLIPS-Depot. It is to be used in conjunction with the
-`eflips.model <https://github.com/mpm-tu-berlin/eflips-model>`_ package, where the Scenario is defined. The Scenario
-is then passed to the :func:`eflips.depot.api.init_simulation` function, which returns a (black-box)
-:class:`SimulationHost` object. This object is then passed to the :func:`eflips.depot.api.run_simulation` function,
-which returns another (black-box) object, the :class:`DepotEvaluation` object. This object contains the results of
-the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
-function.
+This package contains the public API for eFLIPS-Depot.
+
+It is to be used in conjunction with the
+`eflips.model <https://github.com/mpm-tu-berlin/eflips-model>`_ package, where the Scenario is defined.
+
+Notes on the usage of the API
+-----------------------------
+
+The following steps are recommended for using the API:
+
+1. Check if there are already "driving events" in the database. They come from a "consumption simulation" and are
+   associated with a vehicle. If there are no driving events, you may use the :func:`simple_consumption_simulation`
+   (with ``initialize_vehicles=True``) to create them. This function will also initialize the vehicles in the database
+   with the correct vehicle type and assign them to rotations.
+2. Check if there is already a depot layout in the database. If there is not, you may use the
+   :func:`generate_depot_layout` function to create a simple depot layout and plan.
+3. Either use the :func:`simulate_scenario` function to run the whole simulation in one go, or use the following steps:
+    a. Use the :func:`init_simulation` function to create a simulation host, which is a "black box" object containing
+       all input data for the simulation.
+    b. Use the :func:`run_simulation` function to run the simulation and obtain the results.
+    c. Use the :func:`add_evaluation_to_database` function to add the results to the database.
+4. For the results to be valid, the consumption simulation should now be run again.
+    a. If you are using an external consumption model, run it again making sure it does not create new vehicles.
+    b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 """
+import copy
 import os
-from contextlib import contextmanager
 from datetime import timedelta
 from math import ceil
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, Optional, Union
 
+import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
+    Area,
+    Depot,
     Event,
     EventType,
     Rotation,
     Scenario,
-    Vehicle,
-    Depot,
-    Plan,
-    Process,
-    AssocPlanProcess,
-    AssocAreaProcess,
-    Area,
-    AreaType,
     Trip,
+    Vehicle,
 )
-from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, SimulationHost
-from eflips.depot import ProcessStatus
-from eflips.depot.api.private import (
+from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
+from eflips.depot.api.private.depot import (
+    create_simple_depot,
+    delete_depots,
     depot_to_template,
+    group_rotations_by_start_end_stop,
+)
+from eflips.depot.api.private.util import (
+    create_session,
     repeat_vehicle_schedules,
     start_and_end_times,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
 )
-
-
-@contextmanager
-def create_session(
-    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
-) -> Tuple[Session, Scenario]:
-    """
-    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying
-    the ID of a scenario in the database, or any other object that has an attribute `id` that is an integer. It then
-    creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
-    session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
-    is created, returned and closed after the context manager is exited.
-
-    :param scenario: Either a :class:`eflips.model.Scenario` object, an integer specifying the ID of a scenario in the
-        database, or any other object that has an attribute `id` that is an integer.
-    :return: Yield a Tuple of the session and the scenario.
-    """
-    managed_session = False
-    engine = None
-    session = None
-    try:
-        if isinstance(scenario, Scenario):
-            session = inspect(scenario).session
-        elif isinstance(scenario, int) or hasattr(scenario, "id"):
-            if isinstance(scenario, int):
-                scenario_id = scenario
-            else:
-                scenario_id = scenario.id
-
-            if database_url is None:
-                if "DATABASE_URL" in os.environ:
-                    database_url = os.environ.get("DATABASE_URL")
-                else:
-                    raise ValueError("No database URL specified.")
-
-            managed_session = True
-            engine = create_engine(database_url)
-            session = Session(engine)
-            scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-        else:
-            raise ValueError(
-                "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
-            )
-        yield session, scenario
-    finally:
-        if managed_session:
-            if session is not None:
-                session.commit()
-                session.close()
-            if engine is not None:
-                engine.dispose()
-
-
-def _delete_depot(scenario: Scenario, session: Session):
-    """This function deletes all depot-related data from the database for a given scenario. Used before a new depot
-    in this scenario is created.
-
-    :param scenario: The scenario to be simulated
-    :param session: The database session
-
-    :return: None. The depot-related data will be deleted from the database.
-    """
-
-    # Delete assocs
-    session.query(AssocPlanProcess).filter(
-        AssocPlanProcess.scenario_id == scenario.id
-    ).delete()
-    list_of_area = session.query(Area).filter(Area.scenario_id == scenario.id).all()
-
-    for area in list_of_area:
-        session.query(AssocAreaProcess).filter(
-            AssocAreaProcess.area_id == area.id
-        ).delete()
-        session.query(Event).filter(Event.area_id == area.id).delete()
-
-    # delete processes
-    session.query(Process).filter(Process.scenario_id == scenario.id).delete()
-
-    # delete areas
-    session.query(Area).filter(Area.scenario_id == scenario.id).delete()
-    # delete depot
-    session.query(Depot).filter(Depot.scenario_id == scenario.id).delete()
-    # delete plan
-    session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
-    # delete assoc_plan_process
 
 
 def simple_consumption_simulation(
@@ -136,26 +69,30 @@ def simple_consumption_simulation(
     calculate_timeseries: bool = False,
 ) -> None:
     """
-    This implements a simple consumption simulation, by multiplying the vehicle's total distance by a constant
-    `VehicleType.consumption`. This is useful for testing purposes.
+    A simple consumption simulation and vehicle initialization.
 
-    If run with `initialize_vehicles=True`, the method will also initialize the vehicles in the database with the
+    Energy consumotion is calculated by multiplying the vehicle's total distance by a constant
+    ``VehicleType.consumption``.
+
+    If run with ``initialize_vehicles=True``, the method will also initialize the vehicles in the database with the
     correct vehicle type and assign them to rotations. If this is false, it will assume that there are already vehicle
-    entries and Rotation.vehicle_id is already set.
+    entries and ``Rotation.vehicle_id`` is already set.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
-        valid database URL.
+            an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+            ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+            parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+            valid database URL.
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
+            When running this function for the first time, this should be set to True. When running this function again
+            after the vehicles have been initialized, this should be set to False.
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
-        URL.
+            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
+            valid database URL.
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this is
-        set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
-        significantly speed up the simulation.
+            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
+            is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
+            may significantly speed up the simulation.
     :return: Nothing. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -163,6 +100,9 @@ def simple_consumption_simulation(
             session.query(Rotation)
             .filter(Rotation.scenario_id == scenario.id)
             .order_by(Rotation.id)
+            .options(sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route))
+            .options(sqlalchemy.orm.joinedload(Rotation.vehicle_type))
+            .options(sqlalchemy.orm.joinedload(Rotation.vehicle))
         )
         if initialize_vehicles:
             for rotation in rotations:
@@ -222,7 +162,7 @@ def simple_consumption_simulation(
                     standby_start = earliest_trip.departure_time - timedelta(seconds=1)
                     standby_event = Event(
                         scenario_id=scenario.id,
-                        vehicle_type_id=rotation.vehicle_type_id,
+                        vehicle_type_id=vehicle.vehicle_type_id,
                         vehicle=vehicle,
                         area_id=area.id,
                         subloc_no=area.capacity,
@@ -236,9 +176,14 @@ def simple_consumption_simulation(
                     )
                     session.add(standby_event)
 
+        # Since we are doing no_autoflush blocks later, we need to flush the session once here so that unflushed stuff
+        # From preceding functions is visible in the database
+        session.flush()
+
         for rotation in rotations:
-            vehicle_type = rotation.vehicle_type
-            vehicle = rotation.vehicle
+            with session.no_autoflush:
+                vehicle_type = rotation.vehicle_type
+                vehicle = rotation.vehicle
             if vehicle_type.consumption is None:
                 raise ValueError(
                     "The vehicle type does not have a consumption value set."
@@ -246,13 +191,14 @@ def simple_consumption_simulation(
             consumption = vehicle_type.consumption
 
             # The departure SoC for this rotation is the SoC of the last event preceding the first trip
-            current_soc = (
-                session.query(Event.soc_end)
-                .filter(Event.vehicle_id == rotation.vehicle_id)
-                .filter(Event.time_end <= rotation.trips[0].departure_time)
-                .order_by(Event.time_end.desc())
-                .first()[0]
-            )
+            with session.no_autoflush:
+                current_soc = (
+                    session.query(Event.soc_end)
+                    .filter(Event.vehicle_id == rotation.vehicle_id)
+                    .filter(Event.time_end <= rotation.trips[0].departure_time)
+                    .order_by(Event.time_end.desc())
+                    .first()[0]
+                )
 
             for trip in rotation.trips:
                 # Set up a timeseries
@@ -306,215 +252,123 @@ def simple_consumption_simulation(
 
 def generate_depot_layout(
     scenario: Union[Scenario, int, Any],
-    charging_power: float,
+    charging_power: float = 150,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
-    capacity: Optional[int] = None,
 ):
     """
-    This function generates a simple depot layout according to the vehicle types and rotations in the scenario.
+    Generates one or more depots for the scenario.
 
-    For each vehicle type, it generates 3 areas: arrival_area, charging_area, and standby-departure_area, all with type
-    DIRECT_ONESIDE. The capacity of each area can be specified by user, or generated according to number of
-    rotations. Each area has a list of available processes. When specified by user, the capacity of all areas will be
-    the same.
+    First, the rotations are scanned to identify all the spots that serve as start *and* end of a rotation. Then the set
+    of rotations for these spots are checked for vehicle types that are used there. Next, the amount of vehicles that
+    are simultaneously present at the depot is calculated. Then a depot layout with an arrival and a charging area for
+    each vehicle type is created. The capacity of each area is taken from the calculated amount of vehicles.
+    The depot layout is then added to the database.
 
     A default plan will also be generated, which includes the following default processes: standby_arrival, cleaning,
-    charging and standby_departure. Each vehicle will be processed with this exact order (stancby_arrival is optional
+    charging and standby_departure. Each vehicle will be processed with this exact order (standby_arrival is optional
     because it only happens if a vehicle needs to wait for the next process).
 
-    Using this function causes deleting the original depot in this scenario.
+    The function only deletes the depot if the `delete_existing_depot` parameter is set to True. If there is already a
+    depot existing in this scenario and this parameter is set to False, a ValueError will be raised.
 
-
-    :param scenario: The scenario to be simulated
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+        valid database URL.
     :param charging_power: the charging power of the charging area in kW
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
-    :param capacity: capacity of each area. If not specified, the capacity will be generated according to the rotation.
 
     :return: None. The depot layout will be added to the database.
     """
+    CLEAN_DURATION = 30 * 60  # 30 minutes in seconds
 
     with create_session(scenario, database_url) as (session, scenario):
         # Handles existing depot
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
                 raise ValueError("Depot already exists.")
-            else:
-                _delete_depot(scenario, session)
+            delete_depots(scenario, session)
 
-        # Create a simple depot
-        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
-        session.add(depot)
+        # Identify all the spots that serve as start *and* end of a rotation
+        for (
+            first_last_stop_tup,
+            vehicle_type_dict,
+        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+            first_stop, last_stop = first_last_stop_tup
+            if first_stop != last_stop:
+                raise ValueError("First and last stop of a rotation are not the same.")
+            max_occupancies: Dict[eflips.model.VehicleType, int] = {}
+            max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
+            for vehicle_type, rotations in vehicle_type_dict.items():
+                # Slightly convoulted vehicle summation
+                start_time = min(
+                    [rotation.trips[0].departure_time for rotation in rotations]
+                ).timestamp()
+                end_time = max(
+                    [rotation.trips[-1].arrival_time for rotation in rotations]
+                ).timestamp()
+                timestamps_to_sample = np.arange(start_time, end_time, 60)
+                occupancy = np.zeros_like(timestamps_to_sample)
+                clean_occupancy = np.zeros_like(timestamps_to_sample)
+                for rotation in rotations:
+                    rotation_start = rotation.trips[0].departure_time.timestamp()
+                    rotation_end = rotation.trips[-1].arrival_time.timestamp()
+                    occupancy += np.interp(
+                        timestamps_to_sample,
+                        [rotation_start, rotation_end],
+                        [1, 1],
+                        left=0,
+                        right=0,
+                    )
+                    clean_occupancy += np.interp(
+                        timestamps_to_sample,
+                        [rotation_end, rotation_end + CLEAN_DURATION],
+                        [1, 1],
+                        left=0,
+                        right=0,
+                    )
+                max_occupancies[vehicle_type] = max(
+                    max(occupancy), 1
+                )  # To avoid zero occupancy
+                max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
 
-        # Create plan
-        plan = Plan(scenario=scenario, name="Test Plan")
-        session.add(plan)
-
-        depot.default_plan = plan
-
-        # Create processes
-        standby_arrival = Process(
-            name="Standby Arrival",
-            scenario=scenario,
-            dispatchable=False,
-        )
-        clean = Process(
-            name="Arrival Cleaning",
-            scenario=scenario,
-            dispatchable=False,
-            duration=timedelta(minutes=30),
-        )
-        charging = Process(
-            name="Charging",
-            scenario=scenario,
-            dispatchable=False,
-            electric_power=charging_power,
-        )
-        standby_departure = Process(
-            name="Standby Pre-departure",
-            scenario=scenario,
-            dispatchable=True,
-        )
-        session.add(standby_arrival)
-        session.add(clean)
-        session.add(charging)
-        session.add(standby_departure)
-
-        for vehicle_type in scenario.vehicle_types:
-            list_of_rotations = [
-                rotation
-                for rotation in scenario.rotations
-                if rotation.vehicle_type_id == vehicle_type.id
-            ]
-
-            max_vehicle_num = (
-                session.query(Rotation)
-                .filter(Rotation.vehicle_type_id == vehicle_type.id)
-                .filter(Rotation.scenario_id == scenario.id)
-                .count()
+            # Create a simple depot at this station
+            create_simple_depot(
+                scenario=scenario,
+                station=first_stop,
+                charging_capacities=max_occupancies,
+                cleaning_capacities=max_clean_occupancies,
+                charging_power=charging_power,
+                session=session,
+                cleaning_duration=timedelta(seconds=CLEAN_DURATION),
             )
-
-            # Create areas
-            if max_vehicle_num != 0:
-                if capacity is None:
-                    # Assuming each vehicle only be assigned to one rotation
-                    parking_capacity = max_vehicle_num
-
-                else:
-                    parking_capacity = capacity
-
-                # Create stand by arrival area
-                arrival_area = Area(
-                    scenario=scenario,
-                    name=f"Arrival for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=parking_capacity,
-                )
-                session.add(arrival_area)
-                arrival_area.vehicle_type = vehicle_type
-
-                # Create charging area
-                charging_area = Area(
-                    scenario=scenario,
-                    name=f"Direct Charging Area for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=parking_capacity,
-                )
-                session.add(charging_area)
-                charging_area.vehicle_type = vehicle_type
-
-                # Create cleaning area
-
-                list_of_rotations.sort(key=lambda x: x.trips[-1].arrival_time)
-
-                if capacity is None:
-                    clean_capacity = 1
-
-                    # Maximum number of vehicles that can park in the cleaning area according to rotation
-                    for rot_idx in range(0, len(list_of_rotations)):
-                        cleaning_interval_start = (
-                            list_of_rotations[rot_idx].trips[-1].arrival_time
-                        )
-
-                        # Potential improvement: the "edge" between copy and non-copy schedules might need higher cleaning
-                        #  capacity than real, causing standby-arrival events. Considering adding repetition_period here
-                        # This could be solved by implementing a sliging window that rolls over from e.g. sunday (last
-                        # day to monday (first day) again, to calculate the load from both the beginning and end of the
-                        # data.
-                        for next_rot_idx in range(rot_idx + 1, len(list_of_rotations)):
-                            arrival_time = (
-                                list_of_rotations[next_rot_idx].trips[-1].arrival_time
-                            )
-
-                            if arrival_time > cleaning_interval_start + clean.duration:
-                                clean_capacity = max(
-                                    clean_capacity, next_rot_idx - rot_idx
-                                )
-                                break
-
-                else:
-                    clean_capacity = capacity
-
-                cleaning_area = Area(
-                    scenario=scenario,
-                    name=f"Cleaning Area for {vehicle_type.name_short}",
-                    depot=depot,
-                    area_type=AreaType.DIRECT_ONESIDE,
-                    capacity=clean_capacity,
-                )
-
-                session.add(cleaning_area)
-                cleaning_area.vehicle_type = vehicle_type
-
-                arrival_area.processes.append(standby_arrival)
-                cleaning_area.processes.append(clean)
-                charging_area.processes.append(charging)
-                charging_area.processes.append(standby_departure)
-
-        assocs = [
-            AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
-            ),
-        ]
-        session.add_all(assocs)
 
 
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
-    calculate_exact_vehicle_count: bool = True,
     database_url: Optional[str] = None,
 ) -> None:
     """
-    This method simulates a scenario and adds the results to the database. It fills in the "Charging Events" in the
-    :class:`eflips.model.Event` table and associates :class:`eflips.model.Vehicle` objects with all the existing
-    "Driving Events" in the :class:`eflips.model.Event` table.
+    This method simulates a scenario and adds the results to the database.
+
+    It fills in the "Charging Events" in the :class:`eflips.model.Event` table and associates
+    :class:`eflips.model.Vehicle` objects with all the existing "Driving Events" in the :class:`eflips.model.Event`
+    table.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
         an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
-
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
-        is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
+        is needed because the result should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
-
-    :param calculate_exact_vehicle_count: A boolean flag indicating whether the exact number of vehicles should be
-        calculated. If this is set to True, the simulation will be run twice. The first time, the number of vehicles
-        will be calculated using the number of trips for each vehicle type. The second time, the number of vehicles
-        will be set to the calculated number of vehicles.
-
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
@@ -524,25 +378,13 @@ def simulate_scenario(
 
     # Step 0: Load the scenario
     with create_session(scenario, database_url) as (session, scenario):
-        simulation_host = _init_simulation(
+        simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             repetition_period=repetition_period,
         )
-
-        ev = _run_simulation(simulation_host)
-
-        if calculate_exact_vehicle_count:
-            vehicle_counts = ev.nvehicles_used_calculation()
-            simulation_host = _init_simulation(
-                scenario=scenario,
-                session=session,
-                repetition_period=repetition_period,
-                vehicle_count_dict=vehicle_counts,
-            )
-            ev = _run_simulation(simulation_host)
-
-        _add_evaluation_to_database(scenario.id, ev, session)
+        ev = run_simulation(simulation_host)
+        add_evaluation_to_database(scenario, ev, session)
 
 
 def _init_simulation(
@@ -551,21 +393,47 @@ def _init_simulation(
     repetition_period: Optional[timedelta] = None,
     vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
+    """Deprecated stub for init_simulation."""
+    raise NotImplementedError(
+        "The function _init_simulation is deprecated. Please use init_simulation instead."
+    )
+
+
+def init_simulation(
+    scenario: Scenario,
+    session: Session,
+    repetition_period: Optional[timedelta] = None,
+    vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
+) -> SimulationHost:
     """
-    This methods checks the input data for consistency, initializes a simulation host object and returns it. The
-    simulation host object can then be passed to :func:`run_simulation()`.
+    This methods checks the input data for consistency, initializes a simulation host object and returns it.
+
+    The simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
-    :param session: A SQLAlchemy session object. This is used to add all the simulation results to the database.
-
+    :param session: A SQLAlchemy session object.
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
 
-    :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type. If this
-        is not specified, the number of vehicles is assumed to be 10 times the number of trips for each vehicle type.
+    :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type for each
+         depot. The dictionary should have the following structure:
+
+         ::
+
+            {
+                "1" (depot.id as str): {
+                    "1" (vehicle_type.id as str): 10,
+                    "2" (vehicle_type.id as str): 20,
+                    ...
+                },
+                "2" (depot.id as str): {
+                    "1" (vehicle_type.id as str): 10,
+                    "2" (vehicle_type.id as str): 20,
+                    ...
+                },
 
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
@@ -576,20 +444,15 @@ def _init_simulation(
     path_to_this_file = os.path.dirname(__file__)
 
     # Step 1: Set up the depot
-    if len(scenario.depots) == 1:
-        # Create an eFlips depot
-        depot_dict = depot_to_template(scenario.depots[0])  # type: ignore
-        eflips_depot = eflips.depot.Depotinput(
-            filename_template=depot_dict, show_gui=False
+    eflips_depots = []
+    for depot in scenario.depots:
+        depot_dict = depot_to_template(depot)
+        eflips_depots.append(
+            eflips.depot.Depotinput(filename_template=depot_dict, show_gui=False)
         )
-    elif len(scenario.depots) > 1:
-        raise ValueError("Only one depot is supported at the moment.")
-    else:
-        raise ValueError("No depot found in scenario.")
-    depot_id = "DEFAULT"
 
     # Step 2: eFLIPS initialization
-    simulation_host = SimulationHost([eflips_depot], print_timestamps=False)
+    simulation_host = SimulationHost(eflips_depots, print_timestamps=False)
     # Now we do what is done in `standard_setup()` from the old input files
     # Load the settings
     path_to_default_settings = os.path.join(
@@ -650,34 +513,34 @@ def _init_simulation(
     simulation_host.timetable = timetable
 
     # Step 4: Set up the vehicle types
-    # We need to calculate roughly how many vehicles we need
-    # We do that by taking the total trips for each vehicle class and creating 10 times the number of vehicles
-    # for each vehicle type in the vehicle class
-    all_vehicle_types = set([rotation.vehicle_type for rotation in scenario.rotations])
+    # We need to calculate roughly how many vehicles we need for each depot
+    for depot in scenario.depots:
+        depot_id = str(depot.id)
+        eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
+        vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
 
-    if vehicle_count_dict is not None:
-        if set(vehicle_count_dict.keys()) != set(
-            [str(vehicle_type.id) for vehicle_type in all_vehicle_types]
-        ):
-            raise ValueError(
-                "The vehicle count dictionary does not contain all vehicle types."
-            )
-        vehicle_count = vehicle_count_dict
-    else:
-        vehicle_count = {}
-        for vehicle_type in all_vehicle_types:
-            trip_count = sum(
-                [
-                    1 if rotation.vehicle_type == vehicle_type else 0
-                    for rotation in scenario.rotations
-                ]
-            )
-            vehicle_count[str(vehicle_type.id)] = 10 * trip_count
-
-    # Now we put the vehicle count into the settings
-    eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
-    for vehicle_type, count in vehicle_count.items():
-        eflips.globalConstants["depot"]["vehicle_count"][depot_id][vehicle_type] = count
+        # If we have a vehicle count dictionary, we validate and use ir
+        if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
+            if vehicle_count_dict[depot_id].keys() != vehicle_types_for_depot:
+                raise ValueError(
+                    "The vehicle count dictionary does not contain all vehicle types for depot {depot_id}."
+                )
+            eflips.globalConstants["depot"]["vehicle_count"][
+                depot_id
+            ] = vehicle_count_dict[depot_id]
+        else:
+            # Calculate it from the size of the areas, with a 2x margin
+            for vehicle_type in vehicle_types_for_depot:
+                vehicle_count = sum(
+                    [
+                        area.capacity
+                        for area in depot.areas
+                        if area.vehicle_type_id == int(vehicle_type)
+                    ]
+                )
+                eflips.globalConstants["depot"]["vehicle_count"][depot_id][
+                    vehicle_type
+                ] = (vehicle_count * 2)
 
     # We  need to put the vehicle type objects into the GlobalConstants
     for vehicle_type in scenario.vehicle_types:
@@ -702,16 +565,57 @@ def _init_simulation(
 
 
 def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
-    """Run simulation and return simulation results
+    """Deprecated stub for run_simulation."""
+    raise NotImplementedError(
+        "The function _run_simulation is deprecated. Please use run_simulation instead."
+    )
+
+
+def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation]:
+    """Run simulation and return simulation results.
 
     :param simulation_host: A "black box" object containing all input data for the simulation.
 
-    :return: Object of :class:`eflips.depot.evaluation.DepotEvaluation` containing the simulation results.
+    :return: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are the depot IDs, as
+        strings.
     """
     simulation_host.run()
-    ev = simulation_host.depot_hosts[0].evaluation
 
-    return ev
+    results = {}
+    for depot_host in simulation_host.depot_hosts:
+        depot_id = depot_host.depot.ID
+        ev = depot_host.evaluation
+
+        # We need to clean up the timetable, it has trips from all depots
+        ev.timetable = copy.copy(ev.timetable)
+        ev.timetable.trips = [
+            t for t in ev.timetable.trips if t.destination.ID == depot_id
+        ]
+        ev.timetable.trips_issued = [
+            t for t in ev.timetable.trips_issued if t.destination.ID == depot_id
+        ]
+        ev.timetable.all_trips = [
+            t for t in ev.timetable.all_trips if t.destination.ID == depot_id
+        ]
+
+        # We also need to clean up the vehicle generator
+        ev.vehicle_generator = copy.copy(ev.vehicle_generator)
+        ev.vehicle_generator.items = copy.copy(ev.vehicle_generator.items)
+        indizes_to_remove = []
+        for i in range(len(ev.vehicle_generator.items)):
+            vehicle = copy.copy(ev.vehicle_generator.items[i])
+            depot_ids = [trip.destination.ID for trip in vehicle.finished_trips]
+            if len(set(depot_ids)) > 1:
+                raise ValueError("Vehicle has finished trips in multiple depots.")
+            if len(depot_ids) == 0 or depot_ids[0] != depot_id:
+                indizes_to_remove.append(i)
+
+        for index in sorted(indizes_to_remove, reverse=True):
+            del ev.vehicle_generator.items[index]
+
+        results[depot_id] = ev
+
+    return results
 
 
 def _add_evaluation_to_database(
@@ -719,15 +623,27 @@ def _add_evaluation_to_database(
     depot_evaluation: DepotEvaluation,
     session: sqlalchemy.orm.Session,
 ) -> None:
+    """Deprecated stub for add_evaluation_to_database."""
+    raise NotImplementedError(
+        "The function _add_evaluation_to_database is deprecated. Please use add_evaluation_to_database instead."
+    )
+
+
+def add_evaluation_to_database(
+    scenario: Scenario,
+    depot_evaluations: Dict[str, DepotEvaluation],
+    session: sqlalchemy.orm.Session,
+) -> None:
     """
-    This method reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and
-    adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
+    This method adds a simulation result to the database.
 
-    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
-           :class:`eflips.model.Event` objects.
+    It reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and  adds them into
+     the database. Tables of Event, Rotation and Vehicle will be updated.
 
-    :param depot_evaluation: the :class:`eflips.depot.evaluation.DepotEvaluation` object containing the simulation
-           results.
+    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+
+    :param depot_evaluations: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are
+             the depot IDs, as strings.
 
     :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
            database.
@@ -736,350 +652,334 @@ def _add_evaluation_to_database(
     """
 
     # Read simulation start time
-    simulation_start_time = depot_evaluation.sim_start_datetime
 
-    all_trips = depot_evaluation.timetable.trips
-    repetition_period_seconds = 0
-    latest_arrival_seconds = all_trips[-1].ata
+    for depot_evaluation in depot_evaluations.values():
+        simulation_start_time = depot_evaluation.sim_start_datetime
 
-    for i in range(len(all_trips)):
-        if all_trips[i].is_copy is True and all_trips[i + 1].is_copy is False:
-            repetition_period = timedelta(
-                seconds=all_trips[i + 1].std - all_trips[0].std
+        # Initialization of empty lists
+
+        list_of_vehicles = []
+
+        list_of_events = []
+
+        list_of_assigned_schedules = []
+
+        # Read results from depot_evaluation categorized by vehicle
+        for current_vehicle in depot_evaluation.vehicle_generator.items:
+            list_of_events_per_vehicle = []
+
+            vehicle_type_id = int(current_vehicle.vehicle_type.ID)
+
+            # Create a Vehicle object for database
+            current_vehicle_db = Vehicle(
+                vehicle_type_id=vehicle_type_id,
+                scenario=scenario,
+                name=current_vehicle.ID,
+                name_short=None,
             )
-            latest_arrival_time = (
-                timedelta(seconds=all_trips[i].ata)
-                + simulation_start_time
-                + repetition_period
-            )
-            break
+            # Flush the vehicle object to get the vehicle id
+            session.add(current_vehicle_db)
+            session.flush()
+            list_of_vehicles.append(current_vehicle_db)
 
-    # Initialization of empty lists
+            dict_of_events = {}
 
-    list_of_vehicles = []
+            for finished_trip in current_vehicle.finished_trips:
+                dict_of_events[finished_trip.atd] = {
+                    "type": "trip",
+                    "is_copy": finished_trip.is_copy,
+                    "id": finished_trip.ID,
+                }
 
-    list_of_events = []
+                if finished_trip.is_copy is False:
+                    assigned_schedule_id = int(finished_trip.ID)
+                    list_of_assigned_schedules.append(
+                        (assigned_schedule_id, current_vehicle_db.id)
+                    )
 
-    list_of_assigned_schedules = []
+            # Generate a dictionary of data logs from DepotEvaluation with time as keys. Logs for repeated schedules
+            # and their depot processes are included but will not be written into database.
 
-    # Read results from depot_evaluation categorized by vehicle
-    for current_vehicle in depot_evaluation.vehicle_generator.items:
-        list_of_events_per_vehicle = []
+            last_standby_departure_start = 0
 
-        vehicle_type_id = int(current_vehicle.vehicle_type.ID)
+            # For convenience
+            area_log = current_vehicle.logger.loggedData["dwd.current_area"]
+            slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
 
-        # Create a Vehicle object for database
-        current_vehicle_db = Vehicle(
-            vehicle_type_id=vehicle_type_id,
-            scenario_id=scenario_id,
-            name=current_vehicle.ID,
-            name_short=None,
-        )
-        # Flush the vehicle object to get the vehicle id
-        session.add(current_vehicle_db)
-        session.flush()
-        list_of_vehicles.append(current_vehicle_db)
+            # For future uses
+            waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
+            battery_log = current_vehicle.battery_logs
 
-        dict_of_events = {}
+            for start_time, process_log in current_vehicle.logger.loggedData[
+                "dwd.active_processes_copy"
+            ].items():
+                if len(process_log) == 0:
+                    # A departure happens
+                    if last_standby_departure_start != 0:
+                        # Update the last standby-departure end time
+                        dict_of_events[last_standby_departure_start]["end"] = start_time
+                    else:
+                        continue
 
-        for finished_trip in current_vehicle.finished_trips:
-            dict_of_events[finished_trip.atd] = {
-                "type": "trip",
-                "is_copy": finished_trip.is_copy,
-                "id": finished_trip.ID,
-            }
-
-            if finished_trip.is_copy is False:
-                assigned_schedule_id = int(finished_trip.ID)
-                list_of_assigned_schedules.append(
-                    (assigned_schedule_id, current_vehicle_db.id)
-                )
-
-        # Generate a dictionary of data logs from DepotEvaluation with time as keys. Logs for repeated schedules
-        # and their depot processes are included but will not be written into database.
-
-        last_standby_departure_start = 0
-
-        # For convenience
-        area_log = current_vehicle.logger.loggedData["dwd.current_area"]
-        slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
-
-        # For future uses
-        waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
-        battery_log = current_vehicle.battery_logs
-
-        for start_time, process_log in current_vehicle.logger.loggedData[
-            "dwd.active_processes_copy"
-        ].items():
-            if len(process_log) == 0:
-                # A departure happens
-                if last_standby_departure_start != 0:
-                    # Update the last standby-departure end time
-                    dict_of_events[last_standby_departure_start]["end"] = start_time
                 else:
-                    continue
-
-            else:
-                for process in process_log:
-                    match process.status:
-                        case ProcessStatus.CANCELLED:
-                            raise NotImplementedError(
-                                f"Cancelled processes {process.ID} are not implemented."
-                            )
-                        case ProcessStatus.COMPLETED:
-                            assert (
-                                len(process.starts) == 1 and len(process.ends) == 1
-                            ), (
-                                f"Current process {process.ID} is completed and should only contain one start and one "
-                                f"end time."
-                            )
-                            current_area = area_log[start_time]
-                            current_slot = slot_log[start_time]
-
-                            if current_area is None or current_slot is None:
-                                raise ValueError(
-                                    f"For process {process.ID} Area and slot should not be None."
+                    for process in process_log:
+                        match process.status:
+                            case ProcessStatus.CANCELLED:
+                                raise NotImplementedError(
+                                    f"Cancelled processes {process.ID} are not implemented."
                                 )
+                            case ProcessStatus.COMPLETED:
+                                assert (
+                                    len(process.starts) == 1 and len(process.ends) == 1
+                                ), (
+                                    f"Current process {process.ID} is completed and should only contain one start and "
+                                    f"one end time."
+                                )
+                                current_area = area_log[start_time]
+                                current_slot = slot_log[start_time]
 
-                            if process.dur > 0:
-                                # Valid duration
-                                dict_of_events[start_time] = {
-                                    "type": type(process).__name__,
-                                    "end": process.ends[0],
-                                    "area": current_area.ID,
-                                    "slot": current_slot,
-                                    "id": process.ID,
-                                }
-                            else:
-                                # Duration is 0
+                                if current_area is None or current_slot is None:
+                                    raise ValueError(
+                                        f"For process {process.ID} Area and slot should not be None."
+                                    )
 
-                                if start_time in dict_of_events:
-                                    assert current_area.issink is True
-                                    # Standby departure
-                                    actual_start_time = dict_of_events[start_time][
-                                        "end"
-                                    ]
-                                    dict_of_events[actual_start_time] = {
-                                        "type": type(process).__name__,
-                                        "area": current_area.ID,
-                                        "is_area_sink": current_area.issink,
-                                        "slot": current_slot,
-                                        "id": process.ID,
-                                    }
-
-                                    last_standby_departure_start = actual_start_time
-
-                                else:
-                                    # Standby arrival
-                                    assert current_area.issink is False
+                                if process.dur > 0:
+                                    # Valid duration
                                     dict_of_events[start_time] = {
                                         "type": type(process).__name__,
+                                        "end": process.ends[0],
                                         "area": current_area.ID,
-                                        "is_area_sink": current_area.issink,
                                         "slot": current_slot,
                                         "id": process.ID,
                                     }
-                        case ProcessStatus.IN_PROGRESS:
-                            raise NotImplementedError(
-                                f"Current process {process.ID} is in progress. Not implemented yet."
-                            )
-                        case ProcessStatus.WAITING:
-                            raise NotImplementedError(
-                                f"Current process {process.ID} is waiting. Not implemented yet."
-                            )
-
-                        case ProcessStatus.NOT_STARTED:
-                            raise NotImplementedError(
-                                f"Current process {process.ID} is not started. Not implemented yet."
-                            )
-
-                        case _:
-                            raise ValueError(
-                                f"Invalid process status {process.status} for process {process.ID}."
-                            )
-
-        time_keys = sorted(dict_of_events.keys(), reverse=True)
-        if len(time_keys) != 0:
-            # Generating valid event-list
-            is_copy = True
-            for start_time in time_keys:
-                process_dict = dict_of_events[start_time]
-                if process_dict["type"] == "trip":
-                    is_copy = process_dict["is_copy"]
-                else:
-                    if is_copy is False:
-                        # Generate EventType
-                        match process_dict["type"]:
-                            case "Serve":
-                                event_type = EventType.SERVICE
-                            case "Charge":
-                                event_type = EventType.CHARGING_DEPOT
-                            case "Standby":
-                                if process_dict["is_area_sink"] is True:
-                                    event_type = EventType.STANDBY_DEPARTURE
                                 else:
-                                    event_type = EventType.STANDBY
-                            case "Precondition":
-                                event_type = EventType.PRECONDITIONING
-                            case _:
-                                raise ValueError(
-                                    """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
-                                    "Precondition"""
+                                    # Duration is 0
+
+                                    if start_time in dict_of_events:
+                                        assert current_area.issink is True
+                                        # Standby departure
+                                        actual_start_time = dict_of_events[start_time][
+                                            "end"
+                                        ]
+                                        dict_of_events[actual_start_time] = {
+                                            "type": type(process).__name__,
+                                            "area": current_area.ID,
+                                            "is_area_sink": current_area.issink,
+                                            "slot": current_slot,
+                                            "id": process.ID,
+                                        }
+
+                                        last_standby_departure_start = actual_start_time
+
+                                    else:
+                                        # Standby arrival
+                                        assert current_area.issink is False
+                                        dict_of_events[start_time] = {
+                                            "type": type(process).__name__,
+                                            "area": current_area.ID,
+                                            "is_area_sink": current_area.issink,
+                                            "slot": current_slot,
+                                            "id": process.ID,
+                                        }
+                            case ProcessStatus.IN_PROGRESS:
+                                raise NotImplementedError(
+                                    f"Current process {process.ID} is in progress. Not implemented yet."
+                                )
+                            case ProcessStatus.WAITING:
+                                raise NotImplementedError(
+                                    f"Current process {process.ID} is waiting. Not implemented yet."
                                 )
 
-                        # End time of 0-duration processes are start time of the next process
+                            case ProcessStatus.NOT_STARTED:
+                                raise NotImplementedError(
+                                    f"Current process {process.ID} is not started. Not implemented yet."
+                                )
 
-                        if "end" not in process_dict:
-                            # TODO might optimise performance
-                            end_time = time_keys[time_keys.index(start_time) - 1]
-                            process_dict["end"] = end_time
+                            case _:
+                                raise ValueError(
+                                    f"Invalid process status {process.status} for process {process.ID}."
+                                )
 
-                        # Get soc
-                        soc_start = None
-                        soc_end = None
-                        for log in battery_log:
-                            if log.t == start_time:
-                                soc_start = log.energy / log.energy_real
-                            if log.t == process_dict["end"]:
-                                soc_end = log.energy / log.energy_real
+            time_keys = sorted(dict_of_events.keys(), reverse=True)
+            if len(time_keys) != 0:
+                # Generating valid event-list
+                is_copy = True
+                for start_time in time_keys:
+                    process_dict = dict_of_events[start_time]
+                    if process_dict["type"] == "trip":
+                        is_copy = process_dict["is_copy"]
+                    else:
+                        if is_copy is False:
+                            # Generate EventType
+                            match process_dict["type"]:
+                                case "Serve":
+                                    event_type = EventType.SERVICE
+                                case "Charge":
+                                    event_type = EventType.CHARGING_DEPOT
+                                case "Standby":
+                                    if process_dict["is_area_sink"] is True:
+                                        event_type = EventType.STANDBY_DEPARTURE
+                                    else:
+                                        event_type = EventType.STANDBY
+                                case "Precondition":
+                                    event_type = EventType.PRECONDITIONING
+                                case _:
+                                    raise ValueError(
+                                        'Invalid process type %s. Valid process types are "Serve", "Charge", '
+                                        '"Standby", "Precondition"'
+                                    )
 
-                        current_event = Event(
-                            scenario_id=scenario_id,
-                            vehicle_type_id=vehicle_type_id,
-                            vehicle=current_vehicle_db,
-                            station_id=None,
-                            area_id=int(process_dict["area"]),
-                            subloc_no=int(process_dict["slot"]),
-                            trip_id=None,
-                            time_start=timedelta(seconds=start_time)
-                            + simulation_start_time,
-                            time_end=timedelta(seconds=process_dict["end"])
-                            + simulation_start_time,
-                            soc_start=soc_start if soc_start is not None else soc_end,
-                            soc_end=soc_end
-                            if soc_end is not None
-                            else soc_start,  # if only one battery log is found,
-                            # then this is not an event with soc change
-                            event_type=event_type,
-                            description=None,
-                            timeseries=None,
-                        )
+                            # End time of 0-duration processes are start time of the next process
 
-                        list_of_events_per_vehicle.append(current_event)
+                            if "end" not in process_dict:
+                                end_time = time_keys[time_keys.index(start_time) - 1]
+                                process_dict["end"] = end_time
 
-            list_of_events.extend(list_of_events_per_vehicle)
+                            # Get soc
+                            soc_start = None
+                            soc_end = None
+                            for log in battery_log:
+                                if log.t == start_time:
+                                    soc_start = log.energy / log.energy_real
+                                if log.t == process_dict["end"]:
+                                    soc_end = log.energy / log.energy_real
 
-            # For non-copy schedules with no predecessor events, adding a dummy standby-departure
-            if (
-                dict_of_events[time_keys[-1]]["type"] == "trip"
-                and dict_of_events[time_keys[-1]]["is_copy"] is False
-            ):
-                standby_start = time_keys[-1] - 1
-                standby_end = time_keys[-1]
-                rotation_id = str(dict_of_events[time_keys[-1]]["id"])
-                area = (
-                    session.query(Area)
-                    .filter(Area.vehicle_type_id == vehicle_type_id)
-                    .first()
-                )
+                            current_event = Event(
+                                scenario=scenario,
+                                vehicle_type_id=vehicle_type_id,
+                                vehicle=current_vehicle_db,
+                                station_id=None,
+                                area_id=int(process_dict["area"]),
+                                subloc_no=int(process_dict["slot"]),
+                                trip_id=None,
+                                time_start=timedelta(seconds=start_time)
+                                + simulation_start_time,
+                                time_end=timedelta(seconds=process_dict["end"])
+                                + simulation_start_time,
+                                soc_start=soc_start
+                                if soc_start is not None
+                                else soc_end,
+                                soc_end=soc_end
+                                if soc_end is not None
+                                else soc_start,  # if only one battery log is found,
+                                # then this is not an event with soc change
+                                event_type=event_type,
+                                description=None,
+                                timeseries=None,
+                            )
+                            session.add(current_event)
+                            list_of_events_per_vehicle.append(current_event)
 
-                first_trip = (
-                    session.query(Trip)
-                    .filter(Trip.rotation_id == rotation_id)
-                    .order_by(Trip.departure_time)
-                    .first()
-                )
+                list_of_events.extend(list_of_events_per_vehicle)
 
-                soc = (
-                    session.query(Event.soc_end)
-                    .filter(Event.scenario_id == scenario_id)
-                    .filter(Event.trip_id == first_trip.id)
-                    .first()[0]
-                )
+                # For non-copy schedules with no predecessor events, adding a dummy standby-departure
+                if (
+                    dict_of_events[time_keys[-1]]["type"] == "trip"
+                    and dict_of_events[time_keys[-1]]["is_copy"] is False
+                ):
+                    standby_start = time_keys[-1] - 1
+                    standby_end = time_keys[-1]
+                    rotation_id = str(dict_of_events[time_keys[-1]]["id"])
+                    area = (
+                        session.query(Area)
+                        .filter(Area.vehicle_type_id == vehicle_type_id)
+                        .first()
+                    )
 
-                standby_event = Event(
-                    scenario_id=scenario_id,
-                    vehicle_type_id=vehicle_type_id,
-                    vehicle=current_vehicle_db,
-                    station_id=None,
-                    area_id=area.id,
-                    subloc_no=area.capacity,
-                    trip_id=None,
-                    time_start=timedelta(seconds=standby_start) + simulation_start_time,
-                    time_end=timedelta(seconds=standby_end) + simulation_start_time,
-                    soc_start=soc,
-                    soc_end=soc,
-                    event_type=EventType.STANDBY_DEPARTURE,
-                    description=f"DUMMY Standby event for {rotation_id}.",
-                    timeseries=None,
-                )
+                    first_trip = (
+                        session.query(Trip)
+                        .filter(Trip.rotation_id == rotation_id)
+                        .order_by(Trip.departure_time)
+                        .first()
+                    )
 
-                list_of_events.append(standby_event)
+                    soc = (
+                        session.query(Event.soc_end)
+                        .filter(Event.scenario == scenario)
+                        .filter(Event.trip_id == first_trip.id)
+                        .first()[0]
+                    )
 
-    new_old_vehicle = {}
-    matched_vehicle_id = 0
-    for schedule_id, vehicle_id in list_of_assigned_schedules:
-        if vehicle_id != matched_vehicle_id:
-            matched_vehicle_id = vehicle_id
-            # Get rotation from db with id
-            rotation_q = session.query(Rotation).filter(Rotation.id == schedule_id)
-            # Match old and new vehicle id
-            old_vehicle_id = rotation_q.one().vehicle_id
-            new_old_vehicle[vehicle_id] = old_vehicle_id
+                    standby_event = Event(
+                        scenario=scenario,
+                        vehicle_type_id=vehicle_type_id,
+                        vehicle=current_vehicle_db,
+                        station_id=None,
+                        area_id=area.id,
+                        subloc_no=area.capacity,
+                        trip_id=None,
+                        time_start=timedelta(seconds=standby_start)
+                        + simulation_start_time,
+                        time_end=timedelta(seconds=standby_end) + simulation_start_time,
+                        soc_start=soc,
+                        soc_end=soc,
+                        event_type=EventType.STANDBY_DEPARTURE,
+                        description=f"DUMMY Standby event for {rotation_id}.",
+                        timeseries=None,
+                    )
 
-    # New rotation assignment
+                    list_of_events.append(standby_event)
 
-    for schedule_id, vehicle_id in list_of_assigned_schedules:
-        # Get corresponding old vehicle id
-        old_vehicle_id = new_old_vehicle[vehicle_id]
-        session.query(Rotation).filter(Rotation.id == schedule_id).update(
-            {"vehicle_id": old_vehicle_id}, synchronize_session=False
-        )
+        new_old_vehicle = {}
+        matched_vehicle_id = 0
+        for schedule_id, vehicle_id in list_of_assigned_schedules:
+            if vehicle_id != matched_vehicle_id:
+                matched_vehicle_id = vehicle_id
+                # Get rotation from db with id
+                rotation_q = session.query(Rotation).filter(Rotation.id == schedule_id)
+                # Match old and new vehicle id
+                old_vehicle_id = rotation_q.one().vehicle_id
+                new_old_vehicle[vehicle_id] = old_vehicle_id
 
-    # Write Events
-    session.add_all(list_of_events)
-    session.flush()
+        # New rotation assignment
 
-    # Delete all non-depot events
-    session.query(Event).filter(
-        Event.scenario_id == scenario_id,
-        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-    ).delete()
+        for schedule_id, vehicle_id in list_of_assigned_schedules:
+            # Get corresponding old vehicle id
+            old_vehicle_id = new_old_vehicle[vehicle_id]
+            session.query(Rotation).filter(Rotation.id == schedule_id).update(
+                {"vehicle_id": old_vehicle_id}, synchronize_session="auto"
+            )
 
-    session.flush()
-
-    # Update depot events with old vehicle id
-    for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
+        # Delete all non-depot events
         session.query(Event).filter(
-            Event.scenario_id == scenario_id,
-            Event.vehicle_id == new_vehicle_id,
-        ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)
-
-        session.query(Vehicle).filter(
-            Vehicle.id == new_vehicle_id,
-        ).delete(synchronize_session=False)
+            Event.scenario == scenario,
+            Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+        ).delete()
 
         session.flush()
 
-    # Delete all non-depot events
-    session.query(Event).filter(
-        Event.scenario_id == scenario_id,
-        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-    ).delete(synchronize_session=False)
+        # Update depot events with old vehicle id
+        for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
+            session.query(Event).filter(
+                Event.scenario == scenario,
+                Event.vehicle_id == new_vehicle_id,
+            ).update({"vehicle_id": old_vehicle_id}, synchronize_session="auto")
 
-    session.flush()
+            session.query(Vehicle).filter(
+                Vehicle.id == new_vehicle_id,
+            ).delete(synchronize_session="auto")
 
-    # Delete all vehicles without rotations
+            session.flush()
 
-    vehicle_assigned_sq = (
-        session.query(Rotation.vehicle_id)
-        .filter(Rotation.scenario_id == scenario_id)
-        .distinct()
-        .subquery()
-    )
+        # Delete all non-depot events
+        session.query(Event).filter(
+            Event.scenario == scenario,
+            Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+        ).delete(synchronize_session="auto")
 
-    session.query(Vehicle).filter(Vehicle.scenario_id == scenario_id).filter(
-        Vehicle.id.not_in(vehicle_assigned_sq)
-    ).delete()
+        session.flush()
 
-    session.flush()
+        # Delete all vehicles without rotations
+
+        vehicle_assigned_sq = (
+            session.query(Rotation.vehicle_id)
+            .filter(Rotation.scenario == scenario)
+            .distinct()
+            .subquery()
+        )
+
+        session.query(Vehicle).filter(Vehicle.scenario == scenario).filter(
+            Vehicle.id.not_in(select(vehicle_assigned_sq))
+        ).delete()
+
+        session.flush()

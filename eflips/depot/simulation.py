@@ -8,9 +8,9 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 
 import simpy
+from eflips.helperFunctions import load_json, save_json, set_by_path
 
 import eflips
-from eflips.helperFunctions import load_json, save_json, set_by_path
 
 
 class DepotHost:
@@ -77,10 +77,6 @@ class SimulationHost:
         self, to_simulate, run_progressbar=False, print_timestamps=True, tictocname=""
     ):
         self.to_simulate = to_simulate
-        if len(to_simulate) > 1:
-            raise ValueError(
-                "Currently, only one depot can be simulated in a " "simulation run."
-            )
 
         self.tictoc = eflips.helperFunctions.Tictoc(print_timestamps, tictocname)
         self.tictoc.tic()
