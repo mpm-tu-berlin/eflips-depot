@@ -1,3 +1,5 @@
+"""This package contains the private API for the depot-related functionality in eFLIPS."""
+
 from datetime import timedelta
 from enum import Enum, auto
 from math import ceil
@@ -22,11 +24,10 @@ from eflips.model import (
 from sqlalchemy.orm import Session
 
 
-def delete_depot(scenario: Scenario, session: Session):
+def delete_depot(scenario: Scenario, session: Session) -> None:
     """This function deletes all depot-related data from the database for a given scenario.
 
-    Used before a new depot
-    in this scenario is created.
+    Used before a new depot in this scenario is created.
 
     :param scenario: The scenario to be simulated
     :param session: The database session
@@ -58,7 +59,7 @@ def delete_depot(scenario: Scenario, session: Session):
     # delete assoc_plan_process
 
 
-def depot_to_template(depot: Depot) -> Dict:
+def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     """
     Converts the depot to a template for internal use in the simulation core.
 
@@ -242,8 +243,8 @@ def find_first_last_stop_for_rotation_id(
     """
     Identifies the first stop, last stop and vehicle type for a given rotation.
 
-    :param rotation:
-    :param session:
+    :param rotation: An :class:`eflips.model.Rotation` object
+    :param session: An SQLAlchemy session object to the database
     :return: A tuple of the first stop, last stop and vehicle type
     """
 

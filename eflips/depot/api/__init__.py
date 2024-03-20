@@ -4,23 +4,25 @@ This package contains the public API for eFLIPS-Depot.
 It is to be used in conjunction with the
 `eflips.model <https://github.com/mpm-tu-berlin/eflips-model>`_ package, where the Scenario is defined.
 
-## Notes on the order of the functions
+Notes on the usage of the API
+-----------------------------
+
+The following steps are recommended for using the API:
 
 1. Check if there are already "driving events" in the database. They come from a "consumption simulation" and are
-   associated with a vehicle. If there are no driving events, you may use the `simple_consumption_simulation` function
-   (with `initialize_vehicles=True`) to create them. This function will also initialize the vehicles in the database
+   associated with a vehicle. If there are no driving events, you may use the :func:`simple_consumption_simulation`
+   (with ``initialize_vehicles=True``) to create them. This function will also initialize the vehicles in the database
    with the correct vehicle type and assign them to rotations.
-2. Check if there is already a depot layout in the database. If there is not, you may use the `generate_depot_layout`
-   function to create a simple depot layout and plan.
-3. Either
-    a. Use the `init_simulation` function to create a simulation host object, which is a "black box" object containing
+2. Check if there is already a depot layout in the database. If there is not, you may use the
+   :func:`generate_depot_layout` function to create a simple depot layout and plan.
+3. Either use the :func:`simulate_scenario` function to run the whole simulation in one go, or use the following steps:
+    a. Use the :func:`init_simulation` function to create a simulation host, which is a "black box" object containing
        all input data for the simulation.
-    b. Use the `run_simulation` function to run the simulation and obtain the results.
-    c. Use the `add_evaluation_to_database` function to add the results to the database.
-    d. Or use the `simulate_scenario` function to integrate these three steps into one function.
-4. For the results to be valid, the consumption simulation should now be run again with the `initialize_vehicles`
-   parameter set to False. This will update the battery states based on the actual departure SoC and vehicle
-   assignments.
+    b. Use the :func:`run_simulation` function to run the simulation and obtain the results.
+    c. Use the :func:`add_evaluation_to_database` function to add the results to the database.
+4. For the results to be valid, the consumption simulation should now be run again.
+    a. If you are using an external consumption model, run it again making sure it does not create new vehicles.
+    b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 """
 import copy
 import os
@@ -30,6 +32,8 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import sqlalchemy.orm
+from sqlalchemy.orm import Session
+
 from eflips.model import (
     Area,
     Depot,
@@ -40,7 +44,6 @@ from eflips.model import (
     Trip,
     Vehicle,
 )
-from sqlalchemy.orm import Session
 
 import eflips.depot
 from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
@@ -66,28 +69,30 @@ def simple_consumption_simulation(
     calculate_timeseries: bool = False,
 ) -> None:
     """
-    This implements a simple consumption simulation.
+    A simple consumption simulation and vehicle initialization.
 
-    It is calculated by multiplying the vehicle's total distance by a constant `VehicleType.consumption`. This is useful
-    for testing purposes.
+    Energy consumotion is calculated by multiplying the vehicle's total distance by a constant
+    ``VehicleType.consumption``.
 
-    If run with `initialize_vehicles=True`, the method will also initialize the vehicles in the database with the
+    If run with ``initialize_vehicles=True``, the method will also initialize the vehicles in the database with the
     correct vehicle type and assign them to rotations. If this is false, it will assume that there are already vehicle
-    entries and Rotation.vehicle_id is already set.
+    entries and ``Rotation.vehicle_id`` is already set.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
             an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-            `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-            parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+            ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+            parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
             valid database URL.
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
+            When running this function for the first time, this should be set to True. When running this function again
+            after the vehicles have been initialized, this should be set to False.
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
             :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
             valid database URL.
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
             to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
-             is set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
-            significantly speed up the simulation.
+            is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
+            may significantly speed up the simulation.
     :return: Nothing. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -157,7 +162,7 @@ def simple_consumption_simulation(
                     standby_start = earliest_trip.departure_time - timedelta(seconds=1)
                     standby_event = Event(
                         scenario_id=scenario.id,
-                        vehicle_type_id=rotation.vehicle_type_id,
+                        vehicle_type_id=vehicle.vehicle_type_id,
                         vehicle=vehicle,
                         area_id=area.id,
                         subloc_no=area.capacity,
@@ -248,12 +253,13 @@ def generate_depot_layout(
     delete_existing_depot: bool = False,
 ):
     """
-    This function generates one or more depots for the scenario.
+    Generates one or more depots for the scenario.
 
-    First, it scans the rotations to identify all the spots that serve as start *and* end of a rotation. Then it checks the set of rotations for these spots for the kinds of
-    vehicle types that are used there. Next, the amount of vehicles that are simultaneously present at the depot is
-    calculated. Then it creates a depot layout with an arrival and a charging area for each vehicle type. The capacity
-    if each area is taken from the calculated amount of vehicles. The depot layout is then added to the database.
+    First, the rotations are scanned to identify all the spots that serve as start *and* end of a rotation. Then the set
+    of rotations for these spots are checked for vehicle types that are used there. Next, the amount of vehicles that
+    are simultaneously present at the depot is calculated. Then a depot layout with an arrival and a charging area for
+    each vehicle type is created. The capacity of each area is taken from the calculated amount of vehicles.
+    The depot layout is then added to the database.
 
     A default plan will also be generated, which includes the following default processes: standby_arrival, cleaning,
     charging and standby_departure. Each vehicle will be processed with this exact order (standby_arrival is optional
@@ -262,9 +268,11 @@ def generate_depot_layout(
     The function only deletes the depot if the `delete_existing_depot` parameter is set to True. If there is already a
     depot existing in this scenario and this parameter is set to False, a ValueError will be raised.
 
-    :param scenario: The scenario to be simulated. Can be either a :class:`eflips.model.Scenario` object (with a live
-           session) or an integer specifying the ID of a scenario in the database. If it is not a
-           :class:`eflips.model.Scenario`, the `database_url` parameter must be set to a valid database URL.
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+        valid database URL.
     :param charging_power: the charging power of the charging area in kW
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
@@ -278,8 +286,7 @@ def generate_depot_layout(
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
                 raise ValueError("Depot already exists.")
-            else:
-                delete_depot(scenario, session)
+            delete_depot(scenario, session)
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (
@@ -320,9 +327,9 @@ def generate_depot_layout(
                         right=0,
                     )
                 max_occupancies[vehicle_type] = max(
-                    max(occupancy), 1
+                    occupancy, 1
                 )  # To avoid zero occupancy
-                max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
+                max_clean_occupancies[vehicle_type] = max(clean_occupancy, 1)
 
             # Create a simple depot at this station
             create_simple_depot(
@@ -344,27 +351,20 @@ def simulate_scenario(
     """
     This method simulates a scenario and adds the results to the database.
 
-    It fills in the "Charging Events" in the
-    :class:`eflips.model.Event` table and associates :class:`eflips.model.Vehicle` objects with all the existing
-    "Driving Events" in the :class:`eflips.model.Event` table.
+    It fills in the "Charging Events" in the :class:`eflips.model.Event` table and associates
+    :class:`eflips.model.Vehicle` objects with all the existing "Driving Events" in the :class:`eflips.model.Event`
+    table.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
         an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-        `id` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the `database_url`
-        parameter must be set to a valid database URL ot the environment variable `DATABASE_URL` must be set to a
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
-
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
-        is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
+        is needed because the result should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
-
-    :param calculate_exact_vehicle_count: A boolean flag indicating whether the exact number of vehicles should be
-        calculated. If this is set to True, the simulation will be run twice. The first time, the number of vehicles
-        will be calculated using the number of trips for each vehicle type. The second time, the number of vehicles
-        will be set to the calculated number of vehicles.
-
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
@@ -402,15 +402,12 @@ def init_simulation(
     vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
 ) -> SimulationHost:
     """
-    This methods checks the input data for consistency, initializes a simulation host object and.
-
-    returns it.
+    This methods checks the input data for consistency, initializes a simulation host object and returns it.
 
     The simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
-    :param session: A SQLAlchemy session object. This is used to add all the simulation results to the database.
-
+    :param session: A SQLAlchemy session object.
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
@@ -419,6 +416,9 @@ def init_simulation(
 
     :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type for each
          depot. The dictionary should have the following structure:
+
+         ::
+
             {
                 "1" (depot.id as str): {
                     "1" (vehicle_type.id as str): 10,
@@ -572,7 +572,8 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
 
     :param simulation_host: A "black box" object containing all input data for the simulation.
 
-    :return: Object of :class:`eflips.depot.evaluation.DepotEvaluation` containing the simulation results.
+    :return: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are the depot IDs, as
+        strings.
     """
     simulation_host.run()
 
@@ -630,11 +631,10 @@ def add_evaluation_to_database(
     session: sqlalchemy.orm.Session,
 ) -> None:
     """
-    This method reads the simulation results from the.
+    This method adds a simulation result to the database.
 
-    :class:`eflips.depot.evaluation.DepotEvaluation` object and.
-
-    adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
+    It reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and  adds them into
+     the database. Tables of Event, Rotation and Vehicle will be updated.
 
     :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
            :class:`eflips.model.Event` objects.
@@ -650,24 +650,8 @@ def add_evaluation_to_database(
 
     # Read simulation start time
 
-    for depot_id, depot_evaluation in depot_evaluations.items():
+    for depot_evaluation in depot_evaluations.values():
         simulation_start_time = depot_evaluation.sim_start_datetime
-
-        all_trips = depot_evaluation.timetable.trips
-        repetition_period_seconds = 0
-        latest_arrival_seconds = all_trips[-1].ata
-
-        for i in range(len(all_trips)):
-            if all_trips[i].is_copy is True and all_trips[i + 1].is_copy is False:
-                repetition_period = timedelta(
-                    seconds=all_trips[i + 1].std - all_trips[0].std
-                )
-                latest_arrival_time = (
-                    timedelta(seconds=all_trips[i].ata)
-                    + simulation_start_time
-                    + repetition_period
-                )
-                break
 
         # Initialization of empty lists
 
@@ -745,8 +729,8 @@ def add_evaluation_to_database(
                                 assert (
                                     len(process.starts) == 1 and len(process.ends) == 1
                                 ), (
-                                    f"Current process {process.ID} is completed and should only contain one start and one "
-                                    f"end time."
+                                    f"Current process {process.ID} is completed and should only contain one start and "
+                                    f"one end time."
                                 )
                                 current_area = area_log[start_time]
                                 current_slot = slot_log[start_time]
@@ -838,14 +822,13 @@ def add_evaluation_to_database(
                                     event_type = EventType.PRECONDITIONING
                                 case _:
                                     raise ValueError(
-                                        """Invalid process type %s. Valid process types are "Serve", "Charge", "Standby", 
-                                        "Precondition"""
+                                        'Invalid process type %s. Valid process types are "Serve", "Charge", '
+                                        '"Standby", "Precondition"'
                                     )
 
                             # End time of 0-duration processes are start time of the next process
 
                             if "end" not in process_dict:
-                                # TODO might optimise performance
                                 end_time = time_keys[time_keys.index(start_time) - 1]
                                 process_dict["end"] = end_time
 

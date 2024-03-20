@@ -1,3 +1,5 @@
+"""This module contains miscellaneous utility functions for the eflips-depot API."""
+
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -18,8 +20,9 @@ def create_session(
     scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
 ) -> Tuple[Session, Scenario]:
     """
-    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying.
+    Create a valid session from various inputs.
 
+    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying
     the ID of a scenario in the database, or any other object that has an attribute `id` that is an integer. It then
     creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
     session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
@@ -53,7 +56,7 @@ def create_session(
             scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
         else:
             raise ValueError(
-                "The scenario parameter must be either a Scenario object, an integer or an object with an 'id' attribute."
+                "The scenario parameter must be either a Scenario object, an integer or object with an 'id' attribute."
             )
         yield session, scenario
     finally:
@@ -106,8 +109,8 @@ def repeat_vehicle_schedules(
     """
     This method repeats the vehicle schedules in the list `vehicle_schedules` by the timedelta `repetition_period`.
 
-    It takes the given vehicle schedules and creates two copies, one `repetition_period` earlier, one `repetition_period`
-    later. It then returns the concatenation of the three lists.
+    It takes the given vehicle schedules and creates two copies, one `repetition_period` earlier, one
+    `repetition_period` later. It then returns the concatenation of the three lists.
 
     :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
     :param repetition_period: A timedelta object specifying the period of the vehicle schedules.
@@ -265,7 +268,7 @@ class VehicleSchedule:
             from the `Event` table in the database. This (and an external consumption model) is the recommended way.
         """
 
-        id = str(rot.id)
+        rotation_id = str(rot.id)
         departure = rot.trips[0].departure_time
         arrival = rot.trips[-1].arrival_time
 
@@ -306,7 +309,7 @@ class VehicleSchedule:
             raise ValueError(f"Rotation {rot.id} has no depot at the start or end.")
 
         return VehicleSchedule(
-            id=id,
+            id=rotation_id,
             start_depot_id=str(start_depot.id),
             end_depot_id=str(end_depot.id),
             vehicle_type=str(rot.vehicle_type.id),
