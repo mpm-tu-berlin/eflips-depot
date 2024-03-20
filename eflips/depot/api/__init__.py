@@ -29,6 +29,7 @@ import os
 from datetime import timedelta
 from math import ceil
 from typing import Any, Dict, Optional, Union
+from sqlalchemy.sql import select
 
 import numpy as np
 import sqlalchemy.orm
@@ -175,6 +176,10 @@ def simple_consumption_simulation(
                         timeseries=None,
                     )
                     session.add(standby_event)
+
+        # Since we are doing no_autoflush blocks later, we need to flush the session once here so that unflushed stuff
+        # From preceding functions is visible in the database
+        session.flush()
 
         for rotation in rotations:
             with session.no_autoflush:
@@ -327,9 +332,9 @@ def generate_depot_layout(
                         right=0,
                     )
                 max_occupancies[vehicle_type] = max(
-                    occupancy, 1
+                    max(occupancy), 1
                 )  # To avoid zero occupancy
-                max_clean_occupancies[vehicle_type] = max(clean_occupancy, 1)
+                max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
 
             # Create a simple depot at this station
             create_simple_depot(
@@ -626,7 +631,7 @@ def _add_evaluation_to_database(
 
 
 def add_evaluation_to_database(
-    scenario_id: int,
+    scenario: Scenario,
     depot_evaluations: Dict[str, DepotEvaluation],
     session: sqlalchemy.orm.Session,
 ) -> None:
@@ -636,8 +641,7 @@ def add_evaluation_to_database(
     It reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and  adds them into
      the database. Tables of Event, Rotation and Vehicle will be updated.
 
-    :param scenario_id: the unique identifier of this simulated scenario. Needed for creating
-           :class:`eflips.model.Event` objects.
+    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
 
     :param depot_evaluations: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are
              the depot IDs, as strings.
@@ -670,7 +674,7 @@ def add_evaluation_to_database(
             # Create a Vehicle object for database
             current_vehicle_db = Vehicle(
                 vehicle_type_id=vehicle_type_id,
-                scenario_id=scenario_id,
+                scenario=scenario,
                 name=current_vehicle.ID,
                 name_short=None,
             )
@@ -842,7 +846,7 @@ def add_evaluation_to_database(
                                     soc_end = log.energy / log.energy_real
 
                             current_event = Event(
-                                scenario_id=scenario_id,
+                                scenario=scenario,
                                 vehicle_type_id=vehicle_type_id,
                                 vehicle=current_vehicle_db,
                                 station_id=None,
@@ -864,7 +868,7 @@ def add_evaluation_to_database(
                                 description=None,
                                 timeseries=None,
                             )
-
+                            session.add(current_event)
                             list_of_events_per_vehicle.append(current_event)
 
                 list_of_events.extend(list_of_events_per_vehicle)
@@ -892,13 +896,13 @@ def add_evaluation_to_database(
 
                     soc = (
                         session.query(Event.soc_end)
-                        .filter(Event.scenario_id == scenario_id)
+                        .filter(Event.scenario == scenario)
                         .filter(Event.trip_id == first_trip.id)
                         .first()[0]
                     )
 
                     standby_event = Event(
-                        scenario_id=scenario_id,
+                        scenario=scenario,
                         vehicle_type_id=vehicle_type_id,
                         vehicle=current_vehicle_db,
                         station_id=None,
@@ -934,16 +938,12 @@ def add_evaluation_to_database(
             # Get corresponding old vehicle id
             old_vehicle_id = new_old_vehicle[vehicle_id]
             session.query(Rotation).filter(Rotation.id == schedule_id).update(
-                {"vehicle_id": old_vehicle_id}, synchronize_session=False
+                {"vehicle_id": old_vehicle_id}, synchronize_session="auto"
             )
-
-        # Write Events
-        session.add_all(list_of_events)
-        session.flush()
 
         # Delete all non-depot events
         session.query(Event).filter(
-            Event.scenario_id == scenario_id,
+            Event.scenario == scenario,
             Event.trip_id.isnot(None) | Event.station_id.isnot(None),
         ).delete()
 
@@ -952,21 +952,21 @@ def add_evaluation_to_database(
         # Update depot events with old vehicle id
         for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
             session.query(Event).filter(
-                Event.scenario_id == scenario_id,
+                Event.scenario == scenario,
                 Event.vehicle_id == new_vehicle_id,
-            ).update({"vehicle_id": old_vehicle_id}, synchronize_session=False)
+            ).update({"vehicle_id": old_vehicle_id}, synchronize_session="auto")
 
             session.query(Vehicle).filter(
                 Vehicle.id == new_vehicle_id,
-            ).delete(synchronize_session=False)
+            ).delete(synchronize_session="auto")
 
             session.flush()
 
         # Delete all non-depot events
         session.query(Event).filter(
-            Event.scenario_id == scenario_id,
+            Event.scenario == scenario,
             Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-        ).delete(synchronize_session=False)
+        ).delete(synchronize_session="auto")
 
         session.flush()
 
@@ -974,13 +974,13 @@ def add_evaluation_to_database(
 
         vehicle_assigned_sq = (
             session.query(Rotation.vehicle_id)
-            .filter(Rotation.scenario_id == scenario_id)
+            .filter(Rotation.scenario == scenario)
             .distinct()
             .subquery()
         )
 
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario_id).filter(
-            Vehicle.id.not_in(vehicle_assigned_sq)
+        session.query(Vehicle).filter(Vehicle.scenario == scenario).filter(
+            Vehicle.id.not_in(select(vehicle_assigned_sq))
         ).delete()
 
         session.flush()
