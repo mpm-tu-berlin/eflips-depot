@@ -556,6 +556,38 @@ class TestApi(TestHelpers):
                         list_of_events[i].time_end == list_of_events[i + 1].time_start
                     )
 
+    def test_interruptable_charging_process(self, session, full_scenario, tmp_path):
+        # Run simulation once with not interruptable charging process
+
+        # Update the charging process to be interruptable with very low power
+
+        session.query(Process).filter(Process.name == "Charging").update(
+            {"electric_power": 1, "dispatchable": True}
+        )
+
+        session.flush()
+
+        charging_process = (
+            session.query(Process).filter(Process.name == "Charging").first()
+        )
+        assert charging_process.dispatchable is True
+
+        # Run simulation
+
+        simulation_host = simulate_scenario(full_scenario)
+
+        # Query all charging events and see if there is an increase in Soc
+        all_charging_events = (
+            session.query(Event)
+            .filter(Event.event_type == EventType.CHARGING_DEPOT)
+            .all()
+        )
+
+        # If end socs of depot charging events are less than 1, then the charging process is interruptable
+        for event in all_charging_events:
+            assert event.soc_end > event.soc_start
+            assert event.soc_end < 1
+
 
 class TestSimpleConsumptionSimulation(TestHelpers):
     def test_consumption_simulation_initial(self, session, full_scenario):
