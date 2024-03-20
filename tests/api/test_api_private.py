@@ -2,15 +2,15 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 import simpy
-from eflips.model import Event, EventType, VehicleType, Rotation, Vehicle
+from eflips.model import Event, EventType, Rotation, Vehicle, VehicleType
 
 from api.test_api import TestHelpers
-from eflips.depot import SimpleTrip, Depotinput, SimulationHost
-from eflips.depot.api.private import (
+from eflips.depot import Depotinput, SimpleTrip, SimulationHost
+from eflips.depot.api.private.depot import depot_to_template
+from eflips.depot.api.private.util import (
     vehicle_type_to_eflips,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
-    depot_to_template,
 )
 from eflips.depot.simple_vehicle import (
     VehicleType as EflipsVehicleType,

@@ -1,42 +1,41 @@
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import eflips.model
 import pytest
 from eflips.model import (
-    Scenario,
-    VehicleType,
-    BatteryType,
-    VehicleClass,
-    Vehicle,
-    Line,
-    Station,
-    Route,
-    AssocRouteStation,
-    Rotation,
-    Trip,
-    TripType,
-    StopTime,
-    Depot,
-    Plan,
     Area,
     AreaType,
-    Process,
     AssocPlanProcess,
+    AssocRouteStation,
     Base,
+    BatteryType,
+    Depot,
     Event,
     EventType,
+    Line,
+    Plan,
+    Process,
+    Rotation,
+    Route,
+    Scenario,
+    Station,
+    StopTime,
+    Trip,
+    TripType,
+    Vehicle,
+    VehicleClass,
+    VehicleType,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
+    generate_depot_layout,
     init_simulation,
     run_simulation,
-    simulate_scenario,
-    add_evaluation_to_database,
-    generate_depot_layout,
     simple_consumption_simulation,
+    simulate_scenario,
 )
 
 
@@ -44,7 +43,8 @@ class TestHelpers:
     @pytest.fixture()
     def scenario(self, session):
         """
-        Creates a scenario
+        Creates a scenario.
+
         :param session: An SQLAlchemy Session with the eflips-model schema
         :return: A :class:`Scenario` object
         """
@@ -56,7 +56,8 @@ class TestHelpers:
     @pytest.fixture()
     def full_scenario(self, session):
         """
-        Creates a scenario that comes filled with sample content for each type
+        Creates a scenario that comes filled with sample content for each type.
+
         :param session: An SQLAlchemy Session with the eflips-model schema
         :return: A :class:`Scenario` object
         """
@@ -282,7 +283,9 @@ class TestHelpers:
 
         # Create a simple depot
 
-        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
+        depot = Depot(
+            scenario=scenario, name="Test Depot", name_short="TD", station=stop_1
+        )
         session.add(depot)
 
         # Create plan
@@ -386,7 +389,8 @@ class TestHelpers:
     @pytest.fixture()
     def session(self):
         """
-        Creates a session with the eflips-model schema
+        Creates a session with the eflips-model schema.
+
         NOTE: THIS DELETE ALL DATA IN THE DATABASE
         :return: an SQLAlchemy Session with the eflips-model schema
         """
@@ -408,7 +412,6 @@ class TestApi(TestHelpers):
 
         simulate_scenario(
             scenario=full_scenario.id,
-            calculate_exact_vehicle_count=False,
         )
 
     def test_run_simulation_by_id_and_url(self, session, full_scenario):
@@ -418,7 +421,6 @@ class TestApi(TestHelpers):
         simulate_scenario(
             scenario=full_scenario.id,
             database_url=os.environ["DATABASE_URL"],
-            calculate_exact_vehicle_count=False,
         )
 
     def test_run_simulation_by_object_with_id_and_url(self, session, full_scenario):
@@ -435,7 +437,6 @@ class TestApi(TestHelpers):
         simulate_scenario(
             scenario=scen.id,
             database_url=os.environ["DATABASE_URL"],
-            calculate_exact_vehicle_count=False,
         )
 
     def test_simulate_scenario(self, session, full_scenario):
@@ -444,7 +445,6 @@ class TestApi(TestHelpers):
 
         simulate_scenario(
             scenario=full_scenario,
-            calculate_exact_vehicle_count=True,
         )
 
     def test_init_simulation(self, session, full_scenario):
@@ -459,60 +459,39 @@ class TestApi(TestHelpers):
             session,
         )
 
-        depot_evaluation = run_simulation(simulation_host)
+        depot_evaluations = run_simulation(simulation_host)
 
-        depot_evaluation.path_results = str(tmp_path)
+        for depot_id, depot_evaluation in depot_evaluations.items():
+            result_path = os.path.join(tmp_path, depot_id)
+            os.makedirs(result_path, exist_ok=True)
+            depot_evaluation.path_results = str(result_path)
 
-        depot_evaluation.vehicle_periods(
-            periods={
-                "depot general": "darkgray",
-                "park": "lightgray",
-                "Arrival Cleaning": "steelblue",
-                "Charging": "forestgreen",
-                "Standby Pre-departure": "darkblue",
-                "precondition": "black",
-                "trip": "wheat",
-            },
-            save=True,
-            show=False,
-            formats=(
-                "pdf",
-                "png",
-            ),
-            show_total_power=True,
-            show_annotates=True,
-        )
+            depot_evaluation.vehicle_periods(
+                periods={
+                    "depot general": "darkgray",
+                    "park": "lightgray",
+                    "Arrival Cleaning": "steelblue",
+                    "Charging": "forestgreen",
+                    "Standby Pre-departure": "darkblue",
+                    "precondition": "black",
+                    "trip": "wheat",
+                },
+                save=True,
+                show=False,
+                formats=(
+                    "pdf",
+                    "png",
+                ),
+                show_total_power=True,
+                show_annotates=True,
+            )
 
-        # Check if the files were created and are not empty
-        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.pdf"))
-        assert os.stat(os.path.join(tmp_path, "vehicle_periods.pdf")).st_size > 0
+            # Check if the files were created and are not empty
+            assert os.path.isfile(os.path.join(result_path, "vehicle_periods.pdf"))
+            assert os.stat(os.path.join(result_path, "vehicle_periods.pdf")).st_size > 0
 
-        assert os.path.isfile(os.path.join(tmp_path, "vehicle_periods.png"))
-        assert os.stat(os.path.join(tmp_path, "vehicle_periods.png")).st_size > 0
-
-    def test_run_simulation_correct_vehicle_count(self, session, full_scenario):
-        simulation_host = init_simulation(
-            full_scenario,
-            session,
-        )
-
-        depot_evaluation = run_simulation(simulation_host)
-
-        vehicle_counts = depot_evaluation.nvehicles_used_calculation()
-        simulation_host = init_simulation(
-            scenario=full_scenario,
-            session=session,
-            vehicle_count_dict=vehicle_counts,
-        )
-        depot_evaluation = run_simulation(simulation_host)
-
-        add_evaluation_to_database(full_scenario.id, depot_evaluation, session)
-
-        # Query eventlist from database and plot for testing
-
-        event_list = session.query(Event).all()
-
-        assert len(event_list) > 0
+            assert os.path.isfile(os.path.join(result_path, "vehicle_periods.png"))
+            assert os.stat(os.path.join(result_path, "vehicle_periods.png")).st_size > 0
 
     def test_create_depot(self, session, full_scenario):
         generate_depot_layout(
@@ -536,26 +515,6 @@ class TestApi(TestHelpers):
         plans = session.query(Plan).filter(Area.scenario_id == full_scenario.id).all()
         assert isinstance(plans, list) and len(plans) != 0
 
-        # Generate a depot with user-defined capacity
-        generate_depot_layout(
-            scenario=full_scenario,
-            charging_power=90,
-            delete_existing_depot=True,
-            capacity=200,
-        )
-
-        # Check if depot was created
-        assert (
-            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
-            == 1
-        )
-
-        # Check if areas have correct capacity
-        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
-
-        for area in areas:
-            assert area.capacity == 200
-
     def test_simulate_scenario_with_depot_generation(self, session, full_scenario):
         generate_depot_layout(
             scenario=full_scenario, charging_power=90, delete_existing_depot=True
@@ -563,7 +522,6 @@ class TestApi(TestHelpers):
 
         simulate_scenario(
             scenario=full_scenario,
-            calculate_exact_vehicle_count=True,
         )
         session.commit()
 
@@ -574,7 +532,6 @@ class TestApi(TestHelpers):
 
         simulate_scenario(
             scenario=full_scenario,
-            calculate_exact_vehicle_count=True,
         )
         session.commit()
 

@@ -29,12 +29,9 @@ import os
 from datetime import timedelta
 from math import ceil
 from typing import Any, Dict, Optional, Union
-from sqlalchemy.sql import select
 
 import numpy as np
 import sqlalchemy.orm
-from sqlalchemy.orm import Session
-
 from eflips.model import (
     Area,
     Depot,
@@ -45,6 +42,8 @@ from eflips.model import (
     Trip,
     Vehicle,
 )
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 import eflips.depot
 from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
@@ -385,7 +384,7 @@ def simulate_scenario(
             repetition_period=repetition_period,
         )
         ev = run_simulation(simulation_host)
-        add_evaluation_to_database(scenario.id, ev, session)
+        add_evaluation_to_database(scenario, ev, session)
 
 
 def _init_simulation(
