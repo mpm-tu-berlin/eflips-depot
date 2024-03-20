@@ -49,7 +49,7 @@ import eflips.depot
 from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
 from eflips.depot.api.private.depot import (
     create_simple_depot,
-    delete_depot,
+    delete_depots,
     depot_to_template,
     group_rotations_by_start_end_stop,
 )
@@ -286,7 +286,7 @@ def generate_depot_layout(
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
                 raise ValueError("Depot already exists.")
-            delete_depot(scenario, session)
+            delete_depots(scenario, session)
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (

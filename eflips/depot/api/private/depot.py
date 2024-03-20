@@ -24,7 +24,7 @@ from eflips.model import (
 from sqlalchemy.orm import Session
 
 
-def delete_depot(scenario: Scenario, session: Session) -> None:
+def delete_depots(scenario: Scenario, session: Session) -> None:
     """This function deletes all depot-related data from the database for a given scenario.
 
     Used before a new depot in this scenario is created.
