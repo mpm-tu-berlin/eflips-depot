@@ -18,7 +18,8 @@ def create_session(
     scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
 ) -> Tuple[Session, Scenario]:
     """
-    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying
+    This method takes a scenario, which can be either a :class:`eflips.model.Scenario` object, an integer specifying.
+
     the ID of a scenario in the database, or any other object that has an attribute `id` that is an integer. It then
     creates a SQLAlchemy session and returns it. If the scenario is a :class:`eflips.model.Scenario` object, the
     session is created and returned. If the scenario is an integer or an object with an `id` attribute, the session
@@ -82,7 +83,8 @@ def vehicle_type_to_eflips(vt: VehicleType) -> EflipsVehicleType:
 
 def vehicle_type_to_global_constants_dict(vt: VehicleType) -> Dict[str, float]:
     """
-    This converts the VehicleType object into a dictionary, which is the input
+    This converts the VehicleType object into a dictionary, which is the input.
+
     format of the eflips.globalConstants object.
 
     :return: A dictionary describing some of the properties of the vehicle type.
@@ -129,6 +131,7 @@ def repeat_vehicle_schedules(
 def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
     """
     This method is used to find the start time and duration for simulating a given list of vehicle schedules.
+
     It finds the times of midnight of the day of the first departure and midnight of the day after the last arrival.
 
     :param vehicle_schedules: A list of :class:`eflips.depot.api.input.VehicleSchedule` objects.
@@ -161,40 +164,56 @@ def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
 @dataclass
 class VehicleSchedule:
     """
-    This class represents a vehicle schedule in eFLIPS-Depot. A vehicle schedule presents everything a vehicle does
+    This class represents a vehicle schedule in eFLIPS-Depot.
+
+    A vehicle schedule presents everything a vehicle does
     between leaving the depot and returning to the depot. In eFLIPS-Depot, we only care about a reduced set of
     information, limited to the interaction with the depot.
     """
 
     id: str
-    """Unique ID of this vehicle schedule. This identifier will be returned in the output of eFLIPS-Depot."""
+    """Unique ID of this vehicle schedule.
+
+    This identifier will be returned in the output of eFLIPS-Depot.
+    """
 
     vehicle_type: str
-    """The vehicle type of this vehicle schedule. This is the ID of a vehicle type in the database."""
+    """The vehicle type of this vehicle schedule.
+
+    This is the ID of a vehicle type in the database.
+    """
 
     departure: datetime
     """
-    The departure time of the vehicle from the depot. It *must* include the timezone information.
+    The departure time of the vehicle from the depot.
+
+    It *must* include the timezone information.
     """
 
     arrival: datetime
     """
-    The arrival time of the vehicle at the depot. It *must* include the timezone information.
+    The arrival time of the vehicle at the depot.
+
+    It *must* include the timezone information.
     """
 
     departure_soc: float
     """
-    The battery state of charge (SoC) of the vehicle at the departure time. It must be in the range [0, 1]. Note that
+    The battery state of charge (SoC) of the vehicle at the departure time. It must be in the range [0, 1].
+
+    Note that
     this SoC may not be ctually reached, e.g. if the vehicle is not fully charged when it leaves the depot. The depot
     simulation should always be run multiple times until the `departure_soc` stabilizes.
     """
 
     arrival_soc: float
     """
-    The battery state of charge (SoC) of the vehicles at the arrival time. It must be in the range [-inf, 1]. This value
-    is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It is a dictionary 
-    mapping vehicle types to floats. The dictionary must contain an entry for each vehicle type that is part of the 
-    `vehicle_class` of this vehicle schedule. 
+    The battery state of charge (SoC) of the vehicles at the arrival time. It must be in the range [-inf, 1].
+
+    This value
+    is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package. It is a dictionary
+    mapping vehicle types to floats. The dictionary must contain an entry for each vehicle type that is part of the
+    `vehicle_class` of this vehicle schedule.
 
     **NOTE**: For the current API version, we only support a single vehicle type per vehicle schedule. This means that
     the dictionary must contain exactly one entry.
@@ -202,28 +221,26 @@ class VehicleSchedule:
 
     minimal_soc: float
     """
-    The minimal battery state of charge (SoC) of the vehicle during the trip. It must be in the range [-inf, 1]. This
+    The minimal battery state of charge (SoC) of the vehicle during the trip.
+
+    It must be in the range [-inf, 1]. This
     value is calculated by a consumption model, e.g. the consumption model of the `ebustoolbox` package.
     """
 
     opportunity_charging: bool
-    """
-    Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip.
-    """
+    """Whether the vehicle is opportunity-charged (meaning charging at terminus stations) during the trip."""
 
     start_depot_id: str
-    """
-    The ID of the depot where the vehicle starts its trip.
-    """
+    """The ID of the depot where the vehicle starts its trip."""
 
     end_depot_id: str
-    """
-    The ID of the depot where the vehicle ends its trip.
-    """
+    """The ID of the depot where the vehicle ends its trip."""
 
     _is_copy: bool = False
     """
-    Whether this vehicle schedule is a copy of another vehicle schedule. It should not be set manually, but only by
+    Whether this vehicle schedule is a copy of another vehicle schedule.
+
+    It should not be set manually, but only by
     calling the :meth:`repeat` method.
     """
 
@@ -235,7 +252,9 @@ class VehicleSchedule:
         session,
     ):
         """
-        This constructor creates a VehicleSchedule object from a Rotation object. It is intended to be used by the
+        This constructor creates a VehicleSchedule object from a Rotation object.
+
+        It is intended to be used by the
         eflips-depot API.
 
         :param rot: The Rotation object from which the VehicleSchedule is created.
@@ -303,7 +322,8 @@ class VehicleSchedule:
         self, simulation_start_time: datetime, env: simpy.Environment
     ) -> SimpleTrip:
         """
-        This converts the vehicle schedule into a :class:`eflips.depot.standalone.SimpleTrip` object, which is the
+        This converts the vehicle schedule into a :class:`eflips.depot.standalone.SimpleTrip` object, which is the.
+
         input format of the depot simulation.
 
         :param simulation_start_time: The time that serves as "zero" for the simulation. It must be before the
@@ -335,7 +355,9 @@ class VehicleSchedule:
 
     def repeat(self, interval: timedelta) -> "VehicleSchedule":
         """
-        Repeats a given VehicleSchedule. Returns a new vehicle schdule offset by a given timedelta that has the
+        Repeats a given VehicleSchedule.
+
+        Returns a new vehicle schdule offset by a given timedelta that has the
         _copy_of field filled
 
         :return: A VehicleSchedule object
@@ -362,7 +384,8 @@ class VehicleSchedule:
         start_of_simulation: datetime,
     ) -> EflipsTimeTable:
         """
-        This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which
+        This converts a list of VehicleSchedule objects into a :class:`eflips.depot.standalone.Timetable` object, which.
+
         is the input format of the depot simulation. This Timetable object is part of the "black box" not covered by
         the API documentation.
 

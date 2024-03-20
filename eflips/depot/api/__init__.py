@@ -1,11 +1,26 @@
 """
-This package contains the public API for eFLIPS-Depot. It is to be used in conjunction with the
-`eflips.model <https://github.com/mpm-tu-berlin/eflips-model>`_ package, where the Scenario is defined. The Scenario
-is then passed to the :func:`eflips.depot.api.init_simulation` function, which returns a (black-box)
-:class:`SimulationHost` object. This object is then passed to the :func:`eflips.depot.api.run_simulation` function,
-which returns another (black-box) object, the :class:`DepotEvaluation` object. This object contains the results of
-the simulation, which can be added to the database using the :func:`eflips.depot.api.add_evaluation_to_database`
-function.
+This package contains the public API for eFLIPS-Depot.
+
+It is to be used in conjunction with the
+`eflips.model <https://github.com/mpm-tu-berlin/eflips-model>`_ package, where the Scenario is defined.
+
+## Notes on the order of the functions
+
+1. Check if there are already "driving events" in the database. They come from a "consumption simulation" and are
+   associated with a vehicle. If there are no driving events, you may use the `simple_consumption_simulation` function
+   (with `initialize_vehicles=True`) to create them. This function will also initialize the vehicles in the database
+   with the correct vehicle type and assign them to rotations.
+2. Check if there is already a depot layout in the database. If there is not, you may use the `generate_depot_layout`
+   function to create a simple depot layout and plan.
+3. Either
+    a. Use the `init_simulation` function to create a simulation host object, which is a "black box" object containing
+       all input data for the simulation.
+    b. Use the `run_simulation` function to run the simulation and obtain the results.
+    c. Use the `add_evaluation_to_database` function to add the results to the database.
+    d. Or use the `simulate_scenario` function to integrate these three steps into one function.
+4. For the results to be valid, the consumption simulation should now be run again with the `initialize_vehicles`
+   parameter set to False. This will update the battery states based on the actual departure SoC and vehicle
+   assignments.
 """
 import copy
 import os
@@ -16,32 +31,31 @@ from typing import Any, Dict, Optional, Union
 import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
+    Area,
+    Depot,
     Event,
     EventType,
     Rotation,
     Scenario,
-    Vehicle,
-    Depot,
-    Area,
     Trip,
+    Vehicle,
 )
 from sqlalchemy.orm import Session
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, SimulationHost
-from eflips.depot import ProcessStatus
+from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
 from eflips.depot.api.private.depot import (
-    depot_to_template,
-    group_rotations_by_start_end_stop,
     create_simple_depot,
     delete_depot,
+    depot_to_template,
+    group_rotations_by_start_end_stop,
 )
-from eflips.depot.api.private.util import VehicleSchedule
-from eflips.depot.api.private.util import create_session
 from eflips.depot.api.private.util import (
+    create_session,
     repeat_vehicle_schedules,
     start_and_end_times,
     vehicle_type_to_global_constants_dict,
+    VehicleSchedule,
 )
 
 
@@ -52,8 +66,10 @@ def simple_consumption_simulation(
     calculate_timeseries: bool = False,
 ) -> None:
     """
-    This implements a simple consumption simulation, by multiplying the vehicle's total distance by a constant
-    `VehicleType.consumption`. This is useful for testing purposes.
+    This implements a simple consumption simulation.
+
+    It is calculated by multiplying the vehicle's total distance by a constant `VehicleType.consumption`. This is useful
+    for testing purposes.
 
     If run with `initialize_vehicles=True`, the method will also initialize the vehicles in the database with the
     correct vehicle type and assign them to rotations. If this is false, it will assume that there are already vehicle
@@ -66,11 +82,11 @@ def simple_consumption_simulation(
             valid database URL.
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
-            URL.
+            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
+            valid database URL.
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this is
-            set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
+            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
+             is set to False, the "timeseries" column of the Event table will be set to None. Setting this to false may
             significantly speed up the simulation.
     :return: Nothing. The results are added to the database.
     """
@@ -232,12 +248,12 @@ def generate_depot_layout(
     delete_existing_depot: bool = False,
 ):
     """
-    This function generates one or more depots for the scenario. First, it scans the rotations to identify all the spots
-    that serve as start *and* end of a rotation. Then it checks the set of rotations for these spots for the kinds of
+    This function generates one or more depots for the scenario.
+
+    First, it scans the rotations to identify all the spots that serve as start *and* end of a rotation. Then it checks the set of rotations for these spots for the kinds of
     vehicle types that are used there. Next, the amount of vehicles that are simultaneously present at the depot is
     calculated. Then it creates a depot layout with an arrival and a charging area for each vehicle type. The capacity
     if each area is taken from the calculated amount of vehicles. The depot layout is then added to the database.
-
 
     A default plan will also be generated, which includes the following default processes: standby_arrival, cleaning,
     charging and standby_departure. Each vehicle will be processed with this exact order (standby_arrival is optional
@@ -323,11 +339,12 @@ def generate_depot_layout(
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
-    calculate_exact_vehicle_count: bool = True,
     database_url: Optional[str] = None,
 ) -> None:
     """
-    This method simulates a scenario and adds the results to the database. It fills in the "Charging Events" in the
+    This method simulates a scenario and adds the results to the database.
+
+    It fills in the "Charging Events" in the
     :class:`eflips.model.Event` table and associates :class:`eflips.model.Vehicle` objects with all the existing
     "Driving Events" in the :class:`eflips.model.Event` table.
 
@@ -372,7 +389,7 @@ def _init_simulation(
     repetition_period: Optional[timedelta] = None,
     vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
-    """Deprecated stub for init_simulation"""
+    """Deprecated stub for init_simulation."""
     raise NotImplementedError(
         "The function _init_simulation is deprecated. Please use init_simulation instead."
     )
@@ -385,8 +402,11 @@ def init_simulation(
     vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
 ) -> SimulationHost:
     """
-    This methods checks the input data for consistency, initializes a simulation host object and returns it. The
-    simulation host object can then be passed to :func:`run_simulation()`.
+    This methods checks the input data for consistency, initializes a simulation host object and.
+
+    returns it.
+
+    The simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
     :param session: A SQLAlchemy session object. This is used to add all the simulation results to the database.
@@ -541,14 +561,14 @@ def init_simulation(
 
 
 def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
-    """Deprecated stub for run_simulation"""
+    """Deprecated stub for run_simulation."""
     raise NotImplementedError(
         "The function _run_simulation is deprecated. Please use run_simulation instead."
     )
 
 
 def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation]:
-    """Run simulation and return simulation results
+    """Run simulation and return simulation results.
 
     :param simulation_host: A "black box" object containing all input data for the simulation.
 
@@ -598,7 +618,7 @@ def _add_evaluation_to_database(
     depot_evaluation: DepotEvaluation,
     session: sqlalchemy.orm.Session,
 ) -> None:
-    """Deprecated stub for add_evaluation_to_database"""
+    """Deprecated stub for add_evaluation_to_database."""
     raise NotImplementedError(
         "The function _add_evaluation_to_database is deprecated. Please use add_evaluation_to_database instead."
     )
@@ -610,7 +630,10 @@ def add_evaluation_to_database(
     session: sqlalchemy.orm.Session,
 ) -> None:
     """
-    This method reads the simulation results from the :class:`eflips.depot.evaluation.DepotEvaluation` object and
+    This method reads the simulation results from the.
+
+    :class:`eflips.depot.evaluation.DepotEvaluation` object and.
+
     adds them into the database. Tables of Event, Rotation and Vehicle will be updated.
 
     :param scenario_id: the unique identifier of this simulated scenario. Needed for creating

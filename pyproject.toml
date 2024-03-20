@@ -24,6 +24,11 @@ addopts = [
     "--import-mode=importlib",
 ]
 
+[tool.pydocstringformatter]
+write = true
+max-line-length = 100
+exclude = ["eflips/depot/*", "eflips/depot/layout_opt/**", "tests/**"]
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-pycharm = "^0.7.0"

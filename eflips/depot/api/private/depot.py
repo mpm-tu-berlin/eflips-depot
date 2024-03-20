@@ -23,7 +23,9 @@ from sqlalchemy.orm import Session
 
 
 def delete_depot(scenario: Scenario, session: Session):
-    """This function deletes all depot-related data from the database for a given scenario. Used before a new depot
+    """This function deletes all depot-related data from the database for a given scenario.
+
+    Used before a new depot
     in this scenario is created.
 
     :param scenario: The scenario to be simulated
@@ -239,6 +241,7 @@ def find_first_last_stop_for_rotation_id(
 ) -> Tuple[Station, Station, VehicleType]:
     """
     Identifies the first stop, last stop and vehicle type for a given rotation.
+
     :param rotation:
     :param session:
     :return: A tuple of the first stop, last stop and vehicle type
@@ -256,6 +259,7 @@ def group_rotations_by_start_end_stop(
 ) -> Dict[Tuple[Station, Station], Dict[VehicleType, List[Rotation]]]:
     """
     For a given scenario, create a list of rotations and group them by their start and end stops.
+
     :param session: An SQLAlchemy session object
     :return: A dictionary of rotations grouped by their start and end stops, with each group further grouped by vehicle
         type.
@@ -292,7 +296,9 @@ def create_simple_depot(
     cleaning_duration: timedelta = timedelta(minutes=30),
 ) -> None:
     """
-    Creates a simple depot for a given scenario. It has one area for each vehicle type and a charging process for each
+    Creates a simple depot for a given scenario.
+
+    It has one area for each vehicle type and a charging process for each
     area. Also an arrival area for each vehicle type.
 
     :param scenario:
@@ -409,23 +415,39 @@ class ProcessType(Enum):
     """This class represents the types of a process in eFLIPS-Depot."""
 
     SERVICE = auto()
-    """This process represents a bus service by workers. It does not require a charging_power and has a fixed 
-    duration."""
+    """This process represents a bus service by workers.
+
+    It does not require a charging_power and has a fixed
+    duration.
+    """
     CHARGING = auto()
-    """This process represents a bus charging process. It requires a charging_power and has no fixed duration."""
+    """This process represents a bus charging process.
+
+    It requires a charging_power and has no fixed duration.
+    """
     STANDBY = auto()
-    """This process represents an arriving bus that is waiting for a service. It does not require a charging_power 
-    and has no fixed duration."""
+    """This process represents an arriving bus that is waiting for a service. It does not require a charging_power.
+
+    and has no fixed duration.
+    """
     STANDBY_DEPARTURE = auto()
-    """This process represents a bus ready for departure. It does not require a charging_power and has no fixed 
-    duration."""
+    """This process represents a bus ready for departure.
+
+    It does not require a charging_power and has no fixed
+    duration.
+    """
     PRECONDITION = auto()
-    """This process represents a bus preconditioning process. It requires a charging_power and has a fixed duration."""
+    """This process represents a bus preconditioning process.
+
+    It requires a charging_power and has a fixed duration.
+    """
 
 
 def process_type(p: Process) -> ProcessType:
     """
-    The type of the process. See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
+    The type of the process.
+
+    See :class:`eflips.depot.api.input.ProcessType` for more information. Note that whether
     a process needs a resource or not depends on the type of the process.
     """
     if p.duration is not None and p.electric_power is None:
