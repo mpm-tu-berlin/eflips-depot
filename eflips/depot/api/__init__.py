@@ -710,6 +710,13 @@ def add_evaluation_to_database(
             waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
             battery_log = current_vehicle.battery_logs
 
+
+            # Create a list in order of time asc. Convenient for looking up corresponding soc
+            battery_log_list = []
+            for log in battery_log:
+                battery_log_list.append((log.t, log.energy/log.energy_real))
+
+
             for start_time, process_log in current_vehicle.logger.loggedData[
                 "dwd.active_processes_copy"
             ].items():
@@ -881,11 +888,18 @@ def add_evaluation_to_database(
                             # Get soc
                             soc_start = None
                             soc_end = None
-                            for log in battery_log:
-                                if log.t == start_time:
-                                    soc_start = log.energy / log.energy_real
-                                if log.t == process_dict["end"]:
-                                    soc_end = log.energy / log.energy_real
+
+                            for i in range(len(battery_log_list)):
+                                log = battery_log_list[i]
+
+                                if log[0] == start_time:
+                                    soc_start = log[1]
+                                if log[0] == process_dict["end"]:
+                                    soc_end = log[1]
+                                if log[0] < start_time < battery_log_list[i + 1][0]:
+                                    soc_start = log[1]
+                                if log[0] < process_dict["end"] < battery_log_list[i + 1][0]:
+                                    soc_end = log[1]
 
                             current_event = Event(
                                 scenario=scenario,
@@ -961,6 +975,7 @@ def add_evaluation_to_database(
                         timeseries=None,
                     )
 
+                    session.add(standby_event)
                     list_of_events.append(standby_event)
 
         new_old_vehicle = {}
