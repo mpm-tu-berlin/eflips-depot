@@ -302,10 +302,13 @@ def create_simple_depot(
     It has one area for each vehicle type and a charging process for each
     area. Also an arrival area for each vehicle type.
 
-    :param scenario:
-    :param station:
-    :param vehicle_type_dict:
-    :param session:
+    :param scenario: The scenario to be simulated
+    :param station: The station where the depot is located
+    :param charging_capacities: A dictionary of vehicle types and the number of vehicles that can be charged at the same time
+    :param cleaning_capacities: A dictionary of vehicle types and the number of vehicles that can be cleaned at the same time
+    :param charging_power: The power of the charging process
+    :param cleaning_duration: The duration of the cleaning process
+    :param session: An SQLAlchemy session object to the database
     :return: Nothing. Depots are created in the database.
     """
 
@@ -355,7 +358,7 @@ def create_simple_depot(
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
         # Add a safety margin of 20% to the parking capacity
-        charging_count = int(ceil(charging_count * 1.2))  # TODO: Make Larger
+        charging_count = int(ceil(charging_count * 1.5))
 
         # Create stand by arrival area
         arrival_area = Area(
@@ -382,7 +385,7 @@ def create_simple_depot(
         # Create cleaning area
         cleaning_count = cleaning_capacities[vehicle_type]
         # Add a safety margin of 20% to the parking capacity
-        cleaning_count = int(ceil(cleaning_count * 1.2))  # TODO: Make Larger
+        cleaning_count = int(ceil(cleaning_count * 1.5))
 
         cleaning_area = Area(
             scenario=scenario,
