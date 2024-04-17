@@ -355,7 +355,7 @@ def create_simple_depot(
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
         # Add a safety margin of 20% to the parking capacity
-        charging_count = int(ceil(charging_count * 1.2)) # TODO: Make Larger
+        charging_count = int(ceil(charging_count * 1.2))  # TODO: Make Larger
 
         # Create stand by arrival area
         arrival_area = Area(
@@ -382,7 +382,7 @@ def create_simple_depot(
         # Create cleaning area
         cleaning_count = cleaning_capacities[vehicle_type]
         # Add a safety margin of 20% to the parking capacity
-        cleaning_count = int(ceil(cleaning_count * 1.2)) # TODO: Make Larger
+        cleaning_count = int(ceil(cleaning_count * 1.2))  # TODO: Make Larger
 
         cleaning_area = Area(
             scenario=scenario,
