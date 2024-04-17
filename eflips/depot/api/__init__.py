@@ -63,10 +63,10 @@ from eflips.depot.api.private.util import (
 
 
 def simple_consumption_simulation(
-    scenario: Union[Scenario, int, Any],
-    initialize_vehicles: bool,
-    database_url: Optional[str] = None,
-    calculate_timeseries: bool = False,
+        scenario: Union[Scenario, int, Any],
+        initialize_vehicles: bool,
+        database_url: Optional[str] = None,
+        calculate_timeseries: bool = False,
 ) -> None:
     """
     A simple consumption simulation and vehicle initialization.
@@ -144,8 +144,8 @@ def simple_consumption_simulation(
             )
             for vehicle in vehicles:
                 if (
-                    session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
-                    == 0
+                        session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
+                        == 0
                 ):
                     # Also add a dummy standby-departure event if this vehicle has no events
                     rotation_per_vehicle = sorted(
@@ -217,7 +217,7 @@ def simple_consumption_simulation(
                         ].elapsed_distance
                         elapsed_energy = consumption * (elapsed_distance / 1000)  # kWh
                         soc = (
-                            current_soc - elapsed_energy / vehicle_type.battery_capacity
+                                current_soc - elapsed_energy / vehicle_type.battery_capacity
                         )
                         timeseries["time"].append(current_time.isoformat())
                         timeseries["soc"].append(soc)
@@ -251,10 +251,10 @@ def simple_consumption_simulation(
 
 
 def generate_depot_layout(
-    scenario: Union[Scenario, int, Any],
-    charging_power: float = 150,
-    database_url: Optional[str] = None,
-    delete_existing_depot: bool = False,
+        scenario: Union[Scenario, int, Any],
+        charging_power: float = 150,
+        database_url: Optional[str] = None,
+        delete_existing_depot: bool = False,
 ):
     """
     Generates one or more depots for the scenario.
@@ -294,8 +294,8 @@ def generate_depot_layout(
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (
-            first_last_stop_tup,
-            vehicle_type_dict,
+                first_last_stop_tup,
+                vehicle_type_dict,
         ) in group_rotations_by_start_end_stop(scenario.id, session).items():
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
@@ -348,9 +348,9 @@ def generate_depot_layout(
 
 
 def simulate_scenario(
-    scenario: Union[Scenario, int, Any],
-    repetition_period: Optional[timedelta] = None,
-    database_url: Optional[str] = None,
+        scenario: Union[Scenario, int, Any],
+        repetition_period: Optional[timedelta] = None,
+        database_url: Optional[str] = None,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -388,10 +388,10 @@ def simulate_scenario(
 
 
 def _init_simulation(
-    scenario: Scenario,
-    session: Session,
-    repetition_period: Optional[timedelta] = None,
-    vehicle_count_dict: Optional[Dict[str, int]] = None,
+        scenario: Scenario,
+        session: Session,
+        repetition_period: Optional[timedelta] = None,
+        vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
     """Deprecated stub for init_simulation."""
     raise NotImplementedError(
@@ -400,10 +400,10 @@ def _init_simulation(
 
 
 def init_simulation(
-    scenario: Scenario,
-    session: Session,
-    repetition_period: Optional[timedelta] = None,
-    vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
+        scenario: Scenario,
+        session: Session,
+        repetition_period: Optional[timedelta] = None,
+        vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
 ) -> SimulationHost:
     """
     This methods checks the input data for consistency, initializes a simulation host object and returns it.
@@ -619,9 +619,9 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
 
 
 def _add_evaluation_to_database(
-    scenario_id: int,
-    depot_evaluation: DepotEvaluation,
-    session: sqlalchemy.orm.Session,
+        scenario_id: int,
+        depot_evaluation: DepotEvaluation,
+        session: sqlalchemy.orm.Session,
 ) -> None:
     """Deprecated stub for add_evaluation_to_database."""
     raise NotImplementedError(
@@ -630,9 +630,9 @@ def _add_evaluation_to_database(
 
 
 def add_evaluation_to_database(
-    scenario: Scenario,
-    depot_evaluations: Dict[str, DepotEvaluation],
-    session: sqlalchemy.orm.Session,
+        scenario: Scenario,
+        depot_evaluations: Dict[str, DepotEvaluation],
+        session: sqlalchemy.orm.Session,
 ) -> None:
     """
     This method adds a simulation result to the database.
@@ -710,12 +710,10 @@ def add_evaluation_to_database(
             waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
             battery_log = current_vehicle.battery_logs
 
-
             # Create a list in order of time asc. Convenient for looking up corresponding soc
             battery_log_list = []
             for log in battery_log:
-                battery_log_list.append((log.t, log.energy/log.energy_real))
-
+                battery_log_list.append((log.t, log.energy / log.energy_real))
 
             for start_time, process_log in current_vehicle.logger.loggedData[
                 "dwd.active_processes_copy"
@@ -733,7 +731,7 @@ def add_evaluation_to_database(
                         match process.status:
                             case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
                                 assert (
-                                    len(process.starts) == 1 and len(process.ends) == 1
+                                        len(process.starts) == 1 and len(process.ends) == 1
                                 ), (
                                     f"Current process {process.ID} is completed and should only contain one start and "
                                     f"one end time."
@@ -768,8 +766,8 @@ def add_evaluation_to_database(
                                         else:
                                             for other_process in process_log:
                                                 if (
-                                                    other_process.dur > 0
-                                                    and len(other_process.ends) != 0
+                                                        other_process.dur > 0
+                                                        and len(other_process.ends) != 0
                                                 ):
                                                     actual_start_time = (
                                                         other_process.ends[0]
@@ -782,11 +780,11 @@ def add_evaluation_to_database(
 
                                         # If this standby event lasts actually 0 seconds, it is not a real event
                                         if (
-                                            actual_start_time in dict_of_events.keys()
-                                            and dict_of_events[actual_start_time][
-                                                "type"
-                                            ]
-                                            == "trip"
+                                                actual_start_time in dict_of_events.keys()
+                                                and dict_of_events[actual_start_time][
+                                            "type"
+                                        ]
+                                                == "trip"
                                         ):
                                             continue
                                         dict_of_events[actual_start_time] = {
@@ -812,7 +810,7 @@ def add_evaluation_to_database(
                                         }
                             case ProcessStatus.IN_PROGRESS:
                                 assert (
-                                    len(process.starts) == 1 and len(process.ends) == 0
+                                        len(process.starts) == 1 and len(process.ends) == 0
                                 ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
                                 current_area = area_log[start_time]
                                 current_slot = slot_log[start_time]
@@ -850,11 +848,11 @@ def add_evaluation_to_database(
                                     f"Invalid process status {process.status} for process {process.ID}."
                                 )
 
-            time_keys = sorted(dict_of_events.keys(), reverse=True)
-            if len(time_keys) != 0:
+            reversed_time_keys = sorted(dict_of_events.keys(), reverse=True)
+            if len(reversed_time_keys) != 0:
                 # Generating valid event-list
                 is_copy = True
-                for start_time in time_keys:
+                for start_time in reversed_time_keys:
                     process_dict = dict_of_events[start_time]
                     if process_dict["type"] == "trip":
                         is_copy = process_dict["is_copy"]
@@ -882,7 +880,10 @@ def add_evaluation_to_database(
                             # End time of 0-duration processes are start time of the next process
 
                             if "end" not in process_dict:
-                                end_time = time_keys[time_keys.index(start_time) - 1]
+                                # End time will be the one time key "later"
+                                end_time = reversed_time_keys[
+                                    reversed_time_keys.index(start_time) - 1
+                                    ]
                                 process_dict["end"] = end_time
 
                             # Get soc
@@ -898,7 +899,11 @@ def add_evaluation_to_database(
                                     soc_end = log[1]
                                 if log[0] < start_time < battery_log_list[i + 1][0]:
                                     soc_start = log[1]
-                                if log[0] < process_dict["end"] < battery_log_list[i + 1][0]:
+                                if (
+                                        log[0]
+                                        < process_dict["end"]
+                                        < battery_log_list[i + 1][0]
+                                ):
                                     soc_end = log[1]
 
                             current_event = Event(
@@ -910,9 +915,9 @@ def add_evaluation_to_database(
                                 subloc_no=int(process_dict["slot"]),
                                 trip_id=None,
                                 time_start=timedelta(seconds=start_time)
-                                + simulation_start_time,
+                                           + simulation_start_time,
                                 time_end=timedelta(seconds=process_dict["end"])
-                                + simulation_start_time,
+                                         + simulation_start_time,
                                 soc_start=soc_start
                                 if soc_start is not None
                                 else soc_end,
@@ -931,12 +936,12 @@ def add_evaluation_to_database(
 
                 # For non-copy schedules with no predecessor events, adding a dummy standby-departure
                 if (
-                    dict_of_events[time_keys[-1]]["type"] == "trip"
-                    and dict_of_events[time_keys[-1]]["is_copy"] is False
+                        dict_of_events[reversed_time_keys[-1]]["type"] == "trip"
+                        and dict_of_events[reversed_time_keys[-1]]["is_copy"] is False
                 ):
-                    standby_start = time_keys[-1] - 1
-                    standby_end = time_keys[-1]
-                    rotation_id = str(dict_of_events[time_keys[-1]]["id"])
+                    standby_start = reversed_time_keys[-1] - 1
+                    standby_end = reversed_time_keys[-1]
+                    rotation_id = str(dict_of_events[reversed_time_keys[-1]]["id"])
                     area = (
                         session.query(Area)
                         .filter(Area.vehicle_type_id == vehicle_type_id)
@@ -966,7 +971,7 @@ def add_evaluation_to_database(
                         subloc_no=area.capacity,
                         trip_id=None,
                         time_start=timedelta(seconds=standby_start)
-                        + simulation_start_time,
+                                   + simulation_start_time,
                         time_end=timedelta(seconds=standby_end) + simulation_start_time,
                         soc_start=soc,
                         soc_end=soc,
@@ -978,46 +983,12 @@ def add_evaluation_to_database(
                     session.add(standby_event)
                     list_of_events.append(standby_event)
 
-        new_old_vehicle = {}
-        matched_vehicle_id = 0
-        for schedule_id, vehicle_id in list_of_assigned_schedules:
-            if vehicle_id != matched_vehicle_id:
-                matched_vehicle_id = vehicle_id
-                # Get rotation from db with id
-                rotation_q = session.query(Rotation).filter(Rotation.id == schedule_id)
-                # Match old and new vehicle id
-                old_vehicle_id = rotation_q.one().vehicle_id
-                new_old_vehicle[vehicle_id] = old_vehicle_id
-
         # New rotation assignment
-
         for schedule_id, vehicle_id in list_of_assigned_schedules:
             # Get corresponding old vehicle id
-            old_vehicle_id = new_old_vehicle[vehicle_id]
             session.query(Rotation).filter(Rotation.id == schedule_id).update(
-                {"vehicle_id": old_vehicle_id}, synchronize_session="auto"
+                {"vehicle_id": vehicle_id}, synchronize_session="auto"
             )
-
-        # Delete all non-depot events
-        session.query(Event).filter(
-            Event.scenario == scenario,
-            Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-        ).delete()
-
-        session.flush()
-
-        # Update depot events with old vehicle id
-        for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
-            session.query(Event).filter(
-                Event.scenario == scenario,
-                Event.vehicle_id == new_vehicle_id,
-            ).update({"vehicle_id": old_vehicle_id}, synchronize_session="auto")
-
-            session.query(Vehicle).filter(
-                Vehicle.id == new_vehicle_id,
-            ).delete(synchronize_session="auto")
-
-            session.flush()
 
         # Delete all non-depot events
         session.query(Event).filter(
@@ -1028,7 +999,6 @@ def add_evaluation_to_database(
         session.flush()
 
         # Delete all vehicles without rotations
-
         vehicle_assigned_sq = (
             session.query(Rotation.vehicle_id)
             .filter(Rotation.scenario == scenario)
