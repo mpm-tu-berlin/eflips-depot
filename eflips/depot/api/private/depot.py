@@ -357,19 +357,8 @@ def create_simple_depot(
 
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
-        # Add a safety margin of 20% to the parking capacity
-        charging_count = int(ceil(charging_count * 1.5))
-
-        # Create stand by arrival area
-        arrival_area = Area(
-            scenario=scenario,
-            name=f"Arrival for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=charging_count,
-        )
-        session.add(arrival_area)
-        arrival_area.vehicle_type = vehicle_type
+        # Add a safety margin of 100% to the parking capacity
+        charging_count = int(ceil(charging_count * 2))
 
         # Create charging area
         charging_area = Area(
@@ -384,8 +373,8 @@ def create_simple_depot(
 
         # Create cleaning area
         cleaning_count = cleaning_capacities[vehicle_type]
-        # Add a safety margin of 20% to the parking capacity
-        cleaning_count = int(ceil(cleaning_count * 1.5))
+        # Add a safety margin of 100% to the parking capacity
+        cleaning_count = int(ceil(cleaning_count * 2))
 
         cleaning_area = Area(
             scenario=scenario,
@@ -396,6 +385,18 @@ def create_simple_depot(
         )
         session.add(cleaning_area)
         cleaning_area.vehicle_type = vehicle_type
+
+        # Create stand by arrival area
+        arrival_area = Area(
+            scenario=scenario,
+            name=f"Arrival for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=(charging_count + cleaning_count)
+            * 2,  # SHould be huge, not all of it will be used
+        )
+        session.add(arrival_area)
+        arrival_area.vehicle_type = vehicle_type
 
         arrival_area.processes.append(standby_arrival)
         cleaning_area.processes.append(clean)

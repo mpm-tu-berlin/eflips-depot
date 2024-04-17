@@ -529,13 +529,15 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the areas, with a 2x margin
+            # Calculate it from the size of the areas (except the area for the first standby process, which is already
+            # really large), with a 2x margin
             for vehicle_type in vehicle_types_for_depot:
                 vehicle_count = sum(
                     [
                         area.capacity
                         for area in depot.areas
                         if area.vehicle_type_id == int(vehicle_type)
+                        and depot.default_plan.processes[0] not in area.processes
                     ]
                 )
                 eflips.globalConstants["depot"]["vehicle_count"][depot_id][
