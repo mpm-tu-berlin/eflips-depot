@@ -26,6 +26,7 @@ The following steps are recommended for using the API:
 """
 import copy
 import os
+import warnings
 from datetime import timedelta
 from math import ceil
 from typing import Any, Dict, Optional, Union
@@ -41,6 +42,8 @@ from eflips.model import (
     Scenario,
     Trip,
     Vehicle,
+    Process,
+    AssocAreaProcess,
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
@@ -686,6 +689,7 @@ def add_evaluation_to_database(
 
             dict_of_events = {}
 
+            # Generate process log for each schedule
             for finished_trip in current_vehicle.finished_trips:
                 dict_of_events[finished_trip.atd] = {
                     "type": "trip",
@@ -712,7 +716,53 @@ def add_evaluation_to_database(
             waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
             battery_log = current_vehicle.battery_logs
 
-            # Create a list in order of time asc. Convenient for looking up corresponding soc
+            # Create standby events according to waiting_log
+            waiting_log_timekeys = sorted(waiting_log.keys())
+
+            for idx in range(len(waiting_log_timekeys)):
+                end_time = waiting_log_timekeys[idx]
+                waiting_info = waiting_log[end_time]
+
+                if waiting_info["waiting_time"] == 0:
+                    continue
+
+                # Vehicle is waiting in the last area in waiting_log and expecting to enter the current area
+                expected_area = waiting_info["area"]
+                # Find the area for standby arrival event
+
+                waiting_area_id = (
+                    session.query(Area.id)
+                    .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
+                    .join(Process, Process.id == AssocAreaProcess.process_id)
+                    .filter(
+                        Process.dispatchable == False,
+                        Process.duration.is_(None),
+                        Process.electric_power.is_(None),
+                        Area.vehicle_type_id == int(current_vehicle.vehicle_type.ID),
+                        Area.scenario_id == scenario.id,
+                    )
+                    .one()[0]
+                )
+
+                # Make sure the vehicle is waiting at an area with enough capacity
+
+                current_slot = slot_log[waiting_log_timekeys[idx - 1]]
+
+                start_time = end_time - waiting_info["waiting_time"]
+
+                warnings.warn(
+                    f"Vehicle {current_vehicle.ID} is waiting at {waiting_area_id} because area {expected_area} is full."
+                )
+
+                dict_of_events[start_time] = {
+                    "type": "Standby",
+                    "end": end_time,
+                    "area": waiting_area_id,
+                    "slot": current_slot,
+                    "is_area_sink": waiting_area_id,
+                }
+
+            # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
             battery_log_list = []
             for log in battery_log:
                 battery_log_list.append((log.t, log.energy / log.energy_real))
