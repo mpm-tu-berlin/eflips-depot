@@ -493,6 +493,48 @@ class TestApi(TestHelpers):
             assert os.path.isfile(os.path.join(result_path, "vehicle_periods.png"))
             assert os.stat(os.path.join(result_path, "vehicle_periods.png")).st_size > 0
 
+    def test_run_simulation_too_small_battery(self, session, full_scenario, tmp_path):
+        """
+        This tests the consumption simulation with a batter that is way too small.
+
+        The expected result is that the simulation finishes, with no extra vehicles being added.
+
+        The old result was that the simulation creates a high number of vehicles, which is not correct.
+
+        :param session:
+        :param full_scenario:
+        :param tmp_path:
+        :return:
+        """
+        session.query(VehicleType).filter(
+            VehicleType.scenario_id == full_scenario.id
+        ).update({"battery_capacity": 1})
+
+        # Delete the existing simulation results
+        rotation_q = session.query(Rotation).filter(
+            Rotation.scenario_id == full_scenario.id
+        )
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
+
+        simple_consumption_simulation(full_scenario, initialize_vehicles=True)
+
+        session.commit()
+
+        simulation_host = init_simulation(
+            full_scenario,
+            session,
+        )
+
+        with pytest.warns(UserWarning):
+            depot_evaluations = run_simulation(simulation_host)
+
+        assert len(depot_evaluations) == 1
+
+        for depot_id, depot_evaluation in depot_evaluations.items():
+            assert depot_evaluation.nvehicles_used_calculation()["2"] == 3
+
     def test_create_depot(self, session, full_scenario):
         generate_depot_layout(
             scenario=full_scenario, charging_power=90, delete_existing_depot=True

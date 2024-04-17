@@ -26,6 +26,7 @@ The following steps are recommended for using the API:
 """
 import copy
 import os
+import warnings
 from datetime import timedelta
 from math import ceil
 from typing import Any, Dict, Optional, Union
@@ -41,6 +42,8 @@ from eflips.model import (
     Scenario,
     Trip,
     Vehicle,
+    Process,
+    AssocAreaProcess,
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
@@ -529,13 +532,15 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the areas, with a 2x margin
+            # Calculate it from the size of the areas (except the area for the first standby process, which is already
+            # really large), with a 2x margin
             for vehicle_type in vehicle_types_for_depot:
                 vehicle_count = sum(
                     [
                         area.capacity
                         for area in depot.areas
                         if area.vehicle_type_id == int(vehicle_type)
+                        and depot.default_plan.processes[0] not in area.processes
                     ]
                 )
                 eflips.globalConstants["depot"]["vehicle_count"][depot_id][
@@ -684,6 +689,7 @@ def add_evaluation_to_database(
 
             dict_of_events = {}
 
+            # Generate process log for each schedule
             for finished_trip in current_vehicle.finished_trips:
                 dict_of_events[finished_trip.atd] = {
                     "type": "trip",
@@ -709,6 +715,57 @@ def add_evaluation_to_database(
             # For future uses
             waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
             battery_log = current_vehicle.battery_logs
+
+            # Create standby events according to waiting_log
+            waiting_log_timekeys = sorted(waiting_log.keys())
+
+            for idx in range(len(waiting_log_timekeys)):
+                end_time = waiting_log_timekeys[idx]
+                waiting_info = waiting_log[end_time]
+
+                if waiting_info["waiting_time"] == 0:
+                    continue
+
+                # Vehicle is waiting in the last area in waiting_log and expecting to enter the current area
+                expected_area = waiting_info["area"]
+                # Find the area for standby arrival event
+
+                waiting_area_id = (
+                    session.query(Area.id)
+                    .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
+                    .join(Process, Process.id == AssocAreaProcess.process_id)
+                    .filter(
+                        Process.dispatchable == False,
+                        Process.duration.is_(None),
+                        Process.electric_power.is_(None),
+                        Area.vehicle_type_id == int(current_vehicle.vehicle_type.ID),
+                        Area.scenario_id == scenario.id,
+                    )
+                    .one()[0]
+                )
+
+                # Make sure the vehicle is waiting at an area with enough capacity
+
+                current_slot = slot_log[waiting_log_timekeys[idx - 1]]
+
+                start_time = end_time - waiting_info["waiting_time"]
+
+                warnings.warn(
+                    f"Vehicle {current_vehicle.ID} is waiting at {waiting_area_id} because area {expected_area} is full."
+                )
+
+                dict_of_events[start_time] = {
+                    "type": "Standby",
+                    "end": end_time,
+                    "area": waiting_area_id,
+                    "slot": current_slot,
+                    "is_area_sink": waiting_area_id,
+                }
+
+            # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
+            battery_log_list = []
+            for log in battery_log:
+                battery_log_list.append((log.t, log.energy / log.energy_real))
 
             for start_time, process_log in current_vehicle.logger.loggedData[
                 "dwd.active_processes_copy"
@@ -843,11 +900,11 @@ def add_evaluation_to_database(
                                     f"Invalid process status {process.status} for process {process.ID}."
                                 )
 
-            time_keys = sorted(dict_of_events.keys(), reverse=True)
-            if len(time_keys) != 0:
+            reversed_time_keys = sorted(dict_of_events.keys(), reverse=True)
+            if len(reversed_time_keys) != 0:
                 # Generating valid event-list
                 is_copy = True
-                for start_time in time_keys:
+                for start_time in reversed_time_keys:
                     process_dict = dict_of_events[start_time]
                     if process_dict["type"] == "trip":
                         is_copy = process_dict["is_copy"]
@@ -875,17 +932,31 @@ def add_evaluation_to_database(
                             # End time of 0-duration processes are start time of the next process
 
                             if "end" not in process_dict:
-                                end_time = time_keys[time_keys.index(start_time) - 1]
+                                # End time will be the one time key "later"
+                                end_time = reversed_time_keys[
+                                    reversed_time_keys.index(start_time) - 1
+                                ]
                                 process_dict["end"] = end_time
 
                             # Get soc
                             soc_start = None
                             soc_end = None
-                            for log in battery_log:
-                                if log.t == start_time:
-                                    soc_start = log.energy / log.energy_real
-                                if log.t == process_dict["end"]:
-                                    soc_end = log.energy / log.energy_real
+
+                            for i in range(len(battery_log_list)):
+                                log = battery_log_list[i]
+
+                                if log[0] == start_time:
+                                    soc_start = log[1]
+                                if log[0] == process_dict["end"]:
+                                    soc_end = log[1]
+                                if log[0] < start_time < battery_log_list[i + 1][0]:
+                                    soc_start = log[1]
+                                if (
+                                    log[0]
+                                    < process_dict["end"]
+                                    < battery_log_list[i + 1][0]
+                                ):
+                                    soc_end = log[1]
 
                             current_event = Event(
                                 scenario=scenario,
@@ -917,12 +988,12 @@ def add_evaluation_to_database(
 
                 # For non-copy schedules with no predecessor events, adding a dummy standby-departure
                 if (
-                    dict_of_events[time_keys[-1]]["type"] == "trip"
-                    and dict_of_events[time_keys[-1]]["is_copy"] is False
+                    dict_of_events[reversed_time_keys[-1]]["type"] == "trip"
+                    and dict_of_events[reversed_time_keys[-1]]["is_copy"] is False
                 ):
-                    standby_start = time_keys[-1] - 1
-                    standby_end = time_keys[-1]
-                    rotation_id = str(dict_of_events[time_keys[-1]]["id"])
+                    standby_start = reversed_time_keys[-1] - 1
+                    standby_end = reversed_time_keys[-1]
+                    rotation_id = str(dict_of_events[reversed_time_keys[-1]]["id"])
                     area = (
                         session.query(Area)
                         .filter(Area.vehicle_type_id == vehicle_type_id)
@@ -961,48 +1032,15 @@ def add_evaluation_to_database(
                         timeseries=None,
                     )
 
+                    session.add(standby_event)
                     list_of_events.append(standby_event)
 
-        new_old_vehicle = {}
-        matched_vehicle_id = 0
-        for schedule_id, vehicle_id in list_of_assigned_schedules:
-            if vehicle_id != matched_vehicle_id:
-                matched_vehicle_id = vehicle_id
-                # Get rotation from db with id
-                rotation_q = session.query(Rotation).filter(Rotation.id == schedule_id)
-                # Match old and new vehicle id
-                old_vehicle_id = rotation_q.one().vehicle_id
-                new_old_vehicle[vehicle_id] = old_vehicle_id
-
         # New rotation assignment
-
         for schedule_id, vehicle_id in list_of_assigned_schedules:
             # Get corresponding old vehicle id
-            old_vehicle_id = new_old_vehicle[vehicle_id]
             session.query(Rotation).filter(Rotation.id == schedule_id).update(
-                {"vehicle_id": old_vehicle_id}, synchronize_session="auto"
+                {"vehicle_id": vehicle_id}, synchronize_session="auto"
             )
-
-        # Delete all non-depot events
-        session.query(Event).filter(
-            Event.scenario == scenario,
-            Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-        ).delete()
-
-        session.flush()
-
-        # Update depot events with old vehicle id
-        for new_vehicle_id, old_vehicle_id in new_old_vehicle.items():
-            session.query(Event).filter(
-                Event.scenario == scenario,
-                Event.vehicle_id == new_vehicle_id,
-            ).update({"vehicle_id": old_vehicle_id}, synchronize_session="auto")
-
-            session.query(Vehicle).filter(
-                Vehicle.id == new_vehicle_id,
-            ).delete(synchronize_session="auto")
-
-            session.flush()
 
         # Delete all non-depot events
         session.query(Event).filter(
@@ -1013,7 +1051,6 @@ def add_evaluation_to_database(
         session.flush()
 
         # Delete all vehicles without rotations
-
         vehicle_assigned_sq = (
             session.query(Rotation.vehicle_id)
             .filter(Rotation.scenario == scenario)

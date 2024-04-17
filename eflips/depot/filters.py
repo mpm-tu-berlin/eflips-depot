@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import warnings
+
 import eflips
 from eflips.settings import globalConstants
 from eflips.helperFunctions import flexprint
@@ -248,6 +250,18 @@ class VehicleFilter:
                 required_energy = (
                     self.trip.start_soc - self.trip.end_soc
                 ) * vehicle.battery.energy_real
+
+                # If the vehicle is fully charged and its fully charged energy is still lower than the required energy,
+                # dispatch anyway and warn the user
+                if (
+                    abs(vehicle.battery.soc - 1) < 1e-6
+                    and vehicle.battery.energy_real < required_energy
+                ):
+                    warnings.warn(
+                        f"Vehicle {vehicle.ID} is fully charged but the required energy for the trip is higher than the fully charged energy. Dispatching anyway."
+                    )
+                    return True
+
                 result = required_energy <= vehicle.battery.energy_remaining
 
         else:
