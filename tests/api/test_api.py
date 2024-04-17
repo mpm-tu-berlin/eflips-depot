@@ -497,7 +497,7 @@ class TestApi(TestHelpers):
         """
         This tests the consumption simulation with a batter that is way too small.
 
-        The extepected result is that the simulation finishes, with no extra vehicles being added.
+        The expected result is that the simulation finishes, with no extra vehicles being added.
 
         The old result was that the simulation creates a high number of vehicles, which is not correct.
 
@@ -522,13 +522,14 @@ class TestApi(TestHelpers):
 
         session.commit()
 
-        with pytest.warns(UserWarning):
-            simulation_host = init_simulation(
-                full_scenario,
-                session,
-            )
+        simulation_host = init_simulation(
+            full_scenario,
+            session,
+        )
 
-        depot_evaluations = run_simulation(simulation_host)
+        with pytest.warns(UserWarning):
+            depot_evaluations = run_simulation(simulation_host)
+
         assert len(depot_evaluations) == 1
 
         for depot_id, depot_evaluation in depot_evaluations.items():
