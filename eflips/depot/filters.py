@@ -253,7 +253,10 @@ class VehicleFilter:
 
                 # If the vehicle is fully charged and its fully charged energy is still lower than the required energy,
                 # dispatch anyway and warn the user
-                if abs(vehicle.battery.soc - 1) < 1e-6 and vehicle.battery.energy_real < required_energy:
+                if (
+                    abs(vehicle.battery.soc - 1) < 1e-6
+                    and vehicle.battery.energy_real < required_energy
+                ):
                     warnings.warn(
                         f"Vehicle {vehicle.ID} is fully charged but the required energy for the trip is higher than the fully charged energy. Dispatching anyway."
                     )
