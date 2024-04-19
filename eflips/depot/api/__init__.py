@@ -306,7 +306,7 @@ def generate_depot_layout(
             max_occupancies: Dict[eflips.model.VehicleType, int] = {}
             max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
             for vehicle_type, rotations in vehicle_type_dict.items():
-                # Slightly convoulted vehicle summation
+                # Slightly convoluted vehicle summation
                 start_time = min(
                     [rotation.trips[0].departure_time for rotation in rotations]
                 ).timestamp()
@@ -665,14 +665,10 @@ def add_evaluation_to_database(
 
         list_of_vehicles = []
 
-        list_of_events = []
-
         list_of_assigned_schedules = []
 
         # Read results from depot_evaluation categorized by vehicle
         for current_vehicle in depot_evaluation.vehicle_generator.items:
-            list_of_events_per_vehicle = []
-
             vehicle_type_id = int(current_vehicle.vehicle_type.ID)
 
             # Create a Vehicle object for database
@@ -759,7 +755,7 @@ def add_evaluation_to_database(
                     "end": end_time,
                     "area": waiting_area_id,
                     "slot": current_slot,
-                    "is_area_sink": waiting_area_id,
+                    "is_area_sink": False,
                 }
 
             # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
@@ -982,9 +978,6 @@ def add_evaluation_to_database(
                                 timeseries=None,
                             )
                             session.add(current_event)
-                            list_of_events_per_vehicle.append(current_event)
-
-                list_of_events.extend(list_of_events_per_vehicle)
 
                 # For non-copy schedules with no predecessor events, adding a dummy standby-departure
                 if (
@@ -1033,7 +1026,6 @@ def add_evaluation_to_database(
                     )
 
                     session.add(standby_event)
-                    list_of_events.append(standby_event)
 
         # New rotation assignment
         for schedule_id, vehicle_id in list_of_assigned_schedules:
