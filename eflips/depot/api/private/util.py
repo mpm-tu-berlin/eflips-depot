@@ -340,18 +340,18 @@ class VehicleSchedule:
         departure = int((self.departure - simulation_start_time).total_seconds())
         arrival = int((self.arrival - simulation_start_time).total_seconds())
         simple_trip = SimpleTrip(
-            env,
-            self.id,
-            None,
-            self.start_depot_id,
-            self.end_depot_id,
-            vehicle_types,
-            departure,
-            arrival,
-            None,
-            self.departure_soc,
-            self.arrival_soc,
-            self.opportunity_charging,
+            env=env,
+            ID=self.id,
+            line_name=None,
+            origin=self.start_depot_id,
+            destination=self.end_depot_id,
+            vehicle_types=vehicle_types,
+            std=departure,
+            sta=arrival,
+            distance=None,
+            start_soc=self.departure_soc,
+            end_soc=self.arrival_soc,
+            charge_on_track=self.opportunity_charging,
             is_copy=self._is_copy,
         )
         return simple_trip
