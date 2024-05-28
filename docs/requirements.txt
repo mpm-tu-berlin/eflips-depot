@@ -1,0 +1,4 @@
+# This file lists the Python requirements that are required to build the documentation.
+# It is needed for readthedocs, see the .readthedocs.yaml file in the root directory.
+sphinx>=6.2.1
+sphinx-autoapi>=3.0.0
