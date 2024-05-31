@@ -382,7 +382,7 @@ def apply_even_smart_charging(
     scenario: Union[Scenario, int, Any],
     database_url: Optional[str] = None,
     standby_departure_duration: timedelta = timedelta(minutes=5),
-):
+) -> None:
     """
     Takes a scenario where depot simulation has been run and applies smart charging to the depot.
 
@@ -396,7 +396,7 @@ def apply_even_smart_charging(
         URL.
     :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
         allowed to wait at the depot before it has to leave. The default is 5 minutes.
-    :return:
+    :return: None. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
         depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
@@ -481,9 +481,9 @@ def simulate_scenario(
     :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
         default is SmartChargingStragegy.NONE. The following strategies are available:
         - SmartChargingStragegy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
-            from the time they arrive at the depot until they are full (or leave the depot).
+        from the time they arrive at the depot until they are full (or leave the depot).
         - SmartChargingStragegy.EVEN: Use smart charging with an even distribution of charging power over the time the
-            bus is at the depot. This aims to minimize the peak power demand.
+        bus is at the depot. This aims to minimize the peak power demand.
 
     :return: Nothing. The results are added to the database.
     """
