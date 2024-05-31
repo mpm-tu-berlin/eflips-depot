@@ -456,7 +456,7 @@ def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
-    smart_charging_strategy: SmartChargingStragegy = SmartChargingStragegy.NONE,
+    smart_charging_strategy: SmartChargingStragegy = SmartChargingStragegy.EVEN,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
