@@ -16,6 +16,7 @@ from eflips.depot.api import (
     run_simulation,
     generate_depot_layout,
     simple_consumption_simulation,
+    apply_even_smart_charging,
 )
 
 
@@ -103,7 +104,7 @@ if __name__ == "__main__":
 
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
-            scenario=scenario, charging_power=90, delete_existing_depot=True
+            scenario=scenario, charging_power=150, delete_existing_depot=True
         )
 
         ##### Step 3: Run the simulation
@@ -117,6 +118,12 @@ if __name__ == "__main__":
         )
         depot_evaluations = run_simulation(simulation_host)
         add_evaluation_to_database(scenario, depot_evaluations, session)
+
+        ##### Step 3.5: Apply even smart charging
+        # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
+        # consumption. This is done by shifting the charging times of the vehicles. The method is called
+        # apply_even_smart_charging and is part of the eflips.depot.api module.
+        apply_even_smart_charging(scenario)
 
         #### Step 4: Consumption simulation, a second time
         # The depot simulation merges vehicles (e.g. one vehicle travels only monday, one only wednesday – they
