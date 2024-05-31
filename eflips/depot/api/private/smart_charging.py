@@ -115,7 +115,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         # The power draw is varies with the amount of vehicles present at the depot relative to the mean amount
         charging_factor = (mean_occupancy / (total_occupancy)) * params_for_event[
             "charging_allowed"
-        ] * 0.5 + 0.5
+        ]
 
         # Make sure the charging factor is not infinite or NaN
         charging_factor[np.isnan(charging_factor)] = 1
