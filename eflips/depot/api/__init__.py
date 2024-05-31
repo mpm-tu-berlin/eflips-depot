@@ -28,6 +28,7 @@ import copy
 import os
 import warnings
 from datetime import timedelta
+from enum import Enum, auto
 from math import ceil
 from typing import Any, Dict, Optional, Union
 
@@ -56,6 +57,7 @@ from eflips.depot.api.private.depot import (
     depot_to_template,
     group_rotations_by_start_end_stop,
 )
+from eflips.depot.api.private.smart_charging import optimize_charging_events_even
 from eflips.depot.api.private.util import (
     create_session,
     repeat_vehicle_schedules,
@@ -63,6 +65,32 @@ from eflips.depot.api.private.util import (
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
 )
+
+
+class SmartChargingStragegy(Enum):
+    """Enum class for different smart charging strategies."""
+
+    NONE = auto
+    """
+    Do not use smart charging.
+
+    Buses are charged with the maximum power available, from the time they arrive at the depot
+    until they are full (or leave the depot).
+    """
+    EVEN = auto
+    """
+    Use smart charging with an even distribution of charging power over the time the bus is at the depot.
+
+    This aims to
+    minimize the peak power demand.
+    """
+    MIN_PRICE = auto
+    """
+    Use smart charging in order to minimize the cost of charging.
+
+    The price profile can be specified using the
+    PRICE_PROFILE environment variable. If this is not set, the price is loaded using an API.
+    """
 
 
 def simple_consumption_simulation(
@@ -350,10 +378,85 @@ def generate_depot_layout(
             )
 
 
+def apply_even_smart_charging(
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    standby_departure_duration: timedelta = timedelta(minutes=5),
+):
+    """
+    Takes a scenario where depot simulation has been run and applies smart charging to the depot.
+
+    This modifies the
+    time and power of the charging events in the database. The arrival and departure times and SoCs at these times are
+    not modified.
+
+    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
+        URL.
+    :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
+        allowed to wait at the depot before it has to leave. The default is 5 minutes.
+    :return:
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
+        for depot in depots:
+            # Load all the charging events at this depot
+            charging_events = (
+                session.query(Event)
+                .join(Area)
+                .filter(Area.depot_id == depot.id)
+                .filter(Event.event_type == EventType.CHARGING_DEPOT)
+                .all()
+            )
+
+            # For each event, take the subsequent STANDBY_DEPARTURE event of the same vehicle
+            # Reduce the STANDBY_DEPARTURE events duration to 5 minutes
+            # Move the end time of the charging event to the start time of the STANDBY_DEPARTURE event
+            for charging_event in charging_events:
+                next_event = (
+                    session.query(Event)
+                    .filter(Event.time_start >= charging_event.time_end)
+                    .filter(Event.vehicle_id == charging_event.vehicle_id)
+                    .order_by(Event.time_start)
+                    .first()
+                )
+                assert next_event is not None
+                assert next_event.event_type == EventType.STANDBY_DEPARTURE
+                assert next_event.time_start == charging_event.time_end
+
+                if (
+                    next_event.time_end - next_event.time_start
+                ) > standby_departure_duration:
+                    next_event.time_start = (
+                        next_event.time_end - standby_departure_duration
+                    )
+                    session.flush()
+                    # Add a timeseries to the charging event
+                    assert charging_event.timeseries is None
+                    charging_event.timeseries = {
+                        "time": [
+                            charging_event.time_start.isoformat(),
+                            charging_event.time_end.isoformat(),
+                            next_event.time_start.isoformat(),
+                        ],
+                        "soc": [
+                            charging_event.soc_start,
+                            charging_event.soc_end,
+                            charging_event.soc_end,
+                        ],
+                    }
+                    charging_event.time_end = next_event.time_start
+                    session.flush()
+
+            optimize_charging_events_even(charging_events)
+
+
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
+    smart_charging_strategy: SmartChargingStragegy = SmartChargingStragegy.NONE,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -375,11 +478,15 @@ def simulate_scenario(
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
+    :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
+        default is SmartChargingStragegy.NONE. The following strategies are available:
+        - SmartChargingStragegy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
+            from the time they arrive at the depot until they are full (or leave the depot).
+        - SmartChargingStragegy.EVEN: Use smart charging with an even distribution of charging power over the time the
+            bus is at the depot. This aims to minimize the peak power demand.
 
     :return: Nothing. The results are added to the database.
     """
-
-    # Step 0: Load the scenario
     with create_session(scenario, database_url) as (session, scenario):
         simulation_host = init_simulation(
             scenario=scenario,
@@ -388,6 +495,16 @@ def simulate_scenario(
         )
         ev = run_simulation(simulation_host)
         add_evaluation_to_database(scenario, ev, session)
+
+    match smart_charging_strategy:
+        case SmartChargingStragegy.NONE:
+            pass
+        case SmartChargingStragegy.EVEN:
+            apply_even_smart_charging(scenario, database_url)
+        case SmartChargingStragegy.MIN_PRICE:
+            raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
+        case _:
+            raise NotImplementedError()
 
 
 def _init_simulation(
