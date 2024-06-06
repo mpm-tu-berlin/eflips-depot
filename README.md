@@ -45,7 +45,8 @@ dissertation by Dr.-Ing. Enrico Lauth (see https://depositonce.tu-berlin.de/item
    poetry install
    ```
 
-4. To start a simulation, an existing [eFLIPS-Model](https://github.com/mpm-tu-berlin/eflips-model) database is requires. Once you have that, you can run the script `bus_depot/user_example.py`
+4. To start a simulation, an existing [eFLIPS-Model](https://github.com/mpm-tu-berlin/eflips-model) database is
+   requires. Once you have that, you can run the script `bin/example.py`
 
 ## Usage
 
