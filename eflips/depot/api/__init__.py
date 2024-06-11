@@ -45,6 +45,7 @@ from eflips.model import (
     Vehicle,
     Process,
     AssocAreaProcess,
+    Station,
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
@@ -842,8 +843,8 @@ def add_evaluation_to_database(
                         # In case there are no copy trips before or after the non-copy trip
                         continue
 
-            # The range of time of events to be generated. It is between the copy trip before the first non-copy trip and the
-            # copy trip after the last non-copy trip
+            # The range of time of events to be generated. It is between the copy trip before the first non-copy trip
+            # and the copy trip after the last non-copy trip
             earliest_time = sorted(dict_of_events.keys())[0]
             latest_time = sorted(dict_of_events.keys())[-1]
 
@@ -874,6 +875,21 @@ def add_evaluation_to_database(
                     expected_area = waiting_info["area"]
                     # Find the area for standby arrival event
 
+                    # Get the corresponding depot id first by grabbing one of the rotations and get its departure station
+                    some_rotation_id = current_vehicle.finished_trips[0].ID
+                    some_rotation = (
+                        session.query(Rotation)
+                        .filter(Rotation.id == some_rotation_id)
+                        .one()
+                    )
+                    start_station = some_rotation.trips[0].route.departure_station_id
+                    depot_id = (
+                        session.query(Depot.id)
+                        .join(Station)
+                        .filter(Station.id == start_station)
+                        .one()[0]
+                    )
+
                     waiting_area_id = (
                         session.query(Area.id)
                         .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
@@ -886,6 +902,7 @@ def add_evaluation_to_database(
                             Area.vehicle_type_id
                             == int(current_vehicle.vehicle_type.ID),
                             Area.scenario_id == scenario.id,
+                            Area.depot_id == depot_id,
                         )
                         .one()[0]
                     )
