@@ -47,6 +47,7 @@ from eflips.model import (
     AssocAreaProcess,
     Station,
 )
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
@@ -376,6 +377,7 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 session=session,
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
+                safety_margin=0.0,
             )
 
 
@@ -783,6 +785,10 @@ def add_evaluation_to_database(
 
         list_of_assigned_schedules = []
 
+        dict_of_waiting_areas = {}
+
+        # all_vehicle_types = session.scalars(session.query(VehicleType.id).filter(VehicleType.scenario_id == scenario.id)).all()
+
         # Read results from depot_evaluation categorized by vehicle
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             vehicle_type_id = int(current_vehicle.vehicle_type.ID)
@@ -890,38 +896,78 @@ def add_evaluation_to_database(
                         .one()[0]
                     )
 
-                    waiting_area_id = (
-                        session.query(Area.id)
-                        .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
-                        .join(Process, Process.id == AssocAreaProcess.process_id)
-                        .filter(
-                            Process.dispatchable == False,
-                            # Must use "==" instead of "is". Or it would be recongnize as a python statement rather than a SQL statement
-                            Process.duration.is_(None),
-                            Process.electric_power.is_(None),
-                            Area.vehicle_type_id
-                            == int(current_vehicle.vehicle_type.ID),
-                            Area.scenario_id == scenario.id,
-                            Area.depot_id == depot_id,
+                    current_vehicle_type_id = int(current_vehicle.vehicle_type.ID)
+
+                    try:
+                        waiting_area = (
+                            session.query(Area)
+                            .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
+                            .join(Process, Process.id == AssocAreaProcess.process_id)
+                            .filter(
+                                Process.dispatchable == False,
+                                # Must use "==" instead of "is". Or it would be recongnize as a python statement rather than a SQL statement
+                                Process.duration.is_(None),
+                                Process.electric_power.is_(None),
+                                Area.vehicle_type_id == current_vehicle_type_id,
+                                Area.scenario_id == scenario.id,
+                                Area.depot_id == depot_id,
+                            )
+                            .one()
                         )
-                        .one()[0]
-                    )
-
-                    # Make sure the vehicle is waiting at an area with enough capacity
-
-                    current_slot = slot_log[waiting_log_timekeys[idx - 1]]
-
-                    start_time = end_time - waiting_info["waiting_time"]
+                    except NoResultFound:
+                        raise ValueError(
+                            f"Current vehilce {current_vehicle.ID} is waiting for the next process but waiting area for "
+                            f"vehicle type {current_vehicle_type_id} not found in depot {depot_id}."
+                        )
 
                     warnings.warn(
-                        f"Vehicle {current_vehicle.ID} is waiting at {waiting_area_id} because area {expected_area} is full."
+                        f"Vehicle {current_vehicle.ID} is waiting at {waiting_area.id} because area {expected_area} is full."
                     )
+
+                    # TODO a sloppy version of quick estimation for the waiting slot/capactiy
+                    # Problem: the waiting events here are in the order of vehicles, not in the order of time
+
+                    start_time = end_time - waiting_info["waiting_time"]
+                    if current_vehicle_type_id not in dict_of_waiting_areas.keys():
+                        # If it is the first waiting entry of this type of vehicle
+                        current_waiting_slot = 1
+                        dict_of_waiting_areas[current_vehicle_type_id] = (
+                            end_time,
+                            current_waiting_slot,
+                        )
+
+                    else:
+                        if (
+                            dict_of_waiting_areas[current_vehicle_type_id][0]
+                            < start_time
+                        ):
+                            current_waiting_slot = dict_of_waiting_areas[
+                                current_vehicle_type_id
+                            ][1]
+                            dict_of_waiting_areas[current_vehicle_type_id] = (
+                                end_time,
+                                current_waiting_slot,
+                            )
+                        else:
+                            current_waiting_slot = (
+                                dict_of_waiting_areas[current_vehicle_type_id][1] + 1
+                            )
+                            if current_waiting_slot > waiting_area.capacity:
+                                warnings.warn(
+                                    f"Waiting area has not enough capacity for vehicle {current_vehicle.ID}. Simulation "
+                                    f"will continue but consider increasing the capacity of the waiting area for type"
+                                    f" {current_vehicle_type_id}. Suggested capacity: {current_waiting_slot}."
+                                )
+                            dict_of_waiting_areas[current_vehicle_type_id] = (
+                                end_time,
+                                current_waiting_slot,
+                            )
 
                     dict_of_events[start_time] = {
                         "type": "Standby",
                         "end": end_time,
-                        "area": waiting_area_id,
-                        "slot": current_slot,
+                        "area": waiting_area.id,
+                        "slot": current_waiting_slot,
                         "is_area_sink": False,
                     }
 
@@ -983,17 +1029,26 @@ def add_evaluation_to_database(
                                                     start_time
                                                 ]["end"]
                                             else:
-                                                for other_process in process_log:
-                                                    if (
-                                                        other_process.dur > 0
-                                                        and len(other_process.ends) != 0
-                                                    ):
-                                                        actual_start_time = (
-                                                            other_process.ends[0]
-                                                        )
-                                                    else:
-                                                        # Invalid standby before a process in progress will be ignored
-                                                        continue
+                                                if len(process_log) == 1:
+                                                    actual_start_time = process.starts[
+                                                        0
+                                                    ]
+                                                else:
+                                                    for other_process in process_log:
+                                                        if (
+                                                            other_process.dur > 0
+                                                            and len(other_process.ends)
+                                                            != 0
+                                                        ):
+                                                            # If it is a standby process starting as the same time as the
+                                                            # previous charging process, then the actual start time should
+                                                            # be the end of the previous process
+
+                                                            actual_start_time = (
+                                                                other_process.ends[0]
+                                                            )
+                                                        else:
+                                                            continue
 
                                             last_standby_departure_start = (
                                                 actual_start_time
@@ -1071,7 +1126,6 @@ def add_evaluation_to_database(
                                         f"Invalid process status {process.status} for process {process.ID}."
                                     )
 
-            # Reverse the time keys to make generation of events before the trip easier
             time_keys = sorted(dict_of_events.keys())
             if len(time_keys) != 0:
                 # Generating valid event-list
