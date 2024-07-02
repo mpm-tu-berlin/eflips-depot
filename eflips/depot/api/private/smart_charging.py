@@ -113,15 +113,20 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
 
         # for each timestep optimize the power draw. We want to charge less when there are more vehicles at the depot
         # The power draw is varies with the amount of vehicles present at the depot relative to the mean amount
-        charging_factor = (mean_occupancy / (total_occupancy)) * params_for_event[
+        charging_factor = (total_occupancy / mean_occupancy) * params_for_event[
             "charging_allowed"
         ]
 
         # Make sure the charging factor is not infinite or NaN
         charging_factor[np.isnan(charging_factor)] = 1
         charging_factor[np.isinf(charging_factor)] = 1
-        optimized_power = (
-            params_for_event["charging_allowed"] * mean_power * charging_factor
+        power_scaling_vector = (
+            (mean_power * charging_factor) - mean_power
+        ) * -1  # How much to shift the power draw
+        if min(power_scaling_vector) < -mean_power:
+            power_scaling_vector /= min(power_scaling_vector) / -mean_power
+        optimized_power = params_for_event["charging_allowed"] * (
+            power_scaling_vector + mean_power
         )
 
         # Cap it at the peak power
@@ -149,11 +154,71 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         post_opt_energy = (
             scipy.integrate.trapz(optimized_power, total_time) / 3600
         )  # kWh
-        assert post_opt_energy >= params_for_event["transferred_energy"]
-        # Make it fit exactly
-        optimized_power = optimized_power * (
-            params_for_event["transferred_energy"] / post_opt_energy
-        )
+
+        if False:
+            # Some plots for only this charging event
+            from matplotlib import pyplot as plt
+
+            valid_charging_indices = np.where(
+                params_for_event["charging_allowed"] == 1
+            )[0]
+
+            fig, axs = plt.subplots(3, 1, sharex=True)
+            axs[0].axhline(mean_power, color="red", linestyle="--", label="Mean power")
+            axs[0].plot(
+                total_time[valid_charging_indices],
+                params_for_event["power_draw"][valid_charging_indices],
+                label="Original power draw",
+            )
+            axs[0].plot(
+                total_time[valid_charging_indices],
+                optimized_power[valid_charging_indices],
+                label="Optimized power draw",
+            )
+            axs[0].plot(
+                total_time[valid_charging_indices],
+                optimized_power_capped[valid_charging_indices],
+                label="Optimized power draw capped",
+            )
+            axs[0].set_xlabel("Time")
+            axs[0].legend()
+
+            axs[1].plot(
+                total_time[valid_charging_indices],
+                np.cumsum(params_for_event["power_draw"][valid_charging_indices])
+                / 3600,
+                label="Original energy transferred",
+            )
+            axs[1].plot(
+                total_time[valid_charging_indices],
+                np.cumsum(optimized_power[valid_charging_indices]) / 3600,
+                label="Optimized energy transferred",
+            )
+            axs[1].set_xlabel("Time")
+
+            axs[2].axhline(
+                mean_occupancy, color="red", linestyle="--", label="Mean occupancy"
+            )
+            axs[2].plot(
+                total_time[valid_charging_indices],
+                total_occupancy[valid_charging_indices],
+            )
+
+            mean_arr = np.ones_like(total_occupancy) * mean_occupancy
+            mean_cumsum = np.cumsum(mean_arr[valid_charging_indices])
+            total_cumsum = np.cumsum(total_occupancy[valid_charging_indices])
+            assert np.isclose(mean_cumsum[-1], total_cumsum[-1], atol=0.01)
+
+            axs[2].set_xlabel("Time")
+            plt.show()
+
+        if not np.isclose(
+            post_opt_energy, params_for_event["transferred_energy"], rtol=0.001
+        ):
+            # Scale the power draw to match the transferred energy
+            optimized_power = optimized_power * (
+                params_for_event["transferred_energy"] / post_opt_energy
+            )
 
         optimized_power2 = (
             params_for_event["charging_allowed"] * mean_power
@@ -169,57 +234,55 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
     if False:
         from matplotlib import pyplot as plt
 
-        plt.subplot(3, 1, 1)
+        fig, axs = plt.subplots(3, 1, sharex=True)
         total_power = np.sum(
             [event["power_draw"] for event in params_for_events], axis=0
         )
-        plt.plot(total_time, total_power, label="Original power draw")
+        axs[0].plot(total_time, total_power, label="Original power draw")
         optimized_power = np.sum(
             [event["optimized_power"] for event in params_for_events], axis=0
         )
-        plt.plot(total_time, optimized_power, label="Optimized power draw")
+        axs[0].plot(total_time, optimized_power, label="Optimized power draw")
         optimized_power2 = np.sum(
             [event["optimized_power2"] for event in params_for_events], axis=0
         )
-        plt.plot(total_time, optimized_power2, label="Mean power draw")
-        plt.xlabel("Time")
-        plt.ylabel("Total power draw (kW)")
+        axs[0].plot(total_time, optimized_power2, label="Mean power draw")
+        axs[0].set_xlabel("Time")
+        axs[0].set_ylabel("Total power draw (kW)")
 
-        plt.axhline(
+        axs[0].axhline(
             y=max(total_power), color="blue", linestyle="--", label="Max power draw"
         )
-        plt.axhline(
+        axs[0].axhline(
             y=max(optimized_power),
             color="orange",
             linestyle="--",
             label="Max optimized power draw",
         )
-        plt.axhline(
+        axs[0].axhline(
             y=max(optimized_power2),
             color="green",
             linestyle="--",
             label="Max mean power draw",
         )
 
-        plt.subplot(3, 1, 2)
         # Energy transferred
         total_energy = scipy.integrate.cumtrapz(total_power, total_time, initial=0)
-        plt.plot(total_time, total_energy, label="Original energy transferred")
+        axs[1].plot(total_time, total_energy, label="Original energy transferred")
         optimized_energy = scipy.integrate.cumtrapz(
             optimized_power, total_time, initial=0
         )
-        plt.plot(total_time, optimized_energy, label="Optimized energy transferred")
+        axs[1].plot(total_time, optimized_energy, label="Optimized energy transferred")
         optimized_energy2 = scipy.integrate.cumtrapz(
             optimized_power2, total_time, initial=0
         )
-        plt.plot(total_time, optimized_energy2, label="Mean energy transferred")
-        plt.xlabel("Time")
-        plt.ylabel("Total energy transferred (kWh)")
+        axs[1].plot(total_time, optimized_energy2, label="Mean energy transferred")
+        axs[1].set_xlabel("Time")
+        axs[1].set_ylabel("Total energy transferred (kWh)")
 
-        plt.subplot(3, 1, 3)
-        plt.plot(total_time, total_occupancy)
-        plt.xlabel("Time")
-        plt.ylabel("Vehicle count")
+        axs[2].plot(total_time, total_occupancy)
+        axs[2].set_xlabel("Time")
+        axs[2].set_ylabel("Vehicle count")
         plt.show()
 
     # Finally, update the events in the database
