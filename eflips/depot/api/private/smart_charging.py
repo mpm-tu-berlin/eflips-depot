@@ -42,8 +42,8 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
     # Also note down the peak power and transferred energy
     params_for_events: List[Dict[str, float | np.ndarray]] = []
     for event in charging_events:
-        power_draw = np.zeros(total_duration, dtype=float)
-        charging_allowed = np.zeros(total_duration, dtype=int)
+        power_draw = np.zeros_like(total_time, dtype=float)
+        charging_allowed = np.zeros_like(total_time, dtype=int)
 
         # Calculate the power draw vector, from the start SoC, end SoC and timeseries, if available
         event_soc = [event.soc_start]
