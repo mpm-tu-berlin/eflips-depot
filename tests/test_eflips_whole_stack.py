@@ -46,7 +46,7 @@ class TestDepotEvaluation:
 
         return ev
 
-    @pytest.skip("Outdated test")
+    @pytest.mark.skip("Outdated test")
     def test_plot_vehicle_periods(self, depot_evaluation: DepotEvaluation, tmp_path):
         # Override the path_results variable in the config's ['depot']['path_results'] with a temporary directory
         depot_evaluation.path_results = str(tmp_path)
