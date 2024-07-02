@@ -422,8 +422,17 @@ def apply_even_smart_charging(
                     .order_by(Event.time_start)
                     .first()
                 )
-                assert next_event is not None
-                assert next_event.event_type == EventType.STANDBY_DEPARTURE
+
+                if (
+                    next_event is None
+                    or next_event.event_type != EventType.STANDBY_DEPARTURE
+                ):
+                    warnings.warn(
+                        f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
+                        f"event. No room for smart charging."
+                    )
+                    continue
+
                 assert next_event.time_start == charging_event.time_end
 
                 if (
@@ -497,15 +506,15 @@ def simulate_scenario(
         ev = run_simulation(simulation_host)
         add_evaluation_to_database(scenario, ev, session)
 
-    match smart_charging_strategy:
-        case SmartChargingStrategy.NONE:
-            pass
-        case SmartChargingStrategy.EVEN:
-            apply_even_smart_charging(scenario, database_url)
-        case SmartChargingStrategy.MIN_PRICE:
-            raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
-        case _:
-            raise NotImplementedError()
+        match smart_charging_strategy:
+            case SmartChargingStrategy.NONE:
+                pass
+            case SmartChargingStrategy.EVEN:
+                apply_even_smart_charging(scenario, database_url)
+            case SmartChargingStrategy.MIN_PRICE:
+                raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
+            case _:
+                raise NotImplementedError()
 
 
 def _init_simulation(
