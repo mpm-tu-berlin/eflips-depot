@@ -1204,24 +1204,24 @@ def add_evaluation_to_database(
                 {"vehicle_id": vehicle_id}, synchronize_session="auto"
             )
 
-        # Delete all non-depot events
-        session.query(Event).filter(
-            Event.scenario == scenario,
-            Event.trip_id.isnot(None) | Event.station_id.isnot(None),
-        ).delete(synchronize_session="auto")
+    # Delete all non-depot events
+    session.query(Event).filter(
+        Event.scenario == scenario,
+        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+    ).delete(synchronize_session="auto")
 
-        session.flush()
+    session.flush()
 
-        # Delete all vehicles without rotations
-        vehicle_assigned_sq = (
-            session.query(Rotation.vehicle_id)
-            .filter(Rotation.scenario == scenario)
-            .distinct()
-            .subquery()
-        )
+    # Delete all vehicles without rotations
+    vehicle_assigned_sq = (
+        session.query(Rotation.vehicle_id)
+        .filter(Rotation.scenario == scenario)
+        .distinct()
+        .subquery()
+    )
 
-        session.query(Vehicle).filter(Vehicle.scenario == scenario).filter(
-            Vehicle.id.not_in(select(vehicle_assigned_sq))
-        ).delete()
+    session.query(Vehicle).filter(Vehicle.scenario == scenario).filter(
+        Vehicle.id.not_in(select(vehicle_assigned_sq))
+    ).delete()
 
-        session.flush()
+    session.flush()
