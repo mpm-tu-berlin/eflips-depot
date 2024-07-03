@@ -222,7 +222,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     }
     # Groups
     for process in depot.default_plan.processes:
-        group_name = str(process_type(process)) + "_group"
+        group_name = str(process.name) + "_group"
         template["groups"][group_name] = {
             "typename": "AreaGroup",
             "stores": [str(area.id) for area in process.areas],
@@ -334,6 +334,7 @@ def create_simple_depot(
         name="Standby Arrival",
         scenario=scenario,
         dispatchable=False,
+        duration=timedelta(minutes=5),
     )
     clean = Process(
         name="Arrival Cleaning",
@@ -347,6 +348,22 @@ def create_simple_depot(
         dispatchable=False,
         electric_power=charging_power,
     )
+
+    placeholder = Process(
+        name="Placeholder",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(minutes=5),
+    )
+
+    cleaning_2 = Process(
+        name="Cleaning 2",
+        scenario=scenario,
+        dispatchable=False,
+        duration=cleaning_duration,
+    )
+
+
     standby_departure = Process(
         name="Standby Pre-departure",
         scenario=scenario,
@@ -356,6 +373,8 @@ def create_simple_depot(
     session.add(clean)
     session.add(charging)
     session.add(standby_departure)
+    session.add(placeholder)
+    session.add(cleaning_2)
 
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
@@ -368,7 +387,7 @@ def create_simple_depot(
             name=f"Arrival Area for {vehicle_type.name_short}",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=1,
+            capacity=5,
         )
         session.add(arrival_area)
         arrival_area.vehicle_type = vehicle_type
@@ -395,12 +414,26 @@ def create_simple_depot(
             area_type=AreaType.DIRECT_ONESIDE,
             capacity=cleaning_count,
         )
+
+
         session.add(cleaning_area)
         cleaning_area.vehicle_type = vehicle_type
+        cleaning_area_2 = Area(
+            scenario=scenario,
+            name=f"Cleaning Area 2 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=cleaning_count,
+        )
+        session.add(cleaning_area_2)
+        cleaning_area_2.vehicle_type = vehicle_type
 
         arrival_area.processes.append(standby_arrival)
         cleaning_area.processes.append(clean)
+
         charging_area.processes.append(charging)
+        cleaning_area.processes.append(placeholder)
+        cleaning_area_2.processes.append(cleaning_2)
         charging_area.processes.append(standby_departure)
 
         assocs = [
@@ -408,9 +441,12 @@ def create_simple_depot(
                 scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
             ),
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
+            AssocPlanProcess(scenario=scenario, process=cleaning_2, plan=plan, ordinal=2),
+            AssocPlanProcess(scenario=scenario, process=placeholder, plan=plan, ordinal=3),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=4),
+
             AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=5
             ),
         ]
         session.add_all(assocs)
