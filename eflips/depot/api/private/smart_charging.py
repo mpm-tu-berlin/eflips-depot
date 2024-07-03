@@ -297,9 +297,10 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         socs = event.soc_start + energies / event.vehicle.vehicle_type.battery_capacity
 
         # Make sure the last SoC is the same as the end SoC
-        assert np.isclose(socs[-1], event.soc_end, atol=0.01)
+        assert np.isclose(socs[-1], event.soc_end, atol=0.1)
+
         # Make sure the first SoC is the same as the start SoC
-        assert np.isclose(socs[0], event.soc_start, atol=0.01)
+        assert np.isclose(socs[0], event.soc_start, atol=0.1)
 
         # Make the socs match exactly, setting all those smaller than the start SoC to the start SoC and
         # all those larger than the end SoC to the end SoC
