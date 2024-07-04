@@ -332,6 +332,7 @@ class TestHelpers:
             name="Standby Arrival",
             scenario=scenario,
             dispatchable=False,
+            duration=timedelta(minutes=5),
         )
 
         clean = Process(
