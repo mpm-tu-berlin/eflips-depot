@@ -334,6 +334,7 @@ def create_simple_depot(
         name="Standby Arrival",
         scenario=scenario,
         dispatchable=False,
+        duration=timedelta(minutes=5),
     )
     clean = Process(
         name="Arrival Cleaning",
@@ -368,7 +369,7 @@ def create_simple_depot(
             name=f"Arrival Area for {vehicle_type.name_short}",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=1,
+            capacity=10,
         )
         session.add(arrival_area)
         arrival_area.vehicle_type = vehicle_type
