@@ -30,6 +30,7 @@ import warnings
 from datetime import timedelta
 from enum import Enum, auto
 from math import ceil
+from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -377,7 +378,6 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 session=session,
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
-                safety_margin=0.0,
             )
 
 
@@ -785,10 +785,6 @@ def add_evaluation_to_database(
 
         list_of_assigned_schedules = []
 
-        dict_of_waiting_areas = {}
-
-        # all_vehicle_types = session.scalars(session.query(VehicleType.id).filter(VehicleType.scenario_id == scenario.id)).all()
-
         # Read results from depot_evaluation categorized by vehicle
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             vehicle_type_id = int(current_vehicle.vehicle_type.ID)
@@ -804,57 +800,25 @@ def add_evaluation_to_database(
             session.add(current_vehicle_db)
             session.flush()
 
-            dict_of_events = {}
+            dict_of_events = OrderedDict()
 
             # Generate process log for each
             list_of_finished_trips = current_vehicle.finished_trips
+
             list_of_finished_trips.sort(key=lambda x: x.atd)
 
             for i in range(len(list_of_finished_trips)):
+
                 if list_of_finished_trips[i].is_copy is False:
                     current_trip = list_of_finished_trips[i]
 
-                    # Add all non-copy trips to the dictionary
-                    dict_of_events[current_trip.atd] = {
-                        "type": "Trip",
-                        "end": current_trip.ata,
-                        "is_copy": current_trip.is_copy,
-                        "id": current_trip.ID,
-                    }
+                    list_of_assigned_schedules.append((int(current_trip.ID), current_vehicle_db.id))
 
-                    # Match current trip to its serving vehicle
-                    assigned_schedule_id = int(current_trip.ID)
-                    list_of_assigned_schedules.append(
-                        (assigned_schedule_id, current_vehicle_db.id)
-                    )
-                    # Also add two copy trips before and after the non-copy trip as "time boarders" for the depot process
-                    try:
-                        if list_of_finished_trips[i + 1].is_copy is True:
-                            dict_of_events[list_of_finished_trips[i + 1].atd] = {
-                                "type": "Trip",
-                                "end": list_of_finished_trips[i + 1].ata,
-                                "is_copy": list_of_finished_trips[i + 1].is_copy,
-                                "id": list_of_finished_trips[i + 1].ID,
-                            }
+                    if i == 0 or list_of_finished_trips[i - 1].is_copy is True:
+                        earliest_time = list_of_finished_trips[i - 1].atd
 
-                        if list_of_finished_trips[i - 1].is_copy is True:
-                            dict_of_events[list_of_finished_trips[i - 1].atd] = {
-                                "type": "Trip",
-                                "end": list_of_finished_trips[i - 1].ata,
-                                "is_copy": list_of_finished_trips[i - 1].is_copy,
-                                "id": list_of_finished_trips[i - 1].ID,
-                            }
-
-                    except IndexError:
-                        # In case there are no copy trips before or after the non-copy trip
-                        continue
-
-            # The range of time of events to be generated. It is between the copy trip before the first non-copy trip
-            # and the copy trip after the last non-copy trip
-            earliest_time = sorted(dict_of_events.keys())[0]
-            latest_time = sorted(dict_of_events.keys())[-1]
-
-            last_standby_departure_start = 0
+                    if i == len(list_of_finished_trips) - 1 or list_of_finished_trips[i + 1].is_copy is True:
+                        latest_time = list_of_finished_trips[i + 1].atd
 
             # For convenience
             area_log = current_vehicle.logger.loggedData["dwd.current_area"]
@@ -877,141 +841,54 @@ def add_evaluation_to_database(
                     if waiting_info["waiting_time"] == 0:
                         continue
 
-                    # Vehicle is waiting in the last area in waiting_log and expecting to enter the current area
-                    expected_area = waiting_info["area"]
-                    # Find the area for standby arrival event
-
-                    # Get the corresponding depot id first by grabbing one of the rotations and get its departure station
-                    some_rotation_id = current_vehicle.finished_trips[0].ID
-                    some_rotation = (
-                        session.query(Rotation)
-                        .filter(Rotation.id == some_rotation_id)
-                        .one()
-                    )
-                    start_station = some_rotation.trips[0].route.departure_station_id
-                    depot_id = (
-                        session.query(Depot.id)
-                        .join(Station)
-                        .filter(Station.id == start_station)
-                        .one()[0]
-                    )
-
-                    current_vehicle_type_id = int(current_vehicle.vehicle_type.ID)
-
-                    try:
-                        waiting_area = (
-                            session.query(Area)
-                            .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
-                            .join(Process, Process.id == AssocAreaProcess.process_id)
-                            .filter(
-                                Process.dispatchable == False,
-                                # Must use "==" instead of "is". Or it would be recongnize as a python statement rather than a SQL statement
-                                Process.duration.is_(None),
-                                Process.electric_power.is_(None),
-                                Area.vehicle_type_id == current_vehicle_type_id,
-                                Area.scenario_id == scenario.id,
-                                Area.depot_id == depot_id,
-                            )
-                            .one()
-                        )
-                    except NoResultFound:
-                        raise ValueError(
-                            f"Current vehilce {current_vehicle.ID} is waiting for the next process but waiting area for "
-                            f"vehicle type {current_vehicle_type_id} not found in depot {depot_id}."
-                        )
-
                     warnings.warn(
-                        f"Vehicle {current_vehicle.ID} is waiting at {waiting_area.id} because area {expected_area} is full."
+                        f"Vehicle {current_vehicle.ID} has been waiting for {waiting_info['waiting_time']} seconds. "
+                        f"This process is not registered in the database. Please consider increasing the capacity of the"
+                        f" standby-arrival area."
                     )
-
-                    # TODO a sloppy version of quick estimation for the waiting slot/capactiy
-                    # Problem: the waiting events here are in the order of vehicles, not in the order of time
-
-                    start_time = end_time - waiting_info["waiting_time"]
-                    if current_vehicle_type_id not in dict_of_waiting_areas.keys():
-                        # If it is the first waiting entry of this type of vehicle
-                        current_waiting_slot = 1
-                        dict_of_waiting_areas[current_vehicle_type_id] = (
-                            end_time,
-                            current_waiting_slot,
-                        )
-
-                    else:
-                        if (
-                            dict_of_waiting_areas[current_vehicle_type_id][0]
-                            < start_time
-                        ):
-                            current_waiting_slot = dict_of_waiting_areas[
-                                current_vehicle_type_id
-                            ][1]
-                            dict_of_waiting_areas[current_vehicle_type_id] = (
-                                end_time,
-                                current_waiting_slot,
-                            )
-                        else:
-                            current_waiting_slot = (
-                                dict_of_waiting_areas[current_vehicle_type_id][1] + 1
-                            )
-                            if current_waiting_slot > waiting_area.capacity:
-                                warnings.warn(
-                                    f"Waiting area has not enough capacity for vehicle {current_vehicle.ID}. Simulation "
-                                    f"will continue but consider increasing the capacity of the waiting area for type"
-                                    f" {current_vehicle_type_id}. Suggested capacity: {current_waiting_slot}."
-                                )
-                            dict_of_waiting_areas[current_vehicle_type_id] = (
-                                end_time,
-                                current_waiting_slot,
-                            )
-
-                    dict_of_events[start_time] = {
-                        "type": "Standby",
-                        "end": end_time,
-                        "area": waiting_area.id,
-                        "slot": current_waiting_slot,
-                        "is_area_sink": False,
-                    }
 
             # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
             battery_log_list = []
             for log in battery_log:
                 battery_log_list.append((log.t, log.energy / log.energy_real))
 
-            for start_time, process_log in current_vehicle.logger.loggedData[
+            # TODO from here it is the new implementation
+
+            for time_stamp, process_log in current_vehicle.logger.loggedData[
                 "dwd.active_processes_copy"
             ].items():
-                if earliest_time < start_time < latest_time:
-                    if len(process_log) == 0:
-                        # A departure happens
-                        if last_standby_departure_start != 0:
-                            # Update the last standby-departure end time
-                            dict_of_events[last_standby_departure_start][
-                                "end"
-                            ] = start_time
-                        else:
-                            continue
+                if earliest_time < time_stamp < latest_time:
 
+                    num_process = len(process_log)
+                    if num_process == 0:
+                        # A departure happens
+                        dict_of_events[time_stamp] = {
+                            "type": "Trip",
+                        }
                     else:
                         for process in process_log:
+                            current_area = area_log[time_stamp]
+                            current_slot = slot_log[time_stamp]
+
+                            if current_area is None or current_slot is None:
+                                raise ValueError(
+                                    f"For process {process.ID} Area and slot should not be None."
+                                )
+
                             match process.status:
+
                                 case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
                                     assert (
-                                        len(process.starts) == 1
-                                        and len(process.ends) == 1
+                                            len(process.starts) == 1
+                                            and len(process.ends) == 1
                                     ), (
                                         f"Current process {process.ID} is completed and should only contain one start and "
                                         f"one end time."
                                     )
-                                    current_area = area_log[start_time]
-                                    current_slot = slot_log[start_time]
-
-                                    if current_area is None or current_slot is None:
-                                        raise ValueError(
-                                            f"For process {process.ID} Area and slot should not be None."
-                                        )
 
                                     if process.dur > 0:
                                         # Valid duration
-                                        dict_of_events[start_time] = {
+                                        dict_of_events[time_stamp] = {
                                             "type": type(process).__name__,
                                             "end": process.ends[0],
                                             "area": current_area.ID,
@@ -1020,78 +897,23 @@ def add_evaluation_to_database(
                                         }
                                     else:
                                         # Duration is 0
-                                        if current_area.issink is True:
-                                            # Standby departure
-                                            if start_time in dict_of_events:
-                                                # Actual start time should be the end time of the other positive
-                                                # duration process starting at the same time
-                                                actual_start_time = dict_of_events[
-                                                    start_time
-                                                ]["end"]
-                                            else:
-                                                if len(process_log) == 1:
-                                                    actual_start_time = process.starts[
-                                                        0
-                                                    ]
-                                                else:
-                                                    for other_process in process_log:
-                                                        if (
-                                                            other_process.dur > 0
-                                                            and len(other_process.ends)
-                                                            != 0
-                                                        ):
-                                                            # If it is a standby process starting as the same time as the
-                                                            # previous charging process, then the actual start time should
-                                                            # be the end of the previous process
-
-                                                            actual_start_time = (
-                                                                other_process.ends[0]
-                                                            )
-                                                        else:
-                                                            continue
-
-                                            last_standby_departure_start = (
-                                                actual_start_time
-                                            )
-
-                                            # If this standby event lasts actually 0 seconds, it is not a real event
-                                            if (
-                                                actual_start_time
-                                                in dict_of_events.keys()
-                                                and dict_of_events[actual_start_time][
-                                                    "type"
-                                                ]
-                                                == "Trip"
-                                            ):
-                                                continue
-                                            dict_of_events[actual_start_time] = {
+                                        assert current_area.issink is True, (f"A process with no duration could only "
+                                                                             f"happen in the last area before dispatched")
+                                        if (time_stamp in dict_of_events.keys()
+                                                and "end" in dict_of_events[time_stamp].keys()):
+                                            start_this_event = dict_of_events[time_stamp]["end"]
+                                            dict_of_events[start_this_event] = {
                                                 "type": type(process).__name__,
                                                 "area": current_area.ID,
-                                                "is_area_sink": current_area.issink,
                                                 "slot": current_slot,
                                                 "id": process.ID,
                                             }
 
-                                        else:
-                                            # Standby arrival
-                                            assert current_area.issink is False, (
-                                                f"A bus cannot go from Area {current_area.ID} to other areas. A Parking Area"
-                                                f" for standby arrival should be added."
-                                            )
-                                            dict_of_events[start_time] = {
-                                                "type": type(process).__name__,
-                                                "area": current_area.ID,
-                                                "is_area_sink": current_area.issink,
-                                                "slot": current_slot,
-                                                "id": process.ID,
-                                            }
                                 case ProcessStatus.IN_PROGRESS:
                                     assert (
-                                        len(process.starts) == 1
-                                        and len(process.ends) == 0
+                                            len(process.starts) == 1
+                                            and len(process.ends) == 0
                                     ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
-                                    current_area = area_log[start_time]
-                                    current_slot = slot_log[start_time]
 
                                     if current_area is None or current_slot is None:
                                         raise ValueError(
@@ -1100,7 +922,7 @@ def add_evaluation_to_database(
 
                                     if process.dur > 0:
                                         # Valid duration
-                                        dict_of_events[start_time] = {
+                                        dict_of_events[time_stamp] = {
                                             "type": type(process).__name__,
                                             "end": process.etc,
                                             "area": current_area.ID,
@@ -1112,6 +934,7 @@ def add_evaluation_to_database(
                                             "We believe this should never happen. If it happens, handle it here."
                                         )
                                 case ProcessStatus.WAITING:
+                                    # TODO check simulation core and see if these really are used
                                     raise NotImplementedError(
                                         f"Current process {process.ID} is waiting. Not implemented yet."
                                     )
@@ -1126,24 +949,29 @@ def add_evaluation_to_database(
                                         f"Invalid process status {process.status} for process {process.ID}."
                                     )
 
+            # TODO above is the new implementation
+
             time_keys = sorted(dict_of_events.keys())
             if len(time_keys) != 0:
                 # Generating valid event-list
 
-                for start_time in time_keys:
+                for i in range(len(time_keys)):
+                    start_time = time_keys[i]
+
                     process_dict = dict_of_events[start_time]
 
                     # Generate EventType
                     match process_dict["type"]:
                         case "Serve":
-                            event_type = EventType.SERVICE
+                            # TODO remove this later
+                            if int(process_dict["end"]) - int(start_time) == 300:
+                                event_type = EventType.STANDBY
+                            else:
+                                event_type = EventType.SERVICE
                         case "Charge":
                             event_type = EventType.CHARGING_DEPOT
                         case "Standby":
-                            if process_dict["is_area_sink"] is True:
-                                event_type = EventType.STANDBY_DEPARTURE
-                            else:
-                                event_type = EventType.STANDBY
+                            event_type = EventType.STANDBY_DEPARTURE
                         case "Precondition":
                             event_type = EventType.PRECONDITIONING
                         case "Trip":
@@ -1156,9 +984,12 @@ def add_evaluation_to_database(
 
                     # End time of 0-duration processes are start time of the next process
 
-                    if "end" not in process_dict:
+                    if "end" not in process_dict and process_dict["type"] != "Trip":
                         # End time will be the one time key "later"
-                        end_time = time_keys[time_keys.index(start_time) + 1]
+                        if i == len(time_keys) - 1:
+                            end_time = latest_time
+                        else:
+                            end_time = time_keys[i + 1]
 
                         process_dict["end"] = end_time
 
@@ -1188,9 +1019,9 @@ def add_evaluation_to_database(
                         subloc_no=int(process_dict["slot"]),
                         trip_id=None,
                         time_start=timedelta(seconds=start_time)
-                        + simulation_start_time,
+                                   + simulation_start_time,
                         time_end=timedelta(seconds=process_dict["end"])
-                        + simulation_start_time,
+                                 + simulation_start_time,
                         soc_start=soc_start if soc_start is not None else soc_end,
                         soc_end=soc_end
                         if soc_end is not None
@@ -1205,8 +1036,8 @@ def add_evaluation_to_database(
 
                 # For non-copy schedules with no predecessor events, adding a dummy standby-departure
                 if (
-                    dict_of_events[time_keys[0]]["type"] == "Trip"
-                    and dict_of_events[time_keys[0]]["is_copy"] is False
+                        dict_of_events[time_keys[0]]["type"] == "Trip"
+                        and dict_of_events[time_keys[0]]["is_copy"] is False
                 ):
                     standby_start = time_keys[0] - 1
                     standby_end = time_keys[0]
@@ -1240,7 +1071,7 @@ def add_evaluation_to_database(
                         subloc_no=area.capacity,
                         trip_id=None,
                         time_start=timedelta(seconds=standby_start)
-                        + simulation_start_time,
+                                   + simulation_start_time,
                         time_end=timedelta(seconds=standby_end) + simulation_start_time,
                         soc_start=soc,
                         soc_end=soc,
