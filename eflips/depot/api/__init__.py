@@ -808,16 +808,20 @@ def add_evaluation_to_database(
             list_of_finished_trips.sort(key=lambda x: x.atd)
 
             for i in range(len(list_of_finished_trips)):
-
                 if list_of_finished_trips[i].is_copy is False:
                     current_trip = list_of_finished_trips[i]
 
-                    list_of_assigned_schedules.append((int(current_trip.ID), current_vehicle_db.id))
+                    list_of_assigned_schedules.append(
+                        (int(current_trip.ID), current_vehicle_db.id)
+                    )
 
                     if i == 0 or list_of_finished_trips[i - 1].is_copy is True:
                         earliest_time = list_of_finished_trips[i - 1].atd
 
-                    if i == len(list_of_finished_trips) - 1 or list_of_finished_trips[i + 1].is_copy is True:
+                    if (
+                        i == len(list_of_finished_trips) - 1
+                        or list_of_finished_trips[i + 1].is_copy is True
+                    ):
                         latest_time = list_of_finished_trips[i + 1].atd
 
             # For convenience
@@ -858,7 +862,6 @@ def add_evaluation_to_database(
                 "dwd.active_processes_copy"
             ].items():
                 if earliest_time < time_stamp < latest_time:
-
                     num_process = len(process_log)
                     if num_process == 0:
                         # A departure happens
@@ -876,11 +879,10 @@ def add_evaluation_to_database(
                                 )
 
                             match process.status:
-
                                 case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
                                     assert (
-                                            len(process.starts) == 1
-                                            and len(process.ends) == 1
+                                        len(process.starts) == 1
+                                        and len(process.ends) == 1
                                     ), (
                                         f"Current process {process.ID} is completed and should only contain one start and "
                                         f"one end time."
@@ -897,11 +899,18 @@ def add_evaluation_to_database(
                                         }
                                     else:
                                         # Duration is 0
-                                        assert current_area.issink is True, (f"A process with no duration could only "
-                                                                             f"happen in the last area before dispatched")
-                                        if (time_stamp in dict_of_events.keys()
-                                                and "end" in dict_of_events[time_stamp].keys()):
-                                            start_this_event = dict_of_events[time_stamp]["end"]
+                                        assert current_area.issink is True, (
+                                            f"A process with no duration could only "
+                                            f"happen in the last area before dispatched"
+                                        )
+                                        if (
+                                            time_stamp in dict_of_events.keys()
+                                            and "end"
+                                            in dict_of_events[time_stamp].keys()
+                                        ):
+                                            start_this_event = dict_of_events[
+                                                time_stamp
+                                            ]["end"]
                                             dict_of_events[start_this_event] = {
                                                 "type": type(process).__name__,
                                                 "area": current_area.ID,
@@ -911,8 +920,8 @@ def add_evaluation_to_database(
 
                                 case ProcessStatus.IN_PROGRESS:
                                     assert (
-                                            len(process.starts) == 1
-                                            and len(process.ends) == 0
+                                        len(process.starts) == 1
+                                        and len(process.ends) == 0
                                     ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
 
                                     if current_area is None or current_slot is None:
@@ -1019,9 +1028,9 @@ def add_evaluation_to_database(
                         subloc_no=int(process_dict["slot"]),
                         trip_id=None,
                         time_start=timedelta(seconds=start_time)
-                                   + simulation_start_time,
+                        + simulation_start_time,
                         time_end=timedelta(seconds=process_dict["end"])
-                                 + simulation_start_time,
+                        + simulation_start_time,
                         soc_start=soc_start if soc_start is not None else soc_end,
                         soc_end=soc_end
                         if soc_end is not None
@@ -1036,8 +1045,8 @@ def add_evaluation_to_database(
 
                 # For non-copy schedules with no predecessor events, adding a dummy standby-departure
                 if (
-                        dict_of_events[time_keys[0]]["type"] == "Trip"
-                        and dict_of_events[time_keys[0]]["is_copy"] is False
+                    dict_of_events[time_keys[0]]["type"] == "Trip"
+                    and dict_of_events[time_keys[0]]["is_copy"] is False
                 ):
                     standby_start = time_keys[0] - 1
                     standby_end = time_keys[0]
@@ -1071,7 +1080,7 @@ def add_evaluation_to_database(
                         subloc_no=area.capacity,
                         trip_id=None,
                         time_start=timedelta(seconds=standby_start)
-                                   + simulation_start_time,
+                        + simulation_start_time,
                         time_end=timedelta(seconds=standby_end) + simulation_start_time,
                         soc_start=soc,
                         soc_end=soc,
