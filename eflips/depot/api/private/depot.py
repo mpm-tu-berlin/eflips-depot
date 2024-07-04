@@ -222,7 +222,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     }
     # Groups
     for process in depot.default_plan.processes:
-        group_name = str(process_type(process)) + "_group"
+        group_name = str(process.name) + "_group"
         template["groups"][group_name] = {
             "typename": "AreaGroup",
             "stores": [str(area.id) for area in process.areas],
