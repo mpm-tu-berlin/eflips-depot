@@ -330,8 +330,8 @@ def create_simple_depot(
     depot.default_plan = plan
 
     # Create processes
-    standby_arrival = Process(
-        name="Standby Arrival",
+    shunting_1 = Process(
+        name="Shunting 1",
         scenario=scenario,
         dispatchable=False,
         duration=timedelta(minutes=5),
@@ -341,6 +341,12 @@ def create_simple_depot(
         scenario=scenario,
         dispatchable=False,
         duration=cleaning_duration,
+    )
+    shunting_2 = Process(
+        name="Shunting 2",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(minutes=5),
     )
     charging = Process(
         name="Charging",
@@ -353,33 +359,35 @@ def create_simple_depot(
         scenario=scenario,
         dispatchable=True,
     )
-    session.add(standby_arrival)
+
     session.add(clean)
+    session.add(shunting_1)
     session.add(charging)
     session.add(standby_departure)
+    session.add(shunting_2)
+
+    # Create shared waiting area
+    waiting_area = Area(
+        scenario=scenario,
+        name=f"Waiting Area for every type of vehicle",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=100,
+    )
+    session.add(waiting_area)
 
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
 
         charging_count = int(ceil(charging_count * (1 + safety_margin)))
 
-        # Create arrival area
-        arrival_area = Area(
-            scenario=scenario,
-            name=f"Arrival Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=10,
-        )
-        session.add(arrival_area)
-        arrival_area.vehicle_type = vehicle_type
         # Create charging area
         charging_area = Area(
             scenario=scenario,
             name=f"Direct Charging Area for {vehicle_type.name_short}",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=charging_count,
+            capacity=int(charging_count * 1),
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
@@ -399,19 +407,45 @@ def create_simple_depot(
         session.add(cleaning_area)
         cleaning_area.vehicle_type = vehicle_type
 
-        arrival_area.processes.append(standby_arrival)
+        shunting_area_1 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 1 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=10,
+        )
+
+        session.add(shunting_area_1)
+        shunting_area_1.vehicle_type = vehicle_type
+
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=10,
+        )
+
+        session.add(shunting_area_2)
+        shunting_area_2.vehicle_type = vehicle_type
+
         cleaning_area.processes.append(clean)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
+        shunting_area_1.processes.append(shunting_1)
+        shunting_area_2.processes.append(shunting_2)
 
         assocs = [
             AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
+                scenario=scenario, process=shunting_1, plan=plan, ordinal=0
             ),
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
             AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=shunting_2, plan=plan, ordinal=2
+            ),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=3),
+            AssocPlanProcess(
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=4
             ),
         ]
         session.add_all(assocs)
