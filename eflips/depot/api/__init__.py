@@ -25,6 +25,7 @@ The following steps are recommended for using the API:
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 """
 import copy
+import datetime
 import itertools
 import os
 import warnings
@@ -32,7 +33,7 @@ from datetime import timedelta
 from enum import Enum, auto
 from math import ceil
 from collections import OrderedDict
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
 import sqlalchemy.orm
@@ -54,7 +55,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
+from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle
 from eflips.depot.api.private.depot import (
     create_simple_depot,
     delete_depots,
@@ -379,6 +380,8 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 session=session,
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
+                safety_margin=0.0,
+
             )
 
 
@@ -800,8 +803,8 @@ def add_evaluation_to_database(
                 waiting_area_id = area.id
 
         assert isinstance(waiting_area_id, int) and waiting_area_id > 0, (
-            f"Block area id should be an integer greater than 0. For every depot there must be at least "
-            f"one block area."
+            f"Waiting area id should be an integer greater than 0. For every depot there must be at least "
+            f"one waiting area."
         )
 
         for current_vehicle in depot_evaluation.vehicle_generator.items:
@@ -829,7 +832,7 @@ def add_evaluation_to_database(
                 # departure time of the first copy trip in the "late-shifted" copy schedules.
 
             ) = _get_finished_schedules_per_vehicle(
-                current_vehicle, current_vehicle_db.id
+                current_vehicle.finished_trips, current_vehicle_db.id
             )
 
             try:
@@ -849,7 +852,7 @@ def add_evaluation_to_database(
 
             # Python passes dictionaries by reference
 
-            _complete_stanbby_daparture_events(dict_of_events, latest_time)
+            _complete_standby_departure_events(dict_of_events, latest_time)
 
             _complete_battery_log(dict_of_events, current_vehicle.battery_logs)
 
@@ -868,10 +871,23 @@ def add_evaluation_to_database(
         _update_waiting_events(session, scenario, waiting_area_id)
 
 
-def _get_finished_schedules_per_vehicle(current_vehicle, db_vehicle_id):
-    finished_schedules = []
+def _get_finished_schedules_per_vehicle(list_of_finished_trips: List, db_vehicle_id: int):
+    """
+    This function gets the finished non-copy schedules of a vehicle. It also returns an earliest and a latest time according to this vehicle's schedules.
+    Only processes happening within this time window will be handled later.
 
-    list_of_finished_trips = current_vehicle.finished_trips
+    Usually the earliest time is the departure time of the last copy trip in the "early-shifted" copy schedules
+    and the lastest time is the departure time of the first copy trip in the "late-shifted" copy schedules.
+
+    # If the vehicle's first trip is a non-copy trip, the earliest time is the departure time of the first trip. If the
+    # vehicle's last trip is a non-copy trip, the latest time is the departure time of the last trip.
+
+    :param list_of_finished_trips: A list of finished trips of a vehicle directly from :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+    :param db_vehicle_id: The vehicle id in the database.
+    :return: A tuple of three elements. The first element is a list of finished schedules of the vehicle. The second and
+    third elements are the earliest and latest time of the vehicle's schedules.
+    """
+    finished_schedules = []
 
     list_of_finished_trips.sort(key=lambda x: x.atd)
     earliest_time = None
@@ -886,11 +902,14 @@ def _get_finished_schedules_per_vehicle(current_vehicle, db_vehicle_id):
             if i == 0:
                 earliest_time = current_trip.atd
 
+            if i == len(list_of_finished_trips) - 1:
+                latest_time = current_trip.atd
+
             if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
                 earliest_time = list_of_finished_trips[i - 1].atd
 
             if (
-                    i == len(list_of_finished_trips) - 1
+                    i != len(list_of_finished_trips) - 1
                     or list_of_finished_trips[i + 1].is_copy is True
             ):
                 latest_time = list_of_finished_trips[i + 1].atd
@@ -898,7 +917,27 @@ def _get_finished_schedules_per_vehicle(current_vehicle, db_vehicle_id):
     return finished_schedules, earliest_time, latest_time
 
 
-def _get_events_current_vehicle(current_vehicle, waiting_area_id, earliest_time, latest_time):
+def _get_events_current_vehicle(current_vehicle: SimpleVehicle, waiting_area_id: int, earliest_time: datetime.datetime, latest_time:datetime.datetime):
+    """
+    This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
+    events. The values are also dictionaries containing:
+    - type: The type of the event.
+    - end: The end time of the event.
+    - area: The area id of the event.
+    - slot: The slot id of the event.
+    - id: The id of the event-related process.
+
+    For trips, only the type is stored.
+
+    For waiting events, the slot is not stored for now.
+
+
+    :param current_vehicle: a :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+    :param waiting_area_id: the id of the waiting area.
+    :param earliest_time:
+    :param latest_time:
+    :return:
+    """
     dict_of_events = OrderedDict()
 
     # For convenience
@@ -1032,7 +1071,13 @@ def _get_events_current_vehicle(current_vehicle, waiting_area_id, earliest_time,
     return dict_of_events
 
 
-def _complete_stanbby_daparture_events(dict_of_events, latest_time):
+def _complete_standby_departure_events(dict_of_events: Dict, latest_time: datetime.datetime):
+    """
+    This function completes the standby departure events by adding an end time to each standby departure event.
+    :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+    :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
+    :return: None
+    """
     for i in range(len(dict_of_events.keys())):
 
         time_keys = sorted(dict_of_events.keys())
@@ -1241,7 +1286,6 @@ def _update_waiting_events(session, scenario, waiting_area_id):
         )
         .all()
     )
-    # TODO only do the followings if there are waiting events
 
     assert len(all_waiting_starts) == len(all_waiting_ends), (
         f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends")
