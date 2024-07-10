@@ -827,9 +827,9 @@ def add_evaluation_to_database(
                 schedule_current_vehicle,
                 earliest_time,
                 latest_time,
-                # Earliest and latest time defines a time window, only the events within this time window will be handled.
-                # It is usually the departure time of the last copy trip in the "early-shifted" copy schedules and the
-                # departure time of the first copy trip in the "late-shifted" copy schedules.
+                # Earliest and latest time defines a time window, only the events within this time window will be
+                # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
+                # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
 
             ) = _get_finished_schedules_per_vehicle(
                 current_vehicle.finished_trips, current_vehicle_db.id
@@ -848,13 +848,13 @@ def add_evaluation_to_database(
 
             list_of_assigned_schedules.extend(schedule_current_vehicle)
 
-            dict_of_events = _get_events_current_vehicle(current_vehicle, waiting_area_id, earliest_time, latest_time)
+            dict_of_events = _generate_vehicle_events(current_vehicle, waiting_area_id, earliest_time, latest_time)
 
             # Python passes dictionaries by reference
 
             _complete_standby_departure_events(dict_of_events, latest_time)
 
-            _complete_battery_log(dict_of_events, current_vehicle.battery_logs)
+            _add_soc_to_events(dict_of_events, current_vehicle.battery_logs)
 
             try:
                 assert (not dict_of_events) is False
@@ -867,7 +867,7 @@ def add_evaluation_to_database(
             _add_events_into_database(current_vehicle_db, dict_of_events, session, scenario, simulation_start_time)
 
         # Postprocessing of events
-        _reassign_vehicle_rotation(session, scenario, list_of_assigned_schedules)
+        _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         _update_waiting_events(session, scenario, waiting_area_id)
 
 
@@ -917,7 +917,8 @@ def _get_finished_schedules_per_vehicle(list_of_finished_trips: List, db_vehicle
     return finished_schedules, earliest_time, latest_time
 
 
-def _get_events_current_vehicle(current_vehicle: SimpleVehicle, waiting_area_id: int, earliest_time: datetime.datetime, latest_time:datetime.datetime):
+def _generate_vehicle_events(current_vehicle: SimpleVehicle, waiting_area_id: int, earliest_time: datetime.datetime,
+                                latest_time: datetime.datetime):
     """
     This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
     events. The values are also dictionaries containing:
@@ -1053,8 +1054,10 @@ def _get_events_current_vehicle(current_vehicle: SimpleVehicle, waiting_area_id:
                                 raise NotImplementedError(
                                     "We believe this should never happen. If it happens, handle it here."
                                 )
+
+                        # The following ProcessStatus possibly only happen while the simulation is running, 
+                        # not in the results
                         case ProcessStatus.WAITING:
-                            # TODO check simulation core and see if these really are used
                             raise NotImplementedError(
                                 f"Current process {process.ID} is waiting. Not implemented yet."
                             )
@@ -1071,12 +1074,12 @@ def _get_events_current_vehicle(current_vehicle: SimpleVehicle, waiting_area_id:
     return dict_of_events
 
 
-def _complete_standby_departure_events(dict_of_events: Dict, latest_time: datetime.datetime):
+def _complete_standby_departure_events(dict_of_events: Dict, latest_time: datetime.datetime) -> None:
     """
     This function completes the standby departure events by adding an end time to each standby departure event.
     :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
     :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
-    :return: None
+    :return: None. The results are added to the dictionary.
     """
     for i in range(len(dict_of_events.keys())):
 
@@ -1084,18 +1087,23 @@ def _complete_standby_departure_events(dict_of_events: Dict, latest_time: dateti
 
         process_dict = dict_of_events[time_keys[i]]
         if "end" not in process_dict and process_dict["type"] != "Trip":
-            # End time will be the one time key "later"
+            # End time of a standby_departure will be the start of the following trip
             if i == len(time_keys) - 1:
+                # The event reaches simulation end
                 end_time = latest_time
             else:
                 end_time = time_keys[i + 1]
 
             process_dict["end"] = end_time
 
-    return dict_of_events
 
-
-def _complete_battery_log(dict_of_events, battery_log):
+def _add_soc_to_events(dict_of_events, battery_log) -> None:
+    """
+    This function completes the soc of each event by looking up the battery log.
+    :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+    :param battery_log: a list of battery logs of a vehicle.
+    :return: None. The results are added to the dictionary.
+    """
     battery_log_list = []
     for log in battery_log:
         battery_log_list.append((log.t, log.energy / log.energy_real))
@@ -1129,10 +1137,17 @@ def _complete_battery_log(dict_of_events, battery_log):
             else:
                 continue
 
-    return dict_of_events
 
-
-def _add_events_into_database(db_vehicle, dict_of_events, session, scenario, simulation_start_time):
+def _add_events_into_database(db_vehicle, dict_of_events, session, scenario, simulation_start_time) -> None:
+    """
+    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the database.
+    :param db_vehicle: vehicle object in the database
+    :param dict_of_events: dictionary containing the events of a vehicle. The keys are the start times of the events.
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+    :param scenario: the current simulated scenario
+    :param simulation_start_time: simulation start time in :class:`datetime.datetime` format
+    :return: None. The results are added to the database.
+    """
     for start_time, process_dict in dict_of_events.items():
 
         # Generate EventType
@@ -1235,7 +1250,14 @@ def _add_events_into_database(db_vehicle, dict_of_events, session, scenario, sim
     session.flush()
 
 
-def _reassign_vehicle_rotation(session, scenario, list_of_assigned_schedules):
+def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
+    """
+    This function updates the vehicle id assigned to the rotations and deletes the events that are not depot events.
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+    :param scenario: the current simulated scenario
+    :param list_of_assigned_schedules: a list of tuples containing the rotation id and the vehicle id.
+    :return: None. The results are added to the database.
+    """
     # New rotation assignment
     for schedule_id, vehicle_id in list_of_assigned_schedules:
         # Get corresponding old vehicle id
@@ -1265,7 +1287,15 @@ def _reassign_vehicle_rotation(session, scenario, list_of_assigned_schedules):
 
     session.flush()
 
-def _update_waiting_events(session, scenario, waiting_area_id):
+
+def _update_waiting_events(session, scenario, waiting_area_id) -> None:
+    """
+    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the waiting area.
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+    :param scenario: the current simulated scenario.
+    :param waiting_area_id: id of the waiting area.
+    :return: None. The results are added to the database.
+    """
     # Process all the STANDBY (waiting) events # TODO change the name after we agree on the naming change
     all_waiting_starts = (
         session.query(Event)
@@ -1361,4 +1391,3 @@ def _update_waiting_events(session, scenario, waiting_area_id):
                     break
 
     session.flush()
-
