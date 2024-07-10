@@ -35,7 +35,8 @@ from eflips.depot.api import (
     init_simulation,
     run_simulation,
     simple_consumption_simulation,
-    simulate_scenario, add_evaluation_to_database,
+    simulate_scenario,
+    add_evaluation_to_database,
 )
 
 
@@ -220,8 +221,8 @@ class TestHelpers:
                         scenario=scenario,
                         station=stop_2,
                         arrival_time=first_departure
-                                     + 2 * i * interval
-                                     + timedelta(minutes=5),
+                        + 2 * i * interval
+                        + timedelta(minutes=5),
                         dwell_duration=timedelta(minutes=1),
                     ),
                     StopTime(
@@ -240,8 +241,8 @@ class TestHelpers:
                         trip_type=TripType.PASSENGER,
                         departure_time=first_departure + (2 * i + 1) * interval,
                         arrival_time=first_departure
-                                     + (2 * i + 1) * interval
-                                     + duration,
+                        + (2 * i + 1) * interval
+                        + duration,
                         rotation=rotation,
                     )
                 )
@@ -255,15 +256,15 @@ class TestHelpers:
                         scenario=scenario,
                         station=stop_2,
                         arrival_time=first_departure
-                                     + (2 * i + 1) * interval
-                                     + timedelta(minutes=5),
+                        + (2 * i + 1) * interval
+                        + timedelta(minutes=5),
                     ),
                     StopTime(
                         scenario=scenario,
                         station=stop_1,
                         arrival_time=first_departure
-                                     + (2 * i + 1) * interval
-                                     + duration,
+                        + (2 * i + 1) * interval
+                        + duration,
                     ),
                 ]
                 trips[-1].stop_times = stop_times
@@ -441,7 +442,9 @@ class TestApi(TestHelpers):
         assert len(depot_evaluations) == 1
 
         add_evaluation_to_database(full_scenario, depot_evaluations, session)
-        events = session.query(Event).filter(Event.scenario_id == full_scenario.id).all()
+        events = (
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).all()
+        )
         assert len(events) > 0
 
     def test_run_simulation_too_small_battery(self, session, full_scenario, tmp_path):
@@ -493,8 +496,8 @@ class TestApi(TestHelpers):
 
         # Check that the depot was created
         assert (
-                session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
-                == 1
+            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
+            == 1
         )
 
         areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
@@ -542,11 +545,11 @@ class TestApi(TestHelpers):
             )
             for i in range(len(list_of_events) - 1):
                 if (
-                        list_of_events[i].event_type == EventType.DRIVING
-                        and list_of_events[i + 1].event_type != EventType.DRIVING
+                    list_of_events[i].event_type == EventType.DRIVING
+                    and list_of_events[i + 1].event_type != EventType.DRIVING
                 ):
                     assert (
-                            list_of_events[i].time_end == list_of_events[i + 1].time_start
+                        list_of_events[i].time_end == list_of_events[i + 1].time_start
                     )
 
     def test_interruptable_charging_process(self, session, full_scenario, tmp_path):
@@ -592,21 +595,21 @@ class TestSimpleConsumptionSimulation(TestHelpers):
         session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
 
         assert (
-                session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
-                == 0
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            == 0
         )
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .count()
-                > 0
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            > 0
         )
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .filter(Rotation.vehicle_id != None)
-                .count()
-                == 0
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+            == 0
         )
 
         simple_consumption_simulation(
@@ -614,23 +617,23 @@ class TestSimpleConsumptionSimulation(TestHelpers):
         )
 
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .count()
-                == session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .filter(Rotation.vehicle_id != None)
-                .count()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
         )
         assert (
-                session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
-                > 0
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
         )
 
         for rotation in (
-                session.query(Rotation)
-                        .filter(Rotation.scenario_id == full_scenario.id)
-                        .all()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
         ):
             assert rotation.vehicle_id is not None
             for trip in rotation.trips:
@@ -650,21 +653,21 @@ class TestSimpleConsumptionSimulation(TestHelpers):
         session.query(Vehicle).filter(Vehicle.scenario_id == full_scenario.id).delete()
 
         assert (
-                session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
-                == 0
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            == 0
         )
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .count()
-                > 0
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            > 0
         )
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .filter(Rotation.vehicle_id != None)
-                .count()
-                == 0
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
+            == 0
         )
 
         simple_consumption_simulation(
@@ -672,23 +675,23 @@ class TestSimpleConsumptionSimulation(TestHelpers):
         )
 
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .count()
-                == session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .filter(Rotation.vehicle_id != None)
-                .count()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
         )
         assert (
-                session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
-                > 0
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
         )
 
         for rotation in (
-                session.query(Rotation)
-                        .filter(Rotation.scenario_id == full_scenario.id)
-                        .all()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
         ):
             assert rotation.vehicle_id is not None
             for trip in rotation.trips:
@@ -700,7 +703,7 @@ class TestSimpleConsumptionSimulation(TestHelpers):
                 assert trip.events[0].soc_end < 1
 
     def test_consumption_simulation_initial_no_consumption(
-            self, session, full_scenario
+        self, session, full_scenario
     ):
         # Delete old events, rotation-id-assignments and vehicle-id-assignments
         session.query(Event).filter(Event.scenario_id == full_scenario.id).delete()
@@ -747,23 +750,23 @@ class TestSimpleConsumptionSimulation(TestHelpers):
         )  # This is the "subsequent" step
 
         assert (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .count()
-                == session.query(Rotation)
-                .filter(Rotation.scenario_id == full_scenario.id)
-                .filter(Rotation.vehicle_id != None)
-                .count()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .count()
+            == session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .filter(Rotation.vehicle_id != None)
+            .count()
         )
         assert (
-                session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
-                > 0
+            session.query(Event).filter(Event.scenario_id == full_scenario.id).count()
+            > 0
         )
 
         for rotation in (
-                session.query(Rotation)
-                        .filter(Rotation.scenario_id == full_scenario.id)
-                        .all()
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == full_scenario.id)
+            .all()
         ):
             assert rotation.vehicle_id is not None
             for trip in rotation.trips:

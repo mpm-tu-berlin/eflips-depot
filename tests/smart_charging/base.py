@@ -563,7 +563,6 @@ class BaseTest:
         charging_area.processes.append(standby_departure)
 
         assocs = [
-
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=0),
             AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=1),
             AssocPlanProcess(
