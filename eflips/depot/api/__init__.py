@@ -46,11 +46,7 @@ from eflips.model import (
     Scenario,
     Trip,
     Vehicle,
-    Process,
-    AssocAreaProcess,
-    Station,
 )
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
@@ -115,20 +111,24 @@ def simple_consumption_simulation(
     entries and ``Rotation.vehicle_id`` is already set.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-            an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-            ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
-            parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
-            valid database URL.
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+        valid database URL.
+
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
-            When running this function for the first time, this should be set to True. When running this function again
-            after the vehicles have been initialized, this should be set to False.
+        When running this function for the first time, this should be set to True. When running this function again
+        after the vehicles have been initialized, this should be set to False.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
-            valid database URL.
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
+        valid database URL.
+
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
-            is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
-            may significantly speed up the simulation.
+        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
+        is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
+        may significantly speed up the simulation.
+
     :return: Nothing. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -313,7 +313,9 @@ def generate_depot_layout(
         ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
         parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
+
     :param charging_power: the charging power of the charging area in kW
+
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
 
@@ -392,16 +394,18 @@ def apply_even_smart_charging(
     """
     Takes a scenario where depot simulation has been run and applies smart charging to the depot.
 
-    This modifies the
-    time and power of the charging events in the database. The arrival and departure times and SoCs at these times are
-    not modified.
+    This modifies the time and power of the charging events in the database. The arrival and departure times and SoCs at
+    these times are not modified.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
+
     :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
         allowed to wait at the depot before it has to leave. The default is 5 minutes.
+
     :return: None. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -485,14 +489,17 @@ def simulate_scenario(
         ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
         parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
+
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the result should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
+
     :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
         default is SmartChargingStragegy.NONE. The following strategies are available:
         - SmartChargingStragegy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
@@ -546,7 +553,9 @@ def init_simulation(
     The simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+
     :param session: A SQLAlchemy session object.
+
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
@@ -554,7 +563,7 @@ def init_simulation(
         raised and repetition needs to be specified manually.
 
     :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type for each
-         depot. The dictionary should have the following structure:
+        depot. The dictionary should have the following structure:
 
          ::
 
@@ -786,10 +795,10 @@ def add_evaluation_to_database(
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
 
     :param depot_evaluations: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are
-             the depot IDs, as strings.
+        the depot IDs, as strings.
 
     :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
-           database.
+        database.
 
     :return: Nothing. The results are added to the database.
     """
@@ -893,8 +902,8 @@ def _get_finished_schedules_per_vehicle(
     list_of_finished_trips: List, db_vehicle_id: int
 ):
     """
-    This function gets the finished non-copy schedules of a vehicle. It also returns an earliest and a latest time according to this vehicle's schedules.
-    Only processes happening within this time window will be handled later.
+    This function gets the finished non-copy schedules of a vehicle. It also returns an earliest and a latest time
+    according to this vehicle's schedules. Only processes happening within this time window will be handled later.
 
     Usually the earliest time is the departure time of the last copy trip in the "early-shifted" copy schedules
     and the lastest time is the departure time of the first copy trip in the "late-shifted" copy schedules.
@@ -902,10 +911,13 @@ def _get_finished_schedules_per_vehicle(
     # If the vehicle's first trip is a non-copy trip, the earliest time is the departure time of the first trip. If the
     # vehicle's last trip is a non-copy trip, the latest time is the departure time of the last trip.
 
-    :param list_of_finished_trips: A list of finished trips of a vehicle directly from :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+    :param list_of_finished_trips: A list of finished trips of a vehicle directly from
+        :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+
     :param db_vehicle_id: The vehicle id in the database.
+
     :return: A tuple of three elements. The first element is a list of finished schedules of the vehicle. The second and
-    third elements are the earliest and latest time of the vehicle's schedules.
+        third elements are the earliest and latest time of the vehicle's schedules.
     """
     finished_schedules = []
 
@@ -942,7 +954,7 @@ def _generate_vehicle_events(
     waiting_area_id: int,
     earliest_time: datetime.datetime,
     latest_time: datetime.datetime,
-):
+) -> OrderedDict:
     """
     This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
     events. The values are also dictionaries containing:
@@ -958,10 +970,15 @@ def _generate_vehicle_events(
 
 
     :param current_vehicle: a :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+
     :param waiting_area_id: the id of the waiting area.
-    :param earliest_time:
-    :param latest_time:
-    :return:
+
+    :param earliest_time: the earliest relevant time of the current vehicle. Any events earlier than this will not be
+        handled.
+
+    :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
+
+    :return: A ordered dictionary containing the events of a vehicle. The keys are the start times of the events.
     """
     dict_of_events = OrderedDict()
 
@@ -1103,8 +1120,11 @@ def _complete_standby_departure_events(
 ) -> None:
     """
     This function completes the standby departure events by adding an end time to each standby departure event.
+
     :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+
     :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
+
     :return: None. The results are added to the dictionary.
     """
     for i in range(len(dict_of_events.keys())):
@@ -1125,8 +1145,11 @@ def _complete_standby_departure_events(
 def _add_soc_to_events(dict_of_events, battery_log) -> None:
     """
     This function completes the soc of each event by looking up the battery log.
+
     :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+
     :param battery_log: a list of battery logs of a vehicle.
+
     :return: None. The results are added to the dictionary.
     """
     battery_log_list = []
@@ -1165,12 +1188,19 @@ def _add_events_into_database(
     db_vehicle, dict_of_events, session, scenario, simulation_start_time
 ) -> None:
     """
-    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the database.
+    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the
+    database.
+
     :param db_vehicle: vehicle object in the database
+
     :param dict_of_events: dictionary containing the events of a vehicle. The keys are the start times of the events.
+
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+
     :param scenario: the current simulated scenario
+
     :param simulation_start_time: simulation start time in :class:`datetime.datetime` format
+
     :return: None. The results are added to the database.
     """
     for start_time, process_dict in dict_of_events.items():
@@ -1316,10 +1346,17 @@ def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -
 
 def _update_waiting_events(session, scenario, waiting_area_id) -> None:
     """
-    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the waiting area.
+    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the
+    waiting area.
+
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+
     :param scenario: the current simulated scenario.
+
     :param waiting_area_id: id of the waiting area.
+
+    :raise ValueError: if the waiting area capacity is less than the peak waiting occupancy.
+
     :return: None. The results are added to the database.
     """
     # Process all the STANDBY (waiting) events # TODO change the name after we agree on the naming change
