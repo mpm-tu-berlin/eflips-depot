@@ -662,6 +662,8 @@ def init_simulation(
         depot_id = str(depot.id)
         eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
         vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
+        if 'None' in vehicle_types_for_depot:
+            vehicle_types_for_depot.remove('None')
 
         # If we have a vehicle count dictionary, we validate and use ir
         if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
@@ -673,23 +675,20 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the areas (except the area for the first standby process, which is already
-            # really large), with a 2x margin
+            # Calculate it from the size of the charging area with a 2x margin
+
             for vehicle_type in vehicle_types_for_depot:
-                # TODO quick fix of blocking area of no vehicle type. In this fix the block area without vehicle type is not counted
-                try:
-                    vehicle_count = sum(
-                        [
-                            area.capacity
-                            for area in depot.areas
-                            if area.vehicle_type_id == int(vehicle_type)
-                               and depot.default_plan.processes[0] not in area.processes
-                        ]
-                    )
-                except ValueError:
-                    continue
-                # TODO what do you mean by 2x margin? Ask Lu
-                # TODO What does it do and how does it affect the simulation?
+
+                vehicle_count = 0
+                for area in depot.areas:
+                    if area.vehicle_type_id == int(vehicle_type):
+                        # TODO potential edit if we make vehicle type of an area a list
+                        for p in area.processes:
+                            if p.electric_power is not None and p.duration is None:
+                                vehicle_count = area.capacity
+
+                assert vehicle_count > 0, f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
+
                 eflips.globalConstants["depot"]["vehicle_count"][depot_id][
                     vehicle_type
                 ] = (vehicle_count * 2)
