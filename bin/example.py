@@ -54,6 +54,13 @@ if __name__ == "__main__":
         help="The url of the database to be used. If it is not specified, the environment variable DATABASE_URL is used.",
         required=False,
     )
+    parser.add_argument(
+        "--simulation_core_diagram",
+        help="Print the simulation core diagram. This is an older diagram from teh simulation core that my be useful for"
+        " debugging.",
+        required=False,
+        action="store_true",
+    )
     args = parser.parse_args()
 
     if args.database_url is None:
@@ -69,7 +76,8 @@ if __name__ == "__main__":
 
     if args.scenario_id is None:
         raise ValueError(
-            "The scenario id must be specified. Use --list-scenarios to see all available scenarios, then run with --scenario-id <id>."
+            "The scenario id must be specified. Use --list-scenarios to see all available scenarios, then run with "
+            "--scenario-id <id>."
         )
 
     engine = create_engine(args.database_url, echo=False)
@@ -117,6 +125,41 @@ if __name__ == "__main__":
             repetition_period=timedelta(days=7),
         )
         depot_evaluations = run_simulation(simulation_host)
+
+        if args.simulation_core_diagram:
+            # We print the old-style plot of the simulation core
+            # This might be useful for debugging, as it contains the state of the simulation boefore
+            # `add_evaluation_to_database()` is called
+            OUTPUT_DIR = os.path.join("output", scenario.name)
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
+            for depot in scenario.depots:
+                DEPOT_NAME = depot.station.name
+                DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
+                os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
+
+                depot_evaluation = depot_evaluations[str(depot.id)]
+                depot_evaluation.path_results = DEPOT_OUTPUT_DIR
+
+                depot_evaluation.vehicle_periods(
+                    periods={
+                        "depot general": "darkgray",
+                        "park": "lightgray",
+                        "Arrival Cleaning": "steelblue",
+                        "Charging": "forestgreen",
+                        "Standby Pre-departure": "darkblue",
+                        "precondition": "black",
+                        "trip": "wheat",
+                    },
+                    save=True,
+                    show=False,
+                    formats=(
+                        "pdf",
+                        "png",
+                    ),
+                    show_total_power=True,
+                    show_annotates=True,
+                )
+
         add_evaluation_to_database(scenario, depot_evaluations, session)
 
         ##### Step 3.5: Apply even smart charging
