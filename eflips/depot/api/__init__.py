@@ -667,7 +667,6 @@ def init_simulation(
 
         # If we have a vehicle count dictionary, we validate and use ir
         if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
-
             if set(vehicle_count_dict[depot_id].keys()) < vehicle_types_for_depot:
                 raise ValueError(
                     "The vehicle count dictionary does not contain all vehicle types for depot {depot_id}."
