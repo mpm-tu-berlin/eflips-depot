@@ -95,10 +95,10 @@ class SmartChargingStrategy(Enum):
 
 
 def simple_consumption_simulation(
-        scenario: Union[Scenario, int, Any],
-        initialize_vehicles: bool,
-        database_url: Optional[str] = None,
-        calculate_timeseries: bool = False,
+    scenario: Union[Scenario, int, Any],
+    initialize_vehicles: bool,
+    database_url: Optional[str] = None,
+    calculate_timeseries: bool = False,
 ) -> None:
     """
     A simple consumption simulation and vehicle initialization.
@@ -180,8 +180,8 @@ def simple_consumption_simulation(
             )
             for vehicle in vehicles:
                 if (
-                        session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
-                        == 0
+                    session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
+                    == 0
                 ):
                     # Also add a dummy standby-departure event if this vehicle has no events
                     rotation_per_vehicle = sorted(
@@ -253,7 +253,7 @@ def simple_consumption_simulation(
                         ].elapsed_distance
                         elapsed_energy = consumption * (elapsed_distance / 1000)  # kWh
                         soc = (
-                                current_soc - elapsed_energy / vehicle_type.battery_capacity
+                            current_soc - elapsed_energy / vehicle_type.battery_capacity
                         )
                         timeseries["time"].append(current_time.isoformat())
                         timeseries["soc"].append(soc)
@@ -287,10 +287,10 @@ def simple_consumption_simulation(
 
 
 def generate_depot_layout(
-        scenario: Union[Scenario, int, Any],
-        charging_power: float = 150,
-        database_url: Optional[str] = None,
-        delete_existing_depot: bool = False,
+    scenario: Union[Scenario, int, Any],
+    charging_power: float = 150,
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
 ):
     """
     Generates one or more depots for the scenario.
@@ -332,8 +332,8 @@ def generate_depot_layout(
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (
-                first_last_stop_tup,
-                vehicle_type_dict,
+            first_last_stop_tup,
+            vehicle_type_dict,
         ) in group_rotations_by_start_end_stop(scenario.id, session).items():
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
@@ -387,9 +387,9 @@ def generate_depot_layout(
 
 
 def apply_even_smart_charging(
-        scenario: Union[Scenario, int, Any],
-        database_url: Optional[str] = None,
-        standby_departure_duration: timedelta = timedelta(minutes=5),
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    standby_departure_duration: timedelta = timedelta(minutes=5),
 ) -> None:
     """
     Takes a scenario where depot simulation has been run and applies smart charging to the depot.
@@ -433,8 +433,8 @@ def apply_even_smart_charging(
                 )
 
                 if (
-                        next_event is None
-                        or next_event.event_type != EventType.STANDBY_DEPARTURE
+                    next_event is None
+                    or next_event.event_type != EventType.STANDBY_DEPARTURE
                 ):
                     warnings.warn(
                         f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
@@ -445,10 +445,10 @@ def apply_even_smart_charging(
                 assert next_event.time_start == charging_event.time_end
 
                 if (
-                        next_event.time_end - next_event.time_start
+                    next_event.time_end - next_event.time_start
                 ) > standby_departure_duration:
                     next_event.time_start = (
-                            next_event.time_end - standby_departure_duration
+                        next_event.time_end - standby_departure_duration
                     )
                     session.flush()
                     # Add a timeseries to the charging event
@@ -472,10 +472,10 @@ def apply_even_smart_charging(
 
 
 def simulate_scenario(
-        scenario: Union[Scenario, int, Any],
-        repetition_period: Optional[timedelta] = None,
-        database_url: Optional[str] = None,
-        smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
+    scenario: Union[Scenario, int, Any],
+    repetition_period: Optional[timedelta] = None,
+    database_url: Optional[str] = None,
+    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -530,10 +530,10 @@ def simulate_scenario(
 
 
 def _init_simulation(
-        scenario: Scenario,
-        session: Session,
-        repetition_period: Optional[timedelta] = None,
-        vehicle_count_dict: Optional[Dict[str, int]] = None,
+    scenario: Scenario,
+    session: Session,
+    repetition_period: Optional[timedelta] = None,
+    vehicle_count_dict: Optional[Dict[str, int]] = None,
 ) -> SimulationHost:
     """Deprecated stub for init_simulation."""
     raise NotImplementedError(
@@ -542,10 +542,10 @@ def _init_simulation(
 
 
 def init_simulation(
-        scenario: Scenario,
-        session: Session,
-        repetition_period: Optional[timedelta] = None,
-        vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
+    scenario: Scenario,
+    session: Session,
+    repetition_period: Optional[timedelta] = None,
+    vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
 ) -> SimulationHost:
     """
     This methods checks the input data for consistency, initializes a simulation host object and returns it.
@@ -662,8 +662,8 @@ def init_simulation(
         depot_id = str(depot.id)
         eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
         vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
-        if 'None' in vehicle_types_for_depot:
-            vehicle_types_for_depot.remove('None')
+        if "None" in vehicle_types_for_depot:
+            vehicle_types_for_depot.remove("None")
 
         # If we have a vehicle count dictionary, we validate and use ir
         if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
@@ -678,7 +678,6 @@ def init_simulation(
             # Calculate it from the size of the charging area with a 2x margin
 
             for vehicle_type in vehicle_types_for_depot:
-
                 vehicle_count = 0
                 for area in depot.areas:
                     if area.vehicle_type_id == int(vehicle_type):
@@ -687,7 +686,9 @@ def init_simulation(
                             if p.electric_power is not None and p.duration is None:
                                 vehicle_count = area.capacity
 
-                assert vehicle_count > 0, f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
+                assert (
+                    vehicle_count > 0
+                ), f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
 
                 eflips.globalConstants["depot"]["vehicle_count"][depot_id][
                     vehicle_type
@@ -770,9 +771,9 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
 
 
 def _add_evaluation_to_database(
-        scenario_id: int,
-        depot_evaluation: DepotEvaluation,
-        session: sqlalchemy.orm.Session,
+    scenario_id: int,
+    depot_evaluation: DepotEvaluation,
+    session: sqlalchemy.orm.Session,
 ) -> None:
     """Deprecated stub for add_evaluation_to_database."""
     raise NotImplementedError(
@@ -781,9 +782,9 @@ def _add_evaluation_to_database(
 
 
 def add_evaluation_to_database(
-        scenario: Scenario,
-        depot_evaluations: Dict[str, DepotEvaluation],
-        session: sqlalchemy.orm.Session,
+    scenario: Scenario,
+    depot_evaluations: Dict[str, DepotEvaluation],
+    session: sqlalchemy.orm.Session,
 ) -> None:
     """
     This method adds a simulation result to the database.
@@ -848,9 +849,9 @@ def add_evaluation_to_database(
                 # Earliest and latest time defines a time window, only the events within this time window will be
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
-            ) = _get_finished_schedules_per_vehicle(dict_of_events,
-                                                    current_vehicle.finished_trips, current_vehicle_db.id
-                                                    )
+            ) = _get_finished_schedules_per_vehicle(
+                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
+            )
 
             try:
                 assert earliest_time is not None and latest_time is not None, (
@@ -861,14 +862,18 @@ def add_evaluation_to_database(
                 continue
 
             assert (
-                    earliest_time < latest_time
+                earliest_time < latest_time
             ), f"Earliest time {earliest_time} is not less than latest time {latest_time}."
 
             list_of_assigned_schedules.extend(schedule_current_vehicle)
 
-            _generate_vehicle_events(dict_of_events,
-                                     current_vehicle, waiting_area_id, earliest_time, latest_time
-                                     )
+            _generate_vehicle_events(
+                dict_of_events,
+                current_vehicle,
+                waiting_area_id,
+                earliest_time,
+                latest_time,
+            )
 
             # Python passes dictionaries by reference
 
@@ -899,9 +904,9 @@ def add_evaluation_to_database(
         _update_waiting_events(session, scenario, waiting_area_id)
 
 
-def _get_finished_schedules_per_vehicle(dict_of_events,
-                                        list_of_finished_trips: List, db_vehicle_id: int
-                                        ):
+def _get_finished_schedules_per_vehicle(
+    dict_of_events, list_of_finished_trips: List, db_vehicle_id: int
+):
     """
     This function completes the following tasks:
     1. It gets the finished non-copy schedules of the current vehicle,
@@ -935,10 +940,10 @@ def _get_finished_schedules_per_vehicle(dict_of_events,
     latest_time = None
 
     for i in range(len(list_of_finished_trips)):
-
-        assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std, \
-            ("The trip {current_trip.ID} is delayed. The simulation doesn't "
-             "support delayed trips for now.")
+        assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std, (
+            "The trip {current_trip.ID} is delayed. The simulation doesn't "
+            "support delayed trips for now."
+        )
 
         if list_of_finished_trips[i].is_copy is False:
             current_trip = list_of_finished_trips[i]
@@ -946,7 +951,7 @@ def _get_finished_schedules_per_vehicle(dict_of_events,
             finished_schedules.append((int(current_trip.ID), db_vehicle_id))
             dict_of_events[current_trip.atd] = {
                 "type": "Trip",
-                "id": int(current_trip.ID)
+                "id": int(current_trip.ID),
             }
 
             if i == 0:
@@ -959,8 +964,8 @@ def _get_finished_schedules_per_vehicle(dict_of_events,
                 earliest_time = list_of_finished_trips[i - 1].atd
 
             if (
-                    i != len(list_of_finished_trips) - 1
-                    or list_of_finished_trips[i + 1].is_copy is True
+                i != len(list_of_finished_trips) - 1
+                or list_of_finished_trips[i + 1].is_copy is True
             ):
                 latest_time = list_of_finished_trips[i + 1].atd
 
@@ -968,11 +973,11 @@ def _get_finished_schedules_per_vehicle(dict_of_events,
 
 
 def _generate_vehicle_events(
-        dict_of_events,
-        current_vehicle: SimpleVehicle,
-        waiting_area_id: int,
-        earliest_time: datetime.datetime,
-        latest_time: datetime.datetime,
+    dict_of_events,
+    current_vehicle: SimpleVehicle,
+    waiting_area_id: int,
+    earliest_time: datetime.datetime,
+    latest_time: datetime.datetime,
 ) -> None:
     """
     This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
@@ -1055,7 +1060,7 @@ def _generate_vehicle_events(
                     match process.status:
                         case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
                             assert (
-                                    len(process.starts) == 1 and len(process.ends) == 1
+                                len(process.starts) == 1 and len(process.ends) == 1
                             ), (
                                 f"Current process {process.ID} is completed and should only contain one start and "
                                 f"one end time."
@@ -1077,8 +1082,8 @@ def _generate_vehicle_events(
                                     f"happen in the last area before dispatched"
                                 )
                                 if (
-                                        time_stamp in dict_of_events.keys()
-                                        and "end" in dict_of_events[time_stamp].keys()
+                                    time_stamp in dict_of_events.keys()
+                                    and "end" in dict_of_events[time_stamp].keys()
                                 ):
                                     start_this_event = dict_of_events[time_stamp]["end"]
                                     dict_of_events[start_this_event] = {
@@ -1090,7 +1095,7 @@ def _generate_vehicle_events(
 
                         case ProcessStatus.IN_PROGRESS:
                             assert (
-                                    len(process.starts) == 1 and len(process.ends) == 0
+                                len(process.starts) == 1 and len(process.ends) == 0
                             ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
 
                             if current_area is None or current_slot is None:
@@ -1131,7 +1136,7 @@ def _generate_vehicle_events(
 
 
 def _complete_standby_departure_events(
-        dict_of_events: Dict, latest_time: datetime.datetime
+    dict_of_events: Dict, latest_time: datetime.datetime
 ) -> None:
     """
     This function completes the standby departure events by adding an end time to each standby departure event.
@@ -1200,7 +1205,7 @@ def _add_soc_to_events(dict_of_events, battery_log) -> None:
 
 
 def _add_events_into_database(
-        db_vehicle, dict_of_events, session, scenario, simulation_start_time
+    db_vehicle, dict_of_events, session, scenario, simulation_start_time
 ) -> None:
     """
     This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the
@@ -1227,8 +1232,8 @@ def _add_events_into_database(
                 event_type = EventType.CHARGING_DEPOT
             case "Standby":
                 if (
-                        "is_waiting" in process_dict.keys()
-                        and process_dict["is_waiting"] is True
+                    "is_waiting" in process_dict.keys()
+                    and process_dict["is_waiting"] is True
                 ):
                     event_type = EventType.STANDBY
                 else:
@@ -1273,8 +1278,9 @@ def _add_events_into_database(
 
     time_keys = sorted(dict_of_events.keys())
     if (
-            dict_of_events[time_keys[0]]["type"] == "Trip"
-            # and dict_of_events[time_keys[0]]["is_copy"] is False
+        dict_of_events[time_keys[0]]["type"]
+        == "Trip"
+        # and dict_of_events[time_keys[0]]["is_copy"] is False
     ):
         standby_start = time_keys[0] - 1
         standby_end = time_keys[0]
