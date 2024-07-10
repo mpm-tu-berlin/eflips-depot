@@ -295,7 +295,7 @@ def create_simple_depot(
     charging_power: float,
     session: sqlalchemy.orm.session.Session,
     cleaning_duration: timedelta = timedelta(minutes=30),
-    safety_margin: float = 0.2,
+    safety_margin: float = 0.0,
 ) -> None:
     """
     Creates a simple depot for a given scenario.
@@ -303,7 +303,7 @@ def create_simple_depot(
     It has one area for each vehicle type and a charging process for each
     area. Also an arrival area for each vehicle type.
 
-    :param safety_margin: a safety margin for the number of charging and cleaning capacities
+    :param safety_margin: a safety margin for the number of charging and cleaning capacities. Default is 0.0
     :param scenario: The scenario to be simulated
     :param station: The station where the depot is located
     :param charging_capacities: A dictionary of vehicle types and the number of vehicles that can be charged at the same time

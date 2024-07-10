@@ -380,7 +380,7 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 session=session,
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
-                safety_margin=0.0,
+                safety_margin=0.2,
             )
 
 
