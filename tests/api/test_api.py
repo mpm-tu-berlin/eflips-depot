@@ -99,16 +99,6 @@ class TestHelpers:
         )
         session.add(vehicle_class)
 
-        # Add a vehicle
-        # TODO vehicle should be added by eflips-depot as output
-        # vehicle = Vehicle(
-        #     scenario=scenario,
-        #     vehicle_type=vehicle_type,
-        #     name="Test Vehicle",
-        #     name_short="TV",
-        # )
-        # session.add(vehicle)
-
         line = Line(
             scenario=scenario,
             name="Test Line",
@@ -304,7 +294,6 @@ class TestHelpers:
             capacity=number_of_rotations + 2,
         )
         session.add(arrival_area)
-        arrival_area.vehicle_type = vehicle_type
 
         cleaning_area = Area(
             scenario=scenario,
@@ -328,13 +317,6 @@ class TestHelpers:
         charging_area.vehicle_type = vehicle_type
 
         # Create processes
-        standby_arrival = Process(
-            name="Standby Arrival",
-            scenario=scenario,
-            dispatchable=False,
-            duration=timedelta(minutes=5),
-        )
-
         clean = Process(
             name="Arrival Cleaning",
             scenario=scenario,
@@ -355,24 +337,19 @@ class TestHelpers:
             dispatchable=True,
         )
 
-        session.add(standby_arrival)
         session.add(clean)
         session.add(charging)
         session.add(standby_departure)
 
         cleaning_area.processes.append(clean)
-        arrival_area.processes.append(standby_arrival)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
 
         assocs = [
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=0),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=1),
             AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=2
             ),
         ]
         session.add_all(assocs)
