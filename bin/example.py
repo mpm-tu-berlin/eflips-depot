@@ -115,14 +115,25 @@ if __name__ == "__main__":
             scenario=scenario, charging_power=150, delete_existing_depot=True
         )
 
+        depot_id = session.query(Depot.id).filter(Depot.scenario_id == scenario.id).one()[0]
+        vehicle_types = session.scalars(session.query(VehicleType.id).filter(VehicleType.scenario_id == scenario.id)).all()
+
         ##### Step 3: Run the simulation
         # This can be done using eflips.api.run_simulation. Here, we use the three steps of
         # eflips.api.init_simulation, eflips.api.run_simulation, and eflips.api.add_evaluation_to_database
         # in order to show what happens "under the hood".
+
+
+        vehicle_count = {}
+        vehicle_count[str(depot_id)] = { str(vt): 200 for vt in vehicle_types }
+
+
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             repetition_period=timedelta(days=7),
+            vehicle_count_dict=vehicle_count,
+
         )
         depot_evaluations = run_simulation(simulation_host)
 
@@ -132,33 +143,37 @@ if __name__ == "__main__":
             # `add_evaluation_to_database()` is called
             OUTPUT_DIR = os.path.join("output", scenario.name)
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            for depot in scenario.depots:
-                DEPOT_NAME = depot.station.name
-                DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
-                os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
+            try:
+                for depot in scenario.depots:
+                    DEPOT_NAME = depot.station.name
+                    DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
+                    os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
 
-                depot_evaluation = depot_evaluations[str(depot.id)]
-                depot_evaluation.path_results = DEPOT_OUTPUT_DIR
+                    depot_evaluation = depot_evaluations[str(depot.id)]
+                    depot_evaluation.path_results = DEPOT_OUTPUT_DIR
 
-                depot_evaluation.vehicle_periods(
-                    periods={
-                        "depot general": "darkgray",
-                        "park": "lightgray",
-                        "Arrival Cleaning": "steelblue",
-                        "Charging": "forestgreen",
-                        "Standby Pre-departure": "darkblue",
-                        "precondition": "black",
-                        "trip": "wheat",
-                    },
-                    save=True,
-                    show=False,
-                    formats=(
-                        "pdf",
-                        "png",
-                    ),
-                    show_total_power=True,
-                    show_annotates=True,
-                )
+                    depot_evaluation.vehicle_periods(
+                        periods={
+                            "depot general": "darkgray",
+                            "park": "lightgray",
+                            "Arrival Cleaning": "steelblue",
+                            "Charging": "forestgreen",
+                            "Standby Pre-departure": "darkblue",
+                            "precondition": "black",
+                            "trip": "wheat",
+                        },
+                        save=True,
+                        show=False,
+                        formats=(
+                            "pdf",
+                            "png",
+                        ),
+                        show_total_power=True,
+                        show_annotates=True,
+                    )
+            except AssertionError as e:
+                print("the waiting events are not possible to plot in the simulation core diagram. However, "
+                      "the simulation is still completed and eflips-eval plots are valid.")
 
         add_evaluation_to_database(scenario, depot_evaluations, session)
 
