@@ -30,7 +30,7 @@ import itertools
 import os
 import warnings
 from datetime import timedelta
-from enum import Enum, auto
+from enum import Enum
 from math import ceil
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Union, List
@@ -72,24 +72,24 @@ from eflips.depot.api.private.util import (
 )
 
 
-class SmartChargingStragegy(Enum):
+class SmartChargingStrategy(Enum):
     """Enum class for different smart charging strategies."""
 
-    NONE = auto
+    NONE = 0
     """
     Do not use smart charging.
 
     Buses are charged with the maximum power available, from the time they arrive at the depot
     until they are full (or leave the depot).
     """
-    EVEN = auto
+    EVEN = 1
     """
     Use smart charging with an even distribution of charging power over the time the bus is at the depot.
 
     This aims to
     minimize the peak power demand.
     """
-    MIN_PRICE = auto
+    MIN_PRICE = 2
     """
     Use smart charging in order to minimize the cost of charging.
 
@@ -427,8 +427,17 @@ def apply_even_smart_charging(
                     .order_by(Event.time_start)
                     .first()
                 )
-                assert next_event is not None
-                assert next_event.event_type == EventType.STANDBY_DEPARTURE
+
+                if (
+                    next_event is None
+                    or next_event.event_type != EventType.STANDBY_DEPARTURE
+                ):
+                    warnings.warn(
+                        f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
+                        f"event. No room for smart charging."
+                    )
+                    continue
+
                 assert next_event.time_start == charging_event.time_end
 
                 if (
@@ -462,7 +471,7 @@ def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
-    smart_charging_strategy: SmartChargingStragegy = SmartChargingStragegy.EVEN,
+    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -502,15 +511,15 @@ def simulate_scenario(
         ev = run_simulation(simulation_host)
         add_evaluation_to_database(scenario, ev, session)
 
-    match smart_charging_strategy:
-        case SmartChargingStragegy.NONE:
-            pass
-        case SmartChargingStragegy.EVEN:
-            apply_even_smart_charging(scenario, database_url)
-        case SmartChargingStragegy.MIN_PRICE:
-            raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
-        case _:
-            raise NotImplementedError()
+        match smart_charging_strategy:
+            case SmartChargingStrategy.NONE:
+                pass
+            case SmartChargingStrategy.EVEN:
+                apply_even_smart_charging(scenario, database_url)
+            case SmartChargingStrategy.MIN_PRICE:
+                raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
+            case _:
+                raise NotImplementedError()
 
 
 def _init_simulation(

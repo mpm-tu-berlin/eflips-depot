@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from eflips.depot.api import (
     simple_consumption_simulation,
     simulate_scenario,
-    SmartChargingStragegy,
+    SmartChargingStrategy,
 )
 
 
@@ -584,7 +584,7 @@ class BaseTest:
     def post_simulation_scenario_no_smart_charging(self, session, scenario):
         # Run the simulation
         simple_consumption_simulation(scenario, initialize_vehicles=True)
-        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStragegy.NONE)
+        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStrategy.NONE)
         session.commit()
         simple_consumption_simulation(scenario, initialize_vehicles=False)
 

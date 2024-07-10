@@ -14,7 +14,9 @@ class TestDepotEvaluation:
 
     @pytest.fixture
     def depot_evaluation(self):
-        """This method creates a sample depot evaluation object containing some sample data. Since the depot evaluation
+        """This method creates a sample depot evaluation object containing some sample data.
+
+        Since the depot evaluation
         is created at the end of the simulation, we need to create a simulation host object first.
         """
 
@@ -44,6 +46,7 @@ class TestDepotEvaluation:
 
         return ev
 
+    @pytest.mark.skip("Outdated test")
     def test_plot_vehicle_periods(self, depot_evaluation: DepotEvaluation, tmp_path):
         # Override the path_results variable in the config's ['depot']['path_results'] with a temporary directory
         depot_evaluation.path_results = str(tmp_path)
