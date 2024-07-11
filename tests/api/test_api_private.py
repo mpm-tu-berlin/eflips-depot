@@ -11,6 +11,7 @@ from eflips.depot.api.private.util import (
     vehicle_type_to_eflips,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
+    check_depot_validity,
 )
 from eflips.depot.simple_vehicle import (
     VehicleType as EflipsVehicleType,
@@ -193,3 +194,37 @@ class TestDepot(TestHelpers):
         # Check that the template is valid by creating a new depot from it
         eflips_depot = Depotinput(filename_template=template, show_gui=False)
         simulation_host = SimulationHost([eflips_depot], print_timestamps=False)
+
+    def test_check_depot_validity(self, session, full_scenario):
+        depot = full_scenario.depots[0]
+
+        # Check the depot for validity
+        check_depot_validity(depot)
+
+        areas = depot.areas
+        for area in areas:
+            if area.vehicle_type is None:
+                area.vehicle_type_id = full_scenario.vehicle_types[0].id
+
+        session.flush()
+
+        with pytest.raises(AssertionError):
+            check_depot_validity(depot)
+        session.rollback()
+
+        plan = depot.default_plan
+        last_process = plan.processes[-1]
+        last_process.duration = timedelta(minutes=3)
+        session.flush()
+
+        with pytest.raises(AssertionError):
+            check_depot_validity(depot)
+        session.rollback()
+
+        first_process = plan.processes[0]
+        first_process.duration = None
+        session.flush()
+
+        with pytest.raises(AssertionError):
+            check_depot_validity(depot)
+        session.rollback()

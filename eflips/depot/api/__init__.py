@@ -65,6 +65,7 @@ from eflips.depot.api.private.util import (
     start_and_end_times,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
+    check_depot_validity,
 )
 
 
@@ -590,6 +591,9 @@ def init_simulation(
     # Step 1: Set up the depot
     eflips_depots = []
     for depot in scenario.depots:
+        # Step 1.5: Check validity of a depot
+        check_depot_validity(depot)
+
         depot_dict = depot_to_template(depot)
         eflips_depots.append(
             eflips.depot.Depotinput(filename_template=depot_dict, show_gui=False)
@@ -854,11 +858,13 @@ def add_evaluation_to_database(
             )
 
             try:
-                assert earliest_time is not None and latest_time is not None, (
-                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle will not "
-                    f"be written into database."
-                )
+                assert earliest_time is not None and latest_time is not None
+
             except AssertionError as e:
+                warnings.warn(
+                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
+                    f"will not be written into database."
+                )
                 continue
 
             assert (

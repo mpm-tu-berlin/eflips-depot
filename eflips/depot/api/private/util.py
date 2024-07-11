@@ -164,6 +164,40 @@ def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
     return midnight_of_first_departure_day, total_duration_seconds
 
 
+def check_depot_validity(depot: Depot) -> None:
+    """
+    Check if the depot is valid for the eflips-depot simulation. Raise an AssertionError if it is not.
+    :param depot: a :class:`eflips.model.Depot` object.
+    :return: None
+    """
+    # 1. There must be an area containing no vehicle types
+    has_waiting_area = False
+    areas = depot.areas
+    for area in areas:
+        if area.vehicle_type_id is None:
+            # TODO might change to len(area.vehicle_types) == 0 after a list of vehicle types is allowed
+            has_waiting_area = True
+
+    assert (
+        has_waiting_area
+    ), "There must be an area containing no vehicle types as the waiting area."
+
+    # 2. There must be only one process with no duration and no electric power, and it must be the last process in the plan
+    plan = depot.default_plan
+    processes = plan.processes
+    last_process = processes[-1]
+    assert (
+        last_process.duration is None
+        and last_process.electric_power is None
+        and last_process.dispatchable is True
+    ), "The last process must be dispatchable and have no duration and no electric power."
+
+    for process in processes[:-1]:
+        assert (
+            process.electric_power is not None or process.duration is not None
+        ), "All processes except the last one must have electric power."
+
+
 @dataclass
 class VehicleSchedule:
     """
