@@ -7,7 +7,15 @@ from datetime import timedelta, datetime
 from typing import Union, Any, Optional, Tuple, Dict, List
 
 import simpy
-from eflips.model import Scenario, VehicleType, Rotation, Event, EventType, Trip
+from eflips.model import (
+    Scenario,
+    VehicleType,
+    Rotation,
+    Event,
+    EventType,
+    Trip,
+    Depot,
+)
 from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
 
