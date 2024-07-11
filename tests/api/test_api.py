@@ -366,6 +366,642 @@ class TestHelpers:
         return scenario
 
     @pytest.fixture()
+    def multi_depot_scenario(self, full_scenario, session):
+        multi_depot_scenario = Scenario(name="Test Multi Depot Scenario")
+
+        session.add(multi_depot_scenario)
+
+        # Add a vehicle type with a battery type
+        vehicle_type = VehicleType(
+            scenario=multi_depot_scenario,
+            name="Test Vehicle Type",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+        )
+        session.add(vehicle_type)
+        battery_type = BatteryType(
+            scenario=multi_depot_scenario, specific_mass=100, chemistry={"test": "test"}
+        )
+        session.add(battery_type)
+        vehicle_type.battery_type = battery_type
+
+        # Add a vehicle type without a battery type
+        vehicle_type = VehicleType(
+            scenario=multi_depot_scenario,
+            name="Test Vehicle Type 2",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+        )
+        session.add(vehicle_type)
+
+        # Add a VehicleClass
+        vehicle_class = VehicleClass(
+            scenario=multi_depot_scenario,
+            name="Test Vehicle Class",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
+
+        line = Line(
+            scenario=multi_depot_scenario,
+            name="Test Line",
+            name_short="TL",
+        )
+        session.add(line)
+
+        stop_1 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 1",
+            name_short="TS1",
+            geom="POINT(0 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_1)
+
+        stop_2 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 2",
+            name_short="TS2",
+            geom="POINT(1 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_2)
+
+        stop_3 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 3",
+            name_short="TS3",
+            geom="POINT(2 0 0)",
+            is_electrified=False,
+        )
+
+        route_1 = Route(
+            scenario=multi_depot_scenario,
+            name="Test Route 1",
+            name_short="TR1",
+            departure_station=stop_1,
+            arrival_station=stop_3,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_1,
+                route=route_1,
+                elapsed_distance=0,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_2,
+                route=route_1,
+                elapsed_distance=500,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_3,
+                route=route_1,
+                elapsed_distance=1000,
+            ),
+        ]
+        route_1.assoc_route_stations = assocs
+        session.add(route_1)
+
+        route_2 = Route(
+            scenario=multi_depot_scenario,
+            name="Test Route 2",
+            name_short="TR2",
+            departure_station=stop_3,
+            arrival_station=stop_1,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_3,
+                route=route_2,
+                elapsed_distance=0,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_2,
+                route=route_2,
+                elapsed_distance=100,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_1,
+                route=route_2,
+                elapsed_distance=1000,
+            ),
+        ]
+        route_2.assoc_route_stations = assocs
+        session.add(route_2)
+
+        # Add the schedule objects
+        first_departure = datetime(
+            year=2020, month=1, day=1, hour=12, minute=0, second=0, tzinfo=timezone.utc
+        )
+        interval = timedelta(minutes=30)
+        duration = timedelta(minutes=20)
+
+        # Create a number of rotations
+        number_of_rotations = 3
+        for rotation_id in range(number_of_rotations):
+            trips = []
+
+            rotation = Rotation(
+                scenario=multi_depot_scenario,
+                trips=trips,
+                vehicle_type=vehicle_type,
+                allow_opportunity_charging=False,
+            )
+            session.add(rotation)
+
+            for i in range(15):
+                # forward
+                trips.append(
+                    Trip(
+                        scenario=multi_depot_scenario,
+                        route=route_1,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + 2 * i * interval,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                        rotation=rotation,
+                    )
+                )
+                stop_times = [
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_1,
+                        arrival_time=first_departure + 2 * i * interval,
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_2,
+                        arrival_time=first_departure
+                        + 2 * i * interval
+                        + timedelta(minutes=5),
+                        dwell_duration=timedelta(minutes=1),
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_3,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+
+                # backward
+                trips.append(
+                    Trip(
+                        scenario=multi_depot_scenario,
+                        route=route_2,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + (2 * i + 1) * interval,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                        rotation=rotation,
+                    )
+                )
+                stop_times = [
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_3,
+                        arrival_time=first_departure + (2 * i + 1) * interval,
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_2,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + timedelta(minutes=5),
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_1,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+            session.add_all(trips)
+
+            first_departure += timedelta(minutes=20)
+
+        # Create a simple depot
+
+        depot = Depot(
+            scenario=multi_depot_scenario,
+            name="Test Depot",
+            name_short="TD",
+            station=stop_1,
+        )
+        session.add(depot)
+
+        # Create plan
+
+        plan = Plan(scenario=multi_depot_scenario, name="Test Plan")
+        session.add(plan)
+
+        depot.default_plan = plan
+
+        # Create areas
+        arrival_area = Area(
+            scenario=multi_depot_scenario,
+            name="Arrival",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=number_of_rotations + 2,
+        )
+        session.add(arrival_area)
+
+        cleaning_area = Area(
+            scenario=multi_depot_scenario,
+            name="Cleaning Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=1,
+        )
+        session.add(cleaning_area)
+        cleaning_area.vehicle_type = vehicle_type
+
+        charging_area = Area(
+            scenario=multi_depot_scenario,
+            name="Line Charging Area",
+            depot=depot,
+            area_type=AreaType.LINE,
+            row_count=4,
+            capacity=24,
+        )
+        session.add(charging_area)
+        charging_area.vehicle_type = vehicle_type
+
+        # Create processes
+        clean = Process(
+            name="Arrival Cleaning",
+            scenario=multi_depot_scenario,
+            dispatchable=False,
+            duration=timedelta(minutes=30),
+        )
+
+        charging = Process(
+            name="Charging",
+            scenario=multi_depot_scenario,
+            dispatchable=False,
+            electric_power=15,
+        )
+
+        standby_departure = Process(
+            name="Standby Pre-departure",
+            scenario=multi_depot_scenario,
+            dispatchable=True,
+        )
+
+        session.add(clean)
+        session.add(charging)
+        session.add(standby_departure)
+
+        cleaning_area.processes.append(clean)
+        charging_area.processes.append(charging)
+        charging_area.processes.append(standby_departure)
+
+        assocs = [
+            AssocPlanProcess(
+                scenario=multi_depot_scenario, process=clean, plan=plan, ordinal=0
+            ),
+            AssocPlanProcess(
+                scenario=multi_depot_scenario, process=charging, plan=plan, ordinal=1
+            ),
+            AssocPlanProcess(
+                scenario=multi_depot_scenario,
+                process=standby_departure,
+                plan=plan,
+                ordinal=2,
+            ),
+        ]
+        session.add_all(assocs)
+
+        # Add a vehicle type without a battery type
+        vehicle_type_2 = VehicleType(
+            scenario=multi_depot_scenario,
+            name="Test Vehicle Type 2",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+        )
+        session.add(vehicle_type_2)
+
+        # Add a VehicleClass
+        vehicle_class_2 = VehicleClass(
+            scenario=multi_depot_scenario,
+            name="Test Vehicle Class",
+            vehicle_types=[vehicle_type_2],
+        )
+        session.add(vehicle_class_2)
+
+        line_2 = Line(
+            scenario=multi_depot_scenario,
+            name="Test Line 2",
+            name_short="TL2",
+        )
+        session.add(line_2)
+
+        stop_4 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 7",
+            name_short="TS1",
+            geom="POINT(0 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_4)
+
+        stop_5 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 8",
+            name_short="TS2",
+            geom="POINT(1 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_5)
+
+        stop_6 = Station(
+            scenario=multi_depot_scenario,
+            name="Test Station 9",
+            name_short="TS3",
+            geom="POINT(2 0 0)",
+            is_electrified=False,
+        )
+
+        route_5 = Route(
+            scenario=multi_depot_scenario,
+            name="Test Route 5",
+            name_short="TR1",
+            departure_station=stop_4,
+            arrival_station=stop_6,
+            line=line_2,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_4,
+                route=route_5,
+                elapsed_distance=0,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_5,
+                route=route_5,
+                elapsed_distance=500,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_6,
+                route=route_5,
+                elapsed_distance=1000,
+            ),
+        ]
+        route_5.assoc_route_stations = assocs
+        session.add(route_5)
+
+        route_6 = Route(
+            scenario=multi_depot_scenario,
+            name="Test Route 2",
+            name_short="TR2",
+            departure_station=stop_6,
+            arrival_station=stop_4,
+            line=line_2,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_6,
+                route=route_6,
+                elapsed_distance=0,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_5,
+                route=route_6,
+                elapsed_distance=100,
+            ),
+            AssocRouteStation(
+                scenario=multi_depot_scenario,
+                station=stop_4,
+                route=route_6,
+                elapsed_distance=1000,
+            ),
+        ]
+        route_6.assoc_route_stations = assocs
+        session.add(route_6)
+
+        # Add the schedule objects
+        first_departure = datetime(
+            year=2020, month=1, day=1, hour=12, minute=0, second=0, tzinfo=timezone.utc
+        )
+        interval = timedelta(minutes=30)
+        duration = timedelta(minutes=20)
+
+        # Create a number of rotations
+        number_of_rotations = 3
+        for rotation_id in range(number_of_rotations):
+            trips = []
+
+            rotation_2 = Rotation(
+                scenario=multi_depot_scenario,
+                trips=trips,
+                vehicle_type=vehicle_type_2,
+                allow_opportunity_charging=False,
+            )
+            session.add(rotation_2)
+
+            for i in range(15):
+                # forward
+                trips.append(
+                    Trip(
+                        scenario=multi_depot_scenario,
+                        route=route_5,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + 2 * i * interval,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                        rotation=rotation_2,
+                    )
+                )
+                stop_times = [
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_4,
+                        arrival_time=first_departure + 2 * i * interval,
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_5,
+                        arrival_time=first_departure
+                        + 2 * i * interval
+                        + timedelta(minutes=5),
+                        dwell_duration=timedelta(minutes=1),
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_6,
+                        arrival_time=first_departure + 2 * i * interval + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+
+                # backward
+                trips.append(
+                    Trip(
+                        scenario=multi_depot_scenario,
+                        route=route_6,
+                        trip_type=TripType.PASSENGER,
+                        departure_time=first_departure + (2 * i + 1) * interval,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                        rotation=rotation_2,
+                    )
+                )
+                stop_times = [
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_6,
+                        arrival_time=first_departure + (2 * i + 1) * interval,
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_5,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + timedelta(minutes=5),
+                    ),
+                    StopTime(
+                        scenario=multi_depot_scenario,
+                        station=stop_4,
+                        arrival_time=first_departure
+                        + (2 * i + 1) * interval
+                        + duration,
+                    ),
+                ]
+                trips[-1].stop_times = stop_times
+            session.add_all(trips)
+
+            first_departure += timedelta(minutes=20)
+        # Create a simple depot
+
+        depot_no_2 = Depot(
+            scenario=multi_depot_scenario,
+            name="Test Depot 2",
+            name_short="TD2",
+            station=stop_4,
+        )
+
+        session.add(depot_no_2)
+
+        # Create plan
+
+        plan_2 = Plan(scenario=multi_depot_scenario, name="Test Plan 2")
+        session.add(plan_2)
+
+        depot_no_2.default_plan = plan_2
+
+        # Create areas
+
+        number_of_rotations = 3
+
+        arrival_area = Area(
+            scenario=multi_depot_scenario,
+            name="Arrival",
+            depot=depot_no_2,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=number_of_rotations + 2,
+        )
+        session.add(arrival_area)
+
+        cleaning_area = Area(
+            scenario=multi_depot_scenario,
+            name="Cleaning Area",
+            depot=depot_no_2,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=3,
+        )
+        session.add(cleaning_area)
+        cleaning_area.vehicle_type = vehicle_type_2
+
+        charging_area = Area(
+            scenario=multi_depot_scenario,
+            name="Line Charging Area",
+            depot=depot_no_2,
+            area_type=AreaType.LINE,
+            row_count=4,
+            capacity=24,
+        )
+        session.add(charging_area)
+        charging_area.vehicle_type = vehicle_type_2
+
+        # Create processes
+        clean = Process(
+            name="Arrival Cleaning",
+            scenario=multi_depot_scenario,
+            dispatchable=False,
+            duration=timedelta(minutes=30),
+        )
+
+        charging = Process(
+            name="Charging",
+            scenario=multi_depot_scenario,
+            dispatchable=False,
+            electric_power=15,
+        )
+
+        standby_departure = Process(
+            name="Standby Pre-departure",
+            scenario=multi_depot_scenario,
+            dispatchable=True,
+        )
+
+        session.add(clean)
+        session.add(charging)
+        session.add(standby_departure)
+
+        cleaning_area.processes.append(clean)
+        charging_area.processes.append(charging)
+        charging_area.processes.append(standby_departure)
+
+        assocs = [
+            AssocPlanProcess(
+                scenario=multi_depot_scenario, process=clean, plan=plan_2, ordinal=0
+            ),
+            AssocPlanProcess(
+                scenario=multi_depot_scenario, process=charging, plan=plan_2, ordinal=1
+            ),
+            AssocPlanProcess(
+                scenario=multi_depot_scenario,
+                process=standby_departure,
+                plan=plan_2,
+                ordinal=2,
+            ),
+        ]
+        session.add_all(assocs)
+
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in multi_depot_scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.flush()
+
+        simple_consumption_simulation(multi_depot_scenario, initialize_vehicles=True)
+
+        session.commit()
+        return multi_depot_scenario
+
+    @pytest.fixture()
     def session(self):
         """
         Creates a session with the eflips-model schema.
@@ -385,13 +1021,56 @@ class TestHelpers:
 
 
 class TestApi(TestHelpers):
-    def test_run_simulation_by_id(self, session, full_scenario):
+    def test_run_simulation_by_id(self, session, full_scenario, multi_depot_scenario):
         # Make sure the DATABASE_URL is set
         assert "DATABASE_URL" in os.environ
 
         simulate_scenario(
             scenario=full_scenario.id,
         )
+
+        simulate_scenario(
+            scenario=multi_depot_scenario.id,
+        )
+
+        PLOT = False
+
+        if PLOT:
+            try:
+                import eflips.eval.input.prepare
+                import eflips.eval.input.visualize
+                import eflips.eval.output.prepare
+                import eflips.eval.output.visualize
+            except ImportError:
+                print(
+                    "The eflips.eval package is not installed. Visualization is not possible."
+                )
+                print(
+                    "If you want to visualize the results, install the eflips.eval package using "
+                    "pip install eflips-eval"
+                )
+
+            for depot in multi_depot_scenario.depots:
+                vehicles = (
+                    session.query(Vehicle)
+                    .join(Event)
+                    .join(Area)
+                    .filter(Area.depot_id == depot.id)
+                    .all()
+                )
+                vehicle_ids = [vehicle.id for vehicle in vehicles]
+                df = eflips.eval.output.prepare.depot_event(
+                    multi_depot_scenario.id, session, vehicle_ids
+                )
+                color_scheme = "event_type"
+                fig = eflips.eval.output.visualize.depot_event(
+                    df, color_scheme=color_scheme
+                )
+                fig.update_layout(
+                    title=f"Depot events for {depot.name}, color scheme: {color_scheme}"
+                )
+
+                fig.show()
 
     def test_run_simulation_by_id_and_url(self, session, full_scenario):
         # Make sure the DATABASE_URL is set
