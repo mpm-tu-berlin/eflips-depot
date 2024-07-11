@@ -1412,7 +1412,14 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
     ), f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends"
 
     if len(all_waiting_starts) == 0:
-        print("No waiting events found. The depot has enough capacity for waiting.")
+        print(
+            "No waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to 10 as buffer."
+        )
+
+        session.query(Area).filter(Area.id == waiting_area_id).update(
+            {"capacity": 10}, synchronize_session="auto"
+        )
+
         return
 
     list_waiting_timestamps = []
@@ -1443,6 +1450,7 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
         session.query(Area).filter(Area.id == waiting_area_id).update(
             {"capacity": peak_waiting_occupancy}, synchronize_session="auto"
         )
+        session.flush()
     elif waiting_area.capacity < peak_waiting_occupancy:
         raise ValueError(
             f"Waiting area capacity is less than the peak waiting occupancy. "
