@@ -115,26 +115,15 @@ if __name__ == "__main__":
             scenario=scenario, charging_power=150, delete_existing_depot=True
         )
 
-        depot_id = (
-            session.query(Depot.id).filter(Depot.scenario_id == scenario.id).one()[0]
-        )
-        vehicle_types = session.scalars(
-            session.query(VehicleType.id).filter(VehicleType.scenario_id == scenario.id)
-        ).all()
-
         ##### Step 3: Run the simulation
         # This can be done using eflips.api.run_simulation. Here, we use the three steps of
         # eflips.api.init_simulation, eflips.api.run_simulation, and eflips.api.add_evaluation_to_database
         # in order to show what happens "under the hood".
 
-        vehicle_count = {}
-        vehicle_count[str(depot_id)] = {str(vt): 200 for vt in vehicle_types}
-
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
             repetition_period=timedelta(days=7),
-            vehicle_count_dict=vehicle_count,
         )
         depot_evaluations = run_simulation(simulation_host)
 
