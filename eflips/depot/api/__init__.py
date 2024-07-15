@@ -981,7 +981,7 @@ def _get_finished_schedules_per_vehicle(
 def _generate_vehicle_events(
     dict_of_events,
     current_vehicle: SimpleVehicle,
-    waiting_area_id: int,
+    virtual_waiting_area_id: int,
     earliest_time: datetime.datetime,
     latest_time: datetime.datetime,
 ) -> None:
@@ -1001,7 +1001,7 @@ def _generate_vehicle_events(
 
     :param current_vehicle: a :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
 
-    :param waiting_area_id: the id of the waiting area.
+    :param virtual_waiting_area_id: the id of the virtual waiting area. Vehicles waiting for the first process will park here.
 
     :param earliest_time: the earliest relevant time of the current vehicle. Any events earlier than this will not be
         handled.
@@ -1035,6 +1035,14 @@ def _generate_vehicle_events(
             )
 
             start_time = waiting_end_time - waiting_info["waiting_time"]
+
+            if waiting_info["area"] == waiting_log[waiting_log_timekeys[0]]["area"]:
+                # if the vehicle is waiting for the first process, put it in the virtual waiting area
+                waiting_area_id = virtual_waiting_area_id
+            else:
+                # If the vehicle is waiting for other processes,
+                # put it in the area of the prodecessor process of the waited process.
+                waiting_area_id = waiting_log[waiting_log_timekeys[idx - 1]]["area"]
 
             dict_of_events[start_time] = {
                 "type": "Standby",
@@ -1386,7 +1394,7 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
 
     :return: None. The results are added to the database.
     """
-    # Process all the STANDBY (waiting) events # TODO change the name after we agree on the naming change
+    # Process all the STANDBY (waiting) events #
     all_waiting_starts = (
         session.query(Event)
         .filter(
