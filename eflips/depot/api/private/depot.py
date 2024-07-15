@@ -104,6 +104,8 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             "vehicle_types": [str(area.vehicle_type_id)],
         }
 
+        # TODO for cleaning area etc., enable non-vehicle_type areas
+
         for process in area.processes:
             # Add process into process list
             list_of_processes.append(
@@ -222,7 +224,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     }
     # Groups
     for process in depot.default_plan.processes:
-        group_name = str(process_type(process)) + "_group"
+        group_name = str(process.name) + "_group"
         template["groups"][group_name] = {
             "typename": "AreaGroup",
             "stores": [str(area.id) for area in process.areas],
@@ -295,6 +297,7 @@ def create_simple_depot(
     charging_power: float,
     session: sqlalchemy.orm.session.Session,
     cleaning_duration: timedelta = timedelta(minutes=30),
+    safety_margin: float = 0.0,
 ) -> None:
     """
     Creates a simple depot for a given scenario.
@@ -302,6 +305,7 @@ def create_simple_depot(
     It has one area for each vehicle type and a charging process for each
     area. Also an arrival area for each vehicle type.
 
+    :param safety_margin: a safety margin for the number of charging and cleaning capacities. Default is 0.0
     :param scenario: The scenario to be simulated
     :param station: The station where the depot is located
     :param charging_capacities: A dictionary of vehicle types and the number of vehicles that can be charged at the same time
@@ -328,16 +332,23 @@ def create_simple_depot(
     depot.default_plan = plan
 
     # Create processes
-    standby_arrival = Process(
-        name="Standby Arrival",
+    shunting_1 = Process(
+        name="Shunting 1",
         scenario=scenario,
         dispatchable=False,
+        duration=timedelta(minutes=5),
     )
     clean = Process(
         name="Arrival Cleaning",
         scenario=scenario,
         dispatchable=False,
         duration=cleaning_duration,
+    )
+    shunting_2 = Process(
+        name="Shunting 2",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(minutes=5),
     )
     charging = Process(
         name="Charging",
@@ -350,15 +361,27 @@ def create_simple_depot(
         scenario=scenario,
         dispatchable=True,
     )
-    session.add(standby_arrival)
+
     session.add(clean)
+    session.add(shunting_1)
     session.add(charging)
     session.add(standby_departure)
+    session.add(shunting_2)
+
+    # Create shared waiting area
+    waiting_area = Area(
+        scenario=scenario,
+        name=f"Waiting Area for every type of vehicle",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=100,
+    )
+    session.add(waiting_area)
 
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
-        # Add a safety margin of 100% to the parking capacity
-        charging_count = int(ceil(charging_count * 2))
+
+        charging_count = int(ceil(charging_count * (1 + safety_margin)))
 
         # Create charging area
         charging_area = Area(
@@ -366,15 +389,15 @@ def create_simple_depot(
             name=f"Direct Charging Area for {vehicle_type.name_short}",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=charging_count,
+            capacity=int(charging_count * 1),
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
 
         # Create cleaning area
         cleaning_count = cleaning_capacities[vehicle_type]
-        # Add a safety margin of 100% to the parking capacity
-        cleaning_count = int(ceil(cleaning_count * 2))
+
+        cleaning_count = int(ceil(cleaning_count * (1 + safety_margin)))
 
         cleaning_area = Area(
             scenario=scenario,
@@ -386,31 +409,45 @@ def create_simple_depot(
         session.add(cleaning_area)
         cleaning_area.vehicle_type = vehicle_type
 
-        # Create stand by arrival area
-        arrival_area = Area(
+        shunting_area_1 = Area(
             scenario=scenario,
-            name=f"Arrival for {vehicle_type.name_short}",
+            name=f"Shunting Area 1 for {vehicle_type.name_short}",
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
-            capacity=(charging_count + cleaning_count)
-            * 2,  # SHould be huge, not all of it will be used
+            capacity=10,
         )
-        session.add(arrival_area)
-        arrival_area.vehicle_type = vehicle_type
 
-        arrival_area.processes.append(standby_arrival)
+        session.add(shunting_area_1)
+        shunting_area_1.vehicle_type = vehicle_type
+
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=10,
+        )
+
+        session.add(shunting_area_2)
+        shunting_area_2.vehicle_type = vehicle_type
+
         cleaning_area.processes.append(clean)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
+        shunting_area_1.processes.append(shunting_1)
+        shunting_area_2.processes.append(shunting_2)
 
         assocs = [
             AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
+                scenario=scenario, process=shunting_1, plan=plan, ordinal=0
             ),
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
             AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=shunting_2, plan=plan, ordinal=2
+            ),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=3),
+            AssocPlanProcess(
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=4
             ),
         ]
         session.add_all(assocs)

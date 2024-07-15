@@ -119,6 +119,7 @@ if __name__ == "__main__":
         # This can be done using eflips.api.run_simulation. Here, we use the three steps of
         # eflips.api.init_simulation, eflips.api.run_simulation, and eflips.api.add_evaluation_to_database
         # in order to show what happens "under the hood".
+
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
@@ -132,32 +133,38 @@ if __name__ == "__main__":
             # `add_evaluation_to_database()` is called
             OUTPUT_DIR = os.path.join("output", scenario.name)
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            for depot in scenario.depots:
-                DEPOT_NAME = depot.station.name
-                DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
-                os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
+            try:
+                for depot in scenario.depots:
+                    DEPOT_NAME = depot.station.name
+                    DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
+                    os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
 
-                depot_evaluation = depot_evaluations[str(depot.id)]
-                depot_evaluation.path_results = DEPOT_OUTPUT_DIR
+                    depot_evaluation = depot_evaluations[str(depot.id)]
+                    depot_evaluation.path_results = DEPOT_OUTPUT_DIR
 
-                depot_evaluation.vehicle_periods(
-                    periods={
-                        "depot general": "darkgray",
-                        "park": "lightgray",
-                        "Arrival Cleaning": "steelblue",
-                        "Charging": "forestgreen",
-                        "Standby Pre-departure": "darkblue",
-                        "precondition": "black",
-                        "trip": "wheat",
-                    },
-                    save=True,
-                    show=False,
-                    formats=(
-                        "pdf",
-                        "png",
-                    ),
-                    show_total_power=True,
-                    show_annotates=True,
+                    depot_evaluation.vehicle_periods(
+                        periods={
+                            "depot general": "darkgray",
+                            "park": "lightgray",
+                            "Arrival Cleaning": "steelblue",
+                            "Charging": "forestgreen",
+                            "Standby Pre-departure": "darkblue",
+                            "precondition": "black",
+                            "trip": "wheat",
+                        },
+                        save=True,
+                        show=False,
+                        formats=(
+                            "pdf",
+                            "png",
+                        ),
+                        show_total_power=True,
+                        show_annotates=True,
+                    )
+            except AssertionError as e:
+                print(
+                    "the waiting events are not possible to plot in the simulation core diagram. However, "
+                    "the simulation is still completed and eflips-eval plots are valid."
                 )
 
         add_evaluation_to_database(scenario, depot_evaluations, session)
