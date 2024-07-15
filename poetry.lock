@@ -459,13 +459,13 @@ simpy = ">=4.0.1,<5.0.0"
 
 [[package]]
 name = "eflips-model"
-version = "4.0.0a1"
+version = "4.0.0a2"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "eflips_model-4.0.0a1-py3-none-any.whl", hash = "sha256:4848ac9b5ff9608915766821b365e1a77a575ff64553b9f2bed8c8cab586b25d"},
-    {file = "eflips_model-4.0.0a1.tar.gz", hash = "sha256:a017110d160ce599b1fbe476257a2c7550cb1eb668c753a54f8b668e339520ba"},
+    {file = "eflips_model-4.0.0a2-py3-none-any.whl", hash = "sha256:2a54196310fff84b8332d2f6bf822a7c767e0787cd318f7ac6b6cbc6c14ffdaa"},
+    {file = "eflips_model-4.0.0a2.tar.gz", hash = "sha256:b46f28bfc93219d060b813ccaf78f6e7a1520683079fc2b4dc19f3ed021d8df4"},
 ]
 
 [package.dependencies]
@@ -1917,8 +1917,8 @@ description = "HTTP library with thread-safe connection pooling, file post, and 
 optional = false
 python-versions = ">=3.8"
 files = [
-    { file = "urllib3-2.2.2-py3-none-any.whl", hash = "sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472" },
-    { file = "urllib3-2.2.2.tar.gz", hash = "sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168" },
+    {file = "urllib3-2.2.2-py3-none-any.whl", hash = "sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472"},
+    {file = "urllib3-2.2.2.tar.gz", hash = "sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168"},
 ]
 
 [package.extras]
@@ -1972,4 +1972,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "0c146a99a8aecc80b3890d5cdc67bcdd9102bb4bae287830e814b6674b887cd9"
+content-hash = "ed9e330c28c34fa24d5b1bd176072797cb569e284a5c78882609f7099744508b"
