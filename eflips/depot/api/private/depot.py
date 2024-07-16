@@ -104,7 +104,9 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             "vehicle_types": [str(area.vehicle_type_id)],
         }
 
-        # TODO for cleaning area etc., enable non-vehicle_type areas
+        if area.vehicle_type_id is None:
+            all_vehicle_types = [str(x.id) for x in depot.scenario.vehicle_types]
+            template["areas"][area_name]["entry_filter"]["vehicle_types"] = all_vehicle_types
 
         for process in area.processes:
             # Add process into process list
