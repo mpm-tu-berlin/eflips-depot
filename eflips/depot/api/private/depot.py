@@ -380,6 +380,18 @@ def create_simple_depot(
     )
     session.add(waiting_area)
 
+    # Create shared cleaning area
+    cleaning_count = max([cap for vt, cap in cleaning_capacities.items()])
+    cleaning_area = Area(
+        scenario=scenario,
+        name=f"Cleaning Area ",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=int(cleaning_count),
+    )
+    session.add(cleaning_area)
+    cleaning_area.processes.append(clean)
+
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
 
@@ -395,21 +407,6 @@ def create_simple_depot(
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
-
-        # Create cleaning area
-        cleaning_count = cleaning_capacities[vehicle_type]
-
-        cleaning_count = int(ceil(cleaning_count * (1 + safety_margin)))
-
-        cleaning_area = Area(
-            scenario=scenario,
-            name=f"Cleaning Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=cleaning_count,
-        )
-        session.add(cleaning_area)
-        cleaning_area.vehicle_type = vehicle_type
 
         shunting_area_1 = Area(
             scenario=scenario,
@@ -433,7 +430,6 @@ def create_simple_depot(
         session.add(shunting_area_2)
         shunting_area_2.vehicle_type = vehicle_type
 
-        cleaning_area.processes.append(clean)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
         shunting_area_1.processes.append(shunting_1)
