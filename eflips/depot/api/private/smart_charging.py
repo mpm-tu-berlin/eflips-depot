@@ -40,10 +40,10 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
 
     # For each event, create an array of power draws and a boolean array of charging allowed
     # Also note down the peak power and transferred energy
-    params_for_events: List[Dict[str, float | np.ndarray]] = []
+    params_for_events: List[Dict[str, float | np.ndarray | Event]] = []
     for event in charging_events:
-        power_draw = np.zeros(total_duration, dtype=float)
-        charging_allowed = np.zeros(total_duration, dtype=int)
+        power_draw = np.zeros_like(total_time, dtype=float)
+        charging_allowed = np.zeros_like(total_time, dtype=int)
 
         # Calculate the power draw vector, from the start SoC, end SoC and timeseries, if available
         event_soc = [event.soc_start]
@@ -80,6 +80,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
 
         params_for_events.append(
             {
+                "event": event,
                 "power_draw": expanded_power,
                 "charging_allowed": charging_allowed,
                 "max_power": max_power,
@@ -230,6 +231,41 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         params_for_event["optimized_power"] = optimized_power
         params_for_event["optimized_power2"] = optimized_power2
 
+        event = params_for_event["event"]
+        start_index = int((event.time_start - start_time) / TEMPORAL_RESOLUTION)
+        end_index = (
+            int((event.time_end - start_time) / TEMPORAL_RESOLUTION) + 1
+        )  # +1 to include the last index
+        powers = params_for_event["optimized_power"][start_index:end_index]
+
+        energies = scipy.integrate.cumtrapz(powers, initial=0) / (
+            3600 / TEMPORAL_RESOLUTION.total_seconds()
+        )  # kWh
+        socs = event.soc_start + energies / event.vehicle.vehicle_type.battery_capacity
+
+        # Make sure the last SoC is the same as the end SoC
+        assert np.isclose(socs[-1], event.soc_end, atol=0.01)
+        # Make sure the first SoC is the same as the start SoC
+        assert np.isclose(socs[0], event.soc_start, atol=0.01)
+
+        # Make the socs match exactly, setting all those smaller than the start SoC to the start SoC and
+        # all those larger than the end SoC to the end SoC
+        socs[socs < event.soc_start] = event.soc_start
+        socs[socs > event.soc_end] = event.soc_end
+
+        # Add a timeseries to the event
+        event.timeseries = {
+            "time": [
+                datetime.fromtimestamp(t).astimezone().isoformat()
+                for t in total_time[start_index:end_index]
+            ],
+            "soc": socs.tolist(),
+        }
+        if event.timeseries["time"][0] < event.time_start.isoformat():
+            event.timeseries["time"][0] = event.time_start.isoformat()
+        if event.timeseries["time"][-1] > event.time_end.isoformat():
+            event.timeseries["time"][-1] = event.time_end.isoformat()
+
     # Now we have the power draw and charging allowed for each event
     if False:
         from matplotlib import pyplot as plt
@@ -284,37 +320,3 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         axs[2].set_xlabel("Time")
         axs[2].set_ylabel("Vehicle count")
         plt.show()
-
-    # Finally, update the events in the database
-    for i in range(len(charging_events)):
-        event = charging_events[i]
-        start_index = int((event.time_start - start_time) / TEMPORAL_RESOLUTION)
-        end_index = int((event.time_end - start_time) / TEMPORAL_RESOLUTION)
-        powers = params_for_events[i]["optimized_power"][start_index:end_index]
-        energies = scipy.integrate.cumtrapz(powers, initial=0) / (
-            3600 / TEMPORAL_RESOLUTION.total_seconds()
-        )  # kWh
-        socs = event.soc_start + energies / event.vehicle.vehicle_type.battery_capacity
-
-        # Make sure the last SoC is the same as the end SoC
-        assert np.isclose(socs[-1], event.soc_end, atol=0.01)
-        # Make sure the first SoC is the same as the start SoC
-        assert np.isclose(socs[0], event.soc_start, atol=0.01)
-
-        # Make the socs match exactly, setting all those smaller than the start SoC to the start SoC and
-        # all those larger than the end SoC to the end SoC
-        socs[socs < event.soc_start] = event.soc_start
-        socs[socs > event.soc_end] = event.soc_end
-
-        # Add a timeseries to the event
-        event.timeseries = {
-            "time": [
-                datetime.fromtimestamp(t).astimezone().isoformat()
-                for t in total_time[start_index:end_index]
-            ],
-            "soc": socs.tolist(),
-        }
-        if event.timeseries["time"][0] < event.time_start.isoformat():
-            event.timeseries["time"][0] = event.time_start.isoformat()
-        if event.timeseries["time"][-1] > event.time_end.isoformat():
-            event.timeseries["time"][-1] = event.time_end.isoformat()
