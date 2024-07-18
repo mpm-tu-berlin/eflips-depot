@@ -253,13 +253,16 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         socs[socs < event.soc_start] = event.soc_start
         socs[socs > event.soc_end] = event.soc_end
 
-        # Add a timeseries to the event
+        # Add a timeseries to the event, removing the first and last index, since they will be the same as the start and
+        # end SoC
         event.timeseries = {
             "time": [
                 datetime.fromtimestamp(t).astimezone().isoformat()
                 for t in total_time[start_index:end_index]
-            ],
-            "soc": socs.tolist(),
+            ][
+                1:-1
+            ],  # Remove the first and last index
+            "soc": socs.tolist()[1:-1],
         }
         if event.timeseries["time"][0] < event.time_start.isoformat():
             event.timeseries["time"][0] = event.time_start.isoformat()
