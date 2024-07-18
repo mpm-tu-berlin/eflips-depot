@@ -4,6 +4,7 @@ import os
 import warnings
 from datetime import timedelta
 
+from ds_wrapper import DjangoSimbaWrapper
 from eflips.model import *
 from eflips.model import ConsistencyWarning
 from sqlalchemy import create_engine
@@ -61,6 +62,12 @@ if __name__ == "__main__":
         required=False,
         action="store_true",
     )
+    parser.add_argument(
+        "--use_simba_consumption",
+        help="Use the consumption simulation from the SimBA Django application.",
+        required=False,
+        action="store_true",
+    )
     args = parser.parse_args()
 
     if args.database_url is None:
@@ -108,7 +115,19 @@ if __name__ == "__main__":
         # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
         # It could indicate a problem with the rotations with other data sources
         warnings.simplefilter("ignore", category=ConsistencyWarning)
-        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
+        if args.use_simba_consumption:
+            # We will need to commit and expire the session before and after the DjangoSimbaWrapper, respectively.
+            # This is because the DjangoSimbaWrapper accesses the database in its own (Django) session.
+            # So we need to first write the changes to the database and then tell the SQLAlchemy session that
+            # the data has changed.
+            session.commit()
+            ds_wrapper = DjangoSimbaWrapper(os.environ["DATABASE_URL"])
+            ds_wrapper.run_simba_scenario(scenario.id, assign_vehicles=True)
+            del ds_wrapper
+            session.commit()
+            session.expire_all()
+        else:
+            simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
@@ -123,7 +142,7 @@ if __name__ == "__main__":
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
-            repetition_period=timedelta(days=7),
+            repetition_period=timedelta(days=1),
         )
         depot_evaluations = run_simulation(simulation_host)
 
@@ -180,7 +199,19 @@ if __name__ == "__main__":
         # can be the same vehicle). Therefore, the driving events for the vehicles are deleted and the vehicles
         # are re-initialized. In order to have consumption values for the vehicles, we need to run the consumption
         # simulation again. This time, we do not need to initialize the vehicles, because they are already initialized.
-        simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+        if args.use_simba_consumption:
+            # We will need to commit and expire the session before and after the DjangoSimbaWrapper, respectively.
+            # This is because the DjangoSimbaWrapper accesses the database in its own (Django) session.
+            # So we need to first write the changes to the database and then tell the SQLAlchemy session that
+            # the data has changed.
+            session.commit()
+            ds_wrapper = DjangoSimbaWrapper(os.environ["DATABASE_URL"])
+            ds_wrapper.run_simba_scenario(scenario.id, assign_vehicles=False)
+            del ds_wrapper
+            session.commit()
+            session.expire_all()
+        else:
+            simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
 
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()
