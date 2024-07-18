@@ -507,7 +507,6 @@ class BaseTest:
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
             capacity=6,
-            vehicle_type=vehicle_type_1,
         )
         session.add(arrival_area)
 
@@ -533,12 +532,6 @@ class BaseTest:
         session.add(charging_area)
 
         # Create processes
-        standby_arrival = Process(
-            name="Standby Arrival",
-            scenario=scenario,
-            dispatchable=False,
-        )
-        session.add(standby_arrival)
 
         clean = Process(
             name="Clean",
@@ -565,19 +558,15 @@ class BaseTest:
 
         # Connect the areas and processes. *The final area needs to have both a charging and standby_departure process*
 
-        arrival_area.processes.append(standby_arrival)
         cleaning_area.processes.append(clean)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
 
         assocs = [
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=0),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=1),
             AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=2
             ),
         ]
         session.add_all(assocs)

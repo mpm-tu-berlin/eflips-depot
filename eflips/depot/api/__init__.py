@@ -25,12 +25,15 @@ The following steps are recommended for using the API:
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 """
 import copy
+import datetime
+import itertools
 import os
 import warnings
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from collections import OrderedDict
+from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
 import sqlalchemy.orm
@@ -43,15 +46,12 @@ from eflips.model import (
     Scenario,
     Trip,
     Vehicle,
-    Process,
-    AssocAreaProcess,
-    Station,
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost
+from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle
 from eflips.depot.api.private.depot import (
     create_simple_depot,
     delete_depots,
@@ -65,6 +65,7 @@ from eflips.depot.api.private.util import (
     start_and_end_times,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
+    check_depot_validity,
 )
 
 
@@ -111,20 +112,24 @@ def simple_consumption_simulation(
     entries and ``Rotation.vehicle_id`` is already set.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-            an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-            ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
-            parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
-            valid database URL.
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
+        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
+        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+        valid database URL.
+
     :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
-            When running this function for the first time, this should be set to True. When running this function again
-            after the vehicles have been initialized, this should be set to False.
+        When running this function for the first time, this should be set to True. When running this function again
+        after the vehicles have been initialized, this should be set to False.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-            :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
-            valid database URL.
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
+        valid database URL.
+
     :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-            to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
-            is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
-            may significantly speed up the simulation.
+        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
+        is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
+        may significantly speed up the simulation.
+
     :return: Nothing. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -309,7 +314,9 @@ def generate_depot_layout(
         ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
         parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
+
     :param charging_power: the charging power of the charging area in kW
+
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
 
@@ -376,6 +383,7 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 session=session,
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
+                safety_margin=0.2,
             )
 
 
@@ -387,16 +395,18 @@ def apply_even_smart_charging(
     """
     Takes a scenario where depot simulation has been run and applies smart charging to the depot.
 
-    This modifies the
-    time and power of the charging events in the database. The arrival and departure times and SoCs at these times are
-    not modified.
+    This modifies the time and power of the charging events in the database. The arrival and departure times and SoCs at
+    these times are not modified.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
+
     :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
         allowed to wait at the depot before it has to leave. The default is 5 minutes.
+
     :return: None. The results are added to the database.
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -480,14 +490,17 @@ def simulate_scenario(
         ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
         parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
+
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the result should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
+
     :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
         :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
         URL.
+
     :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
         default is SmartChargingStragegy.NONE. The following strategies are available:
         - SmartChargingStragegy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
@@ -541,7 +554,9 @@ def init_simulation(
     The simulation host object can then be passed to :func:`run_simulation()`.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+
     :param session: A SQLAlchemy session object.
+
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
         is needed because the *result* should be a steady-state result. THis can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
@@ -549,7 +564,7 @@ def init_simulation(
         raised and repetition needs to be specified manually.
 
     :param vehicle_count_dict: An optional dictionary specifying the number of vehicles for each vehicle type for each
-         depot. The dictionary should have the following structure:
+        depot. The dictionary should have the following structure:
 
          ::
 
@@ -576,6 +591,9 @@ def init_simulation(
     # Step 1: Set up the depot
     eflips_depots = []
     for depot in scenario.depots:
+        # Step 1.5: Check validity of a depot
+        check_depot_validity(depot)
+
         depot_dict = depot_to_template(depot)
         eflips_depots.append(
             eflips.depot.Depotinput(filename_template=depot_dict, show_gui=False)
@@ -648,10 +666,12 @@ def init_simulation(
         depot_id = str(depot.id)
         eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
         vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
+        if "None" in vehicle_types_for_depot:
+            vehicle_types_for_depot.remove("None")
 
         # If we have a vehicle count dictionary, we validate and use ir
         if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
-            if vehicle_count_dict[depot_id].keys() != vehicle_types_for_depot:
+            if set(vehicle_count_dict[depot_id].keys()) < vehicle_types_for_depot:
                 raise ValueError(
                     "The vehicle count dictionary does not contain all vehicle types for depot {depot_id}."
                 )
@@ -659,17 +679,21 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the areas (except the area for the first standby process, which is already
-            # really large), with a 2x margin
+            # Calculate it from the size of the charging area with a 2x margin
+
             for vehicle_type in vehicle_types_for_depot:
-                vehicle_count = sum(
-                    [
-                        area.capacity
-                        for area in depot.areas
-                        if area.vehicle_type_id == int(vehicle_type)
-                        and depot.default_plan.processes[0] not in area.processes
-                    ]
-                )
+                vehicle_count = 0
+                for area in depot.areas:
+                    if area.vehicle_type_id == int(vehicle_type):
+                        # TODO potential edit if we make vehicle type of an area a list
+                        for p in area.processes:
+                            if p.electric_power is not None and p.duration is None:
+                                vehicle_count = area.capacity
+
+                assert (
+                    vehicle_count > 0
+                ), f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
+
                 eflips.globalConstants["depot"]["vehicle_count"][depot_id][
                     vehicle_type
                 ] = (vehicle_count * 2)
@@ -775,443 +799,562 @@ def add_evaluation_to_database(
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
 
     :param depot_evaluations: A dictionary of :class:`eflips.depot.evaluation.DepotEvaluation` objects. The keys are
-             the depot IDs, as strings.
+        the depot IDs, as strings.
 
     :param session: a SQLAlchemy session object. This is used to add all the simulation results to the
-           database.
+        database.
 
     :return: Nothing. The results are added to the database.
     """
 
     # Read simulation start time
 
-    for depot_evaluation in depot_evaluations.values():
+    for depot_id, depot_evaluation in depot_evaluations.items():
         simulation_start_time = depot_evaluation.sim_start_datetime
 
-        # Initialization of empty lists
+        # Depot-layer operations
 
         list_of_assigned_schedules = []
 
-        # Read results from depot_evaluation categorized by vehicle
+        waiting_area_id = None
+
+        total_areas = scenario.areas
+        for area in total_areas:
+            if area.depot_id == int(depot_id) and len(area.processes) == 0:
+                waiting_area_id = area.id
+
+        assert isinstance(waiting_area_id, int) and waiting_area_id > 0, (
+            f"Waiting area id should be an integer greater than 0. For every depot there must be at least "
+            f"one waiting area."
+        )
+
         for current_vehicle in depot_evaluation.vehicle_generator.items:
+            # Vehicle-layer operations
+
             vehicle_type_id = int(current_vehicle.vehicle_type.ID)
 
-            # Create a Vehicle object for database
             current_vehicle_db = Vehicle(
                 vehicle_type_id=vehicle_type_id,
                 scenario=scenario,
                 name=current_vehicle.ID,
                 name_short=None,
             )
+
             # Flush the vehicle object to get the vehicle id
             session.add(current_vehicle_db)
             session.flush()
 
-            dict_of_events = {}
+            dict_of_events = OrderedDict()
 
-            # Generate process log for each
-            list_of_finished_trips = current_vehicle.finished_trips
-            list_of_finished_trips.sort(key=lambda x: x.atd)
+            (
+                schedule_current_vehicle,
+                earliest_time,
+                latest_time,
+                # Earliest and latest time defines a time window, only the events within this time window will be
+                # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
+                # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
+            ) = _get_finished_schedules_per_vehicle(
+                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
+            )
 
-            for i in range(len(list_of_finished_trips)):
-                if list_of_finished_trips[i].is_copy is False:
-                    current_trip = list_of_finished_trips[i]
+            try:
+                assert earliest_time is not None and latest_time is not None
 
-                    # Add all non-copy trips to the dictionary
-                    dict_of_events[current_trip.atd] = {
-                        "type": "Trip",
-                        "end": current_trip.ata,
-                        "is_copy": current_trip.is_copy,
-                        "id": current_trip.ID,
-                    }
+            except AssertionError as e:
+                warnings.warn(
+                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
+                    f"will not be written into database."
+                )
+                continue
 
-                    # Match current trip to its serving vehicle
-                    assigned_schedule_id = int(current_trip.ID)
-                    list_of_assigned_schedules.append(
-                        (assigned_schedule_id, current_vehicle_db.id)
-                    )
-                    # Also add two copy trips before and after the non-copy trip as "time boarders" for the depot process
-                    try:
-                        if list_of_finished_trips[i + 1].is_copy is True:
-                            dict_of_events[list_of_finished_trips[i + 1].atd] = {
-                                "type": "Trip",
-                                "end": list_of_finished_trips[i + 1].ata,
-                                "is_copy": list_of_finished_trips[i + 1].is_copy,
-                                "id": list_of_finished_trips[i + 1].ID,
-                            }
+            assert (
+                earliest_time < latest_time
+            ), f"Earliest time {earliest_time} is not less than latest time {latest_time}."
 
-                        if list_of_finished_trips[i - 1].is_copy is True:
-                            dict_of_events[list_of_finished_trips[i - 1].atd] = {
-                                "type": "Trip",
-                                "end": list_of_finished_trips[i - 1].ata,
-                                "is_copy": list_of_finished_trips[i - 1].is_copy,
-                                "id": list_of_finished_trips[i - 1].ID,
-                            }
+            list_of_assigned_schedules.extend(schedule_current_vehicle)
 
-                    except IndexError:
-                        # In case there are no copy trips before or after the non-copy trip
-                        continue
+            _generate_vehicle_events(
+                dict_of_events,
+                current_vehicle,
+                waiting_area_id,
+                earliest_time,
+                latest_time,
+            )
 
-            # The range of time of events to be generated. It is between the copy trip before the first non-copy trip
-            # and the copy trip after the last non-copy trip
-            earliest_time = sorted(dict_of_events.keys())[0]
-            latest_time = sorted(dict_of_events.keys())[-1]
+            # Python passes dictionaries by reference
 
-            last_standby_departure_start = 0
+            _complete_standby_departure_events(dict_of_events, latest_time)
 
-            # For convenience
-            area_log = current_vehicle.logger.loggedData["dwd.current_area"]
-            slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
+            _add_soc_to_events(dict_of_events, current_vehicle.battery_logs)
 
-            waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
-            battery_log = current_vehicle.battery_logs
+            try:
+                assert (not dict_of_events) is False
+            except AssertionError as e:
+                warnings.warn(
+                    f"Vehicle {current_vehicle_db.id} has no valid events. The vehicle will not be written "
+                    f"into database."
+                )
 
-            # Create standby events according to waiting_log
-            waiting_log_timekeys = sorted(waiting_log.keys())
+                continue
 
-            for idx in range(len(waiting_log_timekeys)):
-                end_time = waiting_log_timekeys[idx]
+            _add_events_into_database(
+                current_vehicle_db,
+                dict_of_events,
+                session,
+                scenario,
+                simulation_start_time,
+            )
 
-                # Only extract events if the time is within the upper mentioned range
+        # Postprocessing of events
+        _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
+        _update_waiting_events(session, scenario, waiting_area_id)
 
-                if earliest_time < end_time < latest_time:
-                    waiting_info = waiting_log[end_time]
 
-                    if waiting_info["waiting_time"] == 0:
-                        continue
+def _get_finished_schedules_per_vehicle(
+    dict_of_events, list_of_finished_trips: List, db_vehicle_id: int
+):
+    """
+    This function completes the following tasks:
+    1. It gets the finished non-copy schedules of the current vehicle,
+    which will be used in :func:`_update_vehicle_in_rotation()`.
 
-                    # Vehicle is waiting in the last area in waiting_log and expecting to enter the current area
-                    expected_area = waiting_info["area"]
-                    # Find the area for standby arrival event
+    2. It fills the dictionary of events with the trip_ids of the current vehicle.
 
-                    # Get the corresponding depot id first by grabbing one of the rotations and get its departure station
-                    some_rotation_id = current_vehicle.finished_trips[0].ID
-                    some_rotation = (
-                        session.query(Rotation)
-                        .filter(Rotation.id == some_rotation_id)
-                        .one()
-                    )
-                    start_station = some_rotation.trips[0].route.departure_station_id
-                    depot_id = (
-                        session.query(Depot.id)
-                        .join(Station)
-                        .filter(Station.id == start_station)
-                        .one()[0]
-                    )
+    3. It returns an earliest and a latest time according to this vehicle's schedules. Only processes happening within
+    this time window will be handled later.
 
-                    waiting_area_id = (
-                        session.query(Area.id)
-                        .join(AssocAreaProcess, AssocAreaProcess.area_id == Area.id)
-                        .join(Process, Process.id == AssocAreaProcess.process_id)
-                        .filter(
-                            Process.dispatchable == False,
-                            # Must use "==" instead of "is". Or it would be recongnize as a python statement rather than a SQL statement
-                            Process.duration.is_(None),
-                            Process.electric_power.is_(None),
-                            Area.vehicle_type_id
-                            == int(current_vehicle.vehicle_type.ID),
-                            Area.scenario_id == scenario.id,
-                            Area.depot_id == depot_id,
+    Usually the earliest time is the departure time of the last copy trip in the "early-shifted" copy schedules
+    and the lastest time is the departure time of the first copy trip in the "late-shifted" copy schedules.
+
+    # If the vehicle's first trip is a non-copy trip, the earliest time is the departure time of the first trip. If the
+    # vehicle's last trip is a non-copy trip, the latest time is the departure time of the last trip.
+
+    :param dict_of_events: An ordered dictionary storing the data related to an event. The keys are the start times of
+        the events.
+    :param list_of_finished_trips: A list of finished trips of a vehicle directly from
+        :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+
+    :param db_vehicle_id: The vehicle id in the database.
+
+    :return: A tuple of three elements. The first element is a list of finished schedules of the vehicle. The second and
+        third elements are the earliest and latest time of the vehicle's schedules.
+    """
+    finished_schedules = []
+
+    list_of_finished_trips.sort(key=lambda x: x.atd)
+    earliest_time = None
+    latest_time = None
+
+    for i in range(len(list_of_finished_trips)):
+        assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std, (
+            "The trip {current_trip.ID} is delayed. The simulation doesn't "
+            "support delayed trips for now."
+        )
+
+        if list_of_finished_trips[i].is_copy is False:
+            current_trip = list_of_finished_trips[i]
+
+            finished_schedules.append((int(current_trip.ID), db_vehicle_id))
+            dict_of_events[current_trip.atd] = {
+                "type": "Trip",
+                "id": int(current_trip.ID),
+            }
+
+            if i == 0:
+                earliest_time = current_trip.atd
+
+            if i == len(list_of_finished_trips) - 1:
+                latest_time = current_trip.atd
+
+            if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
+                earliest_time = list_of_finished_trips[i - 1].atd
+
+            if (
+                i != len(list_of_finished_trips) - 1
+                or list_of_finished_trips[i + 1].is_copy is True
+            ):
+                latest_time = list_of_finished_trips[i + 1].atd
+
+    return finished_schedules, earliest_time, latest_time
+
+
+def _generate_vehicle_events(
+    dict_of_events,
+    current_vehicle: SimpleVehicle,
+    virtual_waiting_area_id: int,
+    earliest_time: datetime.datetime,
+    latest_time: datetime.datetime,
+) -> None:
+    """
+    This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
+    events. The values are also dictionaries containing:
+    - type: The type of the event.
+    - end: The end time of the event.
+    - area: The area id of the event.
+    - slot: The slot id of the event.
+    - id: The id of the event-related process.
+
+    For trips, only the type is stored.
+
+    For waiting events, the slot is not stored for now.
+
+
+    :param current_vehicle: a :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
+
+    :param virtual_waiting_area_id: the id of the virtual waiting area. Vehicles waiting for the first process will park here.
+
+    :param earliest_time: the earliest relevant time of the current vehicle. Any events earlier than this will not be
+        handled.
+
+    :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
+
+    :return: None. The results are added to the dictionary.
+    """
+
+    # For convenience
+    area_log = current_vehicle.logger.loggedData["dwd.current_area"]
+    slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
+    waiting_log = current_vehicle.logger.loggedData["area_waiting_time"]
+
+    # Handling waiting events
+    waiting_log_timekeys = sorted(waiting_log.keys())
+
+    for idx in range(len(waiting_log_timekeys)):
+        waiting_end_time = waiting_log_timekeys[idx]
+
+        # Only extract events if the time is within the upper mentioned range
+
+        if earliest_time <= waiting_end_time <= latest_time:
+            waiting_info = waiting_log[waiting_end_time]
+
+            if waiting_info["waiting_time"] == 0:
+                continue
+
+            warnings.warn(
+                f"Vehicle {current_vehicle.ID} has been waiting for {waiting_info['waiting_time']} seconds. "
+            )
+
+            start_time = waiting_end_time - waiting_info["waiting_time"]
+
+            if waiting_info["area"] == waiting_log[waiting_log_timekeys[0]]["area"]:
+                # if the vehicle is waiting for the first process, put it in the virtual waiting area
+                waiting_area_id = virtual_waiting_area_id
+            else:
+                # If the vehicle is waiting for other processes,
+                # put it in the area of the prodecessor process of the waited process.
+                waiting_area_id = waiting_log[waiting_log_timekeys[idx - 1]]["area"]
+
+            dict_of_events[start_time] = {
+                "type": "Standby",
+                "end": waiting_end_time,
+                "area": waiting_area_id,
+                "is_waiting": True,
+            }
+
+    # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
+
+    for time_stamp, process_log in current_vehicle.logger.loggedData[
+        "dwd.active_processes_copy"
+    ].items():
+        if earliest_time <= time_stamp <= latest_time:
+            num_process = len(process_log)
+            if num_process == 0:
+                # A departure happens and this trip should already be stored in the dictionary
+                pass
+            else:
+                for process in process_log:
+                    current_area = area_log[time_stamp]
+                    current_slot = slot_log[time_stamp]
+
+                    if current_area is None or current_slot is None:
+                        raise ValueError(
+                            f"For process {process.ID} Area and slot should not be None."
                         )
-                        .one()[0]
-                    )
 
-                    # Make sure the vehicle is waiting at an area with enough capacity
-
-                    current_slot = slot_log[waiting_log_timekeys[idx - 1]]
-
-                    start_time = end_time - waiting_info["waiting_time"]
-
-                    warnings.warn(
-                        f"Vehicle {current_vehicle.ID} is waiting at {waiting_area_id} because area {expected_area} is full."
-                    )
-
-                    dict_of_events[start_time] = {
-                        "type": "Standby",
-                        "end": end_time,
-                        "area": waiting_area_id,
-                        "slot": current_slot,
-                        "is_area_sink": False,
-                    }
-
-            # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
-            battery_log_list = []
-            for log in battery_log:
-                battery_log_list.append((log.t, log.energy / log.energy_real))
-
-            for start_time, process_log in current_vehicle.logger.loggedData[
-                "dwd.active_processes_copy"
-            ].items():
-                if earliest_time < start_time < latest_time:
-                    if len(process_log) == 0:
-                        # A departure happens
-                        if last_standby_departure_start != 0:
-                            # Update the last standby-departure end time
-                            dict_of_events[last_standby_departure_start][
-                                "end"
-                            ] = start_time
-                        else:
-                            continue
-
-                    else:
-                        for process in process_log:
-                            match process.status:
-                                case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
-                                    assert (
-                                        len(process.starts) == 1
-                                        and len(process.ends) == 1
-                                    ), (
-                                        f"Current process {process.ID} is completed and should only contain one start and "
-                                        f"one end time."
-                                    )
-                                    current_area = area_log[start_time]
-                                    current_slot = slot_log[start_time]
-
-                                    if current_area is None or current_slot is None:
-                                        raise ValueError(
-                                            f"For process {process.ID} Area and slot should not be None."
-                                        )
-
-                                    if process.dur > 0:
-                                        # Valid duration
-                                        dict_of_events[start_time] = {
-                                            "type": type(process).__name__,
-                                            "end": process.ends[0],
-                                            "area": current_area.ID,
-                                            "slot": current_slot,
-                                            "id": process.ID,
-                                        }
-                                    else:
-                                        # Duration is 0
-                                        if current_area.issink is True:
-                                            # Standby departure
-                                            if start_time in dict_of_events:
-                                                # Actual start time should be the end time of the other positive
-                                                # duration process starting at the same time
-                                                actual_start_time = dict_of_events[
-                                                    start_time
-                                                ]["end"]
-                                            else:
-                                                for other_process in process_log:
-                                                    if (
-                                                        other_process.dur > 0
-                                                        and len(other_process.ends) != 0
-                                                    ):
-                                                        actual_start_time = (
-                                                            other_process.ends[0]
-                                                        )
-                                                    else:
-                                                        # Invalid standby before a process in progress will be ignored
-                                                        continue
-
-                                            last_standby_departure_start = (
-                                                actual_start_time
-                                            )
-
-                                            # If this standby event lasts actually 0 seconds, it is not a real event
-                                            if (
-                                                actual_start_time
-                                                in dict_of_events.keys()
-                                                and dict_of_events[actual_start_time][
-                                                    "type"
-                                                ]
-                                                == "Trip"
-                                            ):
-                                                continue
-                                            dict_of_events[actual_start_time] = {
-                                                "type": type(process).__name__,
-                                                "area": current_area.ID,
-                                                "is_area_sink": current_area.issink,
-                                                "slot": current_slot,
-                                                "id": process.ID,
-                                            }
-
-                                        else:
-                                            # Standby arrival
-                                            assert current_area.issink is False, (
-                                                f"A bus cannot go from Area {current_area.ID} to other areas. A Parking Area"
-                                                f" for standby arrival should be added."
-                                            )
-                                            dict_of_events[start_time] = {
-                                                "type": type(process).__name__,
-                                                "area": current_area.ID,
-                                                "is_area_sink": current_area.issink,
-                                                "slot": current_slot,
-                                                "id": process.ID,
-                                            }
-                                case ProcessStatus.IN_PROGRESS:
-                                    assert (
-                                        len(process.starts) == 1
-                                        and len(process.ends) == 0
-                                    ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
-                                    current_area = area_log[start_time]
-                                    current_slot = slot_log[start_time]
-
-                                    if current_area is None or current_slot is None:
-                                        raise ValueError(
-                                            f"For process {process.ID} Area and slot should not be None."
-                                        )
-
-                                    if process.dur > 0:
-                                        # Valid duration
-                                        dict_of_events[start_time] = {
-                                            "type": type(process).__name__,
-                                            "end": process.etc,
-                                            "area": current_area.ID,
-                                            "slot": current_slot,
-                                            "id": process.ID,
-                                        }
-                                    else:
-                                        raise NotImplementedError(
-                                            "We believe this should never happen. If it happens, handle it here."
-                                        )
-                                case ProcessStatus.WAITING:
-                                    raise NotImplementedError(
-                                        f"Current process {process.ID} is waiting. Not implemented yet."
-                                    )
-
-                                case ProcessStatus.NOT_STARTED:
-                                    raise NotImplementedError(
-                                        f"Current process {process.ID} is not started. Not implemented yet."
-                                    )
-
-                                case _:
-                                    raise ValueError(
-                                        f"Invalid process status {process.status} for process {process.ID}."
-                                    )
-
-            # Reverse the time keys to make generation of events before the trip easier
-            time_keys = sorted(dict_of_events.keys())
-            if len(time_keys) != 0:
-                # Generating valid event-list
-
-                for start_time in time_keys:
-                    process_dict = dict_of_events[start_time]
-
-                    # Generate EventType
-                    match process_dict["type"]:
-                        case "Serve":
-                            event_type = EventType.SERVICE
-                        case "Charge":
-                            event_type = EventType.CHARGING_DEPOT
-                        case "Standby":
-                            if process_dict["is_area_sink"] is True:
-                                event_type = EventType.STANDBY_DEPARTURE
-                            else:
-                                event_type = EventType.STANDBY
-                        case "Precondition":
-                            event_type = EventType.PRECONDITIONING
-                        case "Trip":
-                            continue
-                        case _:
-                            raise ValueError(
-                                'Invalid process type %s. Valid process types are "Serve", "Charge", '
-                                '"Standby", "Precondition"'
+                    match process.status:
+                        case ProcessStatus.COMPLETED | ProcessStatus.CANCELLED:
+                            assert (
+                                len(process.starts) == 1 and len(process.ends) == 1
+                            ), (
+                                f"Current process {process.ID} is completed and should only contain one start and "
+                                f"one end time."
                             )
 
-                    # End time of 0-duration processes are start time of the next process
+                            if process.dur > 0:
+                                # Valid duration
+                                dict_of_events[time_stamp] = {
+                                    "type": type(process).__name__,
+                                    "end": process.ends[0],
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
+                            else:
+                                # Duration is 0
+                                assert current_area.issink is True, (
+                                    f"A process with no duration could only "
+                                    f"happen in the last area before dispatched"
+                                )
+                                if (
+                                    time_stamp in dict_of_events.keys()
+                                    and "end" in dict_of_events[time_stamp].keys()
+                                ):
+                                    start_this_event = dict_of_events[time_stamp]["end"]
+                                    dict_of_events[start_this_event] = {
+                                        "type": type(process).__name__,
+                                        "area": current_area.ID,
+                                        "slot": current_slot,
+                                        "id": process.ID,
+                                    }
 
-                    if "end" not in process_dict:
-                        # End time will be the one time key "later"
-                        end_time = time_keys[time_keys.index(start_time) + 1]
+                        case ProcessStatus.IN_PROGRESS:
+                            assert (
+                                len(process.starts) == 1 and len(process.ends) == 0
+                            ), f"Current process {process.ID} is marked IN_PROGRESS, but has an end."
 
-                        process_dict["end"] = end_time
+                            if current_area is None or current_slot is None:
+                                raise ValueError(
+                                    f"For process {process.ID} Area and slot should not be None."
+                                )
 
-                    # Get soc
-                    soc_start = None
-                    soc_end = None
+                            if process.dur > 0:
+                                # Valid duration
+                                dict_of_events[time_stamp] = {
+                                    "type": type(process).__name__,
+                                    "end": process.etc,
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
+                            else:
+                                raise NotImplementedError(
+                                    "We believe this should never happen. If it happens, handle it here."
+                                )
 
-                    for i in range(len(battery_log_list)):
-                        # Access the correct battery log according to time since there is only one battery log for each time
-                        log = battery_log_list[i]
+                        # The following ProcessStatus possibly only happen while the simulation is running,
+                        # not in the results
+                        case ProcessStatus.WAITING:
+                            raise NotImplementedError(
+                                f"Current process {process.ID} is waiting. Not implemented yet."
+                            )
 
-                        if log[0] == start_time:
-                            soc_start = log[1]
-                        if log[0] == process_dict["end"]:
-                            soc_end = log[1]
-                        if log[0] < start_time < battery_log_list[i + 1][0]:
-                            soc_start = log[1]
-                        if log[0] < process_dict["end"] < battery_log_list[i + 1][0]:
-                            soc_end = log[1]
+                        case ProcessStatus.NOT_STARTED:
+                            raise NotImplementedError(
+                                f"Current process {process.ID} is not started. Not implemented yet."
+                            )
 
-                    current_event = Event(
-                        scenario=scenario,
-                        vehicle_type_id=vehicle_type_id,
-                        vehicle=current_vehicle_db,
-                        station_id=None,
-                        area_id=int(process_dict["area"]),
-                        subloc_no=int(process_dict["slot"]),
-                        trip_id=None,
-                        time_start=timedelta(seconds=start_time)
-                        + simulation_start_time,
-                        time_end=timedelta(seconds=process_dict["end"])
-                        + simulation_start_time,
-                        soc_start=soc_start if soc_start is not None else soc_end,
-                        soc_end=soc_end
-                        if soc_end is not None
-                        else soc_start,  # if only one battery log is found,
-                        # then this is not an event with soc change
-                        event_type=event_type,
-                        description=None,
-                        timeseries=None,
-                    )
+                        case _:
+                            raise ValueError(
+                                f"Invalid process status {process.status} for process {process.ID}."
+                            )
 
-                    session.add(current_event)
 
-                # For non-copy schedules with no predecessor events, adding a dummy standby-departure
+def _complete_standby_departure_events(
+    dict_of_events: Dict, latest_time: datetime.datetime
+) -> None:
+    """
+    This function completes the standby departure events by adding an end time to each standby departure event.
+
+    :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+
+    :param latest_time: the latest relevant time of the current vehicle. Any events later than this will not be handled.
+
+    :return: None. The results are added to the dictionary.
+    """
+    for i in range(len(dict_of_events.keys())):
+        time_keys = sorted(dict_of_events.keys())
+
+        process_dict = dict_of_events[time_keys[i]]
+        if "end" not in process_dict and process_dict["type"] != "Trip":
+            # End time of a standby_departure will be the start of the following trip
+            if i == len(time_keys) - 1:
+                # The event reaches simulation end
+                end_time = latest_time
+            else:
+                end_time = time_keys[i + 1]
+
+            process_dict["end"] = end_time
+
+
+def _add_soc_to_events(dict_of_events, battery_log) -> None:
+    """
+    This function completes the soc of each event by looking up the battery log.
+
+    :param dict_of_events: a dictionary containing the events of a vehicle. The keys are the start times of the events.
+
+    :param battery_log: a list of battery logs of a vehicle.
+
+    :return: None. The results are added to the dictionary.
+    """
+    battery_log_list = []
+    for log in battery_log:
+        battery_log_list.append((log.t, log.energy / log.energy_real))
+
+    time_keys = sorted(dict_of_events.keys())
+    for i in range(len(time_keys)):
+        # Get soc
+        soc_start = None
+        soc_end = None
+        start_time = time_keys[i]
+        process_dict = dict_of_events[time_keys[i]]
+        for j in range(len(battery_log_list)):
+            # Access the correct battery log according to time since there is only one battery log for each time
+            log = battery_log_list[j]
+
+            if process_dict["type"] != "Trip":
+                if log[0] == start_time:
+                    soc_start = log[1]
+                if log[0] == process_dict["end"]:
+                    soc_end = log[1]
+                if log[0] < start_time < battery_log_list[j + 1][0]:
+                    soc_start = log[1]
+                if log[0] < process_dict["end"] < battery_log_list[j + 1][0]:
+                    soc_end = log[1]
+
+                process_dict["soc_start"] = soc_start
+                process_dict["soc_end"] = soc_end
+
+            else:
+                continue
+
+
+def _add_events_into_database(
+    db_vehicle, dict_of_events, session, scenario, simulation_start_time
+) -> None:
+    """
+    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the
+    database.
+
+    :param db_vehicle: vehicle object in the database
+
+    :param dict_of_events: dictionary containing the events of a vehicle. The keys are the start times of the events.
+
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+
+    :param scenario: the current simulated scenario
+
+    :param simulation_start_time: simulation start time in :class:`datetime.datetime` format
+
+    :return: None. The results are added to the database.
+    """
+    for start_time, process_dict in dict_of_events.items():
+        # Generate EventType
+        match process_dict["type"]:
+            case "Serve":
+                event_type = EventType.SERVICE
+            case "Charge":
+                event_type = EventType.CHARGING_DEPOT
+            case "Standby":
                 if (
-                    dict_of_events[time_keys[0]]["type"] == "Trip"
-                    and dict_of_events[time_keys[0]]["is_copy"] is False
+                    "is_waiting" in process_dict.keys()
+                    and process_dict["is_waiting"] is True
                 ):
-                    standby_start = time_keys[0] - 1
-                    standby_end = time_keys[0]
-                    rotation_id = int(dict_of_events[time_keys[0]]["id"])
-                    area = (
-                        session.query(Area)
-                        .filter(Area.vehicle_type_id == vehicle_type_id)
-                        .first()
-                    )
+                    event_type = EventType.STANDBY
+                else:
+                    event_type = EventType.STANDBY_DEPARTURE
+            case "Precondition":
+                event_type = EventType.PRECONDITIONING
+            case "Trip":
+                continue
+            case _:
+                raise ValueError(
+                    'Invalid process type %s. Valid process types are "Serve", "Charge", '
+                    '"Standby", "Precondition"'
+                )
 
-                    first_trip = (
-                        session.query(Trip)
-                        .filter(Trip.rotation_id == rotation_id)
-                        .order_by(Trip.departure_time)
-                        .first()
-                    )
+        current_event = Event(
+            scenario=scenario,
+            vehicle_type_id=db_vehicle.vehicle_type_id,
+            vehicle=db_vehicle,
+            station_id=None,
+            area_id=int(process_dict["area"]),
+            subloc_no=int(process_dict["slot"])
+            if "slot" in process_dict.keys()
+            else 00,
+            trip_id=None,
+            time_start=timedelta(seconds=start_time) + simulation_start_time,
+            time_end=timedelta(seconds=process_dict["end"]) + simulation_start_time,
+            soc_start=process_dict["soc_start"]
+            if process_dict["soc_start"] is not None
+            else process_dict["soc_end"],
+            soc_end=process_dict["soc_end"]
+            if process_dict["soc_end"] is not None
+            else process_dict["soc_start"],  # if only one battery log is found,
+            # then this is not an event with soc change
+            event_type=event_type,
+            description=process_dict["id"] if "id" in process_dict.keys() else None,
+            timeseries=None,
+        )
 
-                    soc = (
-                        session.query(Event.soc_end)
-                        .filter(Event.scenario == scenario)
-                        .filter(Event.trip_id == first_trip.id)
-                        .first()[0]
-                    )
+        session.add(current_event)
 
-                    standby_event = Event(
-                        scenario=scenario,
-                        vehicle_type_id=vehicle_type_id,
-                        vehicle=current_vehicle_db,
-                        station_id=None,
-                        area_id=area.id,
-                        subloc_no=area.capacity,
-                        trip_id=None,
-                        time_start=timedelta(seconds=standby_start)
-                        + simulation_start_time,
-                        time_end=timedelta(seconds=standby_end) + simulation_start_time,
-                        soc_start=soc,
-                        soc_end=soc,
-                        event_type=EventType.STANDBY_DEPARTURE,
-                        description=f"DUMMY Standby event for {rotation_id}.",
-                        timeseries=None,
-                    )
+        # For non-copy schedules with no predecessor events, adding a dummy standby-departure
 
-                    session.add(standby_event)
+    time_keys = sorted(dict_of_events.keys())
+    if (
+        dict_of_events[time_keys[0]]["type"]
+        == "Trip"
+        # and dict_of_events[time_keys[0]]["is_copy"] is False
+    ):
+        standby_start = time_keys[0] - 1
+        standby_end = time_keys[0]
+        rotation_id = int(dict_of_events[time_keys[0]]["id"])
+        area = (
+            session.query(Area)
+            .filter(Area.vehicle_type_id == db_vehicle.vehicle_type_id)
+            .first()
+        )
 
-        # New rotation assignment
-        for schedule_id, vehicle_id in list_of_assigned_schedules:
-            # Get corresponding old vehicle id
-            session.query(Rotation).filter(Rotation.id == schedule_id).update(
-                {"vehicle_id": vehicle_id}, synchronize_session="auto"
-            )
+        first_trip = (
+            session.query(Trip)
+            .filter(Trip.rotation_id == rotation_id)
+            .order_by(Trip.departure_time)
+            .first()
+        )
+
+        soc = (
+            session.query(Event.soc_end)
+            .filter(Event.scenario == scenario)
+            .filter(Event.trip_id == first_trip.id)
+            .first()[0]
+        )
+
+        standby_event = Event(
+            scenario=scenario,
+            vehicle_type_id=db_vehicle.vehicle_type_id,
+            vehicle=db_vehicle,
+            station_id=None,
+            area_id=area.id,
+            subloc_no=area.capacity,
+            trip_id=None,
+            time_start=timedelta(seconds=standby_start) + simulation_start_time,
+            time_end=timedelta(seconds=standby_end) + simulation_start_time,
+            soc_start=soc,
+            soc_end=soc,
+            event_type=EventType.STANDBY_DEPARTURE,
+            description=f"DUMMY Standby event for {rotation_id}.",
+            timeseries=None,
+        )
+
+        session.add(standby_event)
+
+    session.flush()
+
+
+def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
+    """
+    This function updates the vehicle id assigned to the rotations and deletes the events that are not depot events.
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+    :param scenario: the current simulated scenario
+    :param list_of_assigned_schedules: a list of tuples containing the rotation id and the vehicle id.
+    :return: None. The results are added to the database.
+    """
+    # New rotation assignment
+    for schedule_id, vehicle_id in list_of_assigned_schedules:
+        # Get corresponding old vehicle id
+        session.query(Rotation).filter(Rotation.id == schedule_id).update(
+            {"vehicle_id": vehicle_id}, synchronize_session="auto"
+        )
 
     # Delete all non-depot events
     session.query(Event).filter(
@@ -1232,5 +1375,124 @@ def add_evaluation_to_database(
     session.query(Vehicle).filter(Vehicle.scenario == scenario).filter(
         Vehicle.id.not_in(select(vehicle_assigned_sq))
     ).delete()
+
+    session.flush()
+
+
+def _update_waiting_events(session, scenario, waiting_area_id) -> None:
+    """
+    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the
+    waiting area.
+
+    :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+
+    :param scenario: the current simulated scenario.
+
+    :param waiting_area_id: id of the waiting area.
+
+    :raise ValueError: if the waiting area capacity is less than the peak waiting occupancy.
+
+    :return: None. The results are added to the database.
+    """
+    # Process all the STANDBY (waiting) events #
+    all_waiting_starts = (
+        session.query(Event)
+        .filter(
+            Event.scenario_id == scenario.id,
+            Event.event_type == EventType.STANDBY,
+            Event.area_id == waiting_area_id,
+        )
+        .all()
+    )
+
+    all_waiting_ends = (
+        session.query(Event)
+        .filter(
+            Event.scenario_id == scenario.id,
+            Event.event_type == EventType.STANDBY,
+            Event.area_id == waiting_area_id,
+        )
+        .all()
+    )
+
+    assert len(all_waiting_starts) == len(
+        all_waiting_ends
+    ), f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends"
+
+    if len(all_waiting_starts) == 0:
+        print(
+            "No waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to 10 as buffer."
+        )
+
+        session.query(Area).filter(Area.id == waiting_area_id).update(
+            {"capacity": 10}, synchronize_session="auto"
+        )
+
+        return
+
+    list_waiting_timestamps = []
+    for waiting_start in all_waiting_starts:
+        list_waiting_timestamps.append(
+            {"timestamp": waiting_start.time_start, "event": (waiting_start.id, 1)}
+        )
+
+    for waiting_end in all_waiting_ends:
+        list_waiting_timestamps.append(
+            {"timestamp": waiting_end.time_end, "event": (waiting_end.id, -1)}
+        )
+
+    list_waiting_timestamps.sort(key=lambda x: x["timestamp"])
+    start_and_end_records = [wt["event"][1] for wt in list_waiting_timestamps]
+
+    peak_waiting_occupancy = max(list(itertools.accumulate(start_and_end_records)))
+
+    # Assuming that there is only one waiting area in each depot
+
+    waiting_area_id = all_waiting_starts[0].area_id
+    waiting_area = session.query(Area).filter(Area.id == waiting_area_id).first()
+    if waiting_area.capacity > peak_waiting_occupancy:
+        warnings.warn(
+            f"Current waiting area capacity {waiting_area.capacity} "
+            f"is greater than the peak waiting occupancy. Updating the capacity to {peak_waiting_occupancy}."
+        )
+        session.query(Area).filter(Area.id == waiting_area_id).update(
+            {"capacity": peak_waiting_occupancy}, synchronize_session="auto"
+        )
+        session.flush()
+    elif waiting_area.capacity < peak_waiting_occupancy:
+        raise ValueError(
+            f"Waiting area capacity is less than the peak waiting occupancy. "
+            f"Waiting area capacity: {waiting_area.capacity}, peak waiting occupancy: {peak_waiting_occupancy}."
+        )
+    else:
+        pass
+
+    session.flush()
+
+    # Update waiting slots
+    virtual_waiting_area = [None] * peak_waiting_occupancy
+    for wt in list_waiting_timestamps:
+        # check in
+        if wt["event"][1] == 1:
+            for i in range(len(virtual_waiting_area)):
+                if virtual_waiting_area[i] is None:
+                    virtual_waiting_area[i] = wt["event"][0]
+                    session.query(Event).filter(Event.id == wt["event"][0]).update(
+                        {"subloc_no": i}, synchronize_session="auto"
+                    )
+                    break
+        # check out
+        else:
+            for i in range(len(virtual_waiting_area)):
+                if virtual_waiting_area[i] == wt["event"][0]:
+                    current_waiting_event = (
+                        session.query(Event).filter(Event.id == wt["event"][0]).first()
+                    )
+                    assert current_waiting_event.subloc_no == i, (
+                        f"Subloc number of the event {current_waiting_event.id} is not equal to the index of the "
+                        f"event in the virtual waiting area."
+                    )
+                    virtual_waiting_area[i] = None
+                    break
 
     session.flush()
