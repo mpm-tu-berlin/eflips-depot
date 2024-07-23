@@ -27,12 +27,12 @@ The following steps are recommended for using the API:
 import copy
 import datetime
 import itertools
+import logging
 import os
 import warnings
+from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
-from math import ceil
-from collections import OrderedDict
 from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
@@ -47,6 +47,7 @@ from eflips.model import (
     Trip,
     Vehicle,
 )
+from math import ceil
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
@@ -132,6 +133,8 @@ def simple_consumption_simulation(
 
     :return: Nothing. The results are added to the database.
     """
+    logger = logging.getLogger(__name__)
+
     with create_session(scenario, database_url) as (session, scenario):
         rotations = (
             session.query(Rotation)
@@ -218,6 +221,7 @@ def simple_consumption_simulation(
         session.flush()
 
         for rotation in rotations:
+            rotation: Rotation
             with session.no_autoflush:
                 vehicle_type = rotation.vehicle_type
                 vehicle = rotation.vehicle
@@ -285,6 +289,59 @@ def simple_consumption_simulation(
                     timeseries=timeseries,
                 )
                 session.add(current_event)
+
+                # If the vehicle is
+                #  - Capable of opportunity charging
+                #  - On a Rotation which allows opportunity charging
+                #  - Currently at a station which allows opportunity charging
+                #  - which is not the last trip of the rotation
+                #  We add a charging event
+
+                if (
+                    rotation.vehicle_type.opportunity_charging_capable
+                    and rotation.allow_opportunity_charging
+                    and trip.route.arrival_station.is_electrified
+                    and trip != rotation.trips[-1]
+                ):
+                    logger.debug(
+                        f"Adding opportunity charging event for trip {trip.id}"
+                    )
+                    # Identify the break time between trips
+                    trip_index = rotation.trips.index(trip)
+                    next_trip = rotation.trips[trip_index + 1]
+                    break_time = next_trip.departure_time - trip.arrival_time
+
+                    # How much energy can be charged in this time?
+                    energy_charged = (
+                        max([v[1] for v in vehicle_type.charging_curve])
+                        * break_time.total_seconds()
+                        / 3600
+                    )
+
+                    if energy_charged > 0:
+                        # Calculate the end SoC
+                        post_charge_soc = min(
+                            current_soc
+                            + energy_charged / vehicle_type.battery_capacity,
+                            1,
+                        )
+
+                        # Create the charging event
+                        current_event = Event(
+                            scenario_id=scenario.id,
+                            vehicle_type_id=rotation.vehicle_type_id,
+                            vehicle=vehicle,
+                            station_id=trip.route.arrival_station_id,
+                            time_start=trip.arrival_time,
+                            time_end=next_trip.departure_time,
+                            soc_start=current_soc,
+                            soc_end=post_charge_soc,
+                            event_type=EventType.CHARGING_OPPORTUNITY,
+                            description=f"Opportunity charging event for trip {trip.id}.",
+                            timeseries=None,
+                        )
+                        current_soc = post_charge_soc
+                        session.add(current_event)
 
 
 def generate_depot_layout(
@@ -915,6 +972,7 @@ def _get_finished_schedules_per_vehicle(
 ):
     """
     This function completes the following tasks:
+
     1. It gets the finished non-copy schedules of the current vehicle,
     which will be used in :func:`_update_vehicle_in_rotation()`.
 
@@ -986,7 +1044,9 @@ def _generate_vehicle_events(
     latest_time: datetime.datetime,
 ) -> None:
     """
-    This function generates and ordered dictionary storing the data related to an event. It returns a dictionary. The keys are the start times of the
+    This function generates and ordered dictionary storing the data related to an event.
+
+    It returns a dictionary. The keys are the start times of the
     events. The values are also dictionaries containing:
     - type: The type of the event.
     - end: The end time of the event.
@@ -997,7 +1057,6 @@ def _generate_vehicle_events(
     For trips, only the type is stored.
 
     For waiting events, the slot is not stored for now.
-
 
     :param current_vehicle: a :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
 
@@ -1222,7 +1281,8 @@ def _add_events_into_database(
     db_vehicle, dict_of_events, session, scenario, simulation_start_time
 ) -> None:
     """
-    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the
+    This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the.
+
     database.
 
     :param db_vehicle: vehicle object in the database
@@ -1344,6 +1404,7 @@ def _add_events_into_database(
 def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
     """
     This function updates the vehicle id assigned to the rotations and deletes the events that are not depot events.
+
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
     :param scenario: the current simulated scenario
     :param list_of_assigned_schedules: a list of tuples containing the rotation id and the vehicle id.
@@ -1381,7 +1442,8 @@ def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -
 
 def _update_waiting_events(session, scenario, waiting_area_id) -> None:
     """
-    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the
+    This function evaluates the capacity of waiting area and assigns the waiting events to corresponding slots in the.
+
     waiting area.
 
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
