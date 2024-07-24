@@ -3,6 +3,14 @@ from datetime import datetime, timedelta, timezone
 
 import eflips.model
 import pytest
+from eflips.depot.api import (
+    generate_depot_layout,
+    init_simulation,
+    run_simulation,
+    simple_consumption_simulation,
+    simulate_scenario,
+    add_evaluation_to_database,
+)
 from eflips.model import (
     Area,
     AreaType,
@@ -29,15 +37,6 @@ from eflips.model import (
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-from eflips.depot.api import (
-    generate_depot_layout,
-    init_simulation,
-    run_simulation,
-    simple_consumption_simulation,
-    simulate_scenario,
-    add_evaluation_to_database,
-)
 
 
 class TestHelpers:
@@ -311,7 +310,6 @@ class TestHelpers:
             name="Line Charging Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=4,
             capacity=24,
         )
         session.add(charging_area)
@@ -636,7 +634,6 @@ class TestHelpers:
             name="Line Charging Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=4,
             capacity=24,
         )
         session.add(charging_area)
@@ -940,7 +937,6 @@ class TestHelpers:
             name="Line Charging Area",
             depot=depot_no_2,
             area_type=AreaType.LINE,
-            row_count=4,
             capacity=24,
         )
         session.add(charging_area)
