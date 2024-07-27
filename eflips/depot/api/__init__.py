@@ -745,7 +745,7 @@ def init_simulation(
                         # TODO potential edit if we make vehicle type of an area a list
                         for p in area.processes:
                             if p.electric_power is not None and p.duration is None:
-                                vehicle_count = area.capacity
+                                vehicle_count += area.capacity
 
                 assert (
                     vehicle_count > 0
