@@ -842,10 +842,32 @@ def _add_evaluation_to_database(
     )
 
 
+class UnstableVehicleCounter:
+    num_vehicles_only_copy: int = 0
+    num_vehicles_only_non_copy: int = 0
+    num_vehicles_begin_with_non_copy: int = 0
+    num_vehicles_end_with_non_copy: int = 0
+    @classmethod
+    def add_only_copy(cls):
+        cls.num_vehicles_only_copy += 1
+
+    @classmethod
+    def add_only_non_copy(cls):
+        cls.num_vehicles_only_non_copy += 1
+
+    @classmethod
+    def add_begin_with_non_copy(cls):
+        cls.num_vehicles_begin_with_non_copy += 1
+
+    @classmethod
+    def add_end_with_non_copy(cls):
+        cls.num_vehicles_end_with_non_copy += 1
+
 def add_evaluation_to_database(
-    scenario: Scenario,
-    depot_evaluations: Dict[str, DepotEvaluation],
-    session: sqlalchemy.orm.Session,
+        scenario: Scenario,
+        depot_evaluations: Dict[str, DepotEvaluation],
+        session: sqlalchemy.orm.Session,
+        counter: Optional = UnstableVehicleCounter,
 ) -> None:
     """
     This method adds a simulation result to the database.
@@ -911,7 +933,7 @@ def add_evaluation_to_database(
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
             ) = _get_finished_schedules_per_vehicle(
-                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
+                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id, counter
             )
 
             try:
@@ -919,9 +941,12 @@ def add_evaluation_to_database(
 
             except AssertionError as e:
                 warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
+                    f"Vehicle {current_vehicle_db.id} has only copied trips. The events of this vehicle "
                     f"will not be written into database."
                 )
+
+                if counter is not None:
+                    counter.add_only_copy()
                 continue
 
             assert (
@@ -966,9 +991,15 @@ def add_evaluation_to_database(
         _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         _update_waiting_events(session, scenario, waiting_area_id)
 
+        if counter is not None:
+            print("only copy: " + str(counter.num_vehicles_only_copy))
+            print("begin with non copy: " + str(counter.num_vehicles_begin_with_non_copy))
+            print("end with only copy: " + str(counter.num_vehicles_end_with_non_copy))
+            print("only non copy: " + str(counter.num_vehicles_only_non_copy))
+
 
 def _get_finished_schedules_per_vehicle(
-    dict_of_events, list_of_finished_trips: List, db_vehicle_id: int
+        dict_of_events, list_of_finished_trips: List, db_vehicle_id: int, counter: Optional = None
 ):
     """
     This function completes the following tasks:
@@ -1019,19 +1050,32 @@ def _get_finished_schedules_per_vehicle(
             }
 
             if i == 0:
+                # Vehicle begins with non copy trip
                 earliest_time = current_trip.atd
+                counter.add_begin_with_non_copy()
+
 
             if i == len(list_of_finished_trips) - 1:
+                # Vehicle ends with non copy trip
                 latest_time = current_trip.atd
+                counter.add_end_with_non_copy()
 
             if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
                 earliest_time = list_of_finished_trips[i - 1].atd
+                # i is the first non-copy trip
 
             if (
-                i != len(list_of_finished_trips) - 1
-                or list_of_finished_trips[i + 1].is_copy is True
+                    i != len(list_of_finished_trips) - 1
+                    and list_of_finished_trips[i + 1].is_copy is True
             ):
+                # i is the last non-copy trip
                 latest_time = list_of_finished_trips[i + 1].atd
+
+    if len(finished_schedules) == len(list_of_finished_trips):
+        earliest_time = list_of_finished_trips[0].atd
+        latest_time = list_of_finished_trips[-1].ata
+        counter.add_only_non_copy()
+
 
     return finished_schedules, earliest_time, latest_time
 
@@ -1090,7 +1134,8 @@ def _generate_vehicle_events(
                 continue
 
             warnings.warn(
-                f"Vehicle {current_vehicle.ID} has been waiting for {waiting_info['waiting_time']} seconds. "
+                f"Vehicle {current_vehicle.ID} has been waiting for entering area {waiting_info["area"]} "
+                f"for {waiting_info['waiting_time']} seconds. "
             )
 
             start_time = waiting_end_time - waiting_info["waiting_time"]
@@ -1356,6 +1401,12 @@ def _add_events_into_database(
         == "Trip"
         # and dict_of_events[time_keys[0]]["is_copy"] is False
     ):
+        warnings.warn(
+            f"Vehicle {db_vehicle.id} has a non-copy schedule with no predecessor events. A dummy standby-departure "
+            f"event will be added."
+        )
+
+
         standby_start = time_keys[0] - 1
         standby_end = time_keys[0]
         rotation_id = int(dict_of_events[time_keys[0]]["id"])
