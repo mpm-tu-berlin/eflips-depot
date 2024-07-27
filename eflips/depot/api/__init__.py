@@ -1185,9 +1185,17 @@ def _generate_vehicle_events(
                             )
 
                             if process.dur > 0:
+                                if process.starts[0] > time_stamp:
+                                    dict_of_events[time_stamp] = {
+                                        "type": "Standby",
+                                        "end": process.starts[0],
+                                        "area": current_area.ID,
+                                        "is_waiting": True,
+                                    }
                                 # Valid duration
-                                dict_of_events[time_stamp] = {
+                                dict_of_events[process.starts[0]] = {
                                     "type": type(process).__name__,
+                                    # TODO: further debugging in simulation core for this
                                     "end": process.ends[0],
                                     "area": current_area.ID,
                                     "slot": current_slot,
