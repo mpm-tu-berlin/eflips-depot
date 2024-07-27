@@ -847,6 +847,7 @@ class UnstableVehicleCounter:
     num_vehicles_only_non_copy: int = 0
     num_vehicles_begin_with_non_copy: int = 0
     num_vehicles_end_with_non_copy: int = 0
+
     @classmethod
     def add_only_copy(cls):
         cls.num_vehicles_only_copy += 1
@@ -863,11 +864,12 @@ class UnstableVehicleCounter:
     def add_end_with_non_copy(cls):
         cls.num_vehicles_end_with_non_copy += 1
 
+
 def add_evaluation_to_database(
-        scenario: Scenario,
-        depot_evaluations: Dict[str, DepotEvaluation],
-        session: sqlalchemy.orm.Session,
-        counter: Optional = UnstableVehicleCounter,
+    scenario: Scenario,
+    depot_evaluations: Dict[str, DepotEvaluation],
+    session: sqlalchemy.orm.Session,
+    counter: Optional = UnstableVehicleCounter,
 ) -> None:
     """
     This method adds a simulation result to the database.
@@ -933,7 +935,10 @@ def add_evaluation_to_database(
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
             ) = _get_finished_schedules_per_vehicle(
-                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id, counter
+                dict_of_events,
+                current_vehicle.finished_trips,
+                current_vehicle_db.id,
+                counter,
             )
 
             try:
@@ -993,13 +998,18 @@ def add_evaluation_to_database(
 
         if counter is not None:
             print("only copy: " + str(counter.num_vehicles_only_copy))
-            print("begin with non copy: " + str(counter.num_vehicles_begin_with_non_copy))
+            print(
+                "begin with non copy: " + str(counter.num_vehicles_begin_with_non_copy)
+            )
             print("end with only copy: " + str(counter.num_vehicles_end_with_non_copy))
             print("only non copy: " + str(counter.num_vehicles_only_non_copy))
 
 
 def _get_finished_schedules_per_vehicle(
-        dict_of_events, list_of_finished_trips: List, db_vehicle_id: int, counter: Optional = None
+    dict_of_events,
+    list_of_finished_trips: List,
+    db_vehicle_id: int,
+    counter: Optional = None,
 ):
     """
     This function completes the following tasks:
@@ -1054,7 +1064,6 @@ def _get_finished_schedules_per_vehicle(
                 earliest_time = current_trip.atd
                 counter.add_begin_with_non_copy()
 
-
             if i == len(list_of_finished_trips) - 1:
                 # Vehicle ends with non copy trip
                 latest_time = current_trip.atd
@@ -1065,8 +1074,8 @@ def _get_finished_schedules_per_vehicle(
                 # i is the first non-copy trip
 
             if (
-                    i != len(list_of_finished_trips) - 1
-                    and list_of_finished_trips[i + 1].is_copy is True
+                i != len(list_of_finished_trips) - 1
+                and list_of_finished_trips[i + 1].is_copy is True
             ):
                 # i is the last non-copy trip
                 latest_time = list_of_finished_trips[i + 1].atd
@@ -1075,7 +1084,6 @@ def _get_finished_schedules_per_vehicle(
         earliest_time = list_of_finished_trips[0].atd
         latest_time = list_of_finished_trips[-1].ata
         counter.add_only_non_copy()
-
 
     return finished_schedules, earliest_time, latest_time
 
@@ -1381,7 +1389,7 @@ def _add_events_into_database(
             vehicle=db_vehicle,
             station_id=None,
             area_id=int(process_dict["area"]),
-            subloc_no=int(process_dict["slot"])
+            subloc_no=int(process_dict["slot"]) - 1
             if "slot" in process_dict.keys()
             else 00,
             trip_id=None,
@@ -1413,7 +1421,6 @@ def _add_events_into_database(
             f"Vehicle {db_vehicle.id} has a non-copy schedule with no predecessor events. A dummy standby-departure "
             f"event will be added."
         )
-
 
         standby_start = time_keys[0] - 1
         standby_end = time_keys[0]
@@ -1543,7 +1550,8 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
 
     if len(all_waiting_starts) == 0:
         print(
-            "No waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to 10 as buffer."
+            "No vehicles are waiting for entering the depot. The depot has enough capacity for waiting by arrival. "
+            "Change the waiting area capacity to 10 as buffer."
         )
 
         session.query(Area).filter(Area.id == waiting_area_id).update(
