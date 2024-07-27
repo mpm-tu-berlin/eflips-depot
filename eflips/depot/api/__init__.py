@@ -1438,13 +1438,14 @@ def _add_events_into_database(
             .first()[0]
         )
 
+        # TODO how to get the correct area id and subloc_no
         standby_event = Event(
             scenario=scenario,
             vehicle_type_id=db_vehicle.vehicle_type_id,
             vehicle=db_vehicle,
             station_id=None,
             area_id=area.id,
-            subloc_no=area.capacity,
+            subloc_no=area.capacity - 1,
             trip_id=None,
             time_start=timedelta(seconds=standby_start) + simulation_start_time,
             time_end=timedelta(seconds=standby_end) + simulation_start_time,
