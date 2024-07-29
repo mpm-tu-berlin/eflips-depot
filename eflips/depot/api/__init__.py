@@ -1153,7 +1153,7 @@ def _generate_vehicle_events(
                 waiting_area_id = virtual_waiting_area_id
             else:
                 # If the vehicle is waiting for other processes,
-                # put it in the area of the prodecessor process of the waited process.
+                # put it in the area of the predecessor process of the waited process.
                 waiting_area_id = waiting_log[waiting_log_timekeys[idx - 1]]["area"]
 
             dict_of_events[start_time] = {
