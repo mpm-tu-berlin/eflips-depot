@@ -1141,9 +1141,11 @@ def _generate_vehicle_events(
             if waiting_info["waiting_time"] == 0:
                 continue
 
+            waited_area = waiting_info["area"]
+            waiting_time = waiting_info["waiting_time"]
             warnings.warn(
-                f"Vehicle {current_vehicle.ID} has been waiting for entering area {waiting_info["area"]} "
-                f"for {waiting_info['waiting_time']} seconds. "
+                f"Vehicle {current_vehicle.ID} has been waiting for entering area {waited_area} "
+                f"for {waiting_time} seconds. "
             )
 
             start_time = waiting_end_time - waiting_info["waiting_time"]
