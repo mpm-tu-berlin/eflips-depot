@@ -14,7 +14,7 @@ packages = [{ include = "eflips/depot" }]
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 simpy = "^4.0.1"
-eflips-model = "^5.1.0"
+eflips-model = "^5.1.3"
 # Legacy dependencies, which are still needed until we refactor the code
 eflips = "^0.1.3"
 xlsxwriter = "^3.1.9"
@@ -22,7 +22,6 @@ pandas = "^2.1.4"
 xlrd = "<=1.2.0"
 scipy = "^1.13.1"
 django-simba = { git = "git@github.com:rl-institut/django-simba.git", branch = "feature/djago-simba-as-package" }
-
 
 [tool.pytest.ini_options]
 addopts = [
