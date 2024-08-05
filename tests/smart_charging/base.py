@@ -1,6 +1,11 @@
 import os
 
 import pytest
+from eflips.depot.api import (
+    simple_consumption_simulation,
+    simulate_scenario,
+    SmartChargingStrategy,
+)
 from eflips.model import (
     Base,
     setup_database,
@@ -25,12 +30,6 @@ from eflips.model import (
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-from eflips.depot.api import (
-    simple_consumption_simulation,
-    simulate_scenario,
-    SmartChargingStragegy,
-)
 
 
 class BaseTest:
@@ -507,7 +506,6 @@ class BaseTest:
             depot=depot,
             area_type=AreaType.DIRECT_ONESIDE,
             capacity=6,
-            vehicle_type=vehicle_type_1,
         )
         session.add(arrival_area)
 
@@ -526,19 +524,12 @@ class BaseTest:
             name="Entenhausen Depot Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=2,
             capacity=6,
             vehicle_type=vehicle_type_1,
         )
         session.add(charging_area)
 
         # Create processes
-        standby_arrival = Process(
-            name="Standby Arrival",
-            scenario=scenario,
-            dispatchable=False,
-        )
-        session.add(standby_arrival)
 
         clean = Process(
             name="Clean",
@@ -565,19 +556,15 @@ class BaseTest:
 
         # Connect the areas and processes. *The final area needs to have both a charging and standby_departure process*
 
-        arrival_area.processes.append(standby_arrival)
         cleaning_area.processes.append(clean)
         charging_area.processes.append(charging)
         charging_area.processes.append(standby_departure)
 
         assocs = [
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=0),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=1),
             AssocPlanProcess(
-                scenario=scenario, process=standby_arrival, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=3
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=2
             ),
         ]
         session.add_all(assocs)
@@ -595,7 +582,7 @@ class BaseTest:
     def post_simulation_scenario_no_smart_charging(self, session, scenario):
         # Run the simulation
         simple_consumption_simulation(scenario, initialize_vehicles=True)
-        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStragegy.NONE)
+        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStrategy.NONE)
         session.commit()
         simple_consumption_simulation(scenario, initialize_vehicles=False)
 

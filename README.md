@@ -74,7 +74,11 @@ Testing is done using the `pytest` framework with tests located in the `tests`di
 ```
 ## Documentation
 
-Documentation is automatically created from the docstrings in the code using [sphinx-autoapi](https://sphinx-autoapi.readthedocs.io/en/latest/). If you have downloaded a specific release, the documentation is included in the `docs` directory. If you have cloned the repository, you can create the documentation yourself by executing the following command in the root directory of the repository:
+Documentation is available on [Read the Docs](https://eflips-depot.readthedocs.io/en/latest/).
+
+To locally create the documentaiton from the docstrings in the code
+using [sphinx-autoapi](https://sphinx-autoapi.readthedocs.io/en/latest/), you can create the documentation execute the
+following command in the root directory of the repository:
 
 ```bash
    cd docs/
@@ -100,4 +104,4 @@ This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md
 
 ## Funding Notice
 
-This code was developed as part of the project [eBus2030+](https://www.eflip.de/) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
+This code was developed as part of the project [eBus2030+]([https://www.eflip.de/](https://www.now-gmbh.de/projektfinder/e-bus-2030/)) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
