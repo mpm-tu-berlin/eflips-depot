@@ -153,7 +153,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
 
         # Make sure the transferred energy is the same
         post_opt_energy = (
-            scipy.integrate.trapz(optimized_power, total_time) / 3600
+            scipy.integrate.trapezoid(optimized_power, total_time) / 3600
         )  # kWh
 
         if False:
@@ -238,7 +238,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         )  # +1 to include the last index
         powers = params_for_event["optimized_power"][start_index:end_index]
 
-        energies = scipy.integrate.cumtrapz(powers, initial=0) / (
+        energies = scipy.integrate.cumulative_trapezoid(powers, initial=0) / (
             3600 / TEMPORAL_RESOLUTION.total_seconds()
         )  # kWh
         socs = event.soc_start + energies / event.vehicle.vehicle_type.battery_capacity
@@ -306,13 +306,15 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
         )
 
         # Energy transferred
-        total_energy = scipy.integrate.cumtrapz(total_power, total_time, initial=0)
+        total_energy = scipy.integrate.cumulative_trapezoid(
+            total_power, total_time, initial=0
+        )
         axs[1].plot(total_time, total_energy, label="Original energy transferred")
-        optimized_energy = scipy.integrate.cumtrapz(
+        optimized_energy = scipy.integrate.cumulative_trapezoid(
             optimized_power, total_time, initial=0
         )
         axs[1].plot(total_time, optimized_energy, label="Optimized energy transferred")
-        optimized_energy2 = scipy.integrate.cumtrapz(
+        optimized_energy2 = scipy.integrate.cumulative_trapezoid(
             optimized_power2, total_time, initial=0
         )
         axs[1].plot(total_time, optimized_energy2, label="Mean energy transferred")
