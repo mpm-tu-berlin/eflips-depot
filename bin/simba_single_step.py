@@ -1,80 +1,93 @@
 import os
-import django
-
-os.environ["DJANGO_SETTINGS_MODULE"] = "eflips.depot.api.private.djangosettings"
-
-django.setup()
-
-from ebustoolbox.models import Scenario as DjangoScenario, Event as DjangoEvent
-from ebustoolbox.tasks import is_consistent, run_simba_scenario
+import warnings
+from datetime import timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from eflips.model import Scenario, Vehicle
 
-SCENARIO_ID = 8
+from ds_wrapper import DjangoSimbaWrapper
 
-# Database row mapping to DjangoScenario
-django_scenario = DjangoScenario.objects.filter(id=SCENARIO_ID).first()
+from eflips.depot.api import simulate_scenario, delete_depots, simple_consumption_simulation, generate_depot_layout, \
+    init_simulation, run_simulation, add_evaluation_to_database, apply_even_smart_charging
+from eflips.model import Rotation, Scenario, Event, Vehicle, ConsistencyWarning
 
-assert is_consistent(django_scenario)
-schedule, simbascenario = run_simba_scenario(django_scenario, assign_vehicles=True)
+if __name__ == "__main__":
+    engine = create_engine(os.environ.get("DATABASE_URL"))
+    session = Session(engine)
+    scenario_id = 8
 
-while DjangoEvent.objects.filter(scenario_id=SCENARIO_ID, soc_end__lt=0).count() > 0:
-    schedule, simbascenario = run_simba_scenario(
-        django_scenario, simba_scenario=simbascenario, mode="station_optimization_single_step"
-    )
+    with session:
 
-# Now the session to database through django is supposed to be closed
+        # Run single step electrification once, one station will be electrified as long as there are rotations with
+        # negative SOC
+        session.commit()
+        ds_wrapper = DjangoSimbaWrapper(os.environ["DATABASE_URL"])
+        ds_wrapper.single_step_electrification(scenario_id)
+        session.commit()
+        session.expire_all()
 
-# Open a session through sqlalchemy in eflips
-# Plotting by eflips-eval also through sqlalchemy session
+        # Run eflips-depot to get rotations assigned. Here we use the consumption simulation of eflips-depot
 
-EFLIPS_DB = os.environ["DATABASE_URL"].replace("postgis", "postgresql")
-PLOT = True
-if PLOT:
-    eflips_engine = create_engine(EFLIPS_DB, echo=False)
-    with Session(eflips_engine) as session:
+        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).first()
+        ##### Step 0: Clean up the database, remove results from previous runs #####
 
-        # Interaction with database through sqlalchemy goes here. Here the row of database is mapped to objects in
-        # eflips-model
-        try:
-            import eflips.eval.input.prepare
-            import eflips.eval.input.visualize
-            import eflips.eval.output.prepare
-            import eflips.eval.output.visualize
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
 
-        except ImportError:
-            print(
-                "The eflips.eval package is not installed. Visualization is not possible."
-            )
-            print(
-                "If you want to visualize the results, install the eflips.eval package using "
-                "pip install eflips-eval"
-            )
+        # Delete the old depot
+        # This is a private API method automatically called by the generate_depot_layout method
+        # It is run here explicitly for clarity.
+        delete_depots(scenario, session)
 
-        else:
-            eflips_scenario = session.query(Scenario).filter(Scenario.id == SCENARIO_ID).one()
-            OUTPUT_DIR = os.path.join("output", eflips_scenario.name)
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
-            for depot in eflips_scenario.depots:
-                DEPOT_NAME = depot.station.name
-                DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
-                os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
+        ##### Step 1: Consumption simulation
+        # Since we are using simple consumption simulation, we also need to make sure that the vehicle types have
+        # a consumption value. This is not necessary if you are using an external consumption simulation.
+        for vehicle_type in scenario.vehicle_types:
+            vehicle_type.consumption = 1
 
-                # An example vehicle
-                vehicle = session.query(Vehicle).filter(Vehicle.scenario_id == SCENARIO_ID).first()
+        # Using simple consumption simulation
+        # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
+        # It could indicate a problem with the rotations with other data sources
+        warnings.simplefilter("ignore", category=ConsistencyWarning)
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
-                # Visualize the vehicle state of charge
-                df, descriptions = eflips.eval.output.prepare.vehicle_soc(vehicle.id, session)
+        ##### Step 2: Generate the depot layout
+        generate_depot_layout(
+            scenario=scenario, charging_power=150, delete_existing_depot=True
+        )
 
-                fig = eflips.eval.output.visualize.vehicle_soc(df, descriptions)
-                fig.update_layout(title=f"Vehicle {vehicle.id} SoC over time")
-                fig.write_html(
-                    os.path.join(
-                        DEPOT_OUTPUT_DIR, f"vehicle_{vehicle.id}_soc.html"
-                    )
-                )
-                fig.show()
+        ##### Step 3: Run the simulation
+        # This can be done using eflips.api.run_simulation. Here, we use the three steps of
+        # eflips.api.init_simulation, eflips.api.run_simulation, and eflips.api.add_evaluation_to_database
+        # in order to show what happens "under the hood".
 
-    # Now the session to database through sqlalchemy is closed
+        simulation_host = init_simulation(
+            scenario=scenario,
+            session=session,
+            repetition_period=timedelta(days=7),
+        )
+        depot_evaluations = run_simulation(simulation_host)
+
+        add_evaluation_to_database(scenario, depot_evaluations, session)
+
+        ##### Step 3.5: Apply even smart charging
+        # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
+        # consumption. This is done by shifting the charging times of the vehicles. The method is called
+        # apply_even_smart_charging and is part of the eflips.depot.api module.
+        apply_even_smart_charging(scenario)
+
+        #### Step 4: Consumption simulation, a second time
+        # The depot simulation merges vehicles (e.g. one vehicle travels only monday, one only wednesday – they
+        # can be the same vehicle). Therefore, the driving events for the vehicles are deleted and the vehicles
+        # are re-initialized. In order to have consumption values for the vehicles, we need to run the consumption
+        # simulation again. This time, we do not need to initialize the vehicles, because they are already initialized.
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+
+        # The simulation is now complete. The results are stored in the database and can be accessed using the
+        session.commit()
+
+        print("Simulation complete.")
+
