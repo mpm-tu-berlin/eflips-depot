@@ -1142,19 +1142,20 @@ simpy = ">=4.0.1,<5.0.0"
 
 [[package]]
 name = "eflips-eval"
-version = "1.4.0"
+version = "1.5.1"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "eflips_eval-1.4.0-py3-none-any.whl", hash = "sha256:bfc61130ef8a5cee3f4088461c8fa3d79d68f8d2c8b796d4a01d6fac19a27271"},
-    {file = "eflips_eval-1.4.0.tar.gz", hash = "sha256:e7fd7173160f91ce1a58605db7f0ffb121cc80d39b0d7883e850f024240d135b"},
+    {file = "eflips_eval-1.5.1-py3-none-any.whl", hash = "sha256:ec508840f3150ec97f1ef21e9f9e7590076be2095ff17b664eeaec5eea58581f"},
+    {file = "eflips_eval-1.5.1.tar.gz", hash = "sha256:4353615980a5ff6fa44c647e36962822aa4ca2f844f1a186e9d919f5588ddfb2"},
 ]
 
 [package.dependencies]
 dash-cytoscape = ">=1.0.1,<2.0.0"
-eflips-model = ">=2.3.0,<5.0.0"
+eflips-model = ">=5.0.0,<6.0.0"
 folium = ">=0.17.0,<0.18.0"
+matplotlib = ">=3.9.0,<4.0.0"
 pandas = ">=2.1.4,<3.0.0"
 plotly = ">=5.19.0,<6.0.0"
 seaborn = ">=0.13.2,<0.14.0"
@@ -1162,17 +1163,17 @@ shapely = ">=2.0.5,<3.0.0"
 
 [[package]]
 name = "eflips-ingest"
-version = "1.2.4"
+version = "1.2.76"
 description = "A collection of import scripts for converting bus schedule data into the [eflips-model](https://github.com/mpm-tu-berlin/eflips-model) data format."
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "eflips_ingest-1.2.4-py3-none-any.whl", hash = "sha256:953a0d8a98501bb5f8bc1d7938052becf3439b474378753e89f72ecb624496cb"},
-    {file = "eflips_ingest-1.2.4.tar.gz", hash = "sha256:9d1ec4cc36c4d63d07798dbd7f938e2bef6327b504633c1e3c182626b30e81da"},
+    {file = "eflips_ingest-1.2.76-py3-none-any.whl", hash = "sha256:7ded6f7253a049c65eb8ec53308d33ccfab006958d4f5657732f9d516374288b"},
+    {file = "eflips_ingest-1.2.76.tar.gz", hash = "sha256:78b2fff3f13a3dfdc9d6d48f9e2e0236f22f735d284d2eee0a34bab9acba515b"},
 ]
 
 [package.dependencies]
-eflips-model = ">=3.1.1,<5.0.0"
+eflips-model = ">=3.1.1,<6.0.0"
 fire = ">=0.5.0,<0.6.0"
 lxml = ">=5.1.0,<6.0.0"
 pyproj = ">=3.6.1,<4.0.0"
@@ -1182,18 +1183,20 @@ tqdm = ">=4.66.1,<5.0.0"
 
 [[package]]
 name = "eflips-model"
-version = "4.0.0"
+version = "5.1.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "eflips_model-4.0.0-py3-none-any.whl", hash = "sha256:5b04b898168d77dcd23fd769078ac946c0e8804dd895bd1715c9926e4f21b16d"},
-    {file = "eflips_model-4.0.0.tar.gz", hash = "sha256:8cd103765affbf25097bf6ed5b6d68a6ed045e0a43a0a7ffd3c76f01fdcb7509"},
+    {file = "eflips_model-5.1.0-py3-none-any.whl", hash = "sha256:10b056d14db7d498fb58659692a43ffdb1c522ec85fa61782c2b64ba5dc0384c"},
+    {file = "eflips_model-5.1.0.tar.gz", hash = "sha256:ccdec028056d90809d47d8a17305590cce83bec0faf7d954dfe2aadf5564cf85"},
 ]
 
 [package.dependencies]
 alembic = ">=1.12.1,<2.0.0"
 geoalchemy2 = ">=0.14.2,<0.15.0"
+numpy = ">=2.0.0,<3.0.0"
+pandas = ">=2.2.2,<3.0.0"
 psycopg2-binary = ">=2.9.9,<3.0.0"
 sqlalchemy = ">=2.0.23,<3.0.0"
 
@@ -3470,4 +3473,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "23d7425b482065fe642bea2001035fe7c2d60b1d7040e362488de813a9991b83"
+content-hash = "c26f3a8a6f886e5f38a55bb6024393026e9ce10817138d3d58d8ce885c0ce872"

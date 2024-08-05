@@ -34,6 +34,22 @@ def list_scenarios(database_url: str):
             print(f"{scenario.id}: {scenario.name} with {rotation_count} rotations.")
 
 
+def create_consumption_tables_for_vehicle_types(scenario, session):
+    """Creates a consumption table and a corresponing vehicle type for each vehicle type in the scenario."""
+    vehicle_types = (
+        session.query(VehicleType).filter(VehicleType.scenario_id == scenario.id).all()
+    )
+    for vehicle_type in vehicle_types:
+        vehicle_type.consumption = None
+        vehicle_class = VehicleClass(
+            name=vehicle_type.name,
+            scenario_id=scenario.id,
+        )
+        session.add(vehicle_class)
+        consumption_lut = ConsumptionLut.from_vehicle_type(vehicle_type, vehicle_class)
+        session.add(consumption_lut)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -106,16 +122,14 @@ if __name__ == "__main__":
         delete_depots(scenario, session)
 
         ##### Step 1: Consumption simulation
-        # Since we are using simple consumption simulation, we also need to make sure that the vehicle types have
-        # a consumption value. This is not necessary if you are using an external consumption simulation.
-        for vehicle_type in scenario.vehicle_types:
-            vehicle_type.consumption = 1
 
         # Using simple consumption simulation
         # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
         # It could indicate a problem with the rotations with other data sources
         warnings.simplefilter("ignore", category=ConsistencyWarning)
         if args.use_simba_consumption:
+            # We set up consumption tables for the vehicle types. This is necessary if you are using the SimBA consumption
+            create_consumption_tables_for_vehicle_types(scenario, session)
             # We will need to commit and expire the session before and after the DjangoSimbaWrapper, respectively.
             # This is because the DjangoSimbaWrapper accesses the database in its own (Django) session.
             # So we need to first write the changes to the database and then tell the SQLAlchemy session that
@@ -127,6 +141,10 @@ if __name__ == "__main__":
             session.commit()
             session.expire_all()
         else:
+            # Since we are using simple consumption simulation, we also need to make sure that the vehicle types have
+            # a consumption value. This is not necessary if you are using an external consumption simulation.
+            for vehicle_type in scenario.vehicle_types:
+                vehicle_type.consumption = 1
             simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
         ##### Step 2: Generate the depot layout
@@ -142,7 +160,7 @@ if __name__ == "__main__":
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
-            repetition_period=timedelta(days=1),
+            repetition_period=timedelta(days=7),
         )
         depot_evaluations = run_simulation(simulation_host)
 
