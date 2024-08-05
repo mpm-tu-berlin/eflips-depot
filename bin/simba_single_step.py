@@ -7,8 +7,15 @@ from sqlalchemy.orm import Session
 
 from ds_wrapper import DjangoSimbaWrapper
 
-from eflips.depot.api import simulate_scenario, delete_depots, simple_consumption_simulation, generate_depot_layout, \
-    init_simulation, run_simulation, add_evaluation_to_database, apply_even_smart_charging
+from eflips.depot.api import (
+    delete_depots,
+    simple_consumption_simulation,
+    generate_depot_layout,
+    init_simulation,
+    run_simulation,
+    add_evaluation_to_database,
+    apply_even_smart_charging,
+)
 from eflips.model import Rotation, Scenario, Event, Vehicle, ConsistencyWarning
 
 if __name__ == "__main__":
@@ -17,7 +24,6 @@ if __name__ == "__main__":
     scenario_id = 8
 
     with session:
-
         # Run single step electrification once, one station will be electrified as long as there are rotations with
         # negative SOC
         session.commit()
@@ -90,4 +96,3 @@ if __name__ == "__main__":
         session.commit()
 
         print("Simulation complete.")
-
