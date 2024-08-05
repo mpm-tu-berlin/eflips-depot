@@ -40,14 +40,28 @@ def create_consumption_tables_for_vehicle_types(scenario, session):
         session.query(VehicleType).filter(VehicleType.scenario_id == scenario.id).all()
     )
     for vehicle_type in vehicle_types:
-        vehicle_type.consumption = None
-        vehicle_class = VehicleClass(
-            name=vehicle_type.name,
-            scenario_id=scenario.id,
-        )
-        session.add(vehicle_class)
-        consumption_lut = ConsumptionLut.from_vehicle_type(vehicle_type, vehicle_class)
-        session.add(consumption_lut)
+        if all(vc.consumption_lut is None for vc in vehicle_type.vehicle_classes):
+            vehicle_type.consumption = None
+            vehicle_type.allowed_mass = 20000
+            vehicle_class = VehicleClass(
+                name=vehicle_type.name,
+                scenario_id=scenario.id,
+            )
+            session.add(vehicle_class)
+            assoc = AssocVehicleTypeVehicleClass(
+                vehicle_type=vehicle_type,
+                vehicle_class=vehicle_class,
+            )
+            session.add(assoc)
+            consumption_lut = ConsumptionLut.from_vehicle_type(
+                vehicle_type, vehicle_class
+            )
+            session.add(consumption_lut)
+
+    # We will also need to add levels of loading to the trips
+    session.query(Trip).filter(Trip.scenario_id == scenario.id).update(
+        {"loaded_mass": 1000}
+    )
 
 
 if __name__ == "__main__":
@@ -319,6 +333,15 @@ if __name__ == "__main__":
                         )
                     )
                     fig.show()
+
+                # Visualize the dirstibution of the energy consumption
+                df = eflips.eval.output.prepare.specific_energy_consumption(
+                    scenario.id, session
+                )
+                fig = eflips.eval.output.visualize.specific_energy_consumption(df)
+                fig.write_html(
+                    os.path.join(DEPOT_OUTPUT_DIR, "specific_energy_consumption.html")
+                )
 
                 # Visualize each vehicle's SoC over time
                 # Here, we don't show it, since it's a lot of plots
