@@ -1,6 +1,11 @@
 import os
 
 import pytest
+from eflips.depot.api import (
+    simple_consumption_simulation,
+    simulate_scenario,
+    SmartChargingStrategy,
+)
 from eflips.model import (
     Base,
     setup_database,
@@ -25,12 +30,6 @@ from eflips.model import (
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-from eflips.depot.api import (
-    simple_consumption_simulation,
-    simulate_scenario,
-    SmartChargingStrategy,
-)
 
 
 class BaseTest:
@@ -525,7 +524,6 @@ class BaseTest:
             name="Entenhausen Depot Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=2,
             capacity=6,
             vehicle_type=vehicle_type_1,
         )
