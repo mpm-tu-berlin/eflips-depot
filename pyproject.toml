@@ -21,7 +21,7 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.1.4"
 xlrd = "<=1.2.0"
 scipy = "^1.13.1"
-django-simba = { git = "git@github.com:rl-institut/django-simba.git", branch = "feature/djago-simba-as-package" }
+django-simba = { git = "git@github.com:rl-institut/django-simba.git", branch = "feature/django-simba-as-package" }
 
 [tool.pytest.ini_options]
 addopts = [
