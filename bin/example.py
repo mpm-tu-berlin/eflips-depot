@@ -174,7 +174,7 @@ if __name__ == "__main__":
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
-            repetition_period=timedelta(days=7),
+            repetition_period=timedelta(days=1),
         )
         depot_evaluations = run_simulation(simulation_host)
 

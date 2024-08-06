@@ -33,6 +33,7 @@ import warnings
 from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
+from math import ceil
 from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
@@ -47,7 +48,6 @@ from eflips.model import (
     Trip,
     Vehicle,
 )
-from math import ceil
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
@@ -1270,7 +1270,11 @@ def _add_soc_to_events(dict_of_events, battery_log) -> None:
                 if log[0] < process_dict["end"] < battery_log_list[j + 1][0]:
                     soc_end = log[1]
 
+                if soc_start is not None:
+                    soc_start = min(soc_start, 1)  # so
                 process_dict["soc_start"] = soc_start
+                if soc_end is not None:
+                    soc_end = min(soc_end, 1)  # soc should not exceed 1
                 process_dict["soc_end"] = soc_end
 
             else:
