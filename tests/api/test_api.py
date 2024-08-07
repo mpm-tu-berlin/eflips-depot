@@ -1245,7 +1245,11 @@ class TestApi(TestHelpers):
 
         # Run simulation
 
-        simulation_host = simulate_scenario(full_scenario)
+        from eflips.depot.api import SmartChargingStrategy
+
+        simulate_scenario(
+            full_scenario, smart_charging_strategy=SmartChargingStrategy.EVEN
+        )
 
         # Query all charging events and see if there is an increase in Soc
         all_charging_events = (
