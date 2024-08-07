@@ -1352,58 +1352,6 @@ def _add_events_into_database(
 
         session.add(current_event)
 
-        # For non-copy schedules with no predecessor events, adding a dummy standby-departure
-
-    time_keys = sorted(dict_of_events.keys())
-    if (
-        dict_of_events[time_keys[0]]["type"]
-        == "Trip"
-        # and dict_of_events[time_keys[0]]["is_copy"] is False
-    ):
-        standby_start = time_keys[0] - 1
-        standby_end = time_keys[0]
-        rotation_id = int(dict_of_events[time_keys[0]]["id"])
-        area = (
-            session.query(Area)
-            .filter(Area.vehicle_type_id == db_vehicle.vehicle_type_id)
-            .first()
-        )
-
-        first_trip = (
-            session.query(Trip)
-            .filter(Trip.rotation_id == rotation_id)
-            .order_by(Trip.departure_time)
-            .first()
-        )
-
-        soc = (
-            session.query(Event.soc_end)
-            .filter(Event.scenario == scenario)
-            .filter(Event.trip_id == first_trip.id)
-            .first()[0]
-        )
-
-        standby_event = Event(
-            scenario=scenario,
-            vehicle_type_id=db_vehicle.vehicle_type_id,
-            vehicle=db_vehicle,
-            station_id=None,
-            area_id=area.id,
-            subloc_no=area.capacity,
-            trip_id=None,
-            time_start=timedelta(seconds=standby_start) + simulation_start_time,
-            time_end=timedelta(seconds=standby_end) + simulation_start_time,
-            soc_start=soc,
-            soc_end=soc,
-            event_type=EventType.STANDBY_DEPARTURE,
-            description=f"DUMMY Standby event for {rotation_id}.",
-            timeseries=None,
-        )
-
-        session.add(standby_event)
-
-    session.flush()
-
 
 def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
     """
