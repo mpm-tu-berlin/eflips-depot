@@ -357,7 +357,7 @@ def create_simple_depot(
     charging = Process(
         name="Charging",
         scenario=scenario,
-        dispatchable=False,
+        dispatchable=True,
         electric_power=charging_power,
     )
     standby_departure = Process(

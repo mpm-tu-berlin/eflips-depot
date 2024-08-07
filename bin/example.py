@@ -163,8 +163,8 @@ if __name__ == "__main__":
                     )
             except AssertionError as e:
                 print(
-                    "the waiting events are not possible to plot in the simulation core diagram. However, "
-                    "the simulation is still completed and eflips-eval plots are valid."
+                    "There are vehicle waiting for entering the depot and the simulation core diagram does not support "
+                    "this. Please make the capacity of the first area larger to avoid this issue."
                 )
 
         add_evaluation_to_database(scenario, depot_evaluations, session)

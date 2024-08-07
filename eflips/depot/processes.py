@@ -575,11 +575,11 @@ class VehicleProcess(BaseDepotProcess, ABC):
                 ]
             )
         ):
-            flexprint(
-                "NOTIFYING ASSIGNMENT AFTER %s END for vehicle %s"
-                % (self.ID, self.vehicle.ID),
-                env=self.env,
-            )
+            # flexprint(
+            #     "NOTIFYING ASSIGNMENT AFTER %s END for vehicle %s"
+            #     % (self.ID, self.vehicle.ID),
+            #     env=self.env,
+            # )
 
             self.vehicle.dwd.current_depot.depot_control.trigger_dispatch()
 

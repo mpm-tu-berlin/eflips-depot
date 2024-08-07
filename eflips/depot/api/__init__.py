@@ -33,6 +33,7 @@ import warnings
 from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
+from math import ceil
 from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
@@ -842,34 +843,10 @@ def _add_evaluation_to_database(
     )
 
 
-class UnstableVehicleCounter:
-    num_vehicles_only_copy: int = 0
-    num_vehicles_only_non_copy: int = 0
-    num_vehicles_begin_with_non_copy: int = 0
-    num_vehicles_end_with_non_copy: int = 0
-
-    @classmethod
-    def add_only_copy(cls):
-        cls.num_vehicles_only_copy += 1
-
-    @classmethod
-    def add_only_non_copy(cls):
-        cls.num_vehicles_only_non_copy += 1
-
-    @classmethod
-    def add_begin_with_non_copy(cls):
-        cls.num_vehicles_begin_with_non_copy += 1
-
-    @classmethod
-    def add_end_with_non_copy(cls):
-        cls.num_vehicles_end_with_non_copy += 1
-
-
 def add_evaluation_to_database(
     scenario: Scenario,
     depot_evaluations: Dict[str, DepotEvaluation],
     session: sqlalchemy.orm.Session,
-    counter: Optional = UnstableVehicleCounter,
 ) -> None:
     """
     This method adds a simulation result to the database.
@@ -935,10 +912,7 @@ def add_evaluation_to_database(
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
             ) = _get_finished_schedules_per_vehicle(
-                dict_of_events,
-                current_vehicle.finished_trips,
-                current_vehicle_db.id,
-                counter,
+                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
             )
 
             try:
@@ -946,12 +920,9 @@ def add_evaluation_to_database(
 
             except AssertionError as e:
                 warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has only copied trips. The events of this vehicle "
+                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
                     f"will not be written into database."
                 )
-
-                if counter is not None:
-                    counter.add_only_copy()
                 continue
 
             assert (
@@ -996,20 +967,9 @@ def add_evaluation_to_database(
         _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         _update_waiting_events(session, scenario, waiting_area_id)
 
-        if counter is not None:
-            print("only copy: " + str(counter.num_vehicles_only_copy))
-            print(
-                "begin with non copy: " + str(counter.num_vehicles_begin_with_non_copy)
-            )
-            print("end with only copy: " + str(counter.num_vehicles_end_with_non_copy))
-            print("only non copy: " + str(counter.num_vehicles_only_non_copy))
-
 
 def _get_finished_schedules_per_vehicle(
-    dict_of_events,
-    list_of_finished_trips: List,
-    db_vehicle_id: int,
-    counter: Optional = None,
+    dict_of_events, list_of_finished_trips: List, db_vehicle_id: int
 ):
     """
     This function completes the following tasks:
@@ -1058,32 +1018,22 @@ def _get_finished_schedules_per_vehicle(
                 "type": "Trip",
                 "id": int(current_trip.ID),
             }
-
             if i == 0:
-                # Vehicle begins with non copy trip
-                earliest_time = current_trip.atd
-                counter.add_begin_with_non_copy()
+                raise ValueError(
+                    f"New Vehicle required for the trip {current_trip.ID}, which suggests the fleet or the "
+                    f"infrastructure might not be enough for the full electrification. Please add charging "
+                    f"interfaces or increase charging power ."
+                )
 
-            if i == len(list_of_finished_trips) - 1:
-                # Vehicle ends with non copy trip
-                latest_time = current_trip.atd
-                counter.add_end_with_non_copy()
-
-            if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
+            elif i == len(list_of_finished_trips) - 1:
                 earliest_time = list_of_finished_trips[i - 1].atd
-                # i is the first non-copy trip
+                latest_time = list_of_finished_trips[i].ata
 
-            if (
-                i != len(list_of_finished_trips) - 1
-                and list_of_finished_trips[i + 1].is_copy is True
-            ):
-                # i is the last non-copy trip
-                latest_time = list_of_finished_trips[i + 1].atd
-
-    if len(finished_schedules) == len(list_of_finished_trips):
-        earliest_time = list_of_finished_trips[0].atd
-        latest_time = list_of_finished_trips[-1].ata
-        counter.add_only_non_copy()
+            else:
+                if list_of_finished_trips[i - 1].is_copy is True:
+                    earliest_time = list_of_finished_trips[i - 1].ata
+                if list_of_finished_trips[i + 1].is_copy is True:
+                    latest_time = list_of_finished_trips[i + 1].atd
 
     return finished_schedules, earliest_time, latest_time
 
@@ -1141,11 +1091,8 @@ def _generate_vehicle_events(
             if waiting_info["waiting_time"] == 0:
                 continue
 
-            waited_area = waiting_info["area"]
-            waiting_time = waiting_info["waiting_time"]
             warnings.warn(
-                f"Vehicle {current_vehicle.ID} has been waiting for entering area {waited_area} "
-                f"for {waiting_time} seconds. "
+                f"Vehicle {current_vehicle.ID} has been waiting for {waiting_info['waiting_time']} seconds. "
             )
 
             start_time = waiting_end_time - waiting_info["waiting_time"]
@@ -1155,7 +1102,7 @@ def _generate_vehicle_events(
                 waiting_area_id = virtual_waiting_area_id
             else:
                 # If the vehicle is waiting for other processes,
-                # put it in the area of the predecessor process of the waited process.
+                # put it in the area of the prodecessor process of the waited process.
                 waiting_area_id = waiting_log[waiting_log_timekeys[idx - 1]]["area"]
 
             dict_of_events[start_time] = {
@@ -1333,7 +1280,11 @@ def _add_soc_to_events(dict_of_events, battery_log) -> None:
                 if log[0] < process_dict["end"] < battery_log_list[j + 1][0]:
                     soc_end = log[1]
 
+                if soc_start is not None:
+                    soc_start = min(soc_start, 1)  # so
                 process_dict["soc_start"] = soc_start
+                if soc_end is not None:
+                    soc_end = min(soc_end, 1)  # soc should not exceed 1
                 process_dict["soc_end"] = soc_end
 
             else:
@@ -1410,64 +1361,6 @@ def _add_events_into_database(
         )
 
         session.add(current_event)
-
-        # For non-copy schedules with no predecessor events, adding a dummy standby-departure
-
-    time_keys = sorted(dict_of_events.keys())
-    if (
-        dict_of_events[time_keys[0]]["type"]
-        == "Trip"
-        # and dict_of_events[time_keys[0]]["is_copy"] is False
-    ):
-        warnings.warn(
-            f"Vehicle {db_vehicle.id} has a non-copy schedule with no predecessor events. A dummy standby-departure "
-            f"event will be added."
-        )
-
-        standby_start = time_keys[0] - 1
-        standby_end = time_keys[0]
-        rotation_id = int(dict_of_events[time_keys[0]]["id"])
-        area = (
-            session.query(Area)
-            .filter(Area.vehicle_type_id == db_vehicle.vehicle_type_id)
-            .first()
-        )
-
-        first_trip = (
-            session.query(Trip)
-            .filter(Trip.rotation_id == rotation_id)
-            .order_by(Trip.departure_time)
-            .first()
-        )
-
-        soc = (
-            session.query(Event.soc_end)
-            .filter(Event.scenario == scenario)
-            .filter(Event.trip_id == first_trip.id)
-            .first()[0]
-        )
-
-        # TODO how to get the correct area id and subloc_no
-        standby_event = Event(
-            scenario=scenario,
-            vehicle_type_id=db_vehicle.vehicle_type_id,
-            vehicle=db_vehicle,
-            station_id=None,
-            area_id=area.id,
-            subloc_no=area.capacity - 1,
-            trip_id=None,
-            time_start=timedelta(seconds=standby_start) + simulation_start_time,
-            time_end=timedelta(seconds=standby_end) + simulation_start_time,
-            soc_start=soc,
-            soc_end=soc,
-            event_type=EventType.STANDBY_DEPARTURE,
-            description=f"DUMMY Standby event for {rotation_id}.",
-            timeseries=None,
-        )
-
-        session.add(standby_event)
-
-    session.flush()
 
 
 def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
