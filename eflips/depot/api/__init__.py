@@ -1017,21 +1017,22 @@ def _get_finished_schedules_per_vehicle(
                 "type": "Trip",
                 "id": int(current_trip.ID),
             }
-
             if i == 0:
-                earliest_time = current_trip.atd
+                raise ValueError(
+                    f"New Vehicle required for the trip {current_trip.ID}, which suggests the fleet or the "
+                    f"infrastructure might not be enough for the full electrification. Please add charging "
+                    f"interfaces or increase charging power ."
+                )
 
-            if i == len(list_of_finished_trips) - 1:
-                latest_time = current_trip.atd
-
-            if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
+            elif i == len(list_of_finished_trips) - 1:
                 earliest_time = list_of_finished_trips[i - 1].atd
+                latest_time = list_of_finished_trips[i].ata
 
-            if (
-                i != len(list_of_finished_trips) - 1
-                or list_of_finished_trips[i + 1].is_copy is True
-            ):
-                latest_time = list_of_finished_trips[i + 1].atd
+            else:
+                if list_of_finished_trips[i - 1].is_copy is True:
+                    earliest_time = list_of_finished_trips[i - 1].ata
+                if list_of_finished_trips[i + 1].is_copy is True:
+                    latest_time = list_of_finished_trips[i + 1].atd
 
     return finished_schedules, earliest_time, latest_time
 
@@ -1351,58 +1352,6 @@ def _add_events_into_database(
         )
 
         session.add(current_event)
-
-        # For non-copy schedules with no predecessor events, adding a dummy standby-departure
-
-    time_keys = sorted(dict_of_events.keys())
-    if (
-        dict_of_events[time_keys[0]]["type"]
-        == "Trip"
-        # and dict_of_events[time_keys[0]]["is_copy"] is False
-    ):
-        standby_start = time_keys[0] - 1
-        standby_end = time_keys[0]
-        rotation_id = int(dict_of_events[time_keys[0]]["id"])
-        area = (
-            session.query(Area)
-            .filter(Area.vehicle_type_id == db_vehicle.vehicle_type_id)
-            .first()
-        )
-
-        first_trip = (
-            session.query(Trip)
-            .filter(Trip.rotation_id == rotation_id)
-            .order_by(Trip.departure_time)
-            .first()
-        )
-
-        soc = (
-            session.query(Event.soc_end)
-            .filter(Event.scenario == scenario)
-            .filter(Event.trip_id == first_trip.id)
-            .first()[0]
-        )
-
-        standby_event = Event(
-            scenario=scenario,
-            vehicle_type_id=db_vehicle.vehicle_type_id,
-            vehicle=db_vehicle,
-            station_id=None,
-            area_id=area.id,
-            subloc_no=area.capacity,
-            trip_id=None,
-            time_start=timedelta(seconds=standby_start) + simulation_start_time,
-            time_end=timedelta(seconds=standby_end) + simulation_start_time,
-            soc_start=soc,
-            soc_end=soc,
-            event_type=EventType.STANDBY_DEPARTURE,
-            description=f"DUMMY Standby event for {rotation_id}.",
-            timeseries=None,
-        )
-
-        session.add(standby_event)
-
-    session.flush()
 
 
 def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
