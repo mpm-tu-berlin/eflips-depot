@@ -1017,21 +1017,22 @@ def _get_finished_schedules_per_vehicle(
                 "type": "Trip",
                 "id": int(current_trip.ID),
             }
-
             if i == 0:
-                earliest_time = current_trip.atd
+                raise ValueError(
+                    f"New Vehicle required for the trip {current_trip.ID}, which suggests the fleet or the "
+                    f"infrastructure might not be enough for the full electrification. Please add charging "
+                    f"interfaces or increase charging power ."
+                )
 
-            if i == len(list_of_finished_trips) - 1:
-                latest_time = current_trip.atd
-
-            if i != 0 and list_of_finished_trips[i - 1].is_copy is True:
+            elif i == len(list_of_finished_trips) - 1:
                 earliest_time = list_of_finished_trips[i - 1].atd
+                latest_time = list_of_finished_trips[i].ata
 
-            if (
-                i != len(list_of_finished_trips) - 1
-                or list_of_finished_trips[i + 1].is_copy is True
-            ):
-                latest_time = list_of_finished_trips[i + 1].atd
+            else:
+                if list_of_finished_trips[i - 1].is_copy is True:
+                    earliest_time = list_of_finished_trips[i - 1].ata
+                if list_of_finished_trips[i + 1].is_copy is True:
+                    latest_time = list_of_finished_trips[i + 1].atd
 
     return finished_schedules, earliest_time, latest_time
 
