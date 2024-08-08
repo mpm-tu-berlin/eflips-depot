@@ -273,7 +273,7 @@ def simple_consumption_simulation(
                     timeseries = None
                 energy_used = consumption * trip.route.distance / 1000  # kWh
                 current_soc = soc_start - energy_used / vehicle_type.battery_capacity
-
+                session.flush()  # TODO
                 # Create a driving event
                 current_event = Event(
                     scenario_id=scenario.id,
@@ -289,6 +289,7 @@ def simple_consumption_simulation(
                     timeseries=timeseries,
                 )
                 session.add(current_event)
+                session.flush()  # TODO
 
                 # If the vehicle is
                 #  - Capable of opportunity charging
@@ -1162,6 +1163,9 @@ def _generate_vehicle_events(
                                     and "end" in dict_of_events[time_stamp].keys()
                                 ):
                                     start_this_event = dict_of_events[time_stamp]["end"]
+                                    if start_this_event in dict_of_events.keys():
+                                        # breakpoint()
+                                        raise ValueError("Lu: The bug happens here!")
                                     dict_of_events[start_this_event] = {
                                         "type": type(process).__name__,
                                         "area": current_area.ID,
