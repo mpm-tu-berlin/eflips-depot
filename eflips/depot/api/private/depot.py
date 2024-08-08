@@ -601,7 +601,6 @@ def create_realistic_depot(
             charging_area_line.processes.append(charging)
             charging_area_line.processes.append(standby_departure)
 
-
         # Because the dispatching strategy in simulation core will prefer line areas, the charging area could be
         # deleted or assigned to a smaller capacity after the simulation
         buffer_direct_area = Area(

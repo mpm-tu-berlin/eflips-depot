@@ -19,7 +19,6 @@ from eflips.depot.api import (
     generate_depot_layout,
     simple_consumption_simulation,
     apply_even_smart_charging,
-
     generate_realistic_depot_layout,
     # TODO where should i put it?
     get_occupancy_from_depot_evaluation,
@@ -134,17 +133,17 @@ if __name__ == "__main__":
         )
         depot_evaluations = run_simulation(simulation_host)
 
-        vehicle_occupancy = get_occupancy_from_depot_evaluation(depot_evaluations, session)
+        vehicle_occupancy = get_occupancy_from_depot_evaluation(
+            depot_evaluations, session
+        )
 
         ##### Step 3.1: Generate a realistic depot and run the simulation again
         delete_depots(scenario, session)
-
 
         # TODO try out
         # But why?
         session.commit()
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
-
 
         # # Get the peak occupancy of all vehicle types
         generate_realistic_depot_layout(
@@ -220,7 +219,6 @@ if __name__ == "__main__":
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()
 
-
         #### Step 4: Consumption simulation, a second time
         # The depot simulation merges vehicles (e.g. one vehicle travels only monday, one only wednesday – they
         # can be the same vehicle). Therefore, the driving events for the vehicles are deleted and the vehicles
@@ -229,8 +227,6 @@ if __name__ == "__main__":
         simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
 
         print("Simulation complete.")
-
-
 
         ##### Optional visualization of the results
         # The results can be visualized using the eflips.eval package.

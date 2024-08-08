@@ -48,7 +48,8 @@ from eflips.model import (
     Trip,
     Vehicle,
     Station,
-    VehicleType, AssocAreaProcess,
+    VehicleType,
+    AssocAreaProcess,
 )
 from math import ceil
 
@@ -57,7 +58,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle, DirectArea
+from eflips.depot import (
+    DepotEvaluation,
+    ProcessStatus,
+    SimulationHost,
+    SimpleVehicle,
+    DirectArea,
+)
 from eflips.depot.api.private.depot import (
     create_simple_depot,
     delete_depots,
@@ -480,7 +487,6 @@ def generate_realistic_depot_layout(
     :return: None
     """
     with create_session(scenario, database_url) as (session, scenario):
-
         # Handles existing depot
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
@@ -496,7 +502,6 @@ def generate_realistic_depot_layout(
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
 
-
             # Create a simple depot at this station
             create_realistic_depot(
                 scenario=scenario,
@@ -509,7 +514,10 @@ def generate_realistic_depot_layout(
                 safety_margin=0.0,
             )
 
-def area_post_processing(session: Session, scenario: Scenario, depot_evaluations: Dict[str, DepotEvaluation]):
+
+def area_post_processing(
+    session: Session, scenario: Scenario, depot_evaluations: Dict[str, DepotEvaluation]
+):
     """
     Postprocessing of the areas after the depot evaluation. Deleting areas not being used and updating the capacity
     of buffer direct areas
@@ -531,12 +539,10 @@ def area_post_processing(session: Session, scenario: Scenario, depot_evaluations
 
     # Check the occupancy of the direct charging areas
     for depot_id, ev in depot_evaluations.items():
-
         areas = ev.depot.areas
 
         for area_id, area in areas.items():
             if area.charge_proc is not None and isinstance(area, DirectArea):
-
                 area_occupancy = area.max_count
                 if area.max_count > 0:
                     session.query(Area).filter(Area.id == area_id).update(
@@ -944,7 +950,9 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
     return results
 
 
-def get_occupancy_from_depot_evaluation(depot_evaluations: Dict[str, DepotEvaluation], session: Session):
+def get_occupancy_from_depot_evaluation(
+    depot_evaluations: Dict[str, DepotEvaluation], session: Session
+):
     """
 
 
@@ -955,17 +963,25 @@ def get_occupancy_from_depot_evaluation(depot_evaluations: Dict[str, DepotEvalua
     occupancy: Dict[Station, Dict[VehicleType, int]] = {}
     for depot_id, ev in depot_evaluations.items():
         depot_id = int(depot_id)
-        depot_station = session.query(Station).join(Depot).filter(Depot.id == depot_id).one()
+        depot_station = (
+            session.query(Station).join(Depot).filter(Depot.id == depot_id).one()
+        )
         occupancy[depot_station] = {}
 
         areas = ev.depot.areas
 
         for area_id, area in areas.items():
             if area.charge_proc is not None:
+                vehicle_type = (
+                    session.query(VehicleType)
+                    .join(Area)
+                    .filter(Area.id == area_id)
+                    .all()
+                )
 
-                vehicle_type = session.query(VehicleType).join(Area).filter(Area.id == area_id).all()
-
-                assert len(vehicle_type) == 1, f"Area {area_id} should only have one vehicle type."
+                assert (
+                    len(vehicle_type) == 1
+                ), f"Area {area_id} should only have one vehicle type."
                 vehicle_type = vehicle_type[0]
                 if vehicle_type not in occupancy[depot_station]:
                     occupancy[depot_station][vehicle_type] = area.max_count

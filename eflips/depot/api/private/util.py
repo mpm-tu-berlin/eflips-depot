@@ -214,7 +214,6 @@ def check_depot_validity(depot: Depot) -> None:
         ), "All processes except the last one must have electric power."
 
 
-
 @dataclass
 class VehicleSchedule:
     """
