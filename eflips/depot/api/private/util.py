@@ -15,11 +15,13 @@ from eflips.model import (
     EventType,
     Trip,
     Depot,
+    Station,
+    Area,
 )
 from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
 
-from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable
+from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable, DepotEvaluation
 from eflips.depot import VehicleType as EflipsVehicleType
 
 
@@ -210,6 +212,7 @@ def check_depot_validity(depot: Depot) -> None:
         assert (
             process.electric_power is not None or process.duration is not None
         ), "All processes except the last one must have electric power."
+
 
 
 @dataclass

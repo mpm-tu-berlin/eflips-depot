@@ -56,7 +56,7 @@ def delete_depots(scenario: Scenario, session: Session) -> None:
     session.query(Depot).filter(Depot.scenario_id == scenario.id).delete()
     # delete plan
     session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
-    # delete assoc_plan_process
+    session.flush()
 
 
 def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
@@ -382,14 +382,178 @@ def create_simple_depot(
     )
     session.add(waiting_area)
 
+    for vehicle_type in charging_capacities.keys():
+        charging_count = charging_capacities[vehicle_type]
+
+        charging_count = int(ceil(charging_count * (1 + safety_margin)))
+
+        # Create charging area
+        charging_area = Area(
+            scenario=scenario,
+            name=f"Direct Charging Area for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=int(charging_count * 1),
+        )
+        session.add(charging_area)
+        charging_area.vehicle_type = vehicle_type
+
+        # Create cleaning area
+        cleaning_count = cleaning_capacities[vehicle_type]
+
+        cleaning_count = int(ceil(cleaning_count * (1 + safety_margin)))
+
+        cleaning_area = Area(
+            scenario=scenario,
+            name=f"Cleaning Area for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=cleaning_count,
+        )
+        session.add(cleaning_area)
+        cleaning_area.vehicle_type = vehicle_type
+
+        shunting_area_1 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 1 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=10,
+        )
+
+        session.add(shunting_area_1)
+        shunting_area_1.vehicle_type = vehicle_type
+
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2 for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=10,
+        )
+
+        session.add(shunting_area_2)
+        shunting_area_2.vehicle_type = vehicle_type
+
+        cleaning_area.processes.append(clean)
+        charging_area.processes.append(charging)
+        charging_area.processes.append(standby_departure)
+        shunting_area_1.processes.append(shunting_1)
+        shunting_area_2.processes.append(shunting_2)
+
+        assocs = [
+            AssocPlanProcess(
+                scenario=scenario, process=shunting_1, plan=plan, ordinal=0
+            ),
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+            AssocPlanProcess(
+                scenario=scenario, process=shunting_2, plan=plan, ordinal=2
+            ),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=3),
+            AssocPlanProcess(
+                scenario=scenario, process=standby_departure, plan=plan, ordinal=4
+            ),
+        ]
+        session.add_all(assocs)
+
+
+def create_realistic_depot(
+    scenario: Scenario,
+    station: Station,
+    charging_capacities: Dict[VehicleType, int],
+    charging_power: float,
+    line_capacity: int,
+    direct_buffer_capacity: int,
+    session: sqlalchemy.orm.session.Session,
+    cleaning_duration: timedelta = timedelta(minutes=7),
+    safety_margin: float = 0.0,
+) -> None:
+    """
+    Creates a realistic depot for a given scenario. It has a strong preference for line areas and realistic amount of
+    resources for cleaning and shunting processing shared by all vehicle types.
+
+    :param scenario: simulated scenario
+    :param station: station representing the depot
+    :param charging_capacities: capacities of charging areas for each vehicle type
+    :param charging_power: charging power in the depot
+    :param line_capacity: the length of the line area
+    :param direct_buffer_capacity: the capacity of the direct area functioning as a buffer.
+    See :func:`generate_realistic_depot_layout` for more information.
+    :param session: a database session
+    :param cleaning_duration: duration of the cleaning process
+    :param safety_margin: an additional margin for the number of charging capacities. Default is 0.0
+    :return: None
+    """
+
+    # Create a simple depot
+    depot = Depot(
+        scenario=scenario,
+        name=f"Depot at {station.name}",
+        name_short=station.name_short,
+        station=station,
+    )
+    session.add(depot)
+
+    # Create plan
+    plan = Plan(scenario=scenario, name=f"Default Plan")
+    session.add(plan)
+
+    depot.default_plan = plan
+
+    # Create processes
+    shunting_1 = Process(
+        name="Shunting 1",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(minutes=3),
+    )
+    clean = Process(
+        name="Arrival Cleaning",
+        scenario=scenario,
+        dispatchable=False,
+        duration=cleaning_duration,
+    )
+    shunting_2 = Process(
+        name="Shunting 2",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(minutes=3),
+    )
+    charging = Process(
+        name="Charging",
+        scenario=scenario,
+        dispatchable=True,
+        electric_power=charging_power,
+    )
+    standby_departure = Process(
+        name="Standby Pre-departure",
+        scenario=scenario,
+        dispatchable=True,
+    )
+
+    session.add(clean)
+    session.add(shunting_1)
+    session.add(charging)
+    session.add(standby_departure)
+    session.add(shunting_2)
+
+    # Create shared waiting area
+    waiting_area = Area(
+        scenario=scenario,
+        name=f"Waiting Area for every type of vehicle",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=100,
+    )
+    session.add(waiting_area)
+
     # Create shared cleaning area
-    cleaning_count = max([cap for vt, cap in cleaning_capacities.items()])
     cleaning_area = Area(
         scenario=scenario,
         name=f"Cleaning Area ",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=10,
+        capacity=2,
     )
     session.add(cleaning_area)
     cleaning_area.processes.append(clean)
@@ -399,27 +563,23 @@ def create_simple_depot(
         name=f"Shunting Area 1 ",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=10,
+        capacity=5,
     )
 
     session.add(shunting_area_1)
-    # shunting_area_1.vehicle_type = vehicle_type
 
     shunting_area_2 = Area(
         scenario=scenario,
         name=f"Shunting Area 2 ",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=10,
+        capacity=5,
     )
 
     session.add(shunting_area_2)
-    # shunting_area_2.vehicle_type = vehicle_type
 
     shunting_area_1.processes.append(shunting_1)
     shunting_area_2.processes.append(shunting_2)
-
-    line_capacity = 6
 
     for vehicle_type in charging_capacities.keys():
         charging_count = charging_capacities[vehicle_type]
@@ -441,6 +601,21 @@ def create_simple_depot(
             charging_area_line.processes.append(charging)
             charging_area_line.processes.append(standby_departure)
 
+
+        # Because the dispatching strategy in simulation core will prefer line areas, the charging area could be
+        # deleted or assigned to a smaller capacity after the simulation
+        buffer_direct_area = Area(
+            scenario=scenario,
+            name=f"Buffer Direct Charging Area for {vehicle_type.name_short}",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=direct_buffer_capacity,
+        )
+        session.add(buffer_direct_area)
+        buffer_direct_area.vehicle_type = vehicle_type
+        buffer_direct_area.processes.append(charging)
+        buffer_direct_area.processes.append(standby_departure)
+
     assocs = [
         AssocPlanProcess(scenario=scenario, process=shunting_1, plan=plan, ordinal=0),
         AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
@@ -451,6 +626,9 @@ def create_simple_depot(
         ),
     ]
     session.add_all(assocs)
+
+    # TODO
+    session.flush()
 
 
 class ProcessType(Enum):

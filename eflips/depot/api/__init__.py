@@ -47,18 +47,23 @@ from eflips.model import (
     Scenario,
     Trip,
     Vehicle,
+    Station,
+    VehicleType, AssocAreaProcess,
 )
 from math import ceil
+
+from sqlalchemy import distinct
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle
+from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle, DirectArea
 from eflips.depot.api.private.depot import (
     create_simple_depot,
     delete_depots,
     depot_to_template,
     group_rotations_by_start_end_stop,
+    create_realistic_depot,
 )
 from eflips.depot.api.private.smart_charging import optimize_charging_events_even
 from eflips.depot.api.private.util import (
@@ -380,7 +385,7 @@ def generate_depot_layout(
 
     :return: None. The depot layout will be added to the database.
     """
-    CLEAN_DURATION = 30 * 60  # 30 minutes in seconds
+    CLEAN_DURATION = 7 * 60  # 30 minutes in seconds
 
     with create_session(scenario, database_url) as (session, scenario):
         # Handles existing depot
@@ -443,6 +448,113 @@ def generate_depot_layout(
                 cleaning_duration=timedelta(seconds=CLEAN_DURATION),
                 safety_margin=0.2,
             )
+
+
+def generate_realistic_depot_layout(
+    scenario: Union[Scenario, int, Any],
+    vehicle_count: Dict[Station, Dict[VehicleType, int]],
+    charging_power: float = 150,
+    line_capacity: int = 6,
+    direct_buffer_capacity: int = 0,
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+):
+    """
+    Generates a realistic depot layout for the scenario. This depot layout has:
+    - Realistic amount of cleaning duration and slots for all vehicle types
+    - Realistic amount of shunting duration and slots for all vehicle types
+    - Charging areas for each vehicle type with a strong preference of line areas
+
+    The area capacities come from the results of the former simulation with extremely large depots. The length of the
+    lines in line areas are specified by the users.
+
+    :param scenario: simulated scenario
+    :param vehicle_count: a dictionary of the vehicle count for each depot station and vehicle type
+    :param charging_power: charging power of the charging area in kW
+    :param line_capacity: length of each line in the line areas. It is now the same for all vehicle types
+    :param direct_buffer_capacity: capacity of direct charging areas of each vehicle type, which functions as a buffer
+    in the parking and dispatching process. It will be used only if necessary and will be deleted or assigned to a
+    smaller capacity after the simulation.
+    :param database_url: a url to the database
+    :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
+    :return: None
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+
+        # Handles existing depot
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError("Depot already exists.")
+            delete_depots(scenario, session)
+
+        # Identify all the spots that serve as start *and* end of a rotation
+        for (
+            first_last_stop_tup,
+            vehicle_type_dict,
+        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+            first_stop, last_stop = first_last_stop_tup
+            if first_stop != last_stop:
+                raise ValueError("First and last stop of a rotation are not the same.")
+
+
+            # Create a simple depot at this station
+            create_realistic_depot(
+                scenario=scenario,
+                station=first_stop,
+                charging_capacities=vehicle_count[first_stop],
+                charging_power=charging_power,
+                line_capacity=line_capacity,
+                direct_buffer_capacity=direct_buffer_capacity,
+                session=session,
+                safety_margin=0.0,
+            )
+
+def area_post_processing(session: Session, scenario: Scenario, depot_evaluations: Dict[str, DepotEvaluation]):
+    """
+    Postprocessing of the areas after the depot evaluation. Deleting areas not being used and updating the capacity
+    of buffer direct areas
+
+    :param session: a database session
+    :param scenario: current scenario to be simulated
+    :param depot_evaluations: a dictionary of the result from simulation core
+    :return: None
+    """
+    areas = session.query(Area.id).filter(Area.scenario_id == scenario.id).all()
+    area_ids = [area[0] for area in areas]
+
+    used_area = (
+        session.query(distinct(Event.area_id))
+        .filter(Event.scenario_id == scenario.id)
+        .all()
+    )
+    used_area_ids = [area[0] for area in used_area]
+
+    # Check the occupancy of the direct charging areas
+    for depot_id, ev in depot_evaluations.items():
+
+        areas = ev.depot.areas
+
+        for area_id, area in areas.items():
+            if area.charge_proc is not None and isinstance(area, DirectArea):
+
+                area_occupancy = area.max_count
+                if area.max_count > 0:
+                    session.query(Area).filter(Area.id == area_id).update(
+                        {"capacity": area_occupancy}
+                    )
+
+                # Reassigning slot numbers seems not necessary by observation
+                print(area.ID, area_occupancy)
+
+    for area_id in area_ids:
+        area = session.query(Area).filter(Area.id == area_id).one()
+        if area_id not in used_area_ids:
+            session.query(AssocAreaProcess).filter(
+                AssocAreaProcess.area_id == area_id
+            ).delete()
+            session.query(Area).filter(Area.id == area_id).delete()
+
+    session.flush()
 
 
 def apply_even_smart_charging(
@@ -830,6 +942,37 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
         results[depot_id] = ev
 
     return results
+
+
+def get_occupancy_from_depot_evaluation(depot_evaluations: Dict[str, DepotEvaluation], session: Session):
+    """
+
+
+    :param depot_evaluations:
+    :param session:
+    :return:
+    """
+    occupancy: Dict[Station, Dict[VehicleType, int]] = {}
+    for depot_id, ev in depot_evaluations.items():
+        depot_id = int(depot_id)
+        depot_station = session.query(Station).join(Depot).filter(Depot.id == depot_id).one()
+        occupancy[depot_station] = {}
+
+        areas = ev.depot.areas
+
+        for area_id, area in areas.items():
+            if area.charge_proc is not None:
+
+                vehicle_type = session.query(VehicleType).join(Area).filter(Area.id == area_id).all()
+
+                assert len(vehicle_type) == 1, f"Area {area_id} should only have one vehicle type."
+                vehicle_type = vehicle_type[0]
+                if vehicle_type not in occupancy[depot_station]:
+                    occupancy[depot_station][vehicle_type] = area.max_count
+                else:
+                    occupancy[depot_station][vehicle_type] += area.max_count
+
+    return occupancy
 
 
 def _add_evaluation_to_database(
