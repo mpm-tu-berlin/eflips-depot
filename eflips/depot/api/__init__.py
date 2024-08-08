@@ -1027,7 +1027,7 @@ def _get_finished_schedules_per_vehicle(
             elif i != 0 and i == len(list_of_finished_trips) - 1:
                 # Vehicle's last trip is a non-copy trip
                 if earliest_time is None:
-                    earliest_time = list_of_finished_trips[i - 1].atd
+                    earliest_time = list_of_finished_trips[i - 1].ata
                 latest_time = list_of_finished_trips[i].ata
 
             else:
