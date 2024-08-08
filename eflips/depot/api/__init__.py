@@ -1024,8 +1024,10 @@ def _get_finished_schedules_per_vehicle(
                     f"interfaces or increase charging power ."
                 )
 
-            elif i == len(list_of_finished_trips) - 1:
-                earliest_time = list_of_finished_trips[i - 1].atd
+            elif i != 0 and i == len(list_of_finished_trips) - 1:
+                # Vehicle's last trip is a non-copy trip
+                if earliest_time is None:
+                    earliest_time = list_of_finished_trips[i - 1].atd
                 latest_time = list_of_finished_trips[i].ata
 
             else:
