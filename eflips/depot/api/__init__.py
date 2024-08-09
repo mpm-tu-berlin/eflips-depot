@@ -146,8 +146,8 @@ def simple_consumption_simulation(
         may significantly speed up the simulation.
 
     :param terminus_deadtime: The total deadtime taken to both attach and detach the charging cable at the terminus.
-                              If the total deadtime is greater than the time between the arrival and departure of the
-                              vehicle at the terminus, the vehicle will not be able to charge at the terminus.
+        If the total deadtime is greater than the time between the arrival and departure of the
+        vehicle at the terminus, the vehicle will not be able to charge at the terminus.
 
     :return: Nothing. The results are added to the database.
     """
@@ -502,14 +502,21 @@ def generate_realistic_depot_layout(
     lines in line areas are specified by the users.
 
     :param scenario: simulated scenario
+
     :param vehicle_count: a dictionary of the vehicle count for each depot station and vehicle type
+
     :param charging_power: charging power of the charging area in kW
+
     :param line_capacity: length of each line in the line areas. It is now the same for all vehicle types
+
     :param direct_buffer_capacity: capacity of direct charging areas of each vehicle type, which functions as a buffer
-    in the parking and dispatching process. It will be used only if necessary and will be deleted or assigned to a
-    smaller capacity after the simulation.
+        in the parking and dispatching process. It will be used only if necessary and will be deleted or assigned to a
+        smaller capacity after the simulation.
+
     :param database_url: a url to the database
+
     :param delete_existing_depot: if there is already a depot existing in this scenario, set True to delete this
+
     :return: None
     """
     with create_session(scenario, database_url) as (session, scenario):
@@ -549,8 +556,11 @@ def area_post_processing(
     of buffer direct areas
 
     :param session: a database session
+
     :param scenario: current scenario to be simulated
+
     :param depot_evaluations: a dictionary of the result from simulation core
+
     :return: None
     """
     areas = session.query(Area.id).filter(Area.scenario_id == scenario.id).all()
@@ -686,6 +696,7 @@ def simulate_scenario(
     It fills in the "Charging Events" in the :class:`eflips.model.Event` table and associates
     :class:`eflips.model.Vehicle` objects with all the existing "Driving Events" in the :class:`eflips.model.Event`
     table.
+
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
         an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
@@ -978,13 +989,15 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
 
 def get_occupancy_from_depot_evaluation(
     depot_evaluations: Dict[str, DepotEvaluation], session: Session
-):
+) -> Dict[Station, Dict[VehicleType, int]]:
     """
+    Get peak occupancy of each vehicle when all the charging areas are direct areas.
 
+    :param depot_evaluations: a :class:`eflips.depot.evaluation.DepotEvaluation` object representing the result
 
-    :param depot_evaluations:
-    :param session:
-    :return:
+    :param session: a SQLAlchemy session object
+
+    :return: a dictionary of the peak occupancy of each vehicle type for each depot
     """
     occupancy: Dict[Station, Dict[VehicleType, int]] = {}
     for depot_id, ev in depot_evaluations.items():
@@ -1175,6 +1188,7 @@ def _get_finished_schedules_per_vehicle(
 
     :param dict_of_events: An ordered dictionary storing the data related to an event. The keys are the start times of
         the events.
+
     :param list_of_finished_trips: A list of finished trips of a vehicle directly from
         :class:`eflips.depot.simple_vehicle.SimpleVehicle` object.
 
@@ -1555,8 +1569,11 @@ def _update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -
     This function updates the vehicle id assigned to the rotations and deletes the events that are not depot events.
 
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
+
     :param scenario: the current simulated scenario
+
     :param list_of_assigned_schedules: a list of tuples containing the rotation id and the vehicle id.
+
     :return: None. The results are added to the database.
     """
     # New rotation assignment
