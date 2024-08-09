@@ -114,6 +114,7 @@ def simple_consumption_simulation(
     initialize_vehicles: bool,
     database_url: Optional[str] = None,
     calculate_timeseries: bool = False,
+    terminus_deadtime: timedelta = timedelta(minutes=1),
 ) -> None:
     """
     A simple consumption simulation and vehicle initialization.
@@ -143,6 +144,10 @@ def simple_consumption_simulation(
         to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
         is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
         may significantly speed up the simulation.
+
+    :param terminus_deadtime: The total deadtime taken to both attach and detach the charging cable at the terminus.
+                              If the total deadtime is greater than the time between the arrival and departure of the
+                              vehicle at the terminus, the vehicle will not be able to charge at the terminus.
 
     :return: Nothing. The results are added to the database.
     """
@@ -327,7 +332,10 @@ def simple_consumption_simulation(
                     # How much energy can be charged in this time?
                     energy_charged = (
                         max([v[1] for v in vehicle_type.charging_curve])
-                        * break_time.total_seconds()
+                        * (
+                            break_time.total_seconds()
+                            - terminus_deadtime.total_seconds()
+                        )
                         / 3600
                     )
 
@@ -338,6 +346,24 @@ def simple_consumption_simulation(
                             + energy_charged / vehicle_type.battery_capacity,
                             1,
                         )
+
+                        # Create a simple timeseries for the charging event
+                        timeseries = {
+                            "time": [
+                                trip.arrival_time.isoformat(),
+                                (trip.arrival_time + terminus_deadtime / 2).isoformat(),
+                                (
+                                    next_trip.departure_time - terminus_deadtime / 2
+                                ).isoformat(),
+                                next_trip.departure_time.isoformat(),
+                            ],
+                            "soc": [
+                                current_soc,
+                                current_soc,
+                                post_charge_soc,
+                                post_charge_soc,
+                            ],
+                        }
 
                         # Create the charging event
                         current_event = Event(
@@ -351,7 +377,7 @@ def simple_consumption_simulation(
                             soc_end=post_charge_soc,
                             event_type=EventType.CHARGING_OPPORTUNITY,
                             description=f"Opportunity charging event for trip {trip.id}.",
-                            timeseries=None,
+                            timeseries=timeseries,
                         )
                         current_soc = post_charge_soc
                         session.add(current_event)

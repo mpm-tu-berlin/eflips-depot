@@ -132,11 +132,7 @@ def repeat_vehicle_schedules(
 
     for vehicle_schedule in vehicle_schedules:
         schedule_list_backward.append(vehicle_schedule.repeat(-repetition_period))
-        if repetition_period == timedelta(days=1):
-            # For daily schedules, repeat the schedule backward twice for the stability of the results
-            schedule_list_backward.append(
-                vehicle_schedule.repeat(-2 * repetition_period)
-            )
+        schedule_list_backward.append(vehicle_schedule.repeat(-2 * repetition_period))
 
         schedule_list_forward.append(vehicle_schedule.repeat(repetition_period))
 
@@ -182,7 +178,9 @@ def start_and_end_times(vehicle_schedules) -> Tuple[datetime, int]:
 
 def check_depot_validity(depot: Depot) -> None:
     """
-    Check if the depot is valid for the eflips-depot simulation. Raise an AssertionError if it is not.
+    Check if the depot is valid for the eflips-depot simulation.
+
+    Raise an AssertionError if it is not.
     :param depot: a :class:`eflips.model.Depot` object.
     :return: None
     """

@@ -168,6 +168,7 @@ if __name__ == "__main__":
                 )
 
         add_evaluation_to_database(scenario, depot_evaluations, session)
+        session.expire_all()
 
         ##### Step 3.5: Apply even smart charging
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
