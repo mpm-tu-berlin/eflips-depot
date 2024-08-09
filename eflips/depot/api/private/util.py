@@ -15,11 +15,13 @@ from eflips.model import (
     EventType,
     Trip,
     Depot,
+    Station,
+    Area,
 )
 from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
 
-from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable
+from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable, DepotEvaluation
 from eflips.depot import VehicleType as EflipsVehicleType
 
 
