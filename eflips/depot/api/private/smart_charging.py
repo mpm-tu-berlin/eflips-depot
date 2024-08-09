@@ -264,10 +264,13 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
             ],  # Remove the first and last index
             "soc": socs.tolist()[1:-1],
         }
-        if event.timeseries["time"][0] < event.time_start.isoformat():
-            event.timeseries["time"][0] = event.time_start.isoformat()
-        if event.timeseries["time"][-1] > event.time_end.isoformat():
-            event.timeseries["time"][-1] = event.time_end.isoformat()
+        if len(event.timeseries["time"]) > 0:
+            if event.timeseries["time"][0] < event.time_start.isoformat():
+                event.timeseries["time"][0] = event.time_start.isoformat()
+            if event.timeseries["time"][-1] > event.time_end.isoformat():
+                event.timeseries["time"][-1] = event.time_end.isoformat()
+        else:
+            event.timeseries = None
 
     # Now we have the power draw and charging allowed for each event
     if False:
