@@ -6,9 +6,8 @@ from datetime import timedelta
 
 from eflips.model import *
 from eflips.model import ConsistencyWarning
-from sqlalchemy import create_engine, not_
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from tqdm.auto import tqdm
 
 from eflips.depot.api import (
     add_evaluation_to_database,
@@ -102,8 +101,8 @@ if __name__ == "__main__":
         ##### Step 1: Consumption simulation
         # Since we are using simple consumption simulation, we also need to make sure that the vehicle types have
         # a consumption value. This is not necessary if you are using an external consumption simulation.
-        # for vehicle_type in scenario.vehicle_types:
-        #    vehicle_type.consumption = 1
+        for vehicle_type in scenario.vehicle_types:
+            vehicle_type.consumption = 1
 
         # Using simple consumption simulation
         # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
@@ -113,7 +112,7 @@ if __name__ == "__main__":
 
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
-            scenario=scenario, charging_power=300, delete_existing_depot=True
+            scenario=scenario, charging_power=150, delete_existing_depot=True
         )
 
         ##### Step 3: Run the simulation
@@ -169,13 +168,13 @@ if __name__ == "__main__":
                 )
 
         add_evaluation_to_database(scenario, depot_evaluations, session)
+        session.expire_all()
 
         ##### Step 3.5: Apply even smart charging
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
         # consumption. This is done by shifting the charging times of the vehicles. The method is called
         # apply_even_smart_charging and is part of the eflips.depot.api module.
-        # apply_even_smart_charging(scenario)
-        session.commit()
+        apply_even_smart_charging(scenario)
 
         #### Step 4: Consumption simulation, a second time
         # The depot simulation merges vehicles (e.g. one vehicle travels only monday, one only wednesday – they
