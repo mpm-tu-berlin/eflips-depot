@@ -57,6 +57,7 @@ def delete_depots(scenario: Scenario, session: Session) -> None:
     # delete plan
     session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
     session.flush()
+    session.expire_all() # Needed to synchronize the session with the database
 
 
 def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
