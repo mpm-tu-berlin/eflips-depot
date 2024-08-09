@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
-            scenario=scenario, charging_power=150, delete_existing_depot=True
+            scenario=scenario, charging_power=300, delete_existing_depot=True
         )
 
         ##### Step 3: Run the simulation
@@ -149,9 +149,9 @@ if __name__ == "__main__":
         generate_realistic_depot_layout(
             scenario=scenario,
             vehicle_count=vehicle_occupancy,
-            charging_power=150,
+            charging_power=300,
             line_capacity=6,
-            direct_buffer_capacity=30,
+            direct_buffer_capacity=100,
             delete_existing_depot=True,
         )
 
