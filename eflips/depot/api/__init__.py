@@ -621,6 +621,8 @@ def apply_even_smart_charging(
 
     :return: None. The results are added to the database.
     """
+    logger = logging.getLogger(__name__)
+
     with create_session(scenario, database_url) as (session, scenario):
         depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
         for depot in depots:
@@ -649,7 +651,7 @@ def apply_even_smart_charging(
                     next_event is None
                     or next_event.event_type != EventType.STANDBY_DEPARTURE
                 ):
-                    warnings.warn(
+                    logger.info(
                         f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
                         f"event. No room for smart charging."
                     )
@@ -1273,6 +1275,8 @@ def _generate_vehicle_events(
     :return: None. The results are added to the dictionary.
     """
 
+    logger = logging.getLogger(__name__)
+
     # For convenience
     area_log = current_vehicle.logger.loggedData["dwd.current_area"]
     slot_log = current_vehicle.logger.loggedData["dwd.current_slot"]
@@ -1292,7 +1296,7 @@ def _generate_vehicle_events(
             if waiting_info["waiting_time"] == 0:
                 continue
 
-            warnings.warn(
+            logger.info(
                 f"Vehicle {current_vehicle.ID} has been waiting for {waiting_info['waiting_time']} seconds. "
             )
 
@@ -1353,7 +1357,6 @@ def _generate_vehicle_events(
                                 # Valid duration
                                 dict_of_events[process.starts[0]] = {
                                     "type": type(process).__name__,
-                                    # TODO: further debugging in simulation core for this
                                     "end": process.ends[0],
                                     "area": current_area.ID,
                                     "slot": current_slot,
@@ -1370,6 +1373,24 @@ def _generate_vehicle_events(
                                     and "end" in dict_of_events[time_stamp].keys()
                                 ):
                                     start_this_event = dict_of_events[time_stamp]["end"]
+                                    if start_this_event in dict_of_events.keys():
+                                        if (
+                                            dict_of_events[start_this_event]["type"]
+                                            == "Trip"
+                                        ):
+                                            logger.info(
+                                                f"Vehicle {current_vehicle.ID} must depart immediately after charged. "
+                                                f"Thus there will be no STANDBY_DEPARTURE event."
+                                            )
+
+                                        else:
+                                            raise ValueError(
+                                                f"There is already an event "
+                                                f"{dict_of_events[start_this_event]} at {start_this_event}."
+                                            )
+
+                                        continue
+
                                     dict_of_events[start_this_event] = {
                                         "type": type(process).__name__,
                                         "area": current_area.ID,
@@ -1622,6 +1643,8 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
 
     :return: None. The results are added to the database.
     """
+    logger = logging.getLogger(__name__)
+
     # Process all the STANDBY (waiting) events #
     all_waiting_starts = (
         session.query(Event)
@@ -1648,9 +1671,8 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
     ), f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends"
 
     if len(all_waiting_starts) == 0:
-        print(
-            "No vehicles are waiting for entering the depot. The depot has enough capacity for waiting by arrival. "
-            "Change the waiting area capacity to 10 as buffer."
+        logger.info(
+            "No waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to 10 as buffer."
         )
 
         session.query(Area).filter(Area.id == waiting_area_id).update(
@@ -1680,7 +1702,7 @@ def _update_waiting_events(session, scenario, waiting_area_id) -> None:
     waiting_area_id = all_waiting_starts[0].area_id
     waiting_area = session.query(Area).filter(Area.id == waiting_area_id).first()
     if waiting_area.capacity > peak_waiting_occupancy:
-        warnings.warn(
+        logger.info(
             f"Current waiting area capacity {waiting_area.capacity} "
             f"is greater than the peak waiting occupancy. Updating the capacity to {peak_waiting_occupancy}."
         )
