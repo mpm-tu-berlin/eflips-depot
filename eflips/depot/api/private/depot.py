@@ -311,14 +311,23 @@ def create_simple_depot(
     area. Also an arrival area for each vehicle type.
 
     :param safety_margin: a safety margin for the number of charging and cleaning capacities. Default is 0.0
+
     :param scenario: The scenario to be simulated
+
     :param station: The station where the depot is located
+
     :param charging_capacities: A dictionary of vehicle types and the number of vehicles that can be charged at the same time
+
     :param cleaning_capacities: A dictionary of vehicle types and the number of vehicles that can be cleaned at the same time
+
     :param charging_power: The power of the charging process
+
     :param cleaning_duration: The duration of the cleaning process
+
     :param session: An SQLAlchemy session object to the database
+
     :return: Nothing. Depots are created in the database.
+
     """
 
     # Create a simple depot
@@ -474,15 +483,25 @@ def create_realistic_depot(
     resources for cleaning and shunting processing shared by all vehicle types.
 
     :param scenario: simulated scenario
+
     :param station: station representing the depot
+
     :param charging_capacities: capacities of charging areas for each vehicle type
+
     :param charging_power: charging power in the depot
+
     :param line_capacity: the length of the line area
+
     :param direct_buffer_capacity: the capacity of the direct area functioning as a buffer.
+
     See :func:`generate_realistic_depot_layout` for more information.
+
     :param session: a database session
+
     :param cleaning_duration: duration of the cleaning process
+
     :param safety_margin: an additional margin for the number of charging capacities. Default is 0.0
+
     :return: None
     """
 
