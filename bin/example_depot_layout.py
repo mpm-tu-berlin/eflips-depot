@@ -133,19 +133,16 @@ if __name__ == "__main__":
         depot_evaluations = run_simulation(simulation_host)
 
         for depot_id, ev in depot_evaluations.items():
-            print(f"Depot {depot_id}: vehicle count before: {ev.vehicle_generator.count}")
-
-
+            print(
+                f"Depot {depot_id}: vehicle count before: {ev.vehicle_generator.count}"
+            )
 
         vehicle_occupancy = get_occupancy_from_depot_evaluation(
             depot_evaluations, session
         )
 
-
         ##### Step 3.1: Generate a realistic depot and run the simulation again
         delete_depots(scenario, session)
-
-
 
         # # Get the peak occupancy of all vehicle types
         generate_realistic_depot_layout(
