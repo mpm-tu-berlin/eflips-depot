@@ -321,7 +321,7 @@ def create_simple_depot(
         scenario=scenario,
         name=f"Depot at {station.name}",
         name_short=station.name_short,
-        station=station,
+        station_id=station.id,
     )
     session.add(depot)
 
