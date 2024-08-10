@@ -135,21 +135,9 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
             optimized_power, params_for_event["max_power"]
         )
 
-        # Count the energy that is we need to distribute over the time when the vehicle is not at peak power
-        energy_to_distribute = (
-            np.trapz((optimized_power - optimized_power_capped), total_time) / 3600
-        )  # kWh
-        if energy_to_distribute > 0:
-            optimized_power_not_capped = np.where(
-                optimized_power > optimized_power_capped
-            )
-            # Distribute the energy over the time when the vehicle is not at peak power
-            uncapped_duration = (
-                optimized_power_not_capped[0].shape[0]
-                * TEMPORAL_RESOLUTION.total_seconds()
-            )
-            power_to_add = energy_to_distribute / (uncapped_duration / 3600)
-            optimized_power[optimized_power_not_capped[0]] += power_to_add
+        if not np.all(optimized_power_capped != optimized_power):
+            # If the power draw is capped, we will just use the mean power draw
+            optimized_power = params_for_event["charging_allowed"] * mean_power
 
         # Make sure the transferred energy is the same
         post_opt_energy = (
@@ -221,15 +209,10 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
                 params_for_event["transferred_energy"] / post_opt_energy
             )
 
-        optimized_power2 = (
-            params_for_event["charging_allowed"] * mean_power
-        )  # * (mean_occupancy / total_occupancy)
         # Fill NaNs with the zero power draw
         optimized_power[np.isnan(optimized_power)] = 0
-        optimized_power2[np.isnan(optimized_power2)] = 0
 
         params_for_event["optimized_power"] = optimized_power
-        params_for_event["optimized_power2"] = optimized_power2
 
         event = params_for_event["event"]
         start_index = int((event.time_start - start_time) / TEMPORAL_RESOLUTION)
