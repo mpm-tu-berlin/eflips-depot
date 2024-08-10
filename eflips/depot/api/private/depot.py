@@ -304,6 +304,7 @@ def create_simple_depot(
     session: sqlalchemy.orm.session.Session,
     cleaning_duration: timedelta = timedelta(minutes=30),
     safety_margin: float = 0.0,
+    shunting_duration: timedelta = timedelta(minutes=5),
 ) -> None:
     """
     Creates a simple depot for a given scenario.
@@ -342,7 +343,7 @@ def create_simple_depot(
         name="Shunting 1",
         scenario=scenario,
         dispatchable=False,
-        duration=timedelta(minutes=5),
+        duration=shunting_duration,
     )
     clean = Process(
         name="Arrival Cleaning",
@@ -354,7 +355,7 @@ def create_simple_depot(
         name="Shunting 2",
         scenario=scenario,
         dispatchable=False,
-        duration=timedelta(minutes=5),
+        duration=shunting_duration,
     )
     charging = Process(
         name="Charging",
@@ -511,3 +512,71 @@ def process_type(p: Process) -> ProcessType:
             return ProcessType.STANDBY
     else:
         raise ValueError("Invalid process type")
+
+
+def _generate_all_direct_depot(
+    CLEAN_DURATION: int,
+    charging_power: float,
+    first_stop: Station,
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    vehicle_type_dict: Dict[VehicleType, List[Rotation]],
+    shunting_duration: timedelta = timedelta(minutes=5),
+) -> None:
+    """
+    Private inner function to generate a depot layout with an arrival and a charging area for each vehicle type.
+
+    :param CLEAN_DURATION: The duration of the cleaning process in seconds.
+    :param charging_power: The charging power of the charging area in kW.
+    :param first_stop: The stop where the depot is located.
+    :param scenario: The scenario for which the depot layout should be generated.
+    :param session: The SQLAlchemy session object.
+    :param vehicle_type_dict: A dictionary with vehicle types as keys and rotations as values.
+    :return: Nothing. The depot layout is created in the database.
+    """
+    max_occupancies: Dict[eflips.model.VehicleType, int] = {}
+    max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
+    for vehicle_type, rotations in vehicle_type_dict.items():
+        # Slightly convoluted vehicle summation
+        start_time = min(
+            [rotation.trips[0].departure_time for rotation in rotations]
+        ).timestamp()
+        end_time = max(
+            [rotation.trips[-1].arrival_time for rotation in rotations]
+        ).timestamp()
+        timestamps_to_sample = np.arange(start_time, end_time, 60)
+        occupancy = np.zeros_like(timestamps_to_sample)
+        clean_occupancy = np.zeros_like(timestamps_to_sample)
+        for rotation in rotations:
+            rotation_start = rotation.trips[0].departure_time.timestamp()
+            rotation_end = rotation.trips[-1].arrival_time.timestamp()
+            occupancy += np.interp(
+                timestamps_to_sample,
+                [rotation_start, rotation_end],
+                [1, 1],
+                left=0,
+                right=0,
+            )
+            clean_occupancy += np.interp(
+                timestamps_to_sample,
+                [rotation_end, rotation_end + CLEAN_DURATION],
+                [1, 1],
+                left=0,
+                right=0,
+            )
+        max_occupancies[vehicle_type] = max(
+            max(occupancy), 1
+        )  # To avoid zero occupancy
+        max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
+    # Create a simple depot at this station
+    create_simple_depot(
+        scenario=scenario,
+        station=first_stop,
+        charging_capacities=max_occupancies,
+        cleaning_capacities=max_clean_occupancies,
+        charging_power=charging_power,
+        session=session,
+        cleaning_duration=timedelta(seconds=CLEAN_DURATION),
+        safety_margin=0.2,
+        shunting_duration=shunting_duration,
+    )
