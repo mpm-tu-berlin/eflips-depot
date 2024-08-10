@@ -1,5 +1,5 @@
 """This module contains miscellaneous utility functions for the eflips-depot API."""
-
+import logging
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -40,6 +40,8 @@ def create_session(
         database, or any other object that has an attribute `id` that is an integer.
     :return: Yield a Tuple of the session and the scenario.
     """
+    logger = logging.getLogger(__name__)
+
     managed_session = False
     engine = None
     session = None
@@ -47,6 +49,10 @@ def create_session(
         if isinstance(scenario, Scenario):
             session = inspect(scenario).session
         elif isinstance(scenario, int) or hasattr(scenario, "id"):
+            logger.warning(
+                "Scenario passed was not part of an active session. Uncommited changes will be ignored."
+            )
+
             if isinstance(scenario, int):
                 scenario_id = scenario
             else:
