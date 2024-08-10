@@ -5,6 +5,9 @@ from enum import Enum, auto
 from math import ceil
 from typing import Dict, List, Tuple
 
+import eflips.model
+import numpy as np
+
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
@@ -99,12 +102,15 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
         }
 
         # Fill in vehicle_filter.
-        template["areas"][area_name]["entry_filter"] = {
-            "filter_names": ["vehicle_type"],
-            "vehicle_types": [str(area.vehicle_type_id)],
-        }
-
-        # TODO for cleaning area etc., enable non-vehicle_type areas
+        # If the vehicle type id is set, the area is only for this vehicle type
+        if area.vehicle_type_id is not None:
+            template["areas"][area_name]["entry_filter"] = {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": [str(area.vehicle_type_id)],
+            }
+        else:
+            # If the vehicle type id is not set, the area is for all vehicle types
+            template["areas"][area_name]["entry_filter"] = dict()
 
         for process in area.processes:
             # Add process into process list
