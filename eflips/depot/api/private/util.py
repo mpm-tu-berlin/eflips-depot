@@ -1,5 +1,5 @@
 """This module contains miscellaneous utility functions for the eflips-depot API."""
-
+import logging
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -40,6 +40,8 @@ def create_session(
         database, or any other object that has an attribute `id` that is an integer.
     :return: Yield a Tuple of the session and the scenario.
     """
+    logger = logging.getLogger(__name__)
+
     managed_session = False
     engine = None
     session = None
@@ -47,6 +49,10 @@ def create_session(
         if isinstance(scenario, Scenario):
             session = inspect(scenario).session
         elif isinstance(scenario, int) or hasattr(scenario, "id"):
+            logger.warning(
+                "Scenario passed was not part of an active session. Uncommited changes will be ignored."
+            )
+
             if isinstance(scenario, int):
                 scenario_id = scenario
             else:
@@ -348,8 +354,16 @@ class VehicleSchedule:
         opportunity_charging = rot.allow_opportunity_charging
 
         # Find the depot at the start and end of the rotation
-        start_depot = trips[0].route.departure_station.depot
-        end_depot = trips[-1].route.arrival_station.depot
+        start_depot = (
+            session.query(Depot)
+            .filter(Depot.station_id == trips[0].route.departure_station_id)
+            .one()
+        )
+        end_depot = (
+            session.query(Depot)
+            .filter(Depot.station_id == trips[-1].route.arrival_station_id)
+            .one()
+        )
 
         if start_depot is None or end_depot is None:
             raise ValueError(f"Rotation {rot.id} has no depot at the start or end.")

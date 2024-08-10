@@ -2,19 +2,21 @@
 import argparse
 import os
 import warnings
-from datetime import timedelta
+from datetime import date, timedelta
 
 from eflips.model import *
 from eflips.model import ConsistencyWarning
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, or_
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
     add_evaluation_to_database,
     delete_depots,
     init_simulation,
+    insert_dummy_standby_departure_events,
     run_simulation,
     generate_depot_layout,
+    generate_realistic_depot_layout,
     simple_consumption_simulation,
     apply_even_smart_charging,
 )
@@ -111,8 +113,8 @@ if __name__ == "__main__":
         simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
         ##### Step 2: Generate the depot layout
-        generate_depot_layout(
-            scenario=scenario, charging_power=150, delete_existing_depot=True
+        generate_realistic_depot_layout(
+            scenario=scenario, charging_power=300, delete_existing_depot=True
         )
 
         ##### Step 3: Run the simulation
@@ -123,7 +125,7 @@ if __name__ == "__main__":
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
-            repetition_period=timedelta(days=7),
+            repetition_period=timedelta(days=1),
         )
         depot_evaluations = run_simulation(simulation_host)
 
@@ -170,18 +172,25 @@ if __name__ == "__main__":
         add_evaluation_to_database(scenario, depot_evaluations, session)
         session.expire_all()
 
-        ##### Step 3.5: Apply even smart charging
-        # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
-        # consumption. This is done by shifting the charging times of the vehicles. The method is called
-        # apply_even_smart_charging and is part of the eflips.depot.api module.
-        apply_even_smart_charging(scenario)
-
         #### Step 4: Consumption simulation, a second time
         # The depot simulation merges vehicles (e.g. one vehicle travels only monday, one only wednesday – they
         # can be the same vehicle). Therefore, the driving events for the vehicles are deleted and the vehicles
         # are re-initialized. In order to have consumption values for the vehicles, we need to run the consumption
         # simulation again. This time, we do not need to initialize the vehicles, because they are already initialized.
         simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+
+        # This is something we need to do due to an unclear reason. The depot simulation sometimes does not
+        # generate the correct departure events for the vehicles. Therefore, we insert dummy standby departure events
+        for depot in (
+            session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
+        ):
+            insert_dummy_standby_departure_events(depot.id, session)
+
+        ##### Step 5: Apply even smart charging
+        # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
+        # consumption. This is done by shifting the charging times of the vehicles. The method is called
+        # apply_even_smart_charging and is part of the eflips.depot.api module.
+        apply_even_smart_charging(scenario)
 
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()

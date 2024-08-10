@@ -31,29 +31,44 @@ import logging
 import os
 import warnings
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union, List
+from eflips.model import Process
+from typing import Any, Dict, Optional, Tuple, Union, List
 
 import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
     Area,
+    AreaType,
+    AssocPlanProcess,
     Depot,
     Event,
     EventType,
+    Plan,
     Rotation,
     Scenario,
+    Station,
     Trip,
     Vehicle,
+    VehicleType,
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
 import eflips.depot
-from eflips.depot import DepotEvaluation, ProcessStatus, SimulationHost, SimpleVehicle
+from eflips.depot import (
+    DepotEvaluation,
+    DirectArea,
+    LineArea,
+    ProcessStatus,
+    SimulationHost,
+    SimpleVehicle,
+)
 from eflips.depot.api.private.depot import (
+    _generate_all_direct_depot,
     create_simple_depot,
     delete_depots,
     depot_to_template,
@@ -68,6 +83,7 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
+from eflips.depot.evaluation import to_prev_values
 
 
 class SmartChargingStrategy(Enum):
@@ -370,12 +386,644 @@ def simple_consumption_simulation(
                         session.add(current_event)
 
 
+def generate_line_depot_layout(
+    CLEAN_DURATION: int,
+    charging_power: float,
+    station: Station,
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    direct_counts: Dict[VehicleType, int],
+    line_counts: Dict[VehicleType, int],
+    line_length: int,
+    vehicle_type_rotation_dict: Dict[VehicleType, List[Rotation]],
+    shunting_duration: timedelta = timedelta(minutes=5),
+) -> None:
+    """
+    Generate a depot layout with line areas and direct areas.
+
+    :param CLEAN_DURATION: The duration of the cleaning process in seconds.
+    :param charging_power: The charging power of the charging area in kW.
+    :param station: The stop where the depot is located.
+    :param scenario: The scenario for which the depot layout should be generated.
+    :param session: The SQLAlchemy session object.
+    :param direct_counts: A dictionary with vehicle types as keys and the number of vehicles in the direct areas as
+        values.
+    :param line_counts: A dictionary with vehicle types as keys and the number of vehicles in the line areas as values.
+    :param line_length: The length of the line areas.
+    :param vehicle_type_rotation_dict: A dictionary with vehicle types as keys and rotations as values.
+    :return: The number of cleaning areas and the number of shunting areas.
+    """
+    logger = logging.getLogger(__name__)
+    DEBUG_PLOT = False
+
+    # In order to figure out how many cleaning areas we need, we look at the number of vehicle simultaneously being
+    # cleaned. This is the number of vehicles simulatenously being within the "CLEAN_DURATION" after their arrival.
+
+    # We assemble a vector of all time in the simulation
+    logger.info("Calculating the number of cleaning areas needed")
+    all_rotations = list(itertools.chain(*vehicle_type_rotation_dict.values()))
+    start_time = min(
+        [rotation.trips[0].departure_time for rotation in all_rotations]
+    ).timestamp()
+    end_time = max(
+        [rotation.trips[-1].arrival_time for rotation in all_rotations]
+    ).timestamp()
+    timestamps_to_sample = np.arange(start_time, end_time, 60)
+    clean_occupancy = np.zeros_like(timestamps_to_sample)
+
+    # Then fir each arrival, we add 1 to the CLEAN_DURATION after the arrival
+    for rotation in all_rotations:
+        rotation_end = rotation.trips[-1].arrival_time.timestamp()
+        clean_occupancy += np.interp(
+            timestamps_to_sample,
+            [rotation_end, rotation_end + CLEAN_DURATION],
+            [1, 1],
+            left=0,
+            right=0,
+        )
+
+    if DEBUG_PLOT:
+        from matplotlib import pyplot as plt
+
+        plt.figure()
+        plt.plot(timestamps_to_sample, clean_occupancy)
+        plt.show()
+
+    vehicles_arriving_in_window = int(max(clean_occupancy))
+    logger.info(
+        f"Number of vehicles arriving in a {CLEAN_DURATION/60:.1f} minute window: {vehicles_arriving_in_window:.0f}"
+    )
+
+    # Take a fifth of the vehicles arriving in the window as the number of cleaning areas needed
+    clean_areas_needed = ceil(vehicles_arriving_in_window / 2)
+    logger.info(f"Number of cleaning areas created: {clean_areas_needed}")
+    del all_rotations, clean_occupancy, timestamps_to_sample, start_time, end_time
+
+    # Create the depot
+    # `vehicles_arriving_in_window`+1 will be the size of our shunting areas
+    # `clean_areas_needed` will be the size of our cleaning areas
+    # We will create line and direct areas for each vehicle type
+    # - THe line areas will be of length `line_length` and count `line_counts[vehicle_type]`
+    # - The direct areas will be of length 1 and count `direct_counts[vehicle_type]`
+    # - The charging power for the line areas will be `charging_power_direct` and for the direct areas `charging_power`
+    #   unless `charging_power_direct` is not set, in which case `charging_power` will be used.
+
+    # Create the depot
+    depot = Depot(
+        scenario=scenario,
+        name=f"Depot at {station.name}",
+        name_short=station.name_short,
+        station_id=station.id,
+    )
+    session.add(depot)
+
+    shunting_1 = Process(
+        name="Shunting 1 (Arrival -> Cleaning)",
+        scenario=scenario,
+        dispatchable=False,
+        duration=shunting_duration,
+    )
+
+    session.add(shunting_1)
+    clean = Process(
+        name="Arrival Cleaning",
+        scenario=scenario,
+        dispatchable=False,
+        duration=timedelta(seconds=CLEAN_DURATION),
+    )
+    session.add(clean)
+
+    shunting_2 = Process(
+        name="Shunting 2 (Cleaning -> Charging)",
+        scenario=scenario,
+        dispatchable=False,
+        duration=shunting_duration,
+    )
+    session.add(shunting_2)
+
+    charging = Process(
+        name="Charging",
+        scenario=scenario,
+        dispatchable=True,
+        electric_power=charging_power,
+    )
+
+    standby_departure = Process(
+        name="Standby Pre-departure",
+        scenario=scenario,
+        dispatchable=True,
+    )
+    session.add(standby_departure)
+
+    # Create shared waiting area
+    # This will be the "virtual" area where vehicles wait for a spot in the depot
+    waiting_area = Area(
+        scenario=scenario,
+        name=f"Waiting Area for every type of vehicle",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=100,
+    )
+    session.add(waiting_area)
+
+    # Create a shared shunting area (large enough to fit all rotations)
+    shunting_area_1 = Area(
+        scenario=scenario,
+        name=f"Shunting Area 1 (Arrival -> Cleaning)",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=sum(
+            [len(rotations) for rotations in vehicle_type_rotation_dict.values()]
+        ),  # TODO
+    )
+    session.add(shunting_area_1)
+    shunting_area_1.processes.append(shunting_1)
+
+    # Create a shared cleaning area
+    cleaning_area = Area(
+        scenario=scenario,
+        name=f"Cleaning Area",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=clean_areas_needed,
+    )
+    session.add(cleaning_area)
+    cleaning_area.processes.append(clean)
+
+    # Create a shared shunting area
+    shunting_area_2 = Area(
+        scenario=scenario,
+        name=f"Shunting Area 2 (Cleaning -> Charging)",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=clean_areas_needed,
+    )
+    session.add(shunting_area_2)
+    shunting_area_2.processes.append(shunting_2)
+
+    # Create the line areas for each vehicle type
+    for vehicle_type, count in line_counts.items():
+        for i in range(count):
+            line_area = Area(
+                scenario=scenario,
+                name=f"Line Area for {vehicle_type.name} #{i+1:02d}",
+                depot=depot,
+                area_type=AreaType.LINE,
+                capacity=line_length,
+                vehicle_type=vehicle_type,
+            )
+            session.add(line_area)
+            line_area.processes.append(charging)
+            line_area.processes.append(standby_departure)
+
+    # Create the direct areas for each vehicle type
+    for vehicle_type, count in direct_counts.items():
+        if count > 0:
+            direct_area = Area(
+                scenario=scenario,
+                name=f"Direct Area for {vehicle_type.name}",
+                depot=depot,
+                area_type=AreaType.DIRECT_ONESIDE,
+                capacity=count,
+                vehicle_type=vehicle_type,
+            )
+            session.add(direct_area)
+            direct_area.processes.append(charging)
+            direct_area.processes.append(standby_departure)
+
+    # Create the plan
+    # Create plan
+    plan = Plan(scenario=scenario, name=f"Default Plan")
+    session.add(plan)
+
+    depot.default_plan = plan
+
+    # Create the assocs in order to put the areas in the plan
+    assocs = [
+        AssocPlanProcess(scenario=scenario, process=shunting_1, plan=plan, ordinal=0),
+        AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+        AssocPlanProcess(scenario=scenario, process=shunting_2, plan=plan, ordinal=2),
+        AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=3),
+        AssocPlanProcess(
+            scenario=scenario, process=standby_departure, plan=plan, ordinal=4
+        ),
+    ]
+    session.add_all(assocs)
+
+
+@dataclass
+class DepotConfiguration:
+    charging_power: float
+    line_counts: Dict[VehicleType, int]
+    direct_counts: Dict[VehicleType, int]
+    clean_duration: int
+    num_clean_areas: int
+    num_shunting_areas: int
+
+
+def real_peak_area_utilization(ev: DepotEvaluation) -> Dict[str, Dict[AreaType, int]]:
+    """
+    Calculate the real peak vehicle count for a depot evaluation by vehicle type and area type.
+
+    For the line areas, the maximum number of lines in use at the same time is calculated.
+
+    :param ev: A DepotEvaluation object.
+    :return: The real peak vehicle count by vehicle type and area type.
+    """
+    area_types_by_id: Dict[int, AreaType] = dict()
+    total_counts_by_area: Dict[str, Dict[str, np.ndarray]] = dict()
+
+    # We are assuming that the smulation runs for at least four days
+    SECONDS_IN_A_DAY = 24 * 60 * 60
+    assert ev.SIM_TIME >= 4 * SECONDS_IN_A_DAY
+
+    for area in ev.depot.list_areas:
+        # We need to figure out which kind of area this is
+        # We do this by looking at the vehicle type of the area
+        if len(area.entry_filter.filters) > 0:
+            if isinstance(area, LineArea):
+                area_types_by_id[area.ID] = AreaType.LINE
+            elif isinstance(area, DirectArea):
+                area_types_by_id[area.ID] = AreaType.DIRECT_ONESIDE
+            else:
+                raise ValueError("Unknown area type")
+
+            assert len(area.entry_filter.vehicle_types_str) == 1
+            vehicle_type_name = area.entry_filter.vehicle_types_str[0]
+
+            nv = area.logger.get_valList("count", SIM_TIME=ev.SIM_TIME)
+            nv = to_prev_values(nv)
+            nv = np.array(nv)
+
+            # If the area is empty, we don't care about it
+            if np.all(nv == 0):
+                continue
+
+            if vehicle_type_name not in total_counts_by_area:
+                total_counts_by_area[vehicle_type_name] = dict()
+            # We don't want the last day, as all vehicles will re-enter the depot
+            total_counts_by_area[vehicle_type_name][area.ID] = nv[:-SECONDS_IN_A_DAY]
+        else:
+            # This is an area for all vehicle types
+            # We don't care about this
+            continue
+
+    if False:
+        from matplotlib import pyplot as plt
+
+        for vehicle_type_name, counts in total_counts_by_area.items():
+            plt.figure()
+            for area_id, proper_counts in counts.items():
+                # dashed if direct, solid if line
+                if area_types_by_id[area_id] == AreaType.DIRECT_ONESIDE:
+                    plt.plot(proper_counts, "--", label=area_id)
+                else:
+                    plt.plot(proper_counts, label=area_id)
+            plt.legend()
+            plt.show()
+
+    # Calculate the maximum utilization of the direct areas and the maximum number of lines in use at the same time
+    # Per vehicle type
+    ret_val: Dict[str, Dict[AreaType, int]] = dict()
+    for vehicle_type_name, count_dicts in total_counts_by_area.items():
+        peak_direct_area_usage = 0
+        number_of_lines_in_use = 0
+        for area_id, counts in count_dicts.items():
+            if area_types_by_id[area_id] == AreaType.DIRECT_ONESIDE:
+                peak_direct_area_usage += max(peak_direct_area_usage, np.max(counts))
+            else:
+                number_of_lines_in_use += 1
+
+        ret_val[vehicle_type_name] = {
+            AreaType.DIRECT_ONESIDE: int(peak_direct_area_usage),
+            AreaType.LINE: int(number_of_lines_in_use),
+        }
+
+    return ret_val
+
+
+def real_peak_vehicle_count(ev: DepotEvaluation) -> Dict[str, int]:
+    """
+    Calculate the real peak vehicle count for a depot evaluation.
+
+    This is different from the amount of vehicles used
+    in the calculation, as towards the end of the simulation all vehicles will re-enter-the depot, which leads to
+    a lower actual peak vehicle count than what `nvehicles_used_calculation` returns.
+    :param ev: A DepotEvaluation object.
+    :return: The real peak vehicle count. This is what the depot layout should be designed for.
+    """
+
+    total_counts_by_vehicle_type: Dict[str, np.ndarray] = dict()
+
+    for area in ev.depot.list_areas:
+        # We need to figure out which kind of area this is
+        # We do this by looking at the vehicle type of the area
+        if len(area.entry_filter.filters) > 0:
+            assert len(area.entry_filter.vehicle_types_str) == 1
+            vehicle_type_name = area.entry_filter.vehicle_types_str[0]
+
+            nv = area.logger.get_valList("count", SIM_TIME=ev.SIM_TIME)
+            nv = to_prev_values(nv)
+            nv = np.array(nv)
+
+            if vehicle_type_name not in total_counts_by_vehicle_type:
+                total_counts_by_vehicle_type[vehicle_type_name] = np.zeros(
+                    ev.SIM_TIME, dtype=np.int32
+                )
+            total_counts_by_vehicle_type[vehicle_type_name] += nv
+        else:
+            # This is an area for all vehicle types
+            # We don't care about this
+            continue
+
+    # We are assuming that the smulation runs for at least four days
+    SECONDS_IN_A_DAY = 24 * 60 * 60
+    assert ev.SIM_TIME >= 4 * SECONDS_IN_A_DAY
+
+    # Towards the end, all the vehicles will re-enter the depot
+    # So our practital peak vehicle count is the maximum excluding the last day
+    for vehicle_type_name, counts in total_counts_by_vehicle_type.items():
+        total_counts_by_vehicle_type[vehicle_type_name] = counts[:-SECONDS_IN_A_DAY]
+
+    return {
+        vehicle_type_name: int(np.max(counts))
+        for vehicle_type_name, counts in total_counts_by_vehicle_type.items()
+    }
+
+
+def generate_realistic_depot_layout(
+    scenario: Union[Scenario, int, Any],
+    charging_power: float,
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+    line_length: int = 8,
+    CLEAN_DURATION: int = 10 * 60,  # 10 minutes in seconds
+    shunting_duration: timedelta = timedelta(minutes=5),
+) -> DepotConfiguration:
+    """
+    Creates a realistic depot layout for the scenario.
+
+    This is done by starting with an all direct depot layout,
+    looking at the vehicle count, creating an "all line" layout and then turning some of these lines into direct
+    areas until the vehicle count of the all direct depot layout (+ an allowance) is reached.
+
+    :param scenario: The scenario for which the depot layout should be generated.
+    :param charging_power: The charging power for the line areas in kW.
+    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
+        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
+        URL.
+    :param delete_existing_depot: Whether to delete an existing depot layout for this scenario. If set to False and a
+        depot layout already exists, a ValueError will be raised.
+    :param charging_power_direct: The charging power for the direct areas in kW. If not set, the charging power for the
+        line areas will be used.
+
+    :return: None. The depot layout will be added to the database.
+    """
+    logging.basicConfig(level=logging.DEBUG)  # TODO: Remove this line
+    logger = logging.getLogger(__name__)
+
+    with create_session(scenario, database_url) as (session, scenario):
+        # STEP 0: Delete existing depots if asked to, raise an Exception otherwise
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError("Depot already exists.")
+            delete_depots(scenario, session)
+
+        # Make sure that the consumption simulation has been run
+        if session.query(Event).filter(Event.scenario_id == scenario.id).count() == 0:
+            raise ValueError(
+                "No consumption simulation found. Please run the consumption simulation first."
+            )
+
+        # STEP 2: Identify the spots where we will put a depot
+        # Identify all the spots that serve as start *and* end of a rotation
+        depot_stations_and_vehicle_types = group_rotations_by_start_end_stop(
+            scenario.id, session
+        )
+
+        # STEP 3: Put "all direct" depots at these spots and find the vehicle counts
+        depot_stations = []
+        for (
+            first_last_stop_tup,
+            vehicle_type_rotation_dict,
+        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+            first_stop, last_stop = first_last_stop_tup
+            if first_stop != last_stop:
+                raise ValueError("First and last stop of a rotation are not the same.")
+            depot_stations.append(first_stop)
+
+        all_direct_counts: Dict[
+            Station, Dict[VehicleType, int]
+        ] = vehicle_counts_for_direct_layout(
+            CLEAN_DURATION=CLEAN_DURATION,
+            charging_power=charging_power,
+            stations=depot_stations,
+            scenario=scenario,
+            session=session,
+            vehicle_type_dict=vehicle_type_rotation_dict,
+            shunting_duration=shunting_duration,
+        )
+
+        # STEP 4: Run the simulation with depots that also have a lot of line areas
+        # I know I could probably skip step 3 and go directly to step 4, but that's how I got it working and
+        # I'm too lazy to change it now
+
+        for station, vehicle_type_and_counts in all_direct_counts.items():
+            line_counts: Dict[VehicleType, int] = dict()
+            direct_counts: Dict[VehicleType, int] = dict()
+
+            # Create a Depot that has a lot of line areas as well
+            for vehicle_type, count in vehicle_type_and_counts.items():
+                line_counts[vehicle_type] = ceil(count / line_length)
+                direct_counts[vehicle_type] = ceil(count) + 500
+
+            # Run the simulation with this depot
+            generate_line_depot_layout(
+                CLEAN_DURATION=CLEAN_DURATION,
+                charging_power=charging_power,
+                station=station,
+                scenario=scenario,
+                session=session,
+                direct_counts=direct_counts,
+                line_counts=line_counts,
+                line_length=line_length,
+                vehicle_type_rotation_dict=vehicle_type_rotation_dict,
+                shunting_duration=shunting_duration,
+            )
+
+        # Simulate the depot
+        # We will not be using add_evaluation_to_database instead taking the vehicle counts directly from the `ev` object
+        logger.info("Simulating the scenario")
+        logger.info("1/2: Initializing the simulation host")
+        simulation_host = init_simulation(
+            scenario=scenario,
+            session=session,
+        )
+        logger.info("2/2: Running the simulation")
+        depot_evaluations = run_simulation(simulation_host)
+
+        # We need to remember the depot-id-station mapping
+        depot_id_station_mapping: Dict[str, Station] = dict()
+        for depot_id_as_str, ev in depot_evaluations.items():
+            station = (
+                session.query(Station)
+                .join(Depot)
+                .filter(Depot.id == int(depot_id_as_str))
+                .one()
+            )
+            depot_id_station_mapping[depot_id_as_str] = station
+
+        # Delete the old depot
+        delete_depots(scenario, session)
+
+        for depot_id_as_str, ev in depot_evaluations.items():
+            assert isinstance(ev, DepotEvaluation)
+
+            if False:
+                ev.path_results = depot_id_as_str
+                os.makedirs(depot_id_as_str, exist_ok=True)
+
+                ev.vehicle_periods(
+                    periods={
+                        "depot general": "darkgray",
+                        "park": "lightgray",
+                        "Arrival Cleaning": "steelblue",
+                        "Charging": "forestgreen",
+                        "Standby Pre-departure": "darkblue",
+                        "precondition": "black",
+                        "trip": "wheat",
+                    },
+                    save=True,
+                    show=False,
+                    formats=(
+                        "pdf",
+                        "png",
+                    ),
+                    show_total_power=True,
+                    show_annotates=True,
+                )
+
+            # Find the actual utilization.
+            utilization: Dict[str, int] = real_peak_area_utilization(ev)
+            utilization = {
+                session.query(VehicleType).filter(VehicleType.id == int(k)).one(): v
+                for k, v in utilization.items()
+            }
+
+            # Turn utilization into a two dictionaries, one for line areas and one for direct areas
+            for vehicle_type, counts in utilization.items():
+                line_counts[vehicle_type] = counts[AreaType.LINE]
+                direct_counts[vehicle_type] = counts[AreaType.DIRECT_ONESIDE] + 100
+
+            station = depot_id_station_mapping[depot_id_as_str]
+
+            generate_line_depot_layout(
+                CLEAN_DURATION=CLEAN_DURATION,
+                charging_power=charging_power,
+                station=station,
+                scenario=scenario,
+                session=session,
+                direct_counts=direct_counts,
+                line_counts=line_counts,
+                line_length=line_length,
+                vehicle_type_rotation_dict=vehicle_type_rotation_dict,
+                shunting_duration=shunting_duration,
+            )
+
+
+def vehicle_counts_for_direct_layout(
+    CLEAN_DURATION: int,
+    charging_power: float,
+    stations: List[Station],
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    vehicle_type_dict: Dict[VehicleType, List[Rotation]],
+    shunting_duration: timedelta = timedelta(minutes=5),
+) -> Dict[Station, Dict[VehicleType, int]]:
+    """
+    Generate a simple depot, simulate it and return the number of vehicles for each vehicle type.
+
+    Do this for each depot station in the scenario.
+    :param CLEAN_DURATION: The duration of the cleaning process in seconds.
+    :param charging_power: The charging power of the charging area in kW.
+    :param station: The stop where the depot is located.
+    :param scenario: The scenario for which the depot layout should be generated.
+    :param session: The SQLAlchemy session object.
+    :param vehicle_type_dict: A dictionary with vehicle types as keys and rotations as values.
+    :return: A dictionary with vehicle types as keys and the number of vehicles as values.
+    """
+    logger = logging.getLogger(__name__)
+
+    for station in stations:
+        logger.info(f"Generating all direct depot layout at {station.name}")
+        # Generate the depot
+        direct_counts = {}
+        line_counts = {}
+        for vehicle_type, rotations in vehicle_type_dict.items():
+            direct_counts[vehicle_type] = len(rotations)
+            line_counts[vehicle_type] = 1
+
+        generate_line_depot_layout(
+            CLEAN_DURATION=CLEAN_DURATION,
+            charging_power=charging_power,
+            station=station,
+            scenario=scenario,
+            session=session,
+            direct_counts=direct_counts,
+            line_counts=line_counts,
+            line_length=8,  # We don't care about the line length here
+            vehicle_type_rotation_dict=vehicle_type_dict,
+            shunting_duration=shunting_duration,
+        )
+
+    # Simulate the scenario
+    # We will not be using add_evaluation_to_database instead taking the vehicle counts directly from the `ev` object
+    logger.info("Simulating the scenario")
+    logger.info("1/2: Initializing the simulation host")
+    simulation_host = init_simulation(
+        scenario=scenario,
+        session=session,
+    )
+    logger.info("2/2: Running the simulation")
+    depot_evaluations = run_simulation(simulation_host)
+
+    assert len(depot_evaluations) == len(stations)
+    depot_evaluations: Dict[str, DepotEvaluation]
+
+    ret_val: Dict[Station, Dict[VehicleType, int]] = dict()
+
+    for depot_id_as_str, ev in depot_evaluations.items():
+        ev = next(iter(depot_evaluations.values()))
+        assert isinstance(ev, DepotEvaluation)
+        counts: Dict[str, int] = real_peak_vehicle_count(ev)
+        # The key of the dictionary is the vehicle type ID as a string. We need to convert it to a vehicle type object
+        vehicle_type_dict = {
+            session.query(VehicleType).filter(VehicleType.id == int(k)).one(): v
+            for k, v in counts.items()
+        }
+
+        # Find the station object
+        station = (
+            session.query(Station)
+            .join(Depot)
+            .filter(Depot.id == int(depot_id_as_str))
+            .one()
+        )
+
+        ret_val[station] = vehicle_type_dict
+
+    # Delete the old depots
+    delete_depots(scenario, session)
+
+    return ret_val
+
+
 def generate_depot_layout(
     scenario: Union[Scenario, int, Any],
     charging_power: float = 150,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
-):
+) -> None:
     """
     Generates one or more depots for the scenario.
 
@@ -422,51 +1070,13 @@ def generate_depot_layout(
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
-            max_occupancies: Dict[eflips.model.VehicleType, int] = {}
-            max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
-            for vehicle_type, rotations in vehicle_type_dict.items():
-                # Slightly convoluted vehicle summation
-                start_time = min(
-                    [rotation.trips[0].departure_time for rotation in rotations]
-                ).timestamp()
-                end_time = max(
-                    [rotation.trips[-1].arrival_time for rotation in rotations]
-                ).timestamp()
-                timestamps_to_sample = np.arange(start_time, end_time, 60)
-                occupancy = np.zeros_like(timestamps_to_sample)
-                clean_occupancy = np.zeros_like(timestamps_to_sample)
-                for rotation in rotations:
-                    rotation_start = rotation.trips[0].departure_time.timestamp()
-                    rotation_end = rotation.trips[-1].arrival_time.timestamp()
-                    occupancy += np.interp(
-                        timestamps_to_sample,
-                        [rotation_start, rotation_end],
-                        [1, 1],
-                        left=0,
-                        right=0,
-                    )
-                    clean_occupancy += np.interp(
-                        timestamps_to_sample,
-                        [rotation_end, rotation_end + CLEAN_DURATION],
-                        [1, 1],
-                        left=0,
-                        right=0,
-                    )
-                max_occupancies[vehicle_type] = max(
-                    max(occupancy), 1
-                )  # To avoid zero occupancy
-                max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
-
-            # Create a simple depot at this station
-            create_simple_depot(
-                scenario=scenario,
-                station=first_stop,
-                charging_capacities=max_occupancies,
-                cleaning_capacities=max_clean_occupancies,
-                charging_power=charging_power,
-                session=session,
-                cleaning_duration=timedelta(seconds=CLEAN_DURATION),
-                safety_margin=0.2,
+            _generate_all_direct_depot(
+                CLEAN_DURATION,
+                charging_power,
+                first_stop,
+                scenario,
+                session,
+                vehicle_type_dict,
             )
 
 
@@ -668,6 +1278,7 @@ def init_simulation(
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
     """
+
     # Clear the eflips settings
     eflips.settings.reset_settings()
 
@@ -675,7 +1286,7 @@ def init_simulation(
 
     # Step 1: Set up the depot
     eflips_depots = []
-    for depot in scenario.depots:
+    for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
         # Step 1.5: Check validity of a depot
         check_depot_validity(depot)
 
@@ -708,7 +1319,9 @@ def init_simulation(
             scenario=scenario,
             session=session,
         )
-        for rotation in scenario.rotations
+        for rotation in session.query(Rotation)
+        .filter(Rotation.scenario_id == scenario.id)
+        .all()
     ]
 
     first_departure_time = min(
@@ -746,8 +1359,11 @@ def init_simulation(
     simulation_host.timetable = timetable
 
     # Step 4: Set up the vehicle types
+    # Clear old vehicle counts, if they exist
+    eflips.globalConstants["depot"]["vehicle_count"] = {}
+
     # We need to calculate roughly how many vehicles we need for each depot
-    for depot in scenario.depots:
+    for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
         depot_id = str(depot.id)
         eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
         vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
@@ -784,7 +1400,9 @@ def init_simulation(
                 ] = (vehicle_count * 2)
 
     # We  need to put the vehicle type objects into the GlobalConstants
-    for vehicle_type in scenario.vehicle_types:
+    for vehicle_type in (
+        session.query(VehicleType).filter(VehicleType.scenario_id == scenario.id).all()
+    ):
         eflips.globalConstants["depot"]["vehicle_types"][
             str(vehicle_type.id)
         ] = vehicle_type_to_global_constants_dict(vehicle_type)
@@ -870,6 +1488,57 @@ def _add_evaluation_to_database(
     )
 
 
+def insert_dummy_standby_departure_events(depot_id: int, session: Session) -> None:
+    """
+    Workaround for the missing STANDBY_DEPARTURE events in the database.
+
+    :param session: The database session
+    :param scenario: A scenario object
+    :return:
+    """
+    logger = logging.getLogger(__name__)
+
+    # Look for charging events at areas belonging to the depot
+    charging_events = (
+        session.query(Event)
+        .join(Area)
+        .filter(Area.depot_id == depot_id)
+        .filter(Event.event_type == EventType.CHARGING_DEPOT)
+        .all()
+    )
+
+    for charging_event in charging_events:
+        # See if the next event is a DRIVING event, but there is time between the two events
+        next_event = (
+            session.query(Event)
+            .filter(Event.time_start >= charging_event.time_end)
+            .filter(Event.vehicle_id == charging_event.vehicle_id)
+            .order_by(Event.time_start)
+            .first()
+        )
+        if (
+            next_event is not None
+            and next_event.event_type == EventType.DRIVING
+            and (next_event.time_start - charging_event.time_end) > timedelta(seconds=1)
+        ):
+            logger.warning("Inserting dummy STANDBY_DEPARTURE event")
+            # Insert a dummy STANDBY_DEPARTURE event
+            dummy_event = Event(
+                vehicle_id=charging_event.vehicle_id,
+                vehicle_type_id=charging_event.vehicle.vehicle_type_id,
+                time_start=charging_event.time_end,
+                time_end=(next_event.time_start - timedelta(seconds=1)),
+                event_type=EventType.STANDBY_DEPARTURE,
+                area_id=charging_event.area_id,
+                subloc_no=charging_event.subloc_no,
+                scenario_id=charging_event.scenario_id,
+                soc_start=charging_event.soc_end,
+                soc_end=charging_event.soc_end,
+                description="Dummy STANDBY_DEPARTURE event",
+            )
+            session.add(dummy_event)
+
+
 def add_evaluation_to_database(
     scenario: Scenario,
     depot_evaluations: Dict[str, DepotEvaluation],
@@ -903,7 +1572,7 @@ def add_evaluation_to_database(
 
         waiting_area_id = None
 
-        total_areas = scenario.areas
+        total_areas = session.query(Area).filter(Area.scenario_id == scenario.id).all()
         for area in total_areas:
             if area.depot_id == int(depot_id) and len(area.processes) == 0:
                 waiting_area_id = area.id
@@ -1352,6 +2021,8 @@ def _add_events_into_database(
 
     :return: None. The results are added to the database.
     """
+    logger = logging.getLogger(__name__)
+
     for start_time, process_dict in dict_of_events.items():
         # Generate EventType
         match process_dict["type"]:
@@ -1376,6 +2047,10 @@ def _add_events_into_database(
                     'Invalid process type %s. Valid process types are "Serve", "Charge", '
                     '"Standby", "Precondition"'
                 )
+
+        if process_dict["end"] == start_time:
+            logger.warning("Refusing to create an event with zero duration.")
+            continue
 
         current_event = Event(
             scenario=scenario,
