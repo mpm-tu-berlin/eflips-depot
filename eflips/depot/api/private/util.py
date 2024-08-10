@@ -354,8 +354,16 @@ class VehicleSchedule:
         opportunity_charging = rot.allow_opportunity_charging
 
         # Find the depot at the start and end of the rotation
-        start_depot = trips[0].route.departure_station.depot
-        end_depot = trips[-1].route.arrival_station.depot
+        start_depot = (
+            session.query(Depot)
+            .filter(Depot.station_id == trips[0].route.departure_station_id)
+            .one()
+        )
+        end_depot = (
+            session.query(Depot)
+            .filter(Depot.station_id == trips[-1].route.arrival_station_id)
+            .one()
+        )
 
         if start_depot is None or end_depot is None:
             raise ValueError(f"Rotation {rot.id} has no depot at the start or end.")
