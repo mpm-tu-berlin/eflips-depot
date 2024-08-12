@@ -35,8 +35,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from eflips.model import Process
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
 import sqlalchemy.orm
@@ -55,6 +54,7 @@ from eflips.model import (
     Vehicle,
     VehicleType,
 )
+from eflips.model import Process
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
@@ -803,6 +803,9 @@ def generate_realistic_depot_layout(
 
         # STEP 3: Put "all direct" depots at these spots and find the vehicle counts
         depot_stations = []
+        vehicle_type_rotation_dict_by_station: Dict[
+            Station, Dict[VehicleType, List[Rotation]]
+        ] = dict()
         for (
             first_last_stop_tup,
             vehicle_type_rotation_dict,
@@ -811,6 +814,11 @@ def generate_realistic_depot_layout(
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
             depot_stations.append(first_stop)
+            vehicle_type_rotation_dict_by_station[
+                first_stop
+            ] = vehicle_type_rotation_dict
+
+        del first_last_stop_tup, vehicle_type_rotation_dict
 
         all_direct_counts: Dict[
             Station, Dict[VehicleType, int]
@@ -820,7 +828,7 @@ def generate_realistic_depot_layout(
             stations=depot_stations,
             scenario=scenario,
             session=session,
-            vehicle_type_dict=vehicle_type_rotation_dict,
+            vehicle_type_dict_by_station=vehicle_type_rotation_dict_by_station,
             shunting_duration=shunting_duration,
         )
 
@@ -847,7 +855,9 @@ def generate_realistic_depot_layout(
                 direct_counts=direct_counts,
                 line_counts=line_counts,
                 line_length=line_length,
-                vehicle_type_rotation_dict=vehicle_type_rotation_dict,
+                vehicle_type_rotation_dict=vehicle_type_rotation_dict_by_station[
+                    station
+                ],
                 shunting_duration=shunting_duration,
             )
 
@@ -926,7 +936,9 @@ def generate_realistic_depot_layout(
                 direct_counts=direct_counts,
                 line_counts=line_counts,
                 line_length=line_length,
-                vehicle_type_rotation_dict=vehicle_type_rotation_dict,
+                vehicle_type_rotation_dict=vehicle_type_rotation_dict_by_station[
+                    station
+                ],
                 shunting_duration=shunting_duration,
             )
 
@@ -937,7 +949,7 @@ def vehicle_counts_for_direct_layout(
     stations: List[Station],
     scenario: Scenario,
     session: sqlalchemy.orm.session.Session,
-    vehicle_type_dict: Dict[VehicleType, List[Rotation]],
+    vehicle_type_dict_by_station: Dict[Station, Dict[VehicleType, List[Rotation]]],
     shunting_duration: timedelta = timedelta(minutes=5),
 ) -> Dict[Station, Dict[VehicleType, int]]:
     """
@@ -959,7 +971,7 @@ def vehicle_counts_for_direct_layout(
         # Generate the depot
         direct_counts = {}
         line_counts = {}
-        for vehicle_type, rotations in vehicle_type_dict.items():
+        for vehicle_type, rotations in vehicle_type_dict_by_station[station].items():
             direct_counts[vehicle_type] = len(rotations)
             line_counts[vehicle_type] = 1
 
@@ -972,7 +984,7 @@ def vehicle_counts_for_direct_layout(
             direct_counts=direct_counts,
             line_counts=line_counts,
             line_length=8,  # We don't care about the line length here
-            vehicle_type_rotation_dict=vehicle_type_dict,
+            vehicle_type_rotation_dict=vehicle_type_dict_by_station[station],
             shunting_duration=shunting_duration,
         )
 
