@@ -872,7 +872,7 @@ class DSSmart(BaseDispatchStrategy):
         for parking_area_group in depot.parking_area_groups:
             for area in parking_area_group.stores:
                 # Speedup: Skip empty areas
-                if all([item is None for item in area.items]):
+                if not any(item is not None for item in area.items):
                     continue
 
                 if isinstance(area, LineArea):
