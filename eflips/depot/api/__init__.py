@@ -809,7 +809,7 @@ def generate_realistic_depot_layout(
         for (
             first_last_stop_tup,
             vehicle_type_rotation_dict,
-        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+        ) in depot_stations_and_vehicle_types.items():
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
@@ -1005,7 +1005,6 @@ def vehicle_counts_for_direct_layout(
     ret_val: Dict[Station, Dict[VehicleType, int]] = dict()
 
     for depot_id_as_str, ev in depot_evaluations.items():
-        ev = next(iter(depot_evaluations.values()))
         assert isinstance(ev, DepotEvaluation)
         counts: Dict[str, int] = real_peak_vehicle_count(ev)
         # The key of the dictionary is the vehicle type ID as a string. We need to convert it to a vehicle type object
