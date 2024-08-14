@@ -7,14 +7,14 @@ Created on Fri Oct 13 11:12:00 2017.
 Core components of the depot simulation model.
 """
 
+from abc import ABC, abstractmethod
 from collections import Counter
+from warnings import warn
+
 import simpy
-from simpy.resources.store import StorePut
-from simpy.core import BoundClass
-from simpy.util import start_delayed
 from eflips.evaluation import DataLogger
-from eflips.settings import globalConstants
 from eflips.helperFunctions import flexprint, SortedList
+from eflips.settings import globalConstants
 from eflips.simpy_ext import (
     FilterStoreExt,
     PositionalFilterStore,
@@ -26,18 +26,20 @@ from eflips.simpy_ext import (
     LineFilterStoreGet,
     ExclusiveRequest,
 )
-from eflips.depot.processes import EstimateValue, ChargeAbstract, Precondition
-from eflips.depot.resources import DepotChargingInterface
+from simpy.core import BoundClass
+from simpy.resources.store import StorePut
+from simpy.util import start_delayed
+
+from eflips.depot.evaluation import Departure, ProcessCalled
 from eflips.depot.filters import VehicleFilter
+from eflips.depot.processes import EstimateValue, ChargeAbstract, Precondition
 from eflips.depot.rating import (
     SlotAlternative,
     ParkRating,
     VehicleAlternative,
     DispatchRating,
 )
-from eflips.depot.evaluation import Departure, ProcessCalled
-from abc import ABC, abstractmethod
-from warnings import warn
+from eflips.depot.resources import DepotChargingInterface
 
 
 class DepotWorkingData:
@@ -869,6 +871,10 @@ class DSSmart(BaseDispatchStrategy):
 
         for parking_area_group in depot.parking_area_groups:
             for area in parking_area_group.stores:
+                # Speedup: Skip empty areas
+                if all([item is None for item in area.items]):
+                    continue
+
                 if isinstance(area, LineArea):
                     # Add one vehicle at max. at Line area
                     rg = area.range_from_side(area.side_get_default)
