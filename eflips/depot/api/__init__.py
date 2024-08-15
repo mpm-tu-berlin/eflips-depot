@@ -1500,7 +1500,7 @@ def _add_evaluation_to_database(
 
 
 def insert_dummy_standby_departure_events(
-    depot_id: int, session: Session, sim_time_end: Union[datetime, None] = None
+    depot_id: int, session: Session, sim_time_end: Optional[datetime.datetime] = None
 ) -> None:
     """
     Workaround for the missing STANDBY_DEPARTURE events in the database.
