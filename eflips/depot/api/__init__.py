@@ -1499,12 +1499,15 @@ def _add_evaluation_to_database(
     )
 
 
-def insert_dummy_standby_departure_events(depot_id: int, session: Session) -> None:
+def insert_dummy_standby_departure_events(
+    depot_id: int, session: Session, sim_time_end: Optional[datetime.datetime] = None
+) -> None:
     """
     Workaround for the missing STANDBY_DEPARTURE events in the database.
 
     :param session: The database session
     :param scenario: A scenario object
+    :param sim_time_end: The end time of the simulation. If None, final events might not be properly handled.
     :return:
     """
     logger = logging.getLogger(__name__)
@@ -1548,6 +1551,25 @@ def insert_dummy_standby_departure_events(depot_id: int, session: Session) -> No
                 description="Dummy STANDBY_DEPARTURE event",
             )
             session.add(dummy_event)
+        elif next_event is None and sim_time_end is not None:
+            # If the event's end is before the simulation end, insert a dummy STANDBY_DEPARTURE event
+            # From the end of the charging event to the end of the simulation
+            logger.warning("Inserting dummy STANDBY_DEPARTURE event")
+            if charging_event.time_end < sim_time_end:
+                dummy_event = Event(
+                    vehicle_id=charging_event.vehicle_id,
+                    vehicle_type_id=charging_event.vehicle.vehicle_type_id,
+                    time_start=charging_event.time_end,
+                    time_end=sim_time_end,
+                    event_type=EventType.STANDBY_DEPARTURE,
+                    area_id=charging_event.area_id,
+                    subloc_no=charging_event.subloc_no,
+                    scenario_id=charging_event.scenario_id,
+                    soc_start=charging_event.soc_end,
+                    soc_end=charging_event.soc_end,
+                    description="Dummy STANDBY_DEPARTURE event",
+                )
+                session.add(dummy_event)
 
 
 def add_evaluation_to_database(
