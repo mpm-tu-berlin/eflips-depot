@@ -927,8 +927,8 @@ class Charge(ChargeAbstract):
             # returned False
             return 0
 
-        efficiency = chargedata["kwargs"]["efficiency"]
-        soc_target = chargedata["kwargs"]["soc_target"]
+        efficiency = 1  # chargedata["kwargs"]["efficiency"] TODO: Re-enable this
+        soc_target = 1  # chargedata["kwargs"]["soc_target"]
         if soc_target == "soc_max":
             soc_target = vehicle.battery.soc_max
 
