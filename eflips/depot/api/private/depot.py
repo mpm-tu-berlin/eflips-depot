@@ -7,7 +7,6 @@ from typing import Dict, List, Tuple
 
 import eflips.model
 import numpy as np
-
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
@@ -235,7 +234,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             "typename": "AreaGroup",
             "stores": [str(area.id) for area in process.areas],
         }
-        if process_type(process) == ProcessType.STANDBY_DEPARTURE:
+        if process_type(process) == ProcessType.CHARGING:
             template["groups"][group_name]["typename"] = "ParkingAreaGroup"
             template["groups"][group_name]["parking_strategy_name"] = "SMART2"
 

@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Components to model multi criteria decision problems. Application for park- and
+Components to model multi criteria decision problems.
+
+Application for park- and
 dispatch strategies.
-
 """
-import numpy as np
 from abc import ABC, abstractmethod
-import eflips
 
+import numpy as np
+
+import eflips
 
 # Settings
 
@@ -49,7 +51,6 @@ class Rating:
     best_alternative_nos: [tuple] from np.where with the row indices of the
         best alternatives in alternatives. E.g.: (array([2], dtype=int64),)
     best_alternatives: [list] of the best alternatives.
-
     """
 
     def __init__(self, alternatives, weights=None):
@@ -99,8 +100,8 @@ class Rating:
 
 class BaseCriterion(ABC):
     """Base class for a criterion.
-    Subclasses must implement attibute 'value' and method 'calculate'.
 
+    Subclasses must implement attibute 'value' and method 'calculate'.
     """
 
     @abstractmethod
@@ -110,8 +111,8 @@ class BaseCriterion(ABC):
 
 class BufferPark(BaseCriterion):
     """Criterion for ParkRating.
-    Exclusive for Direct areas. Value is 0 for Line.
 
+    Exclusive for Direct areas. Value is 0 for Line.
     """
 
     def __init__(self, area, vehicle):
@@ -128,33 +129,28 @@ class BufferPark(BaseCriterion):
         if count_direct == 0:
             return 1
 
-        total_buffer_capacity = area.depot.parking_capacity_direct
+        # Find out how many charging spots in line areas there are for this vehicle type
+        # And how many vehicles are currently charging
+        total_line_area_capacity = 0
+        total_vehicles_charging = 0
+        for area in area.depot.parking_area_groups:
+            for store in area.stores_by_vehicle_type[vehicle.vehicle_type.ID]:
+                if len(store.charging_interfaces) > 0:
+                    if isinstance(store, eflips.depot.LineArea):
+                        total_line_area_capacity += len(store.charging_interfaces)
+                    total_vehicles_charging += store.capacity - store.vacant
 
-        if vehicle.vehicle_type.group:
-            count = sum(
-                sum(
-                    v.vehicle_type.group is vehicle.vehicle_type.group
-                    for v in a.items
-                    if v
-                )
-                for a in area.parking_area_group.direct_areas
-            )
-            share_target = vehicle.vehicle_type.group.share[area.depot]
-            # print('group. count: %d, share_target: %f' % (count, share_target))
-        else:
-            count = sum(
-                sum(v.vehicle_type is vehicle.vehicle_type for v in a.items if v)
-                for a in area.parking_area_group.direct_areas
-            )
-            share_target = vehicle.vehicle_type.share[area.depot]
-            # print('lone. count: %d, share_target: %f' % (count, share_target))
+        # If there are no line areas, we can only park there
+        if total_line_area_capacity == 0:
+            return 1
 
-        share = count / total_buffer_capacity
+        ratio_of_vehicles_in_line_areas = (
+            total_vehicles_charging / total_line_area_capacity
+        )
+        target_ratio = 0.3
+        print(ratio_of_vehicles_in_line_areas)
 
-        result = share < share_target
-        # print('BufferPark for vehicle %s: count=%s, total=%s, share=%s, share_target=%s'
-        #       % (vehicle.ID, count, total_buffer_capacity, share, share_target))
-        if result:
+        if ratio_of_vehicles_in_line_areas < target_ratio:
             return 1
         else:
             return 0
@@ -162,8 +158,8 @@ class BufferPark(BaseCriterion):
 
 class TypestackPark(BaseCriterion):
     """Criterion for ParkRating.
-    Exclusive for Line areas. Value is 0 for Direct.
 
+    Exclusive for Line areas. Value is 0 for Direct.
     """
 
     def __init__(self, area, vehicle):
@@ -184,11 +180,11 @@ class TypestackPark(BaseCriterion):
 
 class RfdDiffPark(BaseCriterion):
     """Criterion for ParkRating.
+
     Exclusive for Line areas where *vehicle* would be blocked. Value is 0 for
     Direct.
 
     slot: [tuple] with items (area, index of slot)
-
     """
 
     lower_bound = rfd_diff_park_lower_bound
@@ -239,10 +235,10 @@ class RfdDiffPark(BaseCriterion):
 
 class AvailablePower(BaseCriterion):
     """Criterion for ParkRating and DispatchRating.
+
     For both Direct and Line areas.
 
     slot: [tuple] with items (area, index of slot)
-
     """
 
     def __init__(self, slot, max_power):
@@ -255,8 +251,8 @@ class AvailablePower(BaseCriterion):
 
 class EmptySlotsExitPark(BaseCriterion):
     """Criterion for ParkRating.
-    Exclusive for Line areas. Value is 0 for Direct.
 
+    Exclusive for Line areas. Value is 0 for Direct.
     """
 
     def __init__(self, area, max_capacity_line):
@@ -283,7 +279,6 @@ class SlotAlternative:
     max_power: [int] maximum power in kW of all charging interfaces at parking
         areas
     max_capacity_line: [int or None] max capacity of Line parking areas
-
     """
 
     def __init__(self, slot, vehicle, max_power, max_capacity_line):
@@ -320,11 +315,7 @@ class SlotAlternative:
 
 
 class ParkRating(Rating):
-    """
-
-    alternatives_obj: [list] of SlotAlternative instances
-
-    """
+    """Alternatives_obj: [list] of SlotAlternative instances."""
 
     weights = [
         park_rating_weights["buffer"],
@@ -346,8 +337,8 @@ class ParkRating(Rating):
 
 class BufferDispatch(BaseCriterion):
     """Criterion for DispatchRating.
-    Exclusive for Direct areas. Value is 0 for Line.
 
+    Exclusive for Direct areas. Value is 0 for Line.
     """
 
     def __init__(self, area, vehicle):
@@ -362,8 +353,8 @@ class BufferDispatch(BaseCriterion):
 
 class TypestackDispatch(BaseCriterion):
     """Criterion for DispatchRating.
-    Exclusive for Line areas. Value is 0 for Direct.
 
+    Exclusive for Line areas. Value is 0 for Direct.
     """
 
     def __init__(self, area):
@@ -389,12 +380,12 @@ class TypestackDispatch(BaseCriterion):
 
 class RfdDiffDispatch:
     """Criterion for DispatchRating.
+
     Exclusive for Line areas. Value is 0 for Direct.
 
     slot: [tuple] with items (area, index of slot). Must contain a vehicle that
         is ready for departure, i.e. dwd.etc_processes returns
         eflips.EstimateValue.COMPLETED.
-
     """
 
     upper_bound = rfd_diff_dispatch_upper_bound
@@ -421,7 +412,8 @@ class RfdDiffDispatch:
 
     @staticmethod
     def get_max_diff(slot):
-        """Get the maximum of all etcs (estimated time of completion) of all
+        """Get the maximum of all etcs (estimated time of completion) of all.
+
         vehicles at the area of *slot* and return it as [int].
 
         slot: [tuple] with items (area, index of slot)
@@ -449,8 +441,8 @@ class RfdDiffDispatch:
 
 class EmptySlotsExitDispatch(BaseCriterion):
     """Criterion for DispatchRating.
-    Exclusive for Line areas. Value is 0 for Direct.
 
+    Exclusive for Line areas. Value is 0 for Direct.
     """
 
     def __init__(self, area, max_capacity_line):
@@ -472,7 +464,6 @@ class VehicleAlternative:
     max_power: [int] maximum power in kW of all charging interfaces at parking
         areas
     max_capacity_line: [int or None] max capacity of Line parking areas
-
     """
 
     def __init__(self, slot, vehicle, max_power, max_capacity_line):
@@ -497,11 +488,7 @@ class VehicleAlternative:
 
 
 class DispatchRating(Rating):
-    """
-
-    alternatives_obj: [list] of VehicleAlternative instances
-
-    """
+    """Alternatives_obj: [list] of VehicleAlternative instances."""
 
     weights = [
         dispatch_rating_weights["buffer"],
