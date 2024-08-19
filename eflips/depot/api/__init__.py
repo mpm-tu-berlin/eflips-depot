@@ -2091,7 +2091,7 @@ def _add_events_into_database(
             vehicle=db_vehicle,
             station_id=None,
             area_id=int(process_dict["area"]),
-            subloc_no=int(process_dict["slot"])
+            subloc_no=int(process_dict["slot"]) - 1
             if "slot" in process_dict.keys()
             else 00,
             trip_id=None,
