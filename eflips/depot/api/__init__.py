@@ -973,7 +973,7 @@ def vehicle_counts_for_direct_layout(
         line_counts = {}
         for vehicle_type, rotations in vehicle_type_dict_by_station[station].items():
             direct_counts[vehicle_type] = len(rotations)
-            line_counts[vehicle_type] = 1
+            line_counts[vehicle_type] = 0
 
         generate_line_depot_layout(
             CLEAN_DURATION=CLEAN_DURATION,
@@ -2079,7 +2079,7 @@ def _add_events_into_database(
             vehicle=db_vehicle,
             station_id=None,
             area_id=int(process_dict["area"]),
-            subloc_no=int(process_dict["slot"])
+            subloc_no=int(process_dict["slot"]) - 1
             if "slot" in process_dict.keys()
             else 00,
             trip_id=None,

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.3.11"
+version = "4.3.13"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
