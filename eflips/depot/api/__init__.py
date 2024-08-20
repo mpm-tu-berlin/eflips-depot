@@ -2011,11 +2011,12 @@ def _add_soc_to_events(dict_of_events, battery_log) -> None:
         start_time = time_keys[i]
         process_dict = dict_of_events[time_keys[i]]
 
-
         if process_dict["type"] != "Trip":
             soc_start = np.interp(start_time, battery_log_times, battery_log_socs)
             process_dict["soc_start"] = min(soc_start, 1.0)
-            soc_end = np.interp(process_dict["end"], battery_log_times, battery_log_socs)
+            soc_end = np.interp(
+                process_dict["end"], battery_log_times, battery_log_socs
+            )
             process_dict["soc_end"] = min(soc_end, 1.0)
         else:
             continue
