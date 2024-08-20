@@ -1889,21 +1889,25 @@ def _generate_vehicle_events(
                                     f"happen in the last area before dispatched"
                                 )
                                 start_this_event = None
-                                if (
-                                    time_stamp in dict_of_events.keys()
-                                ):
-                                    assert "end" in dict_of_events[time_stamp].keys(), (f"The former event of {process} "
-                                                                                        f"should have an end time.")
+                                if time_stamp in dict_of_events.keys():
+                                    assert "end" in dict_of_events[time_stamp].keys(), (
+                                        f"The former event of {process} "
+                                        f"should have an end time."
+                                    )
                                     start_this_event = dict_of_events[time_stamp]["end"]
                                 else:
                                     for other_process in process_log:
-                                        if (other_process.ID != process.ID and
-                                                other_process.status == ProcessStatus.COMPLETED)\
-                                                and other_process.dur > 0:
+                                        if (
+                                            other_process.ID != process.ID
+                                            and other_process.status
+                                            == ProcessStatus.COMPLETED
+                                        ) and other_process.dur > 0:
                                             start_this_event = other_process.ends[0]
                                             break
 
-                                assert start_this_event is not None, (f"Current process {process} should have a start time by now")
+                                assert (
+                                    start_this_event is not None
+                                ), f"Current process {process} should have a start time by now"
 
                                 if start_this_event in dict_of_events.keys():
                                     if (
