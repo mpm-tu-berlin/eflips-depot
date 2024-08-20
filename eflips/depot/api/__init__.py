@@ -1899,9 +1899,8 @@ def _generate_vehicle_events(
                                     for other_process in process_log:
                                         if (
                                             other_process.ID != process.ID
-                                            and other_process.status
-                                            == ProcessStatus.COMPLETED
-                                        ) and other_process.dur > 0:
+                                            and other_process.dur > 0
+                                        ):
                                             start_this_event = other_process.ends[0]
                                             break
 
