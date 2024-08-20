@@ -451,7 +451,7 @@ def generate_line_depot_layout(
 
     vehicles_arriving_in_window = int(max(clean_occupancy))
     logger.info(
-        f"Number of vehicles arriving in a {CLEAN_DURATION/60:.1f} minute window: {vehicles_arriving_in_window:.0f}"
+        f"Number of vehicles arriving in a {CLEAN_DURATION / 60:.1f} minute window: {vehicles_arriving_in_window:.0f}"
     )
 
     # Take a fifth of the vehicles arriving in the window as the number of cleaning areas needed
@@ -566,7 +566,7 @@ def generate_line_depot_layout(
         for i in range(count):
             line_area = Area(
                 scenario=scenario,
-                name=f"Line Area for {vehicle_type.name} #{i+1:02d}",
+                name=f"Line Area for {vehicle_type.name} #{i + 1:02d}",
                 depot=depot,
                 area_type=AreaType.LINE,
                 capacity=line_length,
