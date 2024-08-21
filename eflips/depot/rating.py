@@ -148,7 +148,6 @@ class BufferPark(BaseCriterion):
             total_vehicles_charging / total_line_area_capacity
         )
         target_ratio = 0.3
-        print(ratio_of_vehicles_in_line_areas)
 
         if ratio_of_vehicles_in_line_areas < target_ratio:
             return 1
