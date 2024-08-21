@@ -135,7 +135,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
             optimized_power, params_for_event["max_power"]
         )
 
-        if not np.all(optimized_power_capped != optimized_power):
+        if not np.all(optimized_power_capped == optimized_power):
             # If the power draw is capped, we will just use the mean power draw
             optimized_power = params_for_event["charging_allowed"] * mean_power
 
