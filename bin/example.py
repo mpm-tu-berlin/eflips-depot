@@ -181,10 +181,10 @@ if __name__ == "__main__":
 
         # This is something we need to do due to an unclear reason. The depot simulation sometimes does not
         # generate the correct departure events for the vehicles. Therefore, we insert dummy standby departure events
-        for depot in (
-            session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
-        ):
-            insert_dummy_standby_departure_events(depot.id, session)
+        # for depot in (
+        #     session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
+        # ):
+        #     insert_dummy_standby_departure_events(depot.id, session)
 
         ##### Step 5: Apply even smart charging
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power

@@ -451,7 +451,7 @@ def generate_line_depot_layout(
 
     vehicles_arriving_in_window = int(max(clean_occupancy))
     logger.info(
-        f"Number of vehicles arriving in a {CLEAN_DURATION/60:.1f} minute window: {vehicles_arriving_in_window:.0f}"
+        f"Number of vehicles arriving in a {CLEAN_DURATION / 60:.1f} minute window: {vehicles_arriving_in_window:.0f}"
     )
 
     # Take a fifth of the vehicles arriving in the window as the number of cleaning areas needed
@@ -566,7 +566,7 @@ def generate_line_depot_layout(
         for i in range(count):
             line_area = Area(
                 scenario=scenario,
-                name=f"Line Area for {vehicle_type.name} #{i+1:02d}",
+                name=f"Line Area for {vehicle_type.name} #{i + 1:02d}",
                 depot=depot,
                 area_type=AreaType.LINE,
                 capacity=line_length,
@@ -1851,8 +1851,7 @@ def _generate_vehicle_events(
         "dwd.active_processes_copy"
     ].items():
         if earliest_time <= time_stamp <= latest_time:
-            num_process = len(process_log)
-            if num_process == 0:
+            if len(process_log) == 0:
                 # A departure happens and this trip should already be stored in the dictionary
                 pass
             else:
@@ -1889,35 +1888,50 @@ def _generate_vehicle_events(
                                     f"A process with no duration could only "
                                     f"happen in the last area before dispatched"
                                 )
-                                if (
-                                    time_stamp in dict_of_events.keys()
-                                    and "end" in dict_of_events[time_stamp].keys()
-                                ):
+                                start_this_event = None
+                                if time_stamp in dict_of_events.keys():
+                                    assert "end" in dict_of_events[time_stamp].keys(), (
+                                        f"The former event of {process} "
+                                        f"should have an end time."
+                                    )
                                     start_this_event = dict_of_events[time_stamp]["end"]
-                                    if start_this_event in dict_of_events.keys():
+                                else:
+                                    for other_process in process_log:
                                         if (
-                                            dict_of_events[start_this_event]["type"]
-                                            == "Trip"
+                                            other_process.ID != process.ID
+                                            and other_process.dur > 0
                                         ):
-                                            logger.info(
-                                                f"Vehicle {current_vehicle.ID} must depart immediately after charged. "
-                                                f"Thus there will be no STANDBY_DEPARTURE event."
-                                            )
+                                            start_this_event = other_process.ends[0]
+                                            break
 
-                                        else:
-                                            raise ValueError(
-                                                f"There is already an event "
-                                                f"{dict_of_events[start_this_event]} at {start_this_event}."
-                                            )
+                                assert (
+                                    start_this_event is not None
+                                ), f"Current process {process} should have a start time by now"
 
-                                        continue
+                                if start_this_event in dict_of_events.keys():
+                                    if (
+                                        dict_of_events[start_this_event]["type"]
+                                        == "Trip"
+                                    ):
+                                        logger.info(
+                                            f"Vehicle {current_vehicle.ID} must depart immediately after charged. "
+                                            f"Thus there will be no STANDBY_DEPARTURE event."
+                                        )
 
-                                    dict_of_events[start_this_event] = {
-                                        "type": type(process).__name__,
-                                        "area": current_area.ID,
-                                        "slot": current_slot,
-                                        "id": process.ID,
-                                    }
+                                    else:
+                                        raise ValueError(
+                                            f"There is already an event "
+                                            f"{dict_of_events[start_this_event]} at {start_this_event}."
+                                        )
+
+                                    continue
+
+                                dict_of_events[start_this_event] = {
+                                    "type": type(process).__name__,
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
 
                         case ProcessStatus.IN_PROGRESS:
                             assert (
@@ -2003,35 +2017,23 @@ def _add_soc_to_events(dict_of_events, battery_log) -> None:
         battery_log_list.append((log.t, log.energy / log.energy_real))
 
     time_keys = sorted(dict_of_events.keys())
+    battery_log_times = [log[0] for log in battery_log_list]
+    battery_log_socs = [log[1] for log in battery_log_list]
+
     for i in range(len(time_keys)):
         # Get soc
-        soc_start = None
-        soc_end = None
         start_time = time_keys[i]
         process_dict = dict_of_events[time_keys[i]]
-        for j in range(len(battery_log_list)):
-            # Access the correct battery log according to time since there is only one battery log for each time
-            log = battery_log_list[j]
 
-            if process_dict["type"] != "Trip":
-                if log[0] == start_time:
-                    soc_start = log[1]
-                if log[0] == process_dict["end"]:
-                    soc_end = log[1]
-                if log[0] < start_time < battery_log_list[j + 1][0]:
-                    soc_start = log[1]
-                if log[0] < process_dict["end"] < battery_log_list[j + 1][0]:
-                    soc_end = log[1]
-
-                if soc_start is not None:
-                    soc_start = min(soc_start, 1)  # so
-                process_dict["soc_start"] = soc_start
-                if soc_end is not None:
-                    soc_end = min(soc_end, 1)  # soc should not exceed 1
-                process_dict["soc_end"] = soc_end
-
-            else:
-                continue
+        if process_dict["type"] != "Trip":
+            soc_start = np.interp(start_time, battery_log_times, battery_log_socs)
+            process_dict["soc_start"] = min(soc_start, 1.0)
+            soc_end = np.interp(
+                process_dict["end"], battery_log_times, battery_log_socs
+            )
+            process_dict["soc_end"] = min(soc_end, 1.0)
+        else:
+            continue
 
 
 def _add_events_into_database(
