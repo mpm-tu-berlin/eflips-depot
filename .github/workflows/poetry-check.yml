@@ -2,7 +2,7 @@ name: Poetry Check
 on: pull_request
 
 jobs:
-  ci:
+  poetry-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
