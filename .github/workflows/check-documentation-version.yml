@@ -17,7 +17,7 @@ jobs:
           POETRY_VERSION=$(grep -oP '(?<=version = ").*(?=")' pyproject.toml)
           
           # Load the string past the `release = ` in the docs/conf.py file
-          DOCS_VERSION=$(grep -oP '(?<=release = ").*(?=")' doc/conf.py)
+          DOCS_VERSION=$(grep -oP '(?<=release = ").*(?=")' docs/conf.py)
           
           # Error if they are not equal
           if [ "$POETRY_VERSION" != "$DOCS_VERSION" ]; then
