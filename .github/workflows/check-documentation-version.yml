@@ -1,0 +1,26 @@
+name: Check Documentation version is equal to package version
+on: pull_request
+
+jobs:
+  check-documentation-version:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # We do not need SSH Keys, .. , as we only need the dev dependencies for building sphinx doc, nothing else
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Compile Sphinx Documentation (Check for errors)
+        run: |
+          # Load the string past the `version = ` in the pyproject.toml file
+          POETRY_VERSION=$(grep -oP '(?<=version = ").*(?=")' pyproject.toml)
+          
+          # Load the string past the `release = ` in the docs/conf.py file
+          DOCS_VERSION=$(grep -oP '(?<=release = ").*(?=")' doc/conf.py)
+          
+          # Error if they are not equal
+          if [ "$POETRY_VERSION" != "$DOCS_VERSION" ]; then
+              echo "Error: The version in the documentation ($DOCS_VERSION) is not equal to the version in the package ($POETRY_VERSION)"
+              exit 1
+          fi
