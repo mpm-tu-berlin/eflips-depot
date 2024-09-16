@@ -87,6 +87,10 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     # Helper for adding processes to the template
     list_of_processes = []
 
+    # Load all areas, sorted by their type
+    area_type_order = [AreaType.LINE, AreaType.DIRECT_ONESIDE, AreaType.DIRECT_TWOSIDE]
+    sorted_areas = sorted(depot.areas, key=lambda x: area_type_order.index(x.area_type))
+
     # Get dictionary of each area
     for area in depot.areas:
         area_name = str(area.id)
@@ -236,7 +240,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
         }
         if process_type(process) == ProcessType.CHARGING:
             template["groups"][group_name]["typename"] = "ParkingAreaGroup"
-            template["groups"][group_name]["parking_strategy_name"] = "SMART2"
+            template["groups"][group_name]["parking_strategy_name"] = "FIRST"
 
         # Fill in locations of the plan
         template["plans"]["default"]["locations"].append(group_name)
