@@ -2,11 +2,10 @@
 import argparse
 import os
 import warnings
-from datetime import date, timedelta
 
 from eflips.model import *
 from eflips.model import ConsistencyWarning
-from sqlalchemy import create_engine, or_
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
@@ -15,7 +14,6 @@ from eflips.depot.api import (
     init_simulation,
     insert_dummy_standby_departure_events,
     run_simulation,
-    generate_depot_layout,
     generate_realistic_depot_layout,
     simple_consumption_simulation,
     apply_even_smart_charging,
@@ -125,7 +123,7 @@ if __name__ == "__main__":
         simulation_host = init_simulation(
             scenario=scenario,
             session=session,
-            repetition_period=timedelta(days=1),
+            repetition_period=None,  # You may want to put a specific timedelta here  if the repetition period is not daily or weekly
         )
         depot_evaluations = run_simulation(simulation_host)
 
