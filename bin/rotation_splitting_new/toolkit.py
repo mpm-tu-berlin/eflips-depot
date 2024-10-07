@@ -1,12 +1,12 @@
+import json
 import os
 import subprocess
-import json
+
 import numpy as np
 from eflips.model import *
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from tqdm import tqdm
-
 
 
 def get_all_negative_rotations_at_station(self, station_id):
