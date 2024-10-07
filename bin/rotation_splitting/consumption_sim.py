@@ -1,8 +1,10 @@
 import argparse
 import warnings
+
+from eflips.model import *
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from eflips.model import *
+
 from eflips.depot.api import simple_consumption_simulation
 
 if __name__ == "__main__":

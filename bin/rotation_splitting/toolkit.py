@@ -242,8 +242,8 @@ class Toolkit:
 
     @staticmethod
     def json_dump(result: dict):
-        if os.path.exists('rotation_splitting_new/results.json'):
-            with open('rotation_splitting_new/results.json', encoding='utf8') as f:
+        if os.path.exists('rotation_splitting/results.json'):
+            with open('rotation_splitting/results.json', encoding='utf8') as f:
                 json_data = json.load(f)
         else:
             json_data = []
@@ -252,5 +252,5 @@ class Toolkit:
             percentiles.append(entry['percentile'])
         if result['percentile'] not in percentiles:
             json_data.append(result)
-        with open('rotation_splitting_new/results.json', 'w', encoding='utf8') as f:
+        with open('rotation_splitting/results.json', 'w', encoding='utf8') as f:
             json.dump(json_data, f, indent=4, ensure_ascii=False)
