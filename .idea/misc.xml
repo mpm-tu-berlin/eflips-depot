@@ -4,5 +4,5 @@
     <option name="enabledOnReformat" value="true" />
     <option name="sdkName" value="Poetry (eflips-depot)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (eflips-depot)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (single-step-new)" project-jdk-type="Python SDK" />
 </project>

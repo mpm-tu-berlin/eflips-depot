@@ -1,0 +1,61 @@
+[
+    {
+        "percentile": 80,
+        "station_count": 20,
+        "stations": {},
+        "vehicles": 1058
+    },
+    {
+        "percentile": 70,
+        "station_count": 26,
+        "stations": {},
+        "vehicles": 1038
+    },
+    {
+        "percentile": 50,
+        "station_count": 31,
+        "stations": {},
+        "vehicles": 1029
+    },
+    {
+        "percentile": 40,
+        "station_count": 33,
+        "stations": {
+            "2": "BPUNKT U Elsterwerdaer Platz",
+            "49101": "Neuruppiner Str.",
+            "192505": "Hasselwerderstr.",
+            "152504": "Siedlung Wartenberg/Straße 5",
+            "64278": "S Lichterfelde Süd",
+            "95101": "Alt-Lübars",
+            "29105": "Galenstr.",
+            "27304": "Wasserwerk Spandau",
+            "29302": "S+U Rathaus Spandau",
+            "180018": "Müggelschlößchenweg",
+            "4181": "Hertzallee",
+            "160704": "S+U Lichtenberg (N50)",
+            "17101": "U Mehringdamm",
+            "24106": "S Messe Nord/ICC",
+            "20281": "Goerdelersteg",
+            "175002": "S Kaulsdorf",
+            "86102": "U Kurt-Schumacher-Platz",
+            "200029": "Schildow, Kirche",
+            "170701": "S Marzahn",
+            "170519": "Freizeitforum Marzahn",
+            "49302": "Sachtlebenstr.",
+            "80491": "Kielingerstr.",
+            "83207": "Am Hanffgraben",
+            "9": "BPUNKT S+U Rathaus Steglitz",
+            "130512": "Masurenstr.",
+            "78104": "U Hermannplatz/Urbanstr.",
+            "9202": "U Osloer Str.",
+            "51281": "Dillenburger Str.",
+            "73273": "Stadtrandsiedlung",
+            "51204": "Königin-Luise-Str./Clayallee",
+            "194006": "S Schöneweide/Sterndamm",
+            "70306": "Forddamm",
+            "100010": "U Mohrenstr."
+        },
+        "vehicles": 1028,
+        "rotations": 1219
+    }
+]

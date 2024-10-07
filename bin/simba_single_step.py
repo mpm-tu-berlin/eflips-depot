@@ -21,7 +21,7 @@ from eflips.model import Rotation, Scenario, Event, Vehicle, ConsistencyWarning
 if __name__ == "__main__":
     engine = create_engine(os.environ.get("DATABASE_URL"))
     session = Session(engine)
-    scenario_id = 8
+    scenario_id = 1
 
     with session:
         # Run single step electrification once, one station will be electrified as long as there are rotations with
@@ -52,7 +52,10 @@ if __name__ == "__main__":
         # Since we are using simple consumption simulation, we also need to make sure that the vehicle types have
         # a consumption value. This is not necessary if you are using an external consumption simulation.
         for vehicle_type in scenario.vehicle_types:
-            vehicle_type.consumption = 1
+            if vehicle_type.name_short == 'EN':
+                vehicle_type.consumption = 1.35
+            elif vehicle_type.name_short in ('DD', 'GN'):
+                vehicle_type.consumption = 2.2
 
         # Using simple consumption simulation
         # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
