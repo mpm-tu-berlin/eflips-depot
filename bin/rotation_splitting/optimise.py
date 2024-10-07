@@ -1,23 +1,10 @@
+import argparse
 import time
 
 from toolkit import *
 
 ### Setup ###
-SCENARIO_ID = 1
-CUT_OFF_PERCENTILE_STANDBY_TIME = 40
-# Only stations in that percentile will be electrified. Rotations will be split with percentiles > 32
-db_params = {
-    'dbname': 'eflips',
-    'user': 'linus',
-    'password': '1234',
-    'host': 'localhost',
-    'port': '5432',
-}
-path_to_pg_dump = 'db_single_step.sql'
-DATABASE_URL = f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}/{db_params['dbname']}"
 station_standby = []
-# split_rotation_ids = []
-# split_rotations = []
 station_blacklist = []  # stations that cannot be electrified (IDs)
 station_whitelist = []  # stations that have to be electrified (IDs)
 #############
@@ -61,7 +48,7 @@ def run_optimisation():
               f"\n{len(tk.get_stations(electrified=True))} stations electrified."
               f"\n{tk.get_vehicle_count()} vehicles in scenario."
               f"\n{tk.get_rotation_count() - rotation_count} rotations split.")
-        result = {'percentile': CUT_OFF_PERCENTILE_STANDBY_TIME,
+        result = {'percentile': args.percentile,
                   'station_count': len(tk.get_stations(electrified=True)),
                   'stations': tk.get_stations(electrified=True),
                   'vehicles': tk.get_vehicle_count(),
@@ -71,14 +58,26 @@ def run_optimisation():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--scenario_id",
+        type=int,
+    )
+    parser.add_argument(
+        "--percentile",
+        type=int,
+    )
+    args = parser.parse_args()
+    args.database_url = os.environ["DATABASE_URL"]
+
     optimisation_start = time.time()
     print('\nStarting optimization...')
-    tk = Toolkit(DATABASE_URL, SCENARIO_ID, CUT_OFF_PERCENTILE_STANDBY_TIME, True)
+    tk = Toolkit(args.database_url, args.scenario_id, args.percentile, True)
     # tk.run_depot_sim()
     tk.run_consumption_sim()
-    tk = Toolkit(DATABASE_URL, SCENARIO_ID, CUT_OFF_PERCENTILE_STANDBY_TIME)
+    tk = Toolkit(args.database_url, args.scenario_id, args.percentile)
     rotation_count = tk.get_rotation_count()
     print(f'\n{len(tk.eligible_stations)} stations eligible for electrification'
-          f' ({CUT_OFF_PERCENTILE_STANDBY_TIME} percentile):')
+          f' ({args.percentile} percentile):')
 
     run_optimisation()
