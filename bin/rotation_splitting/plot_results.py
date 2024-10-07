@@ -47,7 +47,7 @@ def pareto_front(df, x_column, y_column, minimize=True):
 pareto = pareto_front(df, "vehicles", "station_count", minimize=True)
 
 # Plotting with swapped axes (vehicles on x-axis, station_count on y-axis)
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(10, 8))
 plt.scatter(df["vehicles"], df["station_count"], label="All Points", color="blue")
 
 # Highlight Pareto front
