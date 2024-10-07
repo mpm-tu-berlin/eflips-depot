@@ -291,3 +291,4 @@ Temporary Items
 
 # Sphinx documentation build
 docs/_build/
+/bin/output/

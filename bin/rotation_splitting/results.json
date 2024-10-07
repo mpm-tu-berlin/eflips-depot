@@ -1,23 +1,5 @@
 [
     {
-        "percentile": 80,
-        "station_count": 20,
-        "stations": {},
-        "vehicles": 1058
-    },
-    {
-        "percentile": 70,
-        "station_count": 26,
-        "stations": {},
-        "vehicles": 1038
-    },
-    {
-        "percentile": 50,
-        "station_count": 31,
-        "stations": {},
-        "vehicles": 1029
-    },
-    {
         "percentile": 40,
         "station_count": 33,
         "stations": {
@@ -57,5 +39,44 @@
         },
         "vehicles": 1028,
         "rotations": 1219
+    },
+    {
+        "percentile": 50,
+        "station_count": 31,
+        "stations": {
+            "2": "BPUNKT U Elsterwerdaer Platz",
+            "49101": "Neuruppiner Str.",
+            "192505": "Hasselwerderstr.",
+            "152504": "Siedlung Wartenberg/Straße 5",
+            "100010": "U Mohrenstr.",
+            "194006": "S Schöneweide/Sterndamm",
+            "24106": "S Messe Nord/ICC",
+            "51281": "Dillenburger Str.",
+            "51204": "Königin-Luise-Str./Clayallee",
+            "49302": "Sachtlebenstr.",
+            "170701": "S Marzahn",
+            "80491": "Kielingerstr.",
+            "170519": "Freizeitforum Marzahn",
+            "29105": "Galenstr.",
+            "20281": "Goerdelersteg",
+            "86102": "U Kurt-Schumacher-Platz",
+            "200029": "Schildow, Kirche",
+            "27304": "Wasserwerk Spandau",
+            "29302": "S+U Rathaus Spandau",
+            "17101": "U Mehringdamm",
+            "78104": "U Hermannplatz/Urbanstr.",
+            "4181": "Hertzallee",
+            "160704": "S+U Lichtenberg (N50)",
+            "83207": "Am Hanffgraben",
+            "9202": "U Osloer Str.",
+            "70306": "Forddamm",
+            "180018": "Müggelschlößchenweg",
+            "9": "BPUNKT S+U Rathaus Steglitz",
+            "175002": "S Kaulsdorf",
+            "130512": "Masurenstr.",
+            "64278": "S Lichterfelde Süd"
+        },
+        "vehicles": 1029,
+        "rotations": 1226
     }
 ]
