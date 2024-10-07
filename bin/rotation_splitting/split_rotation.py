@@ -213,7 +213,7 @@ if __name__ == "__main__":
         print(f'\tTrips created: {new_trip_id}, {new_trip_id + 1}')
 
     ### generate stoptimes ###
-    # TODO modify dwell duration (to intervall)
+    # TODO modify dwell duration (to interval)
     with Session(engine) as session_stoptimes:
         # aussetzfahrt
         aussetzfahrt_trip = session_stoptimes.query(Trip).where(Trip.id == new_trip_id).scalar()
@@ -255,107 +255,3 @@ if __name__ == "__main__":
         print(f'\tRotation removed: {old_rotation.id}')
         session.commit()
         session.close()
-
-
-
-
-"""
-    ### generate events ###
-    #with (Session(engine) as session_events):
-
-        # aussetzfahrt
-        last_trip_event = session_events.query(Event).where(Event.trip_id == last_trip_a['trip_id']).scalar()
-        trip_duration = calculate_trip_duration(1, 2)
-        time_start = last_trip_a['arrival_time']
-        start_soc = last_trip_event.soc_end
-        timeseries = generate_soc_timeseries(start_time=time_start, duration=trip_duration, start_soc=start_soc)
-        aszfahrt = Event(id=new_event_id, time_start=time_start, time_end=time_start + trip_duration,
-                         soc_start=start_soc, soc_end=timeseries['soc'][-1], timeseries=timeseries,
-                         scenario_id=old_rotation.scenario_id, trip_id=new_trip_id,
-                         vehicle_id=old_rotation.vehicle_id, vehicle_type_id=old_rotation.vehicle_type_id,
-                         event_type=EventType.DRIVING)
-        # einsetzfahrt
-        trip_duration = calculate_trip_duration(1, 2)
-        time_start = first_trip_b['departure_time'] - trip_duration
-        start_soc = 1.0
-        timeseries = generate_soc_timeseries(start_time=time_start, duration=trip_duration, start_soc=start_soc)
-        eszfahrt = Event(id=new_event_id + 1, time_start=time_start, time_end=time_start + trip_duration,
-                         soc_start=start_soc, soc_end=timeseries['soc'][-1], timeseries=timeseries,
-                         scenario_id=old_rotation.scenario_id, trip_id=new_trip_id + 1, vehicle_id=new_vehicle_id,
-                         vehicle_type_id=old_rotation.vehicle_type_id, event_type=EventType.DRIVING)
-        session_events.add(eszfahrt)
-        session_events.add(aszfahrt)
-
-        # update old trips & remove oldrotation
-        for trip_id in range(einsetzfahrt['trip_id'], last_trip_a['trip_id'] + 1):
-            stmt = update(Trip).where(Trip.id == trip_id).values(rotation_id=new_rotation_id)
-            session_events.execute(stmt)
-
-        first_trip_b_soc = session_events.execute(select(Event.soc_start).where(Event.trip_id == first_trip_b['trip_id'])).scalar()
-        print(first_trip_b_soc)
-        delta_soc = eszfahrt.soc_end - first_trip_b_soc
-        print(delta_soc)
-
-        for trip_id in range(first_trip_b['trip_id'], aussetzfahrt['trip_id'] + 1):
-            trip = session.query(Event).where(Event.trip_id == trip_id).scalar()
-            new_soc_start = trip.soc_start + delta_soc
-            new_soc_end = trip.soc_end + delta_soc
-            new_timeseries = trip.timeseries
-            for i in new_timeseries['soc']:
-                i += delta_soc
-            stmt = update(Trip).where(Trip.id == trip_id).values(rotation_id=new_rotation_id + 1)
-            session_events.execute(update(Event).where(Event.trip_id == trip_id).values(soc_start=new_soc_start, soc_end=new_soc_end, timeseries=new_timeseries))
-            session_events.execute(stmt)
-
-        stmt = delete(Rotation).where(Rotation.id == old_rotation.id)
-        session_events.execute(stmt)
-
-        session_events.commit()
-
-        print(f'new events created: {new_event_id}, {new_event_id + 1}')"""
-
-'''
-
-    ### generate events ###
-    #with Session(engine) as session_events:
-
-        # aussetzfahrt
-        last_trip_event = session_events.query(Event).where(Event.trip_id == last_trip_a['trip_id']).scalar()
-        trip_duration = calculate_trip_duration(1, 2)
-        time_start = last_trip_a['arrival_time']
-        start_soc = last_trip_event.soc_end
-        timeseries = generate_soc_timeseries(start_time=time_start, duration=trip_duration, start_soc=start_soc)
-        aszfahrt = Event(id=new_event_id, time_start=time_start, time_end=time_start + trip_duration,
-                         soc_start=start_soc, soc_end=timeseries['soc'][-1], timeseries=timeseries,
-                         scenario_id=old_rotation.scenario_id, trip_id=new_trip_id,
-                         vehicle_id=old_rotation.vehicle_id, vehicle_type_id=old_rotation.vehicle_type_id,
-                         event_type=EventType.DRIVING)
-        # einsetzfahrt
-        trip_duration = calculate_trip_duration(1, 2)
-        time_start = first_trip_b['departure_time'] - trip_duration
-        start_soc = 1.0
-        timeseries = generate_soc_timeseries(start_time=time_start, duration=trip_duration, start_soc=start_soc)
-        eszfahrt = Event(id=new_event_id + 1, time_start=time_start, time_end=time_start + trip_duration,
-                         soc_start=start_soc, soc_end=timeseries['soc'][-1], timeseries=timeseries,
-                         scenario_id=old_rotation.scenario_id, trip_id=new_trip_id + 1, vehicle_id=new_vehicle_id,
-                         vehicle_type_id=old_rotation.vehicle_type_id, event_type=EventType.DRIVING)
-        session_events.add(eszfahrt)
-        session_events.add(aszfahrt)
-
-        # remove old trips & rotation
-        for trip_id in range(einsetzfahrt['trip_id'], last_trip_a['trip_id'] + 1):
-            stmt = update(Trip).where(Trip.id == trip_id).values(rotation_id=new_rotation_id)
-            session_events.execute(stmt)
-
-        for trip_id in range(first_trip_b['trip_id'], aussetzfahrt['trip_id'] + 1):
-            stmt = update(Trip).where(Trip.id == trip_id).values(rotation_id=new_rotation_id + 1)
-            session_events.execute(stmt)
-
-        stmt = delete(Rotation).where(Rotation.id == old_rotation.id)
-        session_events.execute(stmt)
-
-        session_events.commit()
-
-        print(f'new events created: {new_event_id}, {new_event_id + 1}')
-
-'''
