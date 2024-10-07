@@ -2,8 +2,7 @@ from datetime import timedelta, datetime
 from typing import List, Dict
 
 import numpy as np
-import scipy.integrate
-#from scipy import integrate
+import scipy
 from eflips.model import Event, EventType
 
 
