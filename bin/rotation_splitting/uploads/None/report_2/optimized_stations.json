@@ -1,6 +1,29 @@
 {
-  "U Kurt-Schumacher-Platz_86102": {
+  "Galenstr._6029105": {
     "type": "opps",
-    "n_charging_stations": null
+    "n_charging_stations": null,
+    "cs_power_deps_oppb": 300.0,
+    "cs_power_deps_depb": 300.0,
+    "cs_power_opps": 300.0,
+    "gc_power": 100000.0,
+    "voltage_level": "MV"
+  },
+  "S+U Rathaus Spandau_6029302": {
+    "type": "opps",
+    "n_charging_stations": null,
+    "cs_power_deps_oppb": 300.0,
+    "cs_power_deps_depb": 300.0,
+    "cs_power_opps": 300.0,
+    "gc_power": 100000.0,
+    "voltage_level": "MV"
+  },
+  "Hertzallee_6004181": {
+    "type": "opps",
+    "n_charging_stations": null,
+    "cs_power_deps_oppb": 300.0,
+    "cs_power_deps_depb": 300.0,
+    "cs_power_opps": 300.0,
+    "gc_power": 100000.0,
+    "voltage_level": "MV"
   }
 }

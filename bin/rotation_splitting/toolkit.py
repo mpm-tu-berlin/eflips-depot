@@ -196,9 +196,13 @@ class Toolkit:
                 return multiple_rotations
 
     def run_rotation_split(self, rotation_id):
+        engine = create_engine(self.database_url)
         script_path = os.path.join(os.path.dirname(__file__), 'split_rotation.py')
         try:
-            print(f'\nRunning rotation split for rotation {rotation_id}')
+            with Session(engine) as session:
+                rotation = session.query(Rotation).where(Rotation.id == rotation_id).first()
+                print(f'\nRunning rotation split for rotation {rotation.name} ({rotation.id})')
+                session.close()
             subprocess.run(['python', script_path, f'--scenario_id={self.scenario_id}',
                             f'--database_url={self.database_url}', f'--rotation={rotation_id}'], check=True)
             print('Rotation split completed.')
@@ -240,17 +244,23 @@ class Toolkit:
             session.close()
         return count
 
-    @staticmethod
-    def json_dump(result: dict):
-        if os.path.exists('rotation_splitting/results.json'):
-            with open('rotation_splitting/results.json', encoding='utf8') as f:
-                json_data = json.load(f)
+    def json_dump(self, result: dict):
+        engine = create_engine(self.database_url)
+        with Session(engine) as session:
+            depot_name = session.query(Scenario.name).where(Scenario.id == self.scenario_id).scalar()
+        subdir = os.path.join(os.getcwd(), f"rotation_splitting/results/{depot_name}")
+        if not os.path.exists(subdir):
+            os.makedirs(subdir)
+        filepath = os.path.join(subdir, "results.json")
+        if not os.path.exists(filepath):
+            with open(filepath, "w", encoding="utf8") as f:
+                json.dump(result, f, indent=4)
         else:
-            json_data = []
-        percentiles = []
-        for entry in json_data:
-            percentiles.append(entry['percentile'])
-        if result['percentile'] not in percentiles:
-            json_data.append(result)
-        with open('rotation_splitting/results.json', 'w', encoding='utf8') as f:
-            json.dump(json_data, f, indent=4, ensure_ascii=False)
+            with open(filepath, "r") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                data.append(result)
+            else:
+                data = [data, result]
+            with open(filepath, "w", encoding="utf8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)

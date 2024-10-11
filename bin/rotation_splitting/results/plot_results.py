@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-with open('results.json', 'r') as f:
+depot = "spandau"
+with open(f'results/{depot}/results.json', 'r') as f:
     data = json.load(f)
 # Convert data to a pandas DataFrame
 df = pd.DataFrame(data)
-
 
 # Function to compute Pareto front
 def pareto_front(df, x_column, y_column, minimize=True):
@@ -82,5 +82,5 @@ for entry in data:
                  textcoords="offset points", xytext=(10, 5), ha='center')
 
 # Save the plot as an image file
-plt.savefig('plot.png', dpi=400)
+plt.savefig(f'results/{depot}/plot.png', dpi=400)
 plt.close()  # Close the figure to avoid display warnings

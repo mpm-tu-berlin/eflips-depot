@@ -1,5 +1,5 @@
 {
-  "BPUNKT U Elsterwerdaer Platz_2": {
+  "Hadlichstr._2130005": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -8,7 +8,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Hertzallee_4181": {
+  "Wodanstr._2176007": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -17,7 +17,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Freizeitforum Marzahn_170519": {
+  "Siedlung Wartenberg/Straße 5_2152504": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -26,7 +26,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Wasserwerk Spandau_27304": {
+  "Aubertstr._2134012": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -35,7 +35,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S+U Rathaus Spandau_29302": {
+  "S Prenzlauer Allee_2110002": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -44,7 +44,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S Lichterfelde Süd_64278": {
+  "Kranoldstr._2079204": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -53,7 +53,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S+U Lichtenberg (N50)_160704": {
+  "Freizeitforum Marzahn_2170519": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -62,7 +62,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "BPUNKT S+U Rathaus Steglitz_9": {
+  "Sonnenallee/Baumschulenstr._2191501": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -71,7 +71,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Galenstr._29105": {
+  "U Osloer Str._2009202": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -80,7 +80,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "U Osloer Str._9202": {
+  "Am Wasserturm_2141504": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -89,7 +89,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "U Kurt-Schumacher-Platz_86102": {
+  "Schildow, Kirche_2200029": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -98,7 +98,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Am Hanffgraben_83207": {
+  "S Mahlsdorf_2176701": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -107,7 +107,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Müggelschlößchenweg_180018": {
+  "S Zepernick_2350163": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -116,7 +116,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S Marzahn_170701": {
+  "Masurenstr._2130512": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -125,52 +125,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Goerdelersteg_20281": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "U Mehringdamm_17101": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "U Hermannplatz/Urbanstr._78104": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "Dillenburger Str._51281": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "S Schöneweide/Sterndamm_194006": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "Masurenstr._130512": {
+  "S Marzahn_2170701": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,

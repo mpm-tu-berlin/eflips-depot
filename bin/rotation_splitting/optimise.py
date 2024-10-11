@@ -53,6 +53,7 @@ def run_optimisation():
                   'stations': tk.get_stations(electrified=True),
                   'vehicles': tk.get_vehicle_count(),
                   'rotations': tk.get_rotation_count()}
+        print(result)
         tk.json_dump(result)
         print("Optimisation result saved to results.json.")
 
@@ -67,8 +68,14 @@ if __name__ == '__main__':
         "--percentile",
         type=int,
     )
+    parser.add_argument(
+        "--database_url",
+        type=str,
+        required=False,
+    )
     args = parser.parse_args()
-    args.database_url = os.environ["DATABASE_URL"]
+    if not args.database_url:
+        args.database_url = os.environ["DATABASE_URL"]
 
     optimisation_start = time.time()
     print('\nStarting optimization...')

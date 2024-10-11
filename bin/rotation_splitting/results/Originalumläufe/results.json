@@ -258,5 +258,43 @@
         },
         "vehicles": 1058,
         "rotations": 1289
+    },
+    {
+        "percentile": 52,
+        "station_count": 30,
+        "stations": {
+            "152504": "Siedlung Wartenberg/Straße 5",
+            "2": "BPUNKT U Elsterwerdaer Platz",
+            "49101": "Neuruppiner Str.",
+            "192505": "Hasselwerderstr.",
+            "29302": "S+U Rathaus Spandau",
+            "4181": "Hertzallee",
+            "160704": "S+U Lichtenberg (N50)",
+            "49302": "Sachtlebenstr.",
+            "80491": "Kielingerstr.",
+            "83207": "Am Hanffgraben",
+            "78104": "U Hermannplatz/Urbanstr.",
+            "194006": "S Schöneweide/Sterndamm",
+            "29105": "Galenstr.",
+            "20281": "Goerdelersteg",
+            "9202": "U Osloer Str.",
+            "86102": "U Kurt-Schumacher-Platz",
+            "200029": "Schildow, Kirche",
+            "51281": "Dillenburger Str.",
+            "51204": "Königin-Luise-Str./Clayallee",
+            "70306": "Forddamm",
+            "17101": "U Mehringdamm",
+            "170701": "S Marzahn",
+            "9": "BPUNKT S+U Rathaus Steglitz",
+            "64278": "S Lichterfelde Süd",
+            "170519": "Freizeitforum Marzahn",
+            "130512": "Masurenstr.",
+            "27304": "Wasserwerk Spandau",
+            "100010": "U Mohrenstr.",
+            "180018": "Müggelschlößchenweg",
+            "175002": "S Kaulsdorf"
+        },
+        "vehicles": 1031,
+        "rotations": 1228
     }
 ]
