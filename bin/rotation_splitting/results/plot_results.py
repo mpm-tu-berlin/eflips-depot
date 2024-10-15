@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-depot = "spandau"
+depot = "Betriebshof Spandau"
 with open(f'results/{depot}/results.json', 'r') as f:
     data = json.load(f)
 # Convert data to a pandas DataFrame

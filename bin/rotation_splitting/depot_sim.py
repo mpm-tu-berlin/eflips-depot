@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import warnings
 from datetime import timedelta
@@ -35,7 +36,7 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-
+    logger = logging.getLogger("custom")
     engine = create_engine(args.database_url)
     with Session(engine) as session:
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
@@ -83,10 +84,10 @@ if __name__ == "__main__":
                 import eflips.eval.output.prepare
                 import eflips.eval.output.visualize
             except ImportError:
-                print(
+                logger.error(
                     "The eflips.eval package is not installed. Visualization is not possible."
                 )
-                print(
+                logger.error(
                     "If you want to visualize the results, install the eflips.eval package using "
                     "pip install eflips-eval"
                 )

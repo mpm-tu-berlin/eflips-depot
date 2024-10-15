@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 
@@ -8,6 +9,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from tqdm import tqdm
 
+logger = logging.getLogger("custom")
 
 def get_all_negative_rotations_at_station(self, station_id):
     """
@@ -37,8 +39,25 @@ def get_all_negative_rotations_at_station(self, station_id):
                 negative_rotations.append([rotation, rotations[rotation]])
     return negative_rotations
 
+
+def get_negative_rotations_at_station(self, station_id):
+    """
+    :return: list of all negative rotations at the given station with their lowest SoC: [[rotation_id, min_soc], ...]
+    """
+    negative_rotations = []
+    engine = create_engine(self.database_url)
+    with Session(engine) as session:
+        stops = session.query(StopTime).filter(StopTime.station_id == station_id).join(Event,
+                                                                                       Event.trip_id == StopTime.trip_id).all()
+        for stop in stops:
+            for event in stop.trip.events:
+                if event.soc_end < 0:
+                    if not stop.trip.rotation.id in [i[0] for i in negative_rotations]:
+                        negative_rotations.append([stop.trip.rotation.id, event.soc_end])
+    return sorted(negative_rotations, key=lambda x: x[1])
+
 def get_station_standby(self) -> list:  # (alternative)
-    print('\nGenerating list of electrifiable stations...')
+    logger.info("\nGenerating list of electrifiable stations...")
     engine = create_engine(self.database_url)
     with Session(engine) as session:
         terminal_stations = []
@@ -58,7 +77,7 @@ def get_station_standby(self) -> list:  # (alternative)
                                      # TODO standby_time currently number of negative rotations
                                      'station_name': station.name})
         all_stations.sort(key=lambda x: x['standby_time'])
-        print('List generated.')
+        logger.info("List generated.")
         session.close()
     return all_stations
 
@@ -122,7 +141,7 @@ class Toolkit:
             oc_stations = session.query(Station).filter(Station.is_electrified,
                                                         Station.scenario_id == self.scenario_id).all()
             script_path = os.path.join(os.path.dirname(__file__), 'single_step.py')
-            print('\nRunning single-step-electrification...')
+            logger.info("\nRunning single-step-electrification...")
             try:
                 subprocess.run(
                     ['python', script_path, f'--database_url={self.database_url}',
@@ -130,17 +149,17 @@ class Toolkit:
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
                 )
             except subprocess.CalledProcessError as e:
-                print(f'\nAn error occurred while running {script_path}: {e}')
+                logger.info(f"\nAn error occurred while running {script_path}: {e}")
             oc_stations_after_new = session.query(Station).filter(Station.is_electrified,
                                                                   Station.scenario_id == self.scenario_id).all()
             new_station = [station.id for station in oc_stations_after_new if station not in oc_stations]
-            print(f'Finished single-step-electrification.')
+            logger.info(f"Finished single-step-electrification.")
             return new_station
 
     def run_depot_sim(self, visualize=False):
         script_path = os.path.join(os.path.dirname(__file__), 'depot_sim.py')
         try:
-            print('\nRunning depot simulation...')
+            logger.info("\nRunning depot simulation...")
             if visualize:
                 subprocess.run(
                     ['python', script_path, f'--database_url={self.database_url}',
@@ -154,18 +173,18 @@ class Toolkit:
                     stdout=subprocess.DEVNULL, check=True
                 )
         except subprocess.CalledProcessError as e:
-            print(f'\nAn error occurred while running {script_path}: {e}')
-        print(f'Finished depot simulation')
+            logger.info(f"\nAn error occurred while running {script_path}: {e}")
+        logger.info(f'Finished depot simulation')
 
     def run_consumption_sim(self):
         script_path = os.path.join(os.path.dirname(__file__), 'consumption_sim.py')
         try:
-            print(f'\nRunning consumption simulation...')
+            logger.info(f"\nRunning consumption simulation...")
             subprocess.run(['python', script_path, f'--scenario_id={self.scenario_id}',
                             f'--database_url={self.database_url}'], check=True)
-            print('Finished consumption simulation.')
+            logger.info("Finished consumption simulation.")
         except subprocess.CalledProcessError as e:
-            print(f"An error occurred while running {script_path}: {e}")
+            logger.info(f"An error occurred while running {script_path}: {e}")
 
     def undo_electrification(self, station_id):
         engine = create_engine(self.database_url)
@@ -201,13 +220,13 @@ class Toolkit:
         try:
             with Session(engine) as session:
                 rotation = session.query(Rotation).where(Rotation.id == rotation_id).first()
-                print(f'\nRunning rotation split for rotation {rotation.name} ({rotation.id})')
+                logger.info(f"\nRunning rotation split for rotation {rotation.name} ({rotation.id})")
                 session.close()
             subprocess.run(['python', script_path, f'--scenario_id={self.scenario_id}',
                             f'--database_url={self.database_url}', f'--rotation={rotation_id}'], check=True)
-            print('Rotation split completed.')
+            logger.info("Rotation split completed.")
         except subprocess.CalledProcessError as e:
-            print(f"An error occurred while running {script_path}: {e}")
+            logger.info(f"An error occurred while running {script_path}: {e}")
 
     def get_stations(self, electrified=False):
         engine = create_engine(self.database_url)
@@ -248,7 +267,7 @@ class Toolkit:
         engine = create_engine(self.database_url)
         with Session(engine) as session:
             depot_name = session.query(Scenario.name).where(Scenario.id == self.scenario_id).scalar()
-        subdir = os.path.join(os.getcwd(), f"rotation_splitting/results/{depot_name}")
+        subdir = os.path.join(os.getcwd(), f"results/{depot_name}")
         if not os.path.exists(subdir):
             os.makedirs(subdir)
         filepath = os.path.join(subdir, "results.json")
@@ -264,3 +283,28 @@ class Toolkit:
                 data = [data, result]
             with open(filepath, "w", encoding="utf8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
+
+    def remove_obsolete_stations(self):
+        logger.info("Removing obsolete stations...")
+        engine = create_engine(self.database_url)
+
+        with Session(engine) as session:
+            stations = session.query(Station).where(Station.scenario_id == self.scenario_id,
+                                                    Station.is_electrified).all()
+            stations_sorted = []
+            for station in stations:
+                stations_sorted.append([station, [stb['standby_time']
+                                                  for stb in self.station_standby if stb['station_id'] == station.id]])
+            stations_sorted.sort(key=lambda x: x[1])
+            for station in stations_sorted:
+                logger.info(f"\nTesting scenario without electrification of {station[0].name}...")
+                station[0].is_electrified = False
+                self.run_consumption_sim()
+                if not session.query(Event).where(Event.scenario_id == self.scenario_id,
+                                                  Event.soc_end < 0).count() > 0:
+                    logger.info(f"\nScenario can be electrified without {station[0].name}. Station will be removed.")
+                    session.commit()
+                else:
+                    logger.info(f"\nScenario cannot be electrified without {station[0].name}."
+                                f" Station will not be removed.")
+                    session.rollback()

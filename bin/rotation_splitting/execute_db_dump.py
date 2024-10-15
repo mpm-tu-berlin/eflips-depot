@@ -11,6 +11,8 @@ def execute_dump(db_params, output_file='db_updated.sql'):
         '-p', db_params['port'],
         '-U', db_params['user'],
         '-d', db_params['dbname'],
+        '--clean',
+        '--if-exists',
         '-f', output_file
     ]
 
@@ -32,4 +34,4 @@ db_params = {
     'port': '5432',
 }
 
-execute_dump(db_params, output_file='03b_depot_scenarios_sim.sql')
+execute_dump(db_params, output_file='db.sql')

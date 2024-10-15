@@ -1,10 +1,12 @@
 import argparse
+import logging
 from datetime import timedelta, datetime
 
 from eflips.model import *
 from sqlalchemy import create_engine, select, func, delete, update
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger("custom")
 
 def calculate_distance():
     # TODO calculate distance between departure and arrival station using the geom WKB Elements
@@ -66,7 +68,8 @@ if __name__ == "__main__":
     SCENARIO_ID = args.scenario_id
     ROTATION = args.rotation_id
 
-    ### split the rotation into rotation_a and rotation_b and save the last trip of rotation_a and the first trip of rotation_b
+    ### split the rotation into rotation_a and rotation_b and save the last trip of rotation_a and the first
+    # trip of rotation_b
     with Session(engine) as session:
         stmt_tr = select(Trip).where(Trip.scenario_id == SCENARIO_ID, Trip.rotation_id == ROTATION). \
             join(Route, Trip.route_id == Route.id).order_by(Trip.departure_time)
@@ -134,7 +137,7 @@ if __name__ == "__main__":
                               scenario_id=old_rotation.scenario_id)
         session_gv.add(new_vehicle)
         session_gv.commit()
-    print('\tVehicle created: ', new_vehicle_id)
+    logger.info('\tVehicle created: ', new_vehicle_id)
 
     ### generate rotations ###
     # with Session(engine) as session:
@@ -152,7 +155,7 @@ if __name__ == "__main__":
     session.add(rot_b)
 
     session.commit()
-    print(f'\tRotations created: {new_rotation_id}, {new_rotation_id+1}')
+    logger.info(f'\tRotations created: {new_rotation_id}, {new_rotation_id + 1}')
 
     ### generate routes ###
     # if aussetzfahrt is None:
@@ -185,7 +188,7 @@ if __name__ == "__main__":
     session_route.add(eszfahrt)
     session_route.commit()
 
-    print(f'\tRoutes created: {new_route_id}, {new_route_id+1}')
+    logger.info(f'\tRoutes created: {new_route_id}, {new_route_id + 1}')
 
     ### generate trips ###
     with Session(engine) as session_trip:
@@ -210,7 +213,7 @@ if __name__ == "__main__":
         session_trip.add(eszfahrt)
         session_trip.commit()
         session_trip.close()
-        print(f'\tTrips created: {new_trip_id}, {new_trip_id + 1}')
+        logger.info(f'\tTrips created: {new_trip_id}, {new_trip_id + 1}')
 
     ### generate stoptimes ###
     # TODO modify dwell duration (to interval)
@@ -242,7 +245,7 @@ if __name__ == "__main__":
         session_stoptimes.commit()
         session_stoptimes.close()
 
-        print(f'\tStopTimes created: {new_stoptime_id}, {new_stoptime_id + 1}, {new_stoptime_id + 2},'
+        logger.info(f'\tStopTimes created: {new_stoptime_id}, {new_stoptime_id + 1}, {new_stoptime_id + 2},'
               f' {new_stoptime_id + 3}')
 
     ### update old trips and delete old rotation ###
@@ -252,6 +255,6 @@ if __name__ == "__main__":
         for trip in rotation_b:
             session.execute(update(Trip).where(Trip.id == trip['trip_id']).values(rotation_id=new_rotation_id+1))
         session.execute(delete(Rotation).where(Rotation.id == old_rotation.id))
-        print(f'\tRotation removed: {old_rotation.id}')
+        logger.info(f'\tRotation removed: {old_rotation.id}')
         session.commit()
         session.close()
