@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-depot = "Betriebshof Spandau"
-with open(f'results/{depot}/results.json', 'r') as f:
+depot = "Betriebshof Indira-Gandhi-Str."
+with open(f'{depot}/results.json', 'r') as f:
     data = json.load(f)
 # Convert data to a pandas DataFrame
 df = pd.DataFrame(data)
@@ -82,5 +82,5 @@ for entry in data:
                  textcoords="offset points", xytext=(10, 5), ha='center')
 
 # Save the plot as an image file
-plt.savefig(f'results/{depot}/plot.png', dpi=400)
+plt.savefig(f'{depot}/plot.png', dpi=400)
 plt.close()  # Close the figure to avoid display warnings
