@@ -1,5 +1,5 @@
 {
-  "Galenstr._6029105": {
+  "Wasserwerk Spandau_6027304": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -8,7 +8,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S+U Rathaus Spandau_6029302": {
+  "Waldkrankenhaus_6027306": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -25,5 +25,9 @@
     "cs_power_opps": 300.0,
     "gc_power": 100000.0,
     "voltage_level": "MV"
+  },
+  "Galenstr._6029105": {
+    "type": "opps",
+    "n_charging_stations": null
   }
 }

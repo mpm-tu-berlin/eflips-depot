@@ -1,5 +1,5 @@
 {
-  "Hadlichstr._2130005": {
+  "S+U Hauptbahnhof_3003201": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -8,7 +8,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Wodanstr._2176007": {
+  "Hadlichstr._3130005": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -17,7 +17,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Siedlung Wartenberg/Straße 5_2152504": {
+  "U Osloer Str._3009202": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -26,7 +26,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Aubertstr._2134012": {
+  "Hertzallee_3004181": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -35,7 +35,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "S Prenzlauer Allee_2110002": {
+  "Alt-Lübars_3095101": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -44,7 +44,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Kranoldstr._2079204": {
+  "Goerdelersteg_3020281": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -53,7 +53,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Freizeitforum Marzahn_2170519": {
+  "Hainbuchenstr._3092202": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -62,7 +62,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "Sonnenallee/Baumschulenstr._2191501": {
+  "U Kurt-Schumacher-Platz_3086102": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
@@ -71,61 +71,7 @@
     "gc_power": 100000.0,
     "voltage_level": "MV"
   },
-  "U Osloer Str._2009202": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "Am Wasserturm_2141504": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "Schildow, Kirche_2200029": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "S Mahlsdorf_2176701": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "S Zepernick_2350163": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "Masurenstr._2130512": {
-    "type": "opps",
-    "n_charging_stations": null,
-    "cs_power_deps_oppb": 300.0,
-    "cs_power_deps_depb": 300.0,
-    "cs_power_opps": 300.0,
-    "gc_power": 100000.0,
-    "voltage_level": "MV"
-  },
-  "S Marzahn_2170701": {
+  "Galenstr._3029105": {
     "type": "opps",
     "n_charging_stations": null,
     "cs_power_deps_oppb": 300.0,
