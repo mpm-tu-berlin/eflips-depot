@@ -1,16 +1,21 @@
+import logging
 import os
 import subprocess
-def execute_dump(db_params, output_file='db_updated.sql'):
+
+logger = logging.getLogger("custom")
+
+
+def execute_dump(params, output_file='db_updated.sql'):
     # Set the environment variable for the password
-    os.environ['PGPASSWORD'] = db_params['password']
+    os.environ['PGPASSWORD'] = params['password']
 
     # Build the pg_dump command
     command = [
         'pg_dump',
-        '-h', db_params['host'],
-        '-p', db_params['port'],
-        '-U', db_params['user'],
-        '-d', db_params['dbname'],
+        '-h', params['host'],
+        '-p', params['port'],
+        '-U', params['user'],
+        '-d', params['dbname'],
         '--clean',
         '--if-exists',
         '-f', output_file
@@ -19,9 +24,9 @@ def execute_dump(db_params, output_file='db_updated.sql'):
     # Execute the command
     try:
         subprocess.run(command, check=True)
-        print(f"Database dump successful. Dump saved to {output_file}")
+        logger.info(f"Database dump successful. Dump saved to {output_file}")
     except subprocess.CalledProcessError as e:
-        print(f"Error during pg_dump: {e}")
+        logger.info(f"Error during pg_dump: {e}")
     finally:
         # Clean up the password from the environment
         del os.environ['PGPASSWORD']
