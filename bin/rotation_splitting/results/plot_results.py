@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-depot = "Betriebshof Indira-Gandhi-Str."
+depot = "Originalumläufe"
 with open(f'{depot}/results.json', 'r') as f:
     data = json.load(f)
 # Convert data to a pandas DataFrame
@@ -70,7 +70,7 @@ plt.plot(
 )
 plt.gca().yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-plt.title("Pareto Front:\nNumber of Vehicles vs. Electrified Stations")
+plt.title(f"Pareto Front {depot}:\nNumber of Vehicles vs. Electrified Stations")
 plt.xlabel("Vehicles")
 plt.ylabel("Electrified Stations")
 plt.legend()

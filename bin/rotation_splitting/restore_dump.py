@@ -4,7 +4,7 @@ import subprocess
 logger = logging.getLogger("custom")
 
 
-def restore_db():
+def restore_db(filename: str):
     logger.info("Restoring database dump...")
     db_params = {
         'dbname': 'eflips',
@@ -20,7 +20,7 @@ def restore_db():
         '-p', db_params['port'],
         '-U', db_params['user'],
         '-d', db_params['dbname'],
-        '-f', 'db.sql'
+        '-f', filename
     ]
     # Set the password environment variable
     env = {

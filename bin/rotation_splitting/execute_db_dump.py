@@ -39,4 +39,4 @@ db_params = {
     'port': '5432',
 }
 
-execute_dump(db_params, output_file='db.sql')
+execute_dump(db_params, output_file='db_tmp.sql')

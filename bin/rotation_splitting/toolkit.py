@@ -273,7 +273,7 @@ class Toolkit:
         filepath = os.path.join(subdir, "results.json")
         if not os.path.exists(filepath):
             with open(filepath, "w", encoding="utf8") as f:
-                json.dump(result, f, indent=4)
+                json.dump(result, f, indent=4, ensure_ascii=False)
         else:
             with open(filepath, "r") as f:
                 data = json.load(f)
@@ -285,26 +285,35 @@ class Toolkit:
                 json.dump(data, f, indent=4, ensure_ascii=False)
 
     def remove_obsolete_stations(self):
-        logger.info("Removing obsolete stations...")
+        logger.info("\nRemoving obsolete stations...")
         engine = create_engine(self.database_url)
+        with (Session(engine) as session):
+            def consumption_sim():
+                from eflips.depot.api import simple_consumption_simulation
+                import warnings
+                scenario = session.query(Scenario).filter(Scenario.id == self.scenario_id).one()
+                rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+                rotation_q.update({"vehicle_id": None})
+                session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+                session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+                warnings.simplefilter("ignore", category=ConsistencyWarning)
+                simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
-        with Session(engine) as session:
-            stations = session.query(Station).where(Station.scenario_id == self.scenario_id,
-                                                    Station.is_electrified).all()
-            stations_sorted = []
+            stations_q = session.query(Station).where(Station.scenario_id == self.scenario_id,
+                                                      Station.is_electrified).all()
+
+            stations = []
+            for station in stations_q:
+                stations.append([station, [st['standby_time']
+                                           for st in self.station_standby if st['station_id'] == station.id]])
+            stations.sort(key=lambda x: x[1])
             for station in stations:
-                stations_sorted.append([station, [stb['standby_time']
-                                                  for stb in self.station_standby if stb['station_id'] == station.id]])
-            stations_sorted.sort(key=lambda x: x[1])
-            for station in stations_sorted:
-                logger.info(f"\nTesting scenario without electrification of {station[0].name}...")
                 station[0].is_electrified = False
-                self.run_consumption_sim()
-                if not session.query(Event).where(Event.scenario_id == self.scenario_id,
-                                                  Event.soc_end < 0).count() > 0:
-                    logger.info(f"\nScenario can be electrified without {station[0].name}. Station will be removed.")
+                consumption_sim()
+                if session.query(Event).filter(Event.scenario_id == self.scenario_id,
+                                               Event.soc_end < 0).count() == 0:
                     session.commit()
+                    logger.info(f"Scenario can be electrified without opportunity charging at {station[0].name}.")
                 else:
-                    logger.info(f"\nScenario cannot be electrified without {station[0].name}."
-                                f" Station will not be removed.")
                     session.rollback()
+        logger.info("\nObsolete stations removed.")

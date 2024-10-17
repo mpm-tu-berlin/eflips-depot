@@ -59,7 +59,7 @@ def run_optimisation():
                   'vehicles': tk.get_vehicle_count(),
                   'rotations': tk.get_rotation_count()}
         logger.info(result)
-        tk.json_dump(result)
+        # tk.json_dump(result)
         logger.info("Optimisation result saved to results.json.")
 
         # TODO add standby time from other depots to station_standby
@@ -92,6 +92,6 @@ if __name__ == '__main__':
     tk = Toolkit(args.database_url, args.scenario_id, args.percentile)
     rotation_count = tk.get_rotation_count()
     logger.info(f'\n{len(tk.eligible_stations)} stations eligible for electrification'
-          f' ({args.percentile} percentile):')
+                f' ({args.percentile} percentile).')
 
     run_optimisation()
