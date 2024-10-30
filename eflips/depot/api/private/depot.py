@@ -89,6 +89,10 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     # Helper for adding processes to the template
     list_of_processes = []
 
+    # Load all areas, sorted by their type
+    area_type_order = [AreaType.LINE, AreaType.DIRECT_ONESIDE, AreaType.DIRECT_TWOSIDE]
+    sorted_areas = sorted(depot.areas, key=lambda x: area_type_order.index(x.area_type))
+
     # Get dictionary of each area
     for area in depot.areas:
         area_name = str(area.id)
