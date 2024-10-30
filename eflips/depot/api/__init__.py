@@ -1236,18 +1236,6 @@ def simulate_scenario(
                 raise NotImplementedError()
 
 
-def _init_simulation(
-    scenario: Scenario,
-    session: Session,
-    repetition_period: Optional[timedelta] = None,
-    vehicle_count_dict: Optional[Dict[str, int]] = None,
-) -> SimulationHost:
-    """Deprecated stub for init_simulation."""
-    raise NotImplementedError(
-        "The function _init_simulation is deprecated. Please use init_simulation instead."
-    )
-
-
 def init_simulation(
     scenario: Scenario,
     session: Session,
@@ -1434,13 +1422,6 @@ def init_simulation(
     return simulation_host
 
 
-def _run_simulation(simulation_host: SimulationHost) -> DepotEvaluation:
-    """Deprecated stub for run_simulation."""
-    raise NotImplementedError(
-        "The function _run_simulation is deprecated. Please use run_simulation instead."
-    )
-
-
 def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation]:
     """Run simulation and return simulation results.
 
@@ -1486,17 +1467,6 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
         results[depot_id] = ev
 
     return results
-
-
-def _add_evaluation_to_database(
-    scenario_id: int,
-    depot_evaluation: DepotEvaluation,
-    session: sqlalchemy.orm.Session,
-) -> None:
-    """Deprecated stub for add_evaluation_to_database."""
-    raise NotImplementedError(
-        "The function _add_evaluation_to_database is deprecated. Please use add_evaluation_to_database instead."
-    )
 
 
 def insert_dummy_standby_departure_events(
