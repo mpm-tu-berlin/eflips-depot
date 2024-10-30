@@ -37,7 +37,6 @@ from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional, Union, List
 
-import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
     Area,
@@ -70,6 +69,7 @@ from eflips.depot.api.private.depot import (
     group_rotations_by_start_end_stop,
     generate_line_depot_layout,
     real_peak_area_utilization,
+    real_peak_vehicle_count,
 )
 from eflips.depot.api.private.smart_charging import optimize_charging_events_even
 from eflips.depot.api.private.util import (
@@ -80,7 +80,6 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
-from eflips.depot.evaluation import to_prev_values
 
 
 class SmartChargingStrategy(Enum):
@@ -391,55 +390,6 @@ class DepotConfiguration:
     clean_duration: int
     num_clean_areas: int
     num_shunting_areas: int
-
-
-def real_peak_vehicle_count(ev: DepotEvaluation) -> Dict[str, int]:
-    """
-    Calculate the real peak vehicle count for a depot evaluation.
-
-    This is different from the amount of vehicles used
-    in the calculation, as towards the end of the simulation all vehicles will re-enter-the depot, which leads to
-    a lower actual peak vehicle count than what `nvehicles_used_calculation` returns.
-    :param ev: A DepotEvaluation object.
-    :return: The real peak vehicle count. This is what the depot layout should be designed for.
-    """
-
-    total_counts_by_vehicle_type: Dict[str, np.ndarray] = dict()
-
-    for area in ev.depot.list_areas:
-        # We need to figure out which kind of area this is
-        # We do this by looking at the vehicle type of the area
-        if len(area.entry_filter.filters) > 0:
-            assert len(area.entry_filter.vehicle_types_str) == 1
-            vehicle_type_name = area.entry_filter.vehicle_types_str[0]
-
-            nv = area.logger.get_valList("count", SIM_TIME=ev.SIM_TIME)
-            nv = to_prev_values(nv)
-            nv = np.array(nv)
-
-            if vehicle_type_name not in total_counts_by_vehicle_type:
-                total_counts_by_vehicle_type[vehicle_type_name] = np.zeros(
-                    ev.SIM_TIME, dtype=np.int32
-                )
-            total_counts_by_vehicle_type[vehicle_type_name] += nv
-        else:
-            # This is an area for all vehicle types
-            # We don't care about this
-            continue
-
-    # We are assuming that the smulation runs for at least four days
-    SECONDS_IN_A_DAY = 24 * 60 * 60
-    assert ev.SIM_TIME >= 4 * SECONDS_IN_A_DAY
-
-    # Towards the end, all the vehicles will re-enter the depot
-    # So our practital peak vehicle count is the maximum excluding the last day
-    for vehicle_type_name, counts in total_counts_by_vehicle_type.items():
-        total_counts_by_vehicle_type[vehicle_type_name] = counts[:-SECONDS_IN_A_DAY]
-
-    return {
-        vehicle_type_name: int(np.max(counts))
-        for vehicle_type_name, counts in total_counts_by_vehicle_type.items()
-    }
 
 
 def generate_realistic_depot_layout(
