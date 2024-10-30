@@ -4,7 +4,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  check:
+  pypi-version-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
