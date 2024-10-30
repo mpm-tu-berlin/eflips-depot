@@ -26,6 +26,9 @@ from eflips.model import (
 )
 from sqlalchemy.orm import Session
 
+from eflips.depot import DepotEvaluation, LineArea, DirectArea
+from eflips.depot.evaluation import to_prev_values
+
 
 def delete_depots(scenario: Scenario, session: Session) -> None:
     """This function deletes all depot-related data from the database for a given scenario.
@@ -809,3 +812,84 @@ def generate_line_depot_layout(
         ),
     ]
     session.add_all(assocs)
+
+
+def real_peak_area_utilization(ev: DepotEvaluation) -> Dict[str, Dict[AreaType, int]]:
+    """
+    Calculate the real peak vehicle count for a depot evaluation by vehicle type and area type.
+
+    For the line areas, the maximum number of lines in use at the same time is calculated.
+
+    :param ev: A DepotEvaluation object.
+    :return: The real peak vehicle count by vehicle type and area type.
+    """
+    area_types_by_id: Dict[int, AreaType] = dict()
+    total_counts_by_area: Dict[str, Dict[str, np.ndarray]] = dict()
+
+    # We are assuming that the smulation runs for at least four days
+    SECONDS_IN_A_DAY = 24 * 60 * 60
+    assert ev.SIM_TIME >= 4 * SECONDS_IN_A_DAY
+
+    for area in ev.depot.list_areas:
+        # We need to figure out which kind of area this is
+        # We do this by looking at the vehicle type of the area
+        if len(area.entry_filter.filters) > 0:
+            if isinstance(area, LineArea):
+                area_types_by_id[area.ID] = AreaType.LINE
+            elif isinstance(area, DirectArea):
+                area_types_by_id[area.ID] = AreaType.DIRECT_ONESIDE
+            else:
+                raise ValueError("Unknown area type")
+
+            assert len(area.entry_filter.vehicle_types_str) == 1
+            vehicle_type_name = area.entry_filter.vehicle_types_str[0]
+
+            nv = area.logger.get_valList("count", SIM_TIME=ev.SIM_TIME)
+            nv = to_prev_values(nv)
+            nv = np.array(nv)
+
+            # If the area is empty, we don't care about it
+            if np.all(nv == 0):
+                continue
+
+            if vehicle_type_name not in total_counts_by_area:
+                total_counts_by_area[vehicle_type_name] = dict()
+            # We don't want the last day, as all vehicles will re-enter the depot
+            total_counts_by_area[vehicle_type_name][area.ID] = nv[:-SECONDS_IN_A_DAY]
+        else:
+            # This is an area for all vehicle types
+            # We don't care about this
+            continue
+
+    if False:
+        from matplotlib import pyplot as plt
+
+        for vehicle_type_name, counts in total_counts_by_area.items():
+            plt.figure()
+            for area_id, proper_counts in counts.items():
+                # dashed if direct, solid if line
+                if area_types_by_id[area_id] == AreaType.DIRECT_ONESIDE:
+                    plt.plot(proper_counts, "--", label=area_id)
+                else:
+                    plt.plot(proper_counts, label=area_id)
+            plt.legend()
+            plt.show()
+
+    # Calculate the maximum utilization of the direct areas and the maximum number of lines in use at the same time
+    # Per vehicle type
+    ret_val: Dict[str, Dict[AreaType, int]] = dict()
+    for vehicle_type_name, count_dicts in total_counts_by_area.items():
+        peak_direct_area_usage = 0
+        number_of_lines_in_use = 0
+        for area_id, counts in count_dicts.items():
+            if area_types_by_id[area_id] == AreaType.DIRECT_ONESIDE:
+                peak_direct_area_usage += max(peak_direct_area_usage, np.max(counts))
+            else:
+                number_of_lines_in_use += 1
+
+        ret_val[vehicle_type_name] = {
+            AreaType.DIRECT_ONESIDE: int(peak_direct_area_usage),
+            AreaType.LINE: int(number_of_lines_in_use),
+        }
+
+    return ret_val
