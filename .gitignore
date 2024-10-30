@@ -294,3 +294,4 @@ docs/_build/
 
 # iCLoud Drive
 *.icloud
+.vscode/launch.json
