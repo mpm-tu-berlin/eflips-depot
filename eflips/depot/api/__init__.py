@@ -30,22 +30,19 @@ import logging
 import os
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, Optional, Union
 
 import sqlalchemy.orm
 from eflips.model import (
     Area,
-    AreaType,
     Depot,
     Event,
     EventType,
     Rotation,
     Scenario,
-    Station,
     Trip,
     Vehicle,
     VehicleType,
@@ -63,9 +60,6 @@ from eflips.depot.api.private.depot import (
     delete_depots,
     depot_to_template,
     group_rotations_by_start_end_stop,
-    generate_line_depot_layout,
-    real_peak_area_utilization,
-    real_peak_vehicle_count,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -395,294 +389,6 @@ def simple_consumption_simulation(
                         )
                         current_soc = post_charge_soc
                         session.add(current_event)
-
-
-@dataclass
-class DepotConfiguration:
-    charging_power: float
-    line_counts: Dict[VehicleType, int]
-    direct_counts: Dict[VehicleType, int]
-    clean_duration: int
-    num_clean_areas: int
-    num_shunting_areas: int
-
-
-def generate_realistic_depot_layout(
-    scenario: Union[Scenario, int, Any],
-    charging_power: float,
-    database_url: Optional[str] = None,
-    delete_existing_depot: bool = False,
-    line_length: int = 8,
-    CLEAN_DURATION: int = 10 * 60,  # 10 minutes in seconds
-    shunting_duration: timedelta = timedelta(minutes=5),
-) -> DepotConfiguration:
-    """
-    Creates a realistic depot layout for the scenario.
-
-    This is done by starting with an all direct depot layout,
-    looking at the vehicle count, creating an "all line" layout and then turning some of these lines into direct
-    areas until the vehicle count of the all direct depot layout (+ an allowance) is reached.
-
-    :param scenario: The scenario for which the depot layout should be generated.
-    :param charging_power: The charging power for the line areas in kW.
-    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
-        URL.
-    :param delete_existing_depot: Whether to delete an existing depot layout for this scenario. If set to False and a
-        depot layout already exists, a ValueError will be raised.
-    :param charging_power_direct: The charging power for the direct areas in kW. If not set, the charging power for the
-        line areas will be used.
-
-    :return: None. The depot layout will be added to the database.
-    """
-    logging.basicConfig(level=logging.DEBUG)  # TODO: Remove this line
-    logger = logging.getLogger(__name__)
-
-    with create_session(scenario, database_url) as (session, scenario):
-        # STEP 0: Delete existing depots if asked to, raise an Exception otherwise
-        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
-            if delete_existing_depot is False:
-                raise ValueError("Depot already exists.")
-            delete_depots(scenario, session)
-
-        # Make sure that the consumption simulation has been run
-        if session.query(Event).filter(Event.scenario_id == scenario.id).count() == 0:
-            raise ValueError(
-                "No consumption simulation found. Please run the consumption simulation first."
-            )
-
-        # STEP 2: Identify the spots where we will put a depot
-        # Identify all the spots that serve as start *and* end of a rotation
-        depot_stations_and_vehicle_types = group_rotations_by_start_end_stop(
-            scenario.id, session
-        )
-
-        # STEP 3: Put "all direct" depots at these spots and find the vehicle counts
-        depot_stations = []
-        vehicle_type_rotation_dict_by_station: Dict[
-            Station, Dict[VehicleType, List[Rotation]]
-        ] = dict()
-        for (
-            first_last_stop_tup,
-            vehicle_type_rotation_dict,
-        ) in depot_stations_and_vehicle_types.items():
-            first_stop, last_stop = first_last_stop_tup
-            if first_stop != last_stop:
-                raise ValueError("First and last stop of a rotation are not the same.")
-            depot_stations.append(first_stop)
-            vehicle_type_rotation_dict_by_station[
-                first_stop
-            ] = vehicle_type_rotation_dict
-
-        del first_last_stop_tup, vehicle_type_rotation_dict
-
-        all_direct_counts: Dict[
-            Station, Dict[VehicleType, int]
-        ] = vehicle_counts_for_direct_layout(
-            CLEAN_DURATION=CLEAN_DURATION,
-            charging_power=charging_power,
-            stations=depot_stations,
-            scenario=scenario,
-            session=session,
-            vehicle_type_dict_by_station=vehicle_type_rotation_dict_by_station,
-            shunting_duration=shunting_duration,
-        )
-
-        # STEP 4: Run the simulation with depots that also have a lot of line areas
-        # I know I could probably skip step 3 and go directly to step 4, but that's how I got it working and
-        # I'm too lazy to change it now
-
-        for station, vehicle_type_and_counts in all_direct_counts.items():
-            line_counts: Dict[VehicleType, int] = dict()
-            direct_counts: Dict[VehicleType, int] = dict()
-
-            # Create a Depot that has a lot of line areas as well
-            for vehicle_type, count in vehicle_type_and_counts.items():
-                line_counts[vehicle_type] = ceil(count / line_length)
-                direct_counts[vehicle_type] = ceil(count) + 500
-
-            # Run the simulation with this depot
-            generate_line_depot_layout(
-                CLEAN_DURATION=CLEAN_DURATION,
-                charging_power=charging_power,
-                station=station,
-                scenario=scenario,
-                session=session,
-                direct_counts=direct_counts,
-                line_counts=line_counts,
-                line_length=line_length,
-                vehicle_type_rotation_dict=vehicle_type_rotation_dict_by_station[
-                    station
-                ],
-                shunting_duration=shunting_duration,
-            )
-
-        # Simulate the depot
-        # We will not be using add_evaluation_to_database instead taking the vehicle counts directly from the `ev` object
-        logger.info("Simulating the scenario")
-        logger.info("1/2: Initializing the simulation host")
-        simulation_host = init_simulation(
-            scenario=scenario,
-            session=session,
-        )
-        logger.info("2/2: Running the simulation")
-        depot_evaluations = run_simulation(simulation_host)
-
-        # We need to remember the depot-id-station mapping
-        depot_id_station_mapping: Dict[str, Station] = dict()
-        for depot_id_as_str, ev in depot_evaluations.items():
-            station = (
-                session.query(Station)
-                .join(Depot)
-                .filter(Depot.id == int(depot_id_as_str))
-                .one()
-            )
-            depot_id_station_mapping[depot_id_as_str] = station
-
-        # Delete the old depot
-        delete_depots(scenario, session)
-
-        for depot_id_as_str, ev in depot_evaluations.items():
-            assert isinstance(ev, DepotEvaluation)
-
-            if False:
-                ev.path_results = depot_id_as_str
-                os.makedirs(depot_id_as_str, exist_ok=True)
-
-                ev.vehicle_periods(
-                    periods={
-                        "depot general": "darkgray",
-                        "park": "lightgray",
-                        "Arrival Cleaning": "steelblue",
-                        "Charging": "forestgreen",
-                        "Standby Pre-departure": "darkblue",
-                        "precondition": "black",
-                        "trip": "wheat",
-                    },
-                    save=True,
-                    show=False,
-                    formats=(
-                        "pdf",
-                        "png",
-                    ),
-                    show_total_power=True,
-                    show_annotates=True,
-                )
-
-            # Find the actual utilization.
-            utilization: Dict[str, int] = real_peak_area_utilization(ev)
-            utilization = {
-                session.query(VehicleType).filter(VehicleType.id == int(k)).one(): v
-                for k, v in utilization.items()
-            }
-
-            # Turn utilization into a two dictionaries, one for line areas and one for direct areas
-            for vehicle_type, counts in utilization.items():
-                line_counts[vehicle_type] = counts[AreaType.LINE]
-                direct_counts[vehicle_type] = counts[AreaType.DIRECT_ONESIDE] + 100
-
-            station = depot_id_station_mapping[depot_id_as_str]
-
-            generate_line_depot_layout(
-                CLEAN_DURATION=CLEAN_DURATION,
-                charging_power=charging_power,
-                station=station,
-                scenario=scenario,
-                session=session,
-                direct_counts=direct_counts,
-                line_counts=line_counts,
-                line_length=line_length,
-                vehicle_type_rotation_dict=vehicle_type_rotation_dict_by_station[
-                    station
-                ],
-                shunting_duration=shunting_duration,
-            )
-
-
-def vehicle_counts_for_direct_layout(
-    CLEAN_DURATION: int,
-    charging_power: float,
-    stations: List[Station],
-    scenario: Scenario,
-    session: sqlalchemy.orm.session.Session,
-    vehicle_type_dict_by_station: Dict[Station, Dict[VehicleType, List[Rotation]]],
-    shunting_duration: timedelta = timedelta(minutes=5),
-) -> Dict[Station, Dict[VehicleType, int]]:
-    """
-    Generate a simple depot, simulate it and return the number of vehicles for each vehicle type.
-
-    Do this for each depot station in the scenario.
-    :param CLEAN_DURATION: The duration of the cleaning process in seconds.
-    :param charging_power: The charging power of the charging area in kW.
-    :param station: The stop where the depot is located.
-    :param scenario: The scenario for which the depot layout should be generated.
-    :param session: The SQLAlchemy session object.
-    :param vehicle_type_dict: A dictionary with vehicle types as keys and rotations as values.
-    :return: A dictionary with vehicle types as keys and the number of vehicles as values.
-    """
-    logger = logging.getLogger(__name__)
-
-    for station in stations:
-        logger.info(f"Generating all direct depot layout at {station.name}")
-        # Generate the depot
-        direct_counts = {}
-        line_counts = {}
-        for vehicle_type, rotations in vehicle_type_dict_by_station[station].items():
-            direct_counts[vehicle_type] = len(rotations)
-            line_counts[vehicle_type] = 0
-
-        generate_line_depot_layout(
-            CLEAN_DURATION=CLEAN_DURATION,
-            charging_power=charging_power,
-            station=station,
-            scenario=scenario,
-            session=session,
-            direct_counts=direct_counts,
-            line_counts=line_counts,
-            line_length=8,  # We don't care about the line length here
-            vehicle_type_rotation_dict=vehicle_type_dict_by_station[station],
-            shunting_duration=shunting_duration,
-        )
-
-    # Simulate the scenario
-    # We will not be using add_evaluation_to_database instead taking the vehicle counts directly from the `ev` object
-    logger.info("Simulating the scenario")
-    logger.info("1/2: Initializing the simulation host")
-    simulation_host = init_simulation(
-        scenario=scenario,
-        session=session,
-    )
-    logger.info("2/2: Running the simulation")
-    depot_evaluations = run_simulation(simulation_host)
-
-    assert len(depot_evaluations) == len(stations)
-    depot_evaluations: Dict[str, DepotEvaluation]
-
-    ret_val: Dict[Station, Dict[VehicleType, int]] = dict()
-
-    for depot_id_as_str, ev in depot_evaluations.items():
-        assert isinstance(ev, DepotEvaluation)
-        counts: Dict[str, int] = real_peak_vehicle_count(ev)
-        # The key of the dictionary is the vehicle type ID as a string. We need to convert it to a vehicle type object
-        vehicle_type_dict = {
-            session.query(VehicleType).filter(VehicleType.id == int(k)).one(): v
-            for k, v in counts.items()
-        }
-
-        # Find the station object
-        station = (
-            session.query(Station)
-            .join(Depot)
-            .filter(Depot.id == int(depot_id_as_str))
-            .one()
-        )
-
-        ret_val[station] = vehicle_type_dict
-
-    # Delete the old depots
-    delete_depots(scenario, session)
-
-    return ret_val
 
 
 def generate_depot_layout(
