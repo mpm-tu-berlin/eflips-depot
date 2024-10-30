@@ -20,7 +20,6 @@ from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable
-from eflips.depot import VehicleType as EflipsVehicleType
 
 
 @contextmanager
@@ -80,22 +79,6 @@ def create_session(
                 session.close()
             if engine is not None:
                 engine.dispose()
-
-
-def vehicle_type_to_eflips(vt: VehicleType) -> EflipsVehicleType:
-    """Convert a VehicleType object to an eflips-depot VehicleType object."""
-
-    # Create the depot VehicleType object
-    eflips_vehicle_type = EflipsVehicleType(
-        str(vt.id),
-        vt.battery_capacity,
-        0.0,
-        1.0,
-        1.0,
-        1.0,
-        vt.consumption,
-    )
-    return eflips_vehicle_type
 
 
 def vehicle_type_to_global_constants_dict(vt: VehicleType) -> Dict[str, float]:

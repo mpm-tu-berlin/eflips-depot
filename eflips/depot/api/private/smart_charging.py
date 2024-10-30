@@ -6,7 +6,9 @@ import scipy
 from eflips.model import Event, EventType
 
 
-def optimize_charging_events_even(charging_events: List[Event]) -> None:
+def optimize_charging_events_even(
+    charging_events: List[Event], debug_plots: bool = False
+) -> None:
     """
     This function optimizes the power draw of a list of charging events.
 
@@ -42,7 +44,6 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
     # Also note down the peak power and transferred energy
     params_for_events: List[Dict[str, float | np.ndarray | Event]] = []
     for event in charging_events:
-        power_draw = np.zeros_like(total_time, dtype=float)
         charging_allowed = np.zeros_like(total_time, dtype=int)
 
         # Calculate the power draw vector, from the start SoC, end SoC and timeseries, if available
@@ -144,7 +145,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
             scipy.integrate.trapezoid(optimized_power, total_time) / 3600
         )  # kWh
 
-        if False:
+        if debug_plots:
             # Some plots for only this charging event
             from matplotlib import pyplot as plt
 
@@ -152,7 +153,7 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
                 params_for_event["charging_allowed"] == 1
             )[0]
 
-            fig, axs = plt.subplots(3, 1, sharex=True)
+            _, axs = plt.subplots(3, 1, sharex=True)
             axs[0].axhline(mean_power, color="red", linestyle="--", label="Mean power")
             axs[0].plot(
                 total_time[valid_charging_indices],
@@ -256,10 +257,10 @@ def optimize_charging_events_even(charging_events: List[Event]) -> None:
             event.timeseries = None
 
     # Now we have the power draw and charging allowed for each event
-    if False:
+    if debug_plots:
         from matplotlib import pyplot as plt
 
-        fig, axs = plt.subplots(3, 1, sharex=True)
+        _, axs = plt.subplots(3, 1, sharex=True)
         total_power = np.sum(
             [event["power_draw"] for event in params_for_events], axis=0
         )
