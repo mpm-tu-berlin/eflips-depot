@@ -291,3 +291,6 @@ Temporary Items
 
 # Sphinx documentation build
 docs/_build/
+
+# iCLoud Drive
+*.icloud
