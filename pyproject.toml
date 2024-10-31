@@ -21,6 +21,7 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.1.4"
 xlrd = "<=1.2.0"
 scipy = "^1.13.1"
+setuptools = "71.0.0"
 
 
 [tool.pytest.ini_options]
