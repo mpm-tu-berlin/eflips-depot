@@ -61,7 +61,7 @@ class Vehicle_new(VehicleType_new):
 
 
 
-def update_soh(vehicle_id, d_cf):
+def update_soh(event, vehicle_id, d_cf):
     all_vehicles_d[vehicle_id].cap_fade += d_cf
     all_vehicles_d[vehicle_id].soh = 1 - (all_vehicles_d[vehicle_id].cap_fade/(0.2 * event.vehicle_type.battery_capacity))  # includes EOL condition at 80% of initial battery capacity
     #how does battery capacity reserve factor in??
@@ -76,20 +76,41 @@ def calc_cap_fade(event, T = 305.15):
     E_a = 78060                 #Aktivierungsenergie in mol/J
     R = 8.314                   #Gaskonstante in J/(molK)
     T_ref = 298.15              #Referenzwert Temperatur in K
-
-    #erst SoC_avg und SoC_dev bestimmen (lineare Annahme):
-    soc_avg = (event.soc_start + event.soc_end)/2
-    soc_dev = math.sqrt(3*((event.soc_end - soc_avg)**2 + (event.soc_start-soc_avg)**2))    #standardised deviation! not accurate with my model??? -> charge/discharge discrepancies
-
-    #charge processed in Ah
     init_cap = event.vehicle_type.battery_capacity
-    Ah = abs(event.soc_start - event.soc_end)*init_cap
 
-    #delta capacity fade in Ah
-    d_cf = ((k_s[0]*soc_dev * math.e**(k_s[1]*soc_avg) + k_s[2] * math.e**(k_s[3]*soc_dev))*math.e**(-(E_a/R)* (1/T - 1/T_ref)))*Ah
-    relative_cf = d_cf/init_cap
+    if event.event_type == EventType.DRIVING:
+        #Calculates for the driving event
+        soc_avg = (event.soc_start + event.soc_end) / 2
+        soc_dev = math.sqrt(3 * ((event.soc_end - soc_avg) ** 2 + (event.soc_start - soc_avg) ** 2))
+        Ah = abs(event.soc_start - event.soc_end) * init_cap
+        d_cf = ((k_s[0] * soc_dev * math.exp(k_s[1] * soc_avg) + k_s[2] * math.exp(k_s[3] * soc_dev)) * math.exp(-(E_a / R) * (1 / T - 1 / T_ref))) * Ah
 
-    update_soh(event.vehicle_id, d_cf)
+    elif event.event_type == EventType.CHARGING_DEPOT or  event.event_type == EventType.CHARGING_OPPORTUNITY:
+        #fragment charging events so the soc_dev corresponds with driving events
+        d_soc_ = abs(event.soc_end - event.soc_start)   #calculate total SOC difference for the charging event
+        splits = math.ceil(d_soc_ / d_soc_avg)          #number of fragments needed to adjust
+        soc_increment = d_soc_ / splits
+
+        d_cf_total = 0
+        #calculate capacity fade for each increment
+        for i in range(splits):
+            #calculate SOC for the split
+            soc_start = event.soc_start + i * soc_increment
+            soc_end = soc_start + soc_increment
+
+            #identical with method for driving events
+            soc_avg = (soc_start + soc_end) / 2
+            soc_dev = math.sqrt(3 * ((soc_end - soc_avg) ** 2 + (soc_start - soc_avg) ** 2))
+            Ah = abs(soc_start - soc_end) * init_cap
+
+            #calculate capacity fade for splits and sum up
+            d_cf_split = ((k_s[0] * soc_dev * math.exp(k_s[1] * soc_avg) + k_s[2] * math.exp(k_s[3] * soc_dev)) * math.exp(-(E_a / R) * (1 / T - 1 / T_ref))) * Ah
+            d_cf_total += d_cf_split
+
+        d_cf = d_cf_total
+
+    relative_cf = d_cf / init_cap
+    update_soh(event, event.vehicle_id, d_cf)
     return(relative_cf)
 
 
@@ -185,16 +206,17 @@ if __name__ == "__main__":
         #same for charging events?????
 
 
-
+        #calculate average d_soc:
+        d_soc = [abs(event.soc_start - event.soc_end) for event in all_driving_events]
+        d_soc_avg = sum(d_soc)/len(d_soc)
+        #charging events nach diesem average splitten!!!
 
         days_passed = 0
         while days_passed < (10):
             for event in all_driving_events:
                 calc_cap_fade(event)       #Temperaturabhängigkeit????#
-
-
-            #for event in all_charging_events:
-            #    calc_cap_fade(event)                #--> bad results -> examine soc_dev!!!
+            for event in all_charging_events:
+                calc_cap_fade(event)                #--> bad results -> examine soc_dev!!!
 
             days_passed += 1
 
