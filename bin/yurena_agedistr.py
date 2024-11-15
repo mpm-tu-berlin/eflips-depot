@@ -13,6 +13,17 @@ from eflips.model import *
 from eflips.model import ConsistencyWarning
 from sqlalchemy import create_engine, distinct, false, or_
 from sqlalchemy.orm import Session
+
+from eflips.depot.api import (
+    add_evaluation_to_database,
+    delete_depots,
+    init_simulation,
+    insert_dummy_standby_departure_events,
+    run_simulation,
+    generate_realistic_depot_layout,
+    simple_consumption_simulation,
+    apply_even_smart_charging,
+)
 ###
 
 
@@ -20,9 +31,12 @@ from sqlalchemy.orm import Session
 class VehicleType_new:
     def __init__(self, vehicle_type):
         self.vehicle_type_id = vehicle_type.id
+        self.vehicle_type_name = vehicle_type.name
         self.battery_capacity = (vehicle_type.battery_capacity * 1000)/(3.2 * 200)
         self.battery_capacity_reserve = (vehicle_type.battery_capacity_reserve * 1000)/(3.2 * 200)
         self.full_capacity = self.battery_capacity + self.battery_capacity_reserve
+
+
 
 #Klasse für Vehicles definieren, erbt von VehicleType
 class Vehicle_new(VehicleType_new):
@@ -37,10 +51,21 @@ class Vehicle_new(VehicleType_new):
         self.soh = soh                  #init as 100%
         self.cap_fade = 0
         self.needs_replacement = False
+        self.cycle_count = 0             #tracks cycles through event-dataset to calculate age
 
         #store all events:
         self.driving_events = []
         self.charging_events = []
+
+#not used, necessary?
+class DepotParameters:
+    def __init__(self, depot,  avg, std, range, replacement_rate):
+        self.depot = depot
+        self.avg = avg
+        self.std = std
+        self.range = range
+        self.replacement_rate = replacement_rate
+
 
 #helpful function to ensure that there are no event duplicates
 def filter_unique_events(events):
@@ -81,6 +106,7 @@ def calc_cap_fade(event, veh, T = 305.15):
     #veh.events_processed += 1
     update_soh(veh, d_cf)
     return(d_cf)
+
 
 
 ###GIVEN CODE:
@@ -185,6 +211,7 @@ if __name__ == "__main__":
         all_vehicles_d = {}
         all_vehicles_l = []
         vehicles_of_depot = defaultdict(list)   #dict to sort vehicles into lists for each depot
+        vehicles_of_vehicletype = defaultdict(list) ##dict to sort vehicles into lists for each vehicle type
 
         #create Vehicle objects, assign events, assign depots:
         #things are all done in one loop for efficiency
@@ -219,59 +246,163 @@ if __name__ == "__main__":
             if vehicle.depot:
                 vehicles_of_depot[vehicle.depot.id].append(vehicle)
             else:
-                print(f"Vehicle {vehicle.vehicle_id} has no assigned depot.")
+                print(f"Warning: Vehicle {vehicle.vehicle_id} has no assigned depot.")
 
+            #group vehicles by vehicle_type:
+            vehicles_of_vehicletype[vehicle.vehicle_type.id].append(vehicle)
+
+        #RUN UNTIL ALL VEHICLES REACH EOL-CONDITION, VISUALIZE VEHICLE AGE PER DEPOT
+
+        operational_vehicles = all_vehicles_l.copy()  # only contains vehicles with needs_replacement = False
+        # cycle through bus plan until all vehicles need replacement!
+        # vehicles that reach EoL condition fall out of loop
         weeks_passed = 0
-        while weeks_passed < 52:
-            for vehicle in all_vehicles_l:
-                #remove duplicate events before processing
-                unique_charging_events = filter_unique_events(vehicle.charging_events)
-                #process each UNIQUE charging event
-                for event in unique_charging_events:
-                    #todo: Temperaturabhängigkeit einbauen
-                    d_cf = calc_cap_fade(event, vehicle)
-            weeks_passed += 1
+        while operational_vehicles:
+            remaining_vehicles = []
 
-        # create folder to store results in
-        folder_path = os.path.join(os.getcwd(), 'soh_distributions')
+            for vehicle in operational_vehicles:
+                unique_charging_events = filter_unique_events(vehicle.charging_events)
+                # process each UNIQUE charging event
+                for event in unique_charging_events:
+                    d_cf = calc_cap_fade(event, vehicle)
+
+                vehicle.cycle_count += 1  # for each time driving events get looped, age goes up by one cycle
+                if vehicle.needs_replacement:
+                    operational_vehicles.remove(vehicle)  # remove non-operatable vehicle from list
+                    break
+
+        # Find vehicles that are still operational
+        operational_vehicles = [vehicle for vehicle in all_vehicles_l if not vehicle.needs_replacement]
+
+        # Check if any vehicles are still operational
+        if operational_vehicles:
+            print("The following vehicles have not reached EoL and are still operational:")
+            for vehicle in operational_vehicles:
+                print(vehicle)
+                print(len(vehicle.driving_events))
+        else:
+            print("All vehicles have reached their end-of-life and need replacement.")
+
+
+        #todo: manually add maximum age based on values from calendaric degradation (ausreißer unrealistisch)
+
+        #create folder to store results in
+        folder_name = 'age_distributions'
+        folder_path = os.path.join(os.getcwd(), folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
+        #create arrays to store average ages in, for depots and for vehicle types, needed tor table later on
+        avg_ages_dict = {}
+        depot_avg = defaultdict(list)
+        vehicle_type_avg = defaultdict(list)
 
-        #create plots to visualize SoH distribution, sorted by depot
+        #visualize age distribution sorted by depots and vehicle types
         for depot in all_depots.values():
             vehicles_in_depot = vehicles_of_depot[depot.id]
 
             fig, axes = plt.subplots(1, len(all_vehicletypes), figsize=(18, 6))
-            fig.suptitle(f'Distribution of State of Health in Depot: {depot.name}', fontsize=25)
+            fig.suptitle(f'Distribution of Age in Depot: {depot.name}', fontsize=25)
 
-            ax_pos = 0    #help variable for position of subplot
-            #Loop through each vehicle type to generate and save a histogram
+            ax_pos = 0  #help variable for position of subplot
+            #loop through each vehicle type to generate and save a histogram
             for v_type in all_vehicletypes.keys():
                 #Filter vehicles of vehicle type out of vehicles of that depot
-                #alternatively: (vehicle.cycle_count * 7)/365 instead of vehicle.soh for age distribution
-
-                vehicles_of_type = [vehicle.soh for vehicle in vehicles_in_depot if vehicle.vehicle_type_id == v_type]
-                avg_soh = np.mean(vehicles_of_type)
-
+                vehicles_of_type = [(vehicle.cycle_count)*7/365 for vehicle in vehicles_in_depot if vehicle.vehicle_type_id == v_type]
                 n = len(vehicles_of_type)
                 v_type_name = all_vehicletypes[v_type].name
+
+
                 #Create histogram for SoH distribution:
                 ax = axes[ax_pos]
                 ax.hist(vehicles_of_type)
-                ax.set_xlabel(f'State of Health [/]. Average SoH for vehicle type: {avg_soh}')
-                ax.tick_params(axis='x', rotation=45)    #rotates labels for readability
+                ax.set_xlabel(f'Age after EoL condition is met in years')
+                ax.tick_params(axis='x', rotation=45)  # rotates labels for readability
                 ax.set_ylabel('Number of Vehicles')
-                ax.set_title(f'SoH distribution for {v_type_name}    - n = {n}')
+                ax.set_title(f'Age distribution for {v_type_name}    - n = {n}')
 
-                ax_pos += 1     #move to next subplot position
+                #checks if there are no vehicles assigned to avoid error messages
+                if vehicles_of_type:
+                    #show other relevant stats in graphs
+                    avg_age = np.mean(vehicles_of_type)
+                    std_dev = np.std(vehicles_of_type)
+                    age_range = np.ptp(vehicles_of_type)
+                    if avg_age > 0:
+                        repl_rate = math.ceil(n/avg_age)
+                    else:
+                        repl_rate = None
 
-            #Save the entire histogram for the depot with fitting filename:
+                    avg_ages_dict[(depot.id, v_type)] = avg_age
+
+                    globals()[f"{depot.name_short}_params"] = DepotParameters(depot, avg_age, std_dev, age_range, repl_rate)
+
+                    additional_stats = (f'Average Age: {avg_age:.2f} years\n'
+                                  f'Standard deviation: {std_dev:.2f} years\n'
+                                  f'Range: {age_range:.2f} years\n'
+                                  f'replacement rate: {repl_rate}')
+
+                    #create box to display information
+                    ax.text(0.95, 0.95, additional_stats, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right', bbox=dict(facecolor='white', alpha=0.5))
+
+                    #save the weighted averages for table later on
+                    avg_ages_dict[(depot.id, v_type)] = avg_age  #store in avg_ages_dict
+
+                    #store sum of ages for weighted data of averages
+                    depot_avg[depot.id].extend([avg_age] * n)
+                    vehicle_type_avg[v_type].extend([avg_age] * n)
+
+                ax_pos += 1  # move to next subplot position
+
             plt.tight_layout()
-            plt.savefig(os.path.join(folder_path, f'soh_distribution_for_{depot.name}.png'))
+            plt.savefig(os.path.join(folder_path, f'age_distribution_for_{depot.name}.png'))
             plt.close(fig)
 
-    #todo: prüfen wa mit den Sonderfällen ist!! wirklich so wenig Fahrten?/so langlebig?
+
+        #calculate final weighted averages by depot and vehicle type
+        depot_avg = {depot_id: np.mean(values) for depot_id, values in depot_avg.items()}
+        vehicle_type_avg = {vt_id: np.mean(values) for vt_id, values in vehicle_type_avg.items()}
+
+        #calculate total weighted average
+        sum_ages = sum((vehicle.cycle_count)*7/365 for vehicle in all_vehicles_l)  # Sum up the ages of all vehicles
+        all_avg = sum_ages / len(all_vehicles_l)
 
 
-    #todo: simulation for couple of decades with vehicle_count and replacement of vehicles before and after algorithm!!
+        all_avg_file = os.path.join(folder_path, "average_ages_table.csv")
+        with open(all_avg_file, "w") as file:
+            file.write("Average age for vehicles in years\n")
+            columns = ['Depot'] + [all_vehicletypes[vt_id].name for vt_id in all_vehicletypes.keys()] + ['Depot Weighted Average']
+            file.write(",".join(columns) + "\n")
+
+            for depot_id in all_depots.keys():
+                rows = [all_depots[depot_id].name]
+                for vt_id in all_vehicletypes.keys():
+                    avg_age = avg_ages_dict.get((depot_id, vt_id), None)
+                    rows.append(f'{avg_age:.2f}' if avg_age is not None else "---")
+                depot_avg_ = depot_avg[depot_id]
+                rows.append(f'{depot_avg_:.2f}')
+                file.write(",".join(rows) + "\n")
+
+            avg_row = ["Vehicle Type Weighted Average"] + [f'{vehicle_type_avg[vt_id]:.2f}' for vt_id in all_vehicletypes.keys()]
+            avg_row.append(f'{all_avg:.2f}')
+            file.write(",".join(avg_row) + "\n")
+
+
+        #calculate replacement rates and and creaty steady states for each vehicle type
+        replacement_rates = {vt_id: math.floor(age) for vt_id, age in vehicle_type_avg.items()}
+        replacements_per_year = {}
+        for vt_id in all_vehicletypes.keys():
+            replacements_per_year[vt_id] = math.ceil(len(vehicles_of_vehicletype[vt_id])/vehicle_type_avg[vt_id])
+        print(replacements_per_year)
+        print(replacement_rates)
+
+        #todo: create steady state for each vt based on len() and replacement_rates
+
+        """
+                new_vehicle_type = VehicleType(name = "Ebuscon_80soh", scenario=scenario)  #usw, unnötige muss ich nicht parametrisieren
+                #opp_charge_capable, brauche ich noch
+                #rechtsklicK auf vehicleType in database "modify Table" -> alle parameter mit not null müssen parametrisiert werden
+                session.add(new_vehicle_type)
+
+                ...
+                session.commit()  #zuallerletzt! alle Änderungen in Database übertragen, also auch erst machen wenn alten vehicletypes nicht mehr benötigt werden!
+
