@@ -19,7 +19,7 @@ from sqlalchemy import func
 import eflips.depot.api
 
 # anpassbare Variablen:
-standard_block_length = 6
+STANDARD_BLOCK_LENGTH = 6
 
 
 def anzahl_an_line_parkplaetzen(session, peak_count, vehicle_type):
@@ -46,13 +46,13 @@ def anzahl_an_line_parkplaetzen(session, peak_count, vehicle_type):
         max_block_busse = math.floor((breite * laenge) / (x * z))
 
         # Wie viele Reihen sind mit den Bussen in Blockabstellung möglich?
-        max_line_count = int(max_block_busse / standard_block_length)
+        max_line_count = int(max_block_busse / STANDARD_BLOCK_LENGTH)
 
         # Wird eine zusätzliche Blockreihe benötigt?
         extra_line_length = 0
-        if max_block_busse % standard_block_length not in (1, 0):
+        if max_block_busse % STANDARD_BLOCK_LENGTH not in (1, 0):
             max_line_count += 1
-            extra_line_length = max_block_busse % standard_block_length
+            extra_line_length = max_block_busse % STANDARD_BLOCK_LENGTH
             extra_line = True
             print(
                 f"Es wird {max_line_count} Iterationen geben. Davon ist eine, eine Extra-Line mit der Cpacity von {extra_line_length} Parkplätzen"
@@ -251,13 +251,13 @@ def flaechen_bedarf(
     # Prüfen ob es eine ExtraLine gibt und Fläche berechenen für die Block-Parkplätze
     # Anzahl der Block-Parkplätze
     if i == max_line_count and extra_line:
-        flaeche += (i - 1) * standard_block_length * (x * z)
+        flaeche += (i - 1) * STANDARD_BLOCK_LENGTH * (x * z)
         flaeche += extra_line_length * (x * z)
-        block_parking_slots = (i - 1) * standard_block_length + extra_line_length
+        block_parking_slots = (i - 1) * STANDARD_BLOCK_LENGTH + extra_line_length
         simulation_with_extra_line = True
     else:
-        flaeche += (i * standard_block_length) * (x * z)
-        block_parking_slots = i * standard_block_length
+        flaeche += (i * STANDARD_BLOCK_LENGTH) * (x * z)
+        block_parking_slots = i * STANDARD_BLOCK_LENGTH
 
     # Fläche der Direct-Parkplätze berechenen
     # Anzahl der Direct-Parkplätze
@@ -449,7 +449,7 @@ def simulations_loop(result_by_area, session, scenario):
                             name=name,
                             depot=depot,
                             area_type=AreaType.LINE,
-                            capacity=standard_block_length,
+                            capacity=STANDARD_BLOCK_LENGTH,
                             vehicle_type=vehicle_type,
                         )
                         session.add(charging_line_area)
@@ -464,7 +464,7 @@ def simulations_loop(result_by_area, session, scenario):
                             name=name,
                             depot=depot,
                             area_type=AreaType.LINE,
-                            capacity=standard_block_length,
+                            capacity=STANDARD_BLOCK_LENGTH,
                             vehicle_type=vehicle_type,
                         )
                         session.add(charging_line_area)
@@ -649,7 +649,7 @@ def optimale_simulation(ergebnisse_gesamt, session, scenario):
                     name="Entenhausen Depot Area",
                     depot=depot,
                     area_type=AreaType.LINE,
-                    capacity=standard_block_length,
+                    capacity=STANDARD_BLOCK_LENGTH,
                     vehicle_type=vehicle_type,
                 )
                 session.add(charging_line_area)
@@ -662,7 +662,7 @@ def optimale_simulation(ergebnisse_gesamt, session, scenario):
                     name="Entenhausen Depot Area",
                     depot=depot,
                     area_type=AreaType.LINE,
-                    capacity=standard_block_length,
+                    capacity=STANDARD_BLOCK_LENGTH,
                     vehicle_type=vehicle_type,
                 )
                 session.add(charging_line_area)
