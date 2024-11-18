@@ -1,4 +1,5 @@
 """This package contains the private API for the depot-related functionality in eFLIPS."""
+import math
 from datetime import timedelta
 from enum import Enum, auto
 from math import ceil
@@ -578,3 +579,128 @@ def _generate_all_direct_depot(
         safety_margin=0.2,
         shunting_duration=shunting_duration,
     )
+
+
+def area_needed_for_vehicle_parking(
+    vehicle_type: VehicleType,
+    count: int,
+    area_type: AreaType,
+    standard_block_length: int = 6,
+    spacing: float = 0.5,
+    angle=45,
+) -> float:
+    """
+    Calculates the area (in m²) needed to park a given number of vehicles of a given type.
+
+    DOes not take into account
+    the area needed to drive in and out of the parking spots.
+
+    - For AreaType.LINE, the vehicle count is rounded up to the next multiple of the standard block length.
+    - For AreaType.DIRECT_ONESIDE, the vehicle count is used as is.
+    - For AreaType.DIRECT_TWOSIDE, the vehicle count is rounded up to the next even number.
+
+    For the DIRECT area types, an angle of 45° is assumed for the vehicles.
+
+    :param vehicle_type: The vehicle type to calculate the area for.
+    :param count: The number of vehicles to park.
+    :param area_type: The type of the area to calculate the area for.
+    :param standard_block_length: The standard block length to use for LINE areas. Defaults to 6 (vehicles behind each other).
+    :param spacing: The space needed on the sides of the vehicles. Defaults to 0.5m.
+    :param angle: The angle the vehicles are parked at in direct areas, in degrees. Defaults to 45°. *Only used for direct areas.*
+    :return: The area needed in m².
+    """
+
+    length = vehicle_type.length
+    width = vehicle_type.width
+
+    if length is None or width is None:
+        raise ValueError(f"No length or width found for VehicleType {vehicle_type}")
+
+    # This is the angle the vehicles are parked at in direct areas
+    # zero is equivalent to the direction they would be parked in a line area
+    # 90 means they are parked perpendicular to the line and would need to turn 90 degrees to drive out
+    # This is the angle the vehicles are parked at in direct areas
+    # zero is equivalent to the direction they would be parked in a line area
+    # 90 means they are parked perpendicular to the line and would need to turn 90 degrees to drive out
+    #
+    #   LINE AREA (0°):
+    #   |   |
+    #   |   |
+    #
+    #   DIRECT AREA (45°):
+    #   /
+    #   /
+    #
+    #   DIRECT AREA (90°):
+    #   -
+    #   -
+    angle = math.radians(angle)
+
+    match area_type:
+        case AreaType.LINE:
+            # For LINE areas, we need to round up the vehicle count to the next multiple of the standard block length
+            count = math.ceil(count / standard_block_length) * standard_block_length
+            number_of_rows = count / standard_block_length
+
+            # Return the total area, including the space between the vehicles
+            # But the space between the vehicles is only needed between, so it's one less than the count of vehicles
+            # | | | |   ^
+            # | | | |   | <- area_height
+            # | | | |   v
+            # <-----> area_width
+
+            area_height = length * standard_block_length + (
+                spacing * (standard_block_length - 1)
+            )
+            area_width = width * number_of_rows + (spacing * (number_of_rows - 1))
+
+        case AreaType.DIRECT_ONESIDE:
+            # Here, it's more complicated math, due to the vehicles being parked at an angle
+            #
+            # See "docs/direct_details.pdf" for a visual explanation
+            # /  ^
+            # /  | <- area_height
+            # /  v
+            # <-> area_width
+            #
+            # - 0°
+            # / 45°
+            # | 90°
+
+            # Area height, according tho the formula in the docs
+            b_0 = (
+                math.cos(angle) * vehicle_type.width
+                + math.sin(angle) * vehicle_type.length
+            )
+
+            # If the angle os too steep, refuse to calculate
+            if math.tan(angle) > vehicle_type.length / vehicle_type.width:
+                raise ValueError("The angle is too steep for the vehicle to fit")
+
+            h = (1 / math.cos(angle)) * vehicle_type.width
+            space_between = (count - 1) * math.cos(angle) * spacing
+            area_height = b_0 + (count - 1) * h + space_between
+
+            # Area width, according tho the formula in the docs
+            area_width = (
+                math.sin(angle) * vehicle_type.width
+                + math.cos(angle) * vehicle_type.length
+            )
+
+        case AreaType.DIRECT_TWOSIDE:
+            # For DIRECT_TWOSIDE, we need to round up the vehicle count to the next even number
+            count = count + (count % 2)
+            number_of_rows = count / 2
+
+            # Here, it's more complicated math, due to the vehicles being parked at an angle
+            # See "docs/direct_details.pdf" for a visual explanation
+            #   \
+            #  / \
+            # / \
+            #  / \
+            # / \
+            #  / \
+            # /
+            raise NotImplementedError("This area type is not yet implemented")
+
+    return area_height * area_width
