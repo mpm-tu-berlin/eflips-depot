@@ -22,53 +22,6 @@ import eflips.depot.api
 STANDARD_BLOCK_LENGTH = 6
 
 
-def anzahl_an_line_parkplaetzen(session, peak_count, vehicle_type):
-    # Länge und Breite für VehicleType abfragen
-    x = (
-        session.query(VehicleType.length)
-        .filter(VehicleType.id == vehicle_type.id)
-        .scalar()
-    )  # length
-    z = (
-        session.query(VehicleType.width)
-        .filter(VehicleType.id == vehicle_type.id)
-        .scalar()
-    )  # width
-
-    if x is not None and z is not None:
-        # Flächenberechnung für die Direct-Area geteilt durch die Fläche für einen Block-Parkplatz = maximale Anzahl der Block-Parkplätze
-        breite = x * math.sin(math.radians(45)) + z * math.sin(math.radians(45))
-        laenge = (
-            x * math.sin(math.radians(45))
-            + z * math.sin(math.radians(45))
-            + (peak_count - 1) * z / math.cos(math.radians(45))
-        )
-        max_block_busse = math.floor((breite * laenge) / (x * z))
-
-        # Wie viele Reihen sind mit den Bussen in Blockabstellung möglich?
-        max_line_count = int(max_block_busse / STANDARD_BLOCK_LENGTH)
-
-        # Wird eine zusätzliche Blockreihe benötigt?
-        extra_line_length = 0
-        if max_block_busse % STANDARD_BLOCK_LENGTH not in (1, 0):
-            max_line_count += 1
-            extra_line_length = max_block_busse % STANDARD_BLOCK_LENGTH
-            extra_line = True
-            print(
-                f"Es wird {max_line_count} Iterationen geben. Davon ist eine, eine Extra-Line mit der Cpacity von {extra_line_length} Parkplätzen"
-            )
-        else:
-            extra_line = False
-            max_line_count = max_line_count
-
-            print(f"Es wird {max_line_count} Iterationen geben")
-
-        return max_line_count, extra_line, extra_line_length
-    else:
-        print(f"Keine Länge oder Breite für VehicleType{vehicle_type} gefunden")
-        return None
-
-
 # Funktion zur Abfrage von Depot,Plan und Prozessen aus dem Scenario
 def abfrage_aus_scenario(session, scenario):
     depot = session.query(Depot).filter(Depot.scenario_id == scenario.id).first()
