@@ -325,7 +325,7 @@ class VehicleSchedule:
         )
         if len(events) != len(trips):
             raise ValueError(
-                f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
+                f"Rotation {rot.id} has {len(trips)} trips but {len(events)} events."
             )
         if set([event.trip_id for event in events]) != set([trip.id for trip in trips]):
             raise ValueError(f"The events of rotation {rot.id} do not match the trips.")
