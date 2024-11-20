@@ -245,8 +245,18 @@ def simple_consumption_simulation(
         for rotation in rotations:
             rotation: Rotation
             with session.no_autoflush:
-                vehicle_type = rotation.vehicle_type
-                vehicle = rotation.vehicle
+                vehicle_type = (
+                    session.query(VehicleType)
+                    .join(Rotation)
+                    .filter(Rotation.id == rotation.id)
+                    .one()
+                )
+                vehicle = (
+                    session.query(Vehicle)
+                    .join(Rotation)
+                    .filter(Rotation.id == rotation.id)
+                    .one()
+                )
             if vehicle_type.consumption is None:
                 raise ValueError(
                     "The vehicle type does not have a consumption value set."
