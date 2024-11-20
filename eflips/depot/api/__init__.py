@@ -46,6 +46,7 @@ from eflips.model import (
     Trip,
     Vehicle,
     VehicleType,
+    AreaType,
 )
 from sqlalchemy.orm import Session
 
@@ -55,11 +56,10 @@ from eflips.depot import (
     SimulationHost,
 )
 from eflips.depot.api.private.depot import (
-    _generate_all_direct_depot,
-    create_simple_depot,
     delete_depots,
     depot_to_template,
     group_rotations_by_start_end_stop,
+    generate_depot,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -393,7 +393,7 @@ def simple_consumption_simulation(
 
 def generate_depot_layout(
     scenario: Union[Scenario, int, Any],
-    charging_power: float = 150,
+    charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
 ) -> None:
@@ -426,8 +426,6 @@ def generate_depot_layout(
 
     :return: None. The depot layout will be added to the database.
     """
-    CLEAN_DURATION = 30 * 60  # 30 minutes in seconds
-
     with create_session(scenario, database_url) as (session, scenario):
         # Handles existing depot
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
@@ -443,13 +441,23 @@ def generate_depot_layout(
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
-            _generate_all_direct_depot(
-                CLEAN_DURATION,
-                charging_power,
+
+            # Create one direct slot for each rotation (it's way too much, but should work)
+            vt_capacity_dict: Dict[VehicleType, Dict[AreaType, None | int]] = {}
+            for vehicle_type, rotations in vehicle_type_dict.items():
+                rotation_count = len(rotations)
+                vt_capacity_dict[vehicle_type] = {
+                    AreaType.LINE: None,
+                    AreaType.DIRECT_ONESIDE: rotation_count,
+                    AreaType.DIRECT_TWOSIDE: None,
+                }
+            generate_depot(
+                vt_capacity_dict,
                 first_stop,
                 scenario,
                 session,
-                vehicle_type_dict,
+                num_shunting_slots=max(rotation_count // 10, 1),
+                num_cleaning_slots=max(rotation_count // 10, 1),
             )
 
 

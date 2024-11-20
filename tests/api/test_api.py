@@ -3,14 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 import eflips.model
 import pytest
-from eflips.depot.api import (
-    generate_depot_layout,
-    init_simulation,
-    run_simulation,
-    simple_consumption_simulation,
-    simulate_scenario,
-    add_evaluation_to_database,
-)
 from eflips.model import (
     Area,
     AreaType,
@@ -37,6 +29,15 @@ from eflips.model import (
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+from eflips.depot.api import (
+    generate_depot_layout,
+    init_simulation,
+    run_simulation,
+    simple_consumption_simulation,
+    simulate_scenario,
+    add_evaluation_to_database,
+)
 
 
 class TestHelpers:
@@ -272,7 +273,6 @@ class TestHelpers:
             first_departure += timedelta(minutes=20)
 
         # Create a simple depot
-
         depot = Depot(
             scenario=scenario, name="Test Depot", name_short="TD", station=stop_1
         )
@@ -1163,28 +1163,6 @@ class TestApi(TestHelpers):
 
         for depot_id, depot_evaluation in depot_evaluations.items():
             assert depot_evaluation.nvehicles_used_calculation()["2"] == 3
-
-    def test_create_depot(self, session, full_scenario):
-        generate_depot_layout(
-            scenario=full_scenario, charging_power=90, delete_existing_depot=True
-        )
-
-        # Check that the depot was created
-        assert (
-            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).count()
-            == 1
-        )
-
-        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
-        assert isinstance(areas, list) and len(areas) != 0
-
-        processes = (
-            session.query(Process).filter(Area.scenario_id == full_scenario.id).all()
-        )
-        assert isinstance(processes, list) and len(processes) != 0
-
-        plans = session.query(Plan).filter(Area.scenario_id == full_scenario.id).all()
-        assert isinstance(plans, list) and len(plans) != 0
 
     def test_simulate_scenario_with_depot_generation(self, session, full_scenario):
         generate_depot_layout(

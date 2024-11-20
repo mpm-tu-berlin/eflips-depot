@@ -2,11 +2,8 @@
 import math
 from datetime import timedelta
 from enum import Enum, auto
-from math import ceil
 from typing import Dict, List, Tuple
 
-import eflips.model
-import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
@@ -294,171 +291,6 @@ def group_rotations_by_start_end_stop(
     return grouped_rotations
 
 
-def create_simple_depot(
-    scenario: Scenario,
-    station: Station,
-    charging_capacities: Dict[VehicleType, int],
-    cleaning_capacities: Dict[VehicleType, int],
-    charging_power: float,
-    session: sqlalchemy.orm.session.Session,
-    cleaning_duration: timedelta = timedelta(minutes=30),
-    safety_margin: float = 0.0,
-    shunting_duration: timedelta = timedelta(minutes=5),
-) -> None:
-    """
-    Creates a simple depot for a given scenario.
-
-    It has one area for each vehicle type and a charging process for each
-    area. Also an arrival area for each vehicle type.
-
-    :param safety_margin: a safety margin for the number of charging and cleaning capacities. Default is 0.0
-    :param scenario: The scenario to be simulated
-    :param station: The station where the depot is located
-    :param charging_capacities: A dictionary of vehicle types and the number of vehicles that can be charged at the same time
-    :param cleaning_capacities: A dictionary of vehicle types and the number of vehicles that can be cleaned at the same time
-    :param charging_power: The power of the charging process
-    :param cleaning_duration: The duration of the cleaning process
-    :param session: An SQLAlchemy session object to the database
-    :return: Nothing. Depots are created in the database.
-    """
-
-    # Create a simple depot
-    depot = Depot(
-        scenario=scenario,
-        name=f"Depot at {station.name}",
-        name_short=station.name_short,
-        station_id=station.id,
-    )
-    session.add(depot)
-
-    # Create plan
-    plan = Plan(scenario=scenario, name=f"Default Plan")
-    session.add(plan)
-
-    depot.default_plan = plan
-
-    # Create processes
-    shunting_1 = Process(
-        name="Shunting 1",
-        scenario=scenario,
-        dispatchable=False,
-        duration=shunting_duration,
-    )
-    clean = Process(
-        name="Arrival Cleaning",
-        scenario=scenario,
-        dispatchable=False,
-        duration=cleaning_duration,
-    )
-    shunting_2 = Process(
-        name="Shunting 2",
-        scenario=scenario,
-        dispatchable=False,
-        duration=shunting_duration,
-    )
-    charging = Process(
-        name="Charging",
-        scenario=scenario,
-        dispatchable=True,
-        electric_power=charging_power,
-    )
-    standby_departure = Process(
-        name="Standby Pre-departure",
-        scenario=scenario,
-        dispatchable=True,
-    )
-
-    session.add(clean)
-    session.add(shunting_1)
-    session.add(charging)
-    session.add(standby_departure)
-    session.add(shunting_2)
-
-    # Create shared waiting area
-    waiting_area = Area(
-        scenario=scenario,
-        name=f"Waiting Area for every type of vehicle",
-        depot=depot,
-        area_type=AreaType.DIRECT_ONESIDE,
-        capacity=100,
-    )
-    session.add(waiting_area)
-
-    for vehicle_type in charging_capacities.keys():
-        charging_count = charging_capacities[vehicle_type]
-
-        charging_count = int(ceil(charging_count * (1 + safety_margin)))
-
-        # Create charging area
-        charging_area = Area(
-            scenario=scenario,
-            name=f"Direct Charging Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=int(charging_count * 1),
-        )
-        session.add(charging_area)
-        charging_area.vehicle_type = vehicle_type
-
-        # Create cleaning area
-        cleaning_count = cleaning_capacities[vehicle_type]
-
-        cleaning_count = int(ceil(cleaning_count * (1 + safety_margin)))
-
-        cleaning_area = Area(
-            scenario=scenario,
-            name=f"Cleaning Area for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=cleaning_count,
-        )
-        session.add(cleaning_area)
-        cleaning_area.vehicle_type = vehicle_type
-
-        shunting_area_1 = Area(
-            scenario=scenario,
-            name=f"Shunting Area 1 for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=10,
-        )
-
-        session.add(shunting_area_1)
-        shunting_area_1.vehicle_type = vehicle_type
-
-        shunting_area_2 = Area(
-            scenario=scenario,
-            name=f"Shunting Area 2 for {vehicle_type.name_short}",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            capacity=10,
-        )
-
-        session.add(shunting_area_2)
-        shunting_area_2.vehicle_type = vehicle_type
-
-        cleaning_area.processes.append(clean)
-        charging_area.processes.append(charging)
-        charging_area.processes.append(standby_departure)
-        shunting_area_1.processes.append(shunting_1)
-        shunting_area_2.processes.append(shunting_2)
-
-        assocs = [
-            AssocPlanProcess(
-                scenario=scenario, process=shunting_1, plan=plan, ordinal=0
-            ),
-            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
-            AssocPlanProcess(
-                scenario=scenario, process=shunting_2, plan=plan, ordinal=2
-            ),
-            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=3),
-            AssocPlanProcess(
-                scenario=scenario, process=standby_departure, plan=plan, ordinal=4
-            ),
-        ]
-        session.add_all(assocs)
-
-
 class ProcessType(Enum):
     """This class represents the types of a process in eFLIPS-Depot."""
 
@@ -513,72 +345,244 @@ def process_type(p: Process) -> ProcessType:
         raise ValueError("Invalid process type")
 
 
-def _generate_all_direct_depot(
-    CLEAN_DURATION: int,
-    charging_power: float,
-    first_stop: Station,
+def generate_depot(
+    capacity_of_areas: Dict[VehicleType, Dict[AreaType, None | int]],
+    station: Station,
     scenario: Scenario,
     session: sqlalchemy.orm.session.Session,
-    vehicle_type_dict: Dict[VehicleType, List[Rotation]],
-    shunting_duration: timedelta = timedelta(minutes=5),
+    standard_block_length: int = 6,
+    shunting_duration: None | timedelta = timedelta(minutes=5),
+    num_shunting_slots: int = 10,
+    cleaning_duration: None | timedelta = timedelta(minutes=30),
+    num_cleaning_slots: int = 10,
+    charging_power: float = 90,
 ) -> None:
     """
-    Private inner function to generate a depot layout with an arrival and a charging area for each vehicle type.
+    Creates a depot object with all associated data structures and adds them to the database.
 
-    :param CLEAN_DURATION: The duration of the cleaning process in seconds.
-    :param charging_power: The charging power of the charging area in kW.
-    :param first_stop: The stop where the depot is located.
-    :param scenario: The scenario for which the depot layout should be generated.
-    :param session: The SQLAlchemy session object.
-    :param vehicle_type_dict: A dictionary with vehicle types as keys and rotations as values.
-    :return: Nothing. The depot layout is created in the database.
+    :param capacity_of_areas: A dictionary of vehicle types and the number of areas for each type.
+           Example: {VehicleType<"Electric Bus">: {AreaType.LINE: 3, AreaType.DIRECT_ONESIDE: 2}}
+           For no areas of a certain type, set the value to None or zero. An exception will be raised if a LINE
+           area's capacity is not a multiple of the standard block length.
+    :param station: The station where the depot is located.
+    :param scenario: The scenario to be simulated. An Exception will be raised if this differs from the station's scenario.
+    :param session: An open SQLAlchemy session.
+    :param standard_block_length: The block length (number of vehicles behind each other) for LINE areas. Defaults to 6.
+    :param shunting_duration: The duration of the shunting process. Defaults to 5 minutes. Set to None if not needed.
+    :param num_shunting_slots: The number of slots for shunting. Defaults to 10.
+    :param cleaning_duration: The duration of the cleaning process. Defaults to 30 minutes. Set to None if not needed.
+    :param num_cleaning_slots: The number of slots for cleaning. Defaults to 10.
+    :param charging_power: The charging power in kW. Defaults to 90 kW.
+    :return: Nothing. Depot is added to the database.
     """
-    max_occupancies: Dict[eflips.model.VehicleType, int] = {}
-    max_clean_occupancies: Dict[eflips.model.VehicleType, int] = {}
-    for vehicle_type, rotations in vehicle_type_dict.items():
-        # Slightly convoluted vehicle summation
-        start_time = min(
-            [rotation.trips[0].departure_time for rotation in rotations]
-        ).timestamp()
-        end_time = max(
-            [rotation.trips[-1].arrival_time for rotation in rotations]
-        ).timestamp()
-        timestamps_to_sample = np.arange(start_time, end_time, 60)
-        occupancy = np.zeros_like(timestamps_to_sample)
-        clean_occupancy = np.zeros_like(timestamps_to_sample)
-        for rotation in rotations:
-            rotation_start = rotation.trips[0].departure_time.timestamp()
-            rotation_end = rotation.trips[-1].arrival_time.timestamp()
-            occupancy += np.interp(
-                timestamps_to_sample,
-                [rotation_start, rotation_end],
-                [1, 1],
-                left=0,
-                right=0,
+
+    # Sanity checks
+    # Make sure the capacity of areas is valid.
+    for key, value in capacity_of_areas.items():
+        key: VehicleType
+        value: Dict[AreaType, None | int]
+        for possible_area_type in AreaType:
+            if possible_area_type not in value:
+                value[possible_area_type] = None
+        if (
+            value[AreaType.LINE] is not None
+            and value[AreaType.LINE] % standard_block_length != 0
+        ):
+            raise ValueError(
+                f"LINE area capacity for {key.name} is not a multiple of the standard block length."
             )
-            clean_occupancy += np.interp(
-                timestamps_to_sample,
-                [rotation_end, rotation_end + CLEAN_DURATION],
-                [1, 1],
-                left=0,
-                right=0,
+
+        if (
+            value[AreaType.DIRECT_TWOSIDE] is not None
+            and value[AreaType.DIRECT_TWOSIDE] % 2 != 0
+        ):
+            raise ValueError(
+                f"DIRECT_TWOSIDE area capacity for {key.name} is not a multiple of 2."
             )
-        max_occupancies[vehicle_type] = max(
-            max(occupancy), 1
-        )  # To avoid zero occupancy
-        max_clean_occupancies[vehicle_type] = max(max(clean_occupancy), 1)
-    # Create a simple depot at this station
-    create_simple_depot(
+
+    # Make sure the scenario is the same as the station's scenario
+    if station.scenario_id != scenario.id:
+        raise ValueError("The scenario and station do not match.")
+
+    # Create a simple depot
+    depot = Depot(
         scenario=scenario,
-        station=first_stop,
-        charging_capacities=max_occupancies,
-        cleaning_capacities=max_clean_occupancies,
-        charging_power=charging_power,
-        session=session,
-        cleaning_duration=timedelta(seconds=CLEAN_DURATION),
-        safety_margin=0.2,
-        shunting_duration=shunting_duration,
+        name=f"Depot at {station.name}",
+        name_short=station.name_short,
+        station_id=station.id,
     )
+    session.add(depot)
+
+    # Create plan
+    plan = Plan(scenario=scenario, name=f"Default Plan")
+    session.add(plan)
+
+    depot.default_plan = plan
+
+    assocs: List[AssocPlanProcess] = []
+
+    # Create processes
+    if shunting_duration is not None:
+        # Create processes
+        shunting_1 = Process(
+            name="Shunting 1",
+            scenario=scenario,
+            dispatchable=False,
+            duration=shunting_duration,
+        )
+        session.add(shunting_1)
+        shunting_area_1 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 1",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be shunted here
+            capacity=num_shunting_slots,
+        )
+        session.add(shunting_area_1)
+        shunting_area_1.processes.append(shunting_1)
+        assocs.append(
+            AssocPlanProcess(
+                scenario=scenario, process=shunting_1, plan=plan, ordinal=len(assocs)
+            )
+        )
+
+    if cleaning_duration is not None:
+        clean = Process(
+            name="Arrival Cleaning",
+            scenario=scenario,
+            dispatchable=False,
+            duration=cleaning_duration,
+        )
+        session.add(clean)
+        cleaning_area = Area(
+            scenario=scenario,
+            name=f"Cleaning Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be cleaned here
+            capacity=num_cleaning_slots,
+        )
+        session.add(cleaning_area)
+        cleaning_area.processes.append(clean)
+        assocs.append(
+            AssocPlanProcess(
+                scenario=scenario, process=clean, plan=plan, ordinal=len(assocs)
+            )
+        )
+
+    if shunting_duration is not None:
+        shunting_2 = Process(
+            name="Shunting 2",
+            scenario=scenario,
+            dispatchable=False,
+            duration=shunting_duration,
+        )
+        session.add(shunting_2)
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be shunted here
+            capacity=num_shunting_slots,
+        )
+        session.add(shunting_area_2)
+        shunting_area_2.processes.append(shunting_2)
+        assocs.append(
+            AssocPlanProcess(
+                scenario=scenario, process=shunting_2, plan=plan, ordinal=len(assocs)
+            )
+        )
+
+    charging = Process(
+        name="Charging",
+        scenario=scenario,
+        dispatchable=True,
+        electric_power=charging_power,
+    )
+    session.add(charging)
+    assocs.append(
+        AssocPlanProcess(
+            scenario=scenario, process=charging, plan=plan, ordinal=len(assocs)
+        )
+    )
+
+    standby_departure = Process(
+        name="Standby Pre-departure",
+        scenario=scenario,
+        dispatchable=True,
+    )
+    session.add(standby_departure)
+    assocs.append(
+        AssocPlanProcess(
+            scenario=scenario, process=standby_departure, plan=plan, ordinal=len(assocs)
+        )
+    )
+    session.add_all(assocs)  # It's complete, so add all at once
+
+    # Create shared waiting area
+    waiting_area = Area(
+        scenario=scenario,
+        name=f"Waiting Area for every type of vehicle",
+        depot=depot,
+        area_type=AreaType.DIRECT_ONESIDE,
+        capacity=100,
+    )
+    session.add(waiting_area)
+
+    for vehicle_type, capacities in capacity_of_areas.items():
+        vehicle_type: VehicleType
+        capacities: Dict[AreaType, None | int]
+        if capacities[AreaType.LINE] is not None and capacities[AreaType.LINE] > 0:
+            # Create a number of LINE areas
+            number_of_areas = capacities[AreaType.LINE] // standard_block_length
+            for i in range(number_of_areas):
+                area = Area(
+                    scenario=scenario,
+                    name=f"Line Area {i + 1} for {vehicle_type.name_short}",
+                    depot=depot,
+                    area_type=AreaType.LINE,
+                    vehicle_type=vehicle_type,
+                    capacity=standard_block_length,
+                )
+                area.processes.append(charging)
+                area.processes.append(standby_departure)
+                session.add(area)
+        if (
+            capacities[AreaType.DIRECT_ONESIDE] is not None
+            and capacities[AreaType.DIRECT_ONESIDE] > 0
+        ):
+            # Create a single DIRECT_ONESIDE area with the correct capacity
+            area = Area(
+                scenario=scenario,
+                name=f"Direct Area for {vehicle_type.name_short}",
+                depot=depot,
+                area_type=AreaType.DIRECT_ONESIDE,
+                vehicle_type=vehicle_type,
+                capacity=capacities[AreaType.DIRECT_ONESIDE],
+            )
+            area.processes.append(charging)
+            area.processes.append(standby_departure)
+            session.add(area)
+        if (
+            capacities[AreaType.DIRECT_TWOSIDE] is not None
+            and capacities[AreaType.DIRECT_TWOSIDE] > 0
+        ):
+            # Create a single DIRECT_TWOSIDE area with the correct capacity
+            area = Area(
+                scenario=scenario,
+                name=f"Direct Area for {vehicle_type.name_short}",
+                depot=depot,
+                area_type=AreaType.DIRECT_TWOSIDE,
+                vehicle_type=vehicle_type,
+                capacity=capacities[AreaType.DIRECT_TWOSIDE],
+            )
+            area.processes.append(charging)
+            area.processes.append(standby_departure)
+            session.add(area)
+
+    session.flush()
 
 
 def area_needed_for_vehicle_parking(
