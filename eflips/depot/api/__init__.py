@@ -456,6 +456,7 @@ def generate_depot_layout(
                 first_stop,
                 scenario,
                 session,
+                charging_power=charging_power,
                 num_shunting_slots=max(rotation_count // 10, 1),
                 num_cleaning_slots=max(rotation_count // 10, 1),
             )
