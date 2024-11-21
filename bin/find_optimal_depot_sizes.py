@@ -13,8 +13,8 @@ from tqdm.auto import tqdm
 from eflips.depot.api import (
     delete_depots,
     group_rotations_by_start_end_stop,
-    depot_smallest_possible_size,
 )
+from eflips.depot.api.private.depot import depot_smallest_possible_size
 
 
 def list_scenarios(database_url: str):
@@ -156,6 +156,5 @@ if __name__ == "__main__":
                     "w",
                 ) as f:
                     json.dump(vt_capacities_for_station, f, indent=4)
-                raise ValueError("Stop here")
             finally:
                 savepoint.rollback()
