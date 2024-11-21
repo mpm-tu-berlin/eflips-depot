@@ -74,6 +74,9 @@ class TestHelpers:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            length=10,
+            width=2.5,
+            height=4,
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
@@ -89,6 +92,9 @@ class TestHelpers:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            length=10,
+            width=2.5,
+            height=4,
         )
         session.add(vehicle_type)
 
