@@ -340,12 +340,12 @@ class VehicleSchedule:
         start_depot = (
             session.query(Depot)
             .filter(Depot.station_id == trips[0].route.departure_station_id)
-            .one()
+            .one_or_none()
         )
         end_depot = (
             session.query(Depot)
             .filter(Depot.station_id == trips[-1].route.arrival_station_id)
-            .one()
+            .one_or_none()
         )
 
         if start_depot is None or end_depot is None:
