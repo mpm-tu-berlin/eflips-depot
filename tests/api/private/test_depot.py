@@ -1,7 +1,19 @@
 import math
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
+from eflips.model import (
+    AssocRouteStation,
+    BatteryType,
+    Line,
+    Route,
+    Scenario,
+    StopTime,
+    Trip,
+    TripType,
+    VehicleClass,
+)
 from eflips.model import (
     VehicleType,
     AreaType,
@@ -22,6 +34,7 @@ from eflips.depot.api import simple_consumption_simulation, simulate_scenario
 from eflips.depot.api.private.depot import (
     area_needed_for_vehicle_parking,
     generate_depot,
+    depot_smallest_possible_size,
 )
 
 
@@ -40,6 +53,19 @@ class TestAreaCalc(TestHelpers):
                 area_needed_for_vehicle_parking(vt, area_type=AreaType.LINE, count=i)
                 == area_size
             )
+
+    def test_area_calc_compare_line_direct(self, session, full_scenario):
+        vt = session.query(VehicleType).first()
+        vt.length = 12
+        vt.width = 2.35
+
+        area_size_all_direct = area_needed_for_vehicle_parking(
+            vt, area_type=AreaType.DIRECT_ONESIDE, count=120
+        )
+        area_size_all_line = area_needed_for_vehicle_parking(
+            vt, area_type=AreaType.LINE, count=120
+        )
+        assert area_size_all_direct > area_size_all_line
 
     def test_are_calc_direct_one(self, session, full_scenario):
         # We test by comparing the results with danial's formula, which should give the same results for zero spacing.
@@ -328,3 +354,246 @@ class TestGenerateDepot(TestHelpers):
         simple_consumption_simulation(no_depot_scenario, initialize_vehicles=True)
         simulate_scenario(no_depot_scenario)
         simple_consumption_simulation(no_depot_scenario, initialize_vehicles=False)
+
+
+class TestGenerateOptimalDepot(TestHelpers):
+    @pytest.fixture()
+    def full_scenario(self, session):
+        """
+        Creates a scenario that comes filled with sample content for each type.
+
+        :param session: An SQLAlchemy Session with the eflips-model schema
+        :return: A :class:`Scenario` object
+        """
+
+        # Add a scenario
+        scenario = Scenario(name="Test Scenario")
+        session.add(scenario)
+
+        # Add a vehicle type with a battery type
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+            length=10,
+            width=2.5,
+            height=4,
+        )
+        session.add(vehicle_type)
+        battery_type = BatteryType(
+            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+        )
+        session.add(battery_type)
+        vehicle_type.battery_type = battery_type
+
+        # Add a vehicle type without a battery type
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type 2",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+            length=10,
+            width=2.5,
+            height=4,
+        )
+        session.add(vehicle_type)
+
+        # Add a VehicleClass
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Test Vehicle Class",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
+
+        line = Line(
+            scenario=scenario,
+            name="Test Line",
+            name_short="TL",
+        )
+        session.add(line)
+
+        stop_1 = Station(
+            scenario=scenario,
+            name="Test Station 1",
+            name_short="TS1",
+            geom="POINT(0 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_1)
+
+        stop_2 = Station(
+            scenario=scenario,
+            name="Test Station 2",
+            name_short="TS2",
+            geom="POINT(1 0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_2)
+
+        stop_3 = Station(
+            scenario=scenario,
+            name="Test Station 3",
+            name_short="TS3",
+            geom="POINT(2 0 0)",
+            is_electrified=False,
+        )
+
+        route_1 = Route(
+            scenario=scenario,
+            name="Test Route 1",
+            name_short="TR1",
+            departure_station=stop_1,
+            arrival_station=stop_3,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=scenario, station=stop_1, route=route_1, elapsed_distance=0
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_2, route=route_1, elapsed_distance=500
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_3, route=route_1, elapsed_distance=1000
+            ),
+        ]
+        route_1.assoc_route_stations = assocs
+        session.add(route_1)
+
+        route_2 = Route(
+            scenario=scenario,
+            name="Test Route 2",
+            name_short="TR2",
+            departure_station=stop_3,
+            arrival_station=stop_1,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=scenario, station=stop_3, route=route_2, elapsed_distance=0
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_2, route=route_2, elapsed_distance=100
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_1, route=route_2, elapsed_distance=1000
+            ),
+        ]
+        route_2.assoc_route_stations = assocs
+        session.add(route_2)
+
+        # Add the schedule objects
+        first_departure = datetime(
+            year=2020, month=1, day=1, hour=12, minute=0, second=0, tzinfo=timezone.utc
+        )
+        interval = timedelta(minutes=30)
+        duration = timedelta(minutes=20)
+
+        # Create a number of rotations
+        number_of_rotations = 20
+        for vehicle_type in scenario.vehicle_types:
+            for rotation_id in range(number_of_rotations):
+                trips = []
+
+                rotation = Rotation(
+                    scenario=scenario,
+                    trips=trips,
+                    vehicle_type=vehicle_type,
+                    allow_opportunity_charging=False,
+                )
+                session.add(rotation)
+
+                for i in range(15):
+                    # forward
+                    trips.append(
+                        Trip(
+                            scenario=scenario,
+                            route=route_1,
+                            trip_type=TripType.PASSENGER,
+                            departure_time=first_departure + 2 * i * interval,
+                            arrival_time=first_departure + 2 * i * interval + duration,
+                            rotation=rotation,
+                        )
+                    )
+                    stop_times = [
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_1,
+                            arrival_time=first_departure + 2 * i * interval,
+                        ),
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_2,
+                            arrival_time=first_departure
+                            + 2 * i * interval
+                            + timedelta(minutes=5),
+                            dwell_duration=timedelta(minutes=1),
+                        ),
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_3,
+                            arrival_time=first_departure + 2 * i * interval + duration,
+                        ),
+                    ]
+                    trips[-1].stop_times = stop_times
+
+                    # backward
+                    trips.append(
+                        Trip(
+                            scenario=scenario,
+                            route=route_2,
+                            trip_type=TripType.PASSENGER,
+                            departure_time=first_departure + (2 * i + 1) * interval,
+                            arrival_time=first_departure
+                            + (2 * i + 1) * interval
+                            + duration,
+                            rotation=rotation,
+                        )
+                    )
+                    stop_times = [
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_3,
+                            arrival_time=first_departure + (2 * i + 1) * interval,
+                        ),
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_2,
+                            arrival_time=first_departure
+                            + (2 * i + 1) * interval
+                            + timedelta(minutes=5),
+                        ),
+                        StopTime(
+                            scenario=scenario,
+                            station=stop_1,
+                            arrival_time=first_departure
+                            + (2 * i + 1) * interval
+                            + duration,
+                        ),
+                    ]
+                    trips[-1].stop_times = stop_times
+                session.add_all(trips)
+
+                first_departure += timedelta(minutes=20)
+
+        # We need to set the consumption values for all vehicle types to 1
+        for vehicle_type in scenario.vehicle_types:
+            vehicle_type.consumption = 1
+        session.flush()
+
+        session.commit()
+        return scenario
+
+    def test_generate_optimal_depot(self, session, full_scenario):
+        station_to_create_at = (
+            session.query(Station).filter(Station.name_short == "TS1").one()
+        )
+        depot_smallest_possible_size(
+            station_to_create_at, full_scenario, session, standard_block_length=6
+        )

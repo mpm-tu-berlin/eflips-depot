@@ -1,9 +1,11 @@
 """This package contains the private API for the depot-related functionality in eFLIPS."""
+import logging
 import math
 from datetime import timedelta
 from enum import Enum, auto
 from typing import Dict, List, Tuple
 
+import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
     Scenario,
@@ -19,7 +21,10 @@ from eflips.model import (
     Trip,
     Station,
     VehicleType,
+    Vehicle,
+    EventType,
 )
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 
@@ -656,7 +661,9 @@ def area_needed_for_vehicle_parking(
             area_height = length * standard_block_length + (
                 spacing * (standard_block_length - 1)
             )
-            area_width = width * number_of_rows + (spacing * (number_of_rows - 1))
+            area_width = width * number_of_rows + (
+                spacing * max((number_of_rows - 1), 0)
+            )
 
         case AreaType.DIRECT_ONESIDE:
             # Here, it's more complicated math, due to the vehicles being parked at an angle
@@ -684,6 +691,8 @@ def area_needed_for_vehicle_parking(
             h = (1 / math.cos(angle)) * vehicle_type.width
             space_between = (count - 1) * math.cos(angle) * spacing
             area_height = b_0 + (count - 1) * h + space_between
+            if count == 0:
+                area_height = 0
 
             # Area width, according tho the formula in the docs
             area_width = (
@@ -708,3 +717,328 @@ def area_needed_for_vehicle_parking(
             raise NotImplementedError("This area type is not yet implemented")
 
     return area_height * area_width
+
+
+def find_peak_usage(
+    depot: Depot,
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    resolution: timedelta = timedelta(minutes=1),
+) -> Dict[VehicleType, Dict[AreaType, int]]:
+    """
+    Identifies the peak usage of the depot.
+
+    :param depot: The depot to be analyzed.
+    :param scenario: The scenario to be analyzed.
+    :param session: An open SQLAlchemy session.
+    :return: A Dict of vehicle types and the number of areas for each type.
+    """
+    if depot.scenario_id != scenario.id:
+        raise ValueError("The scenario and depot do not match.")
+
+    # Find the first and last CHARGING_DEPOT | STANDARD_DEPARTURE events
+    event_q = (
+        session.query(Event)
+        .join(Area)
+        .join(Depot)
+        .join(VehicleType, VehicleType.id == Area.vehicle_type_id)
+        .filter(Depot.id == depot.id)
+        .filter(
+            or_(
+                Event.event_type == EventType.CHARGING_DEPOT,
+                Event.event_type == EventType.STANDBY_DEPARTURE,
+            )
+        )
+    )
+    first_event_start = event_q.order_by(Event.time_start).first().time_start
+    last_event_end = event_q.order_by(Event.time_end.desc()).first().time_end
+
+    # Create an array of occupancy at each point in time
+    peak_occupancy: Dict[VehicleType, Dict[AreaType, int]] = {}
+    timestamps = np.arange(
+        first_event_start.timestamp(),
+        last_event_end.timestamp(),
+        resolution.total_seconds(),
+    )
+    for vehicle_type in (
+        session.query(VehicleType)
+        .join(Event)
+        .join(Area)
+        .join(Depot)
+        .filter(Depot.id == depot.id)
+        .distinct()
+    ):
+        peak_occupancy[vehicle_type] = {}
+        for area_type in AreaType:
+            occupancy = np.zeros(len(timestamps))
+            for event in event_q.filter(VehicleType.id == vehicle_type.id).filter(
+                Area.area_type == area_type
+            ):
+                start = event.time_start.timestamp()
+                end = event.time_end.timestamp()
+                start_index = np.searchsorted(timestamps, start)
+                end_index = np.searchsorted(timestamps, end)
+                occupancy[start_index:end_index] += 1
+            peak_occupancy[vehicle_type][area_type] = int(np.max(occupancy))
+    return peak_occupancy
+
+
+def depot_smallest_possible_size(
+    station: Station,
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    standard_block_length: int = 6,
+    charging_power: float = 90,
+) -> Dict[VehicleType, Dict[AreaType, None | int]]:
+    """
+    Identifies the smallest (in terms of area footprint) depot that can still fit the required vehicles.
+
+    This is done by first creating an "all direct" depot and identifying the amount of places needed for each vehivle
+    type. Then, rows of LINE areas are iteratively added until there are as many LINE areas (by area) as there are
+    DIRECT areas. For each count of line areas, the amount of still-needed direct areas is calculated.
+
+    Finally, the configuration with the smallest area footprint is returned.
+
+    :param station: The station where the depot is located. Rotations starting and ending at this station are considered.
+    :param scenario: The scenario to be simulated.
+    :param session: An open SQLAlchemy session.
+    :return: A dictionary of vehicle types and the number of areas for each type. This can be used as input for
+             :func:`generate_depot`.
+    """
+
+    # Local imports to avoid circular imports
+    from eflips.depot.api import simple_consumption_simulation, simulate_scenario
+
+    logger = logging.getLogger(__name__)
+
+    # Find all rotations starting and ending at this station
+    grouped_rotations: Dict[
+        Tuple[Station, Station], Dict[VehicleType, List[Rotation]]
+    ] = group_rotations_by_start_end_stop(station.scenario_id, session)
+
+    if (station, station) not in grouped_rotations.keys():
+        raise ValueError("There are no rotations starting and ending at this station.")
+
+    vts_and_rotations: Dict[VehicleType, List[Rotation]] = grouped_rotations[
+        (station, station)
+    ]
+
+    # Create a depot with only direct areas, one per rotation
+    vts_and_counts: Dict[VehicleType, Dict[AreaType, int]] = {}
+    for vt, rotations in vts_and_rotations.items():
+        vts_and_counts[vt] = {
+            AreaType.DIRECT_ONESIDE: len(rotations),
+            AreaType.LINE: 0,
+            AreaType.DIRECT_TWOSIDE: 0,
+        }
+
+    # Iterate over the vehicle types and line areas, calculating the total area demand.
+    try:
+        # Simulate this depot and find the actual peak usage
+        # Delete existing depots and simulation results
+        delete_depots(scenario, session)
+        session.query(Rotation).update({"vehicle_id": None})
+        session.query(Event).delete()
+        session.query(Vehicle).delete()
+        session.flush()
+
+        # Create the depot
+        generate_depot(
+            vts_and_counts,
+            station,
+            scenario,
+            session,
+            standard_block_length=standard_block_length,
+            cleaning_duration=None,
+            shunting_duration=None,
+            charging_power=charging_power,
+        )
+        depot = session.query(Depot).filter(Depot.scenario_id == scenario.id).one()
+
+        # Simulate the depot
+        simple_consumption_simulation(scenario, initialize_vehicles=True)
+        simulate_scenario(scenario)
+
+        # Find the peak usage of the depot
+        peak_occupancies: Dict[VehicleType, Dict[AreaType, int]] = find_peak_usage(
+            depot, scenario, session
+        )
+        # Find the vehicle count for each vehicle type
+        vehicle_counts_all_direct: Dict[VehicleType, int] = dict()
+        for vehicle_type in peak_occupancies.keys():
+            vehicle_count_q = (
+                session.query(Vehicle)
+                .join(Event)
+                .join(Area)
+                .join(Depot)
+                .join(VehicleType, onclause=VehicleType.id == Vehicle.vehicle_type_id)
+                .filter(Depot.id == depot.id)
+                .filter(VehicleType.id == vehicle_type.id)
+                .distinct()
+                .count()
+            )
+            vehicle_counts_all_direct[vehicle_type] = vehicle_count_q
+            logger.debug(
+                f"Vehicle Count for {vehicle_type.name} in all-direct: {vehicle_count_q}"
+            )
+
+        # Delete existing depots and simulation results
+        delete_depots(scenario, session)
+        session.query(Rotation).update({"vehicle_id": None})
+        session.query(Event).delete()
+        session.query(Vehicle).delete()
+        session.flush()
+
+        # How many lines would that be if we go all lines?
+        max_number_of_line_areas: Dict[VehicleType, int] = dict()
+        for vt, count in peak_occupancies.items():
+            max_number_of_line_areas[vt] = math.ceil(
+                count[AreaType.DIRECT_ONESIDE] / standard_block_length
+            )
+
+        # Store the area needed for each vehicle type and number of line areas
+        area_needed: Dict[VehicleType, Dict[int, float]] = dict()
+        occupancy_of_direct_areas: Dict[VehicleType, Dict[int, int]] = dict()
+
+        for vt, rotations in vts_and_rotations.items():
+            # Remove all rotations by other vehicle types from the database. This will speed up the process.
+            # We `session.rollback()` after this, so the database is not changed.
+            for vt2 in vts_and_rotations.keys():
+                # Delete existing depots and simulation results
+                delete_depots(scenario, session)
+                session.query(Rotation).update({"vehicle_id": None})
+                session.query(Event).delete()
+                session.query(Vehicle).delete()
+                session.flush()
+
+                if vt2 != vt:
+                    rotations = vts_and_rotations[vt2]
+                    for rotation in rotations:
+                        for trip in rotation.trips:
+                            for stop_time in trip.stop_times:
+                                session.delete(stop_time)
+                            session.delete(trip)
+                        session.delete(rotation)
+                    session.flush()
+                    logger.debug(f"Temporarily Deleted all rotations for {vt2.name}")
+            area_needed[vt] = dict()
+            occupancy_of_direct_areas[vt] = dict()
+            for amount_of_line_areas in range(max_number_of_line_areas[vt] + 2):
+                # Create a depot with the given amount of line areas
+                new_vts_and_counts = {
+                    vt: {
+                        AreaType.LINE: amount_of_line_areas * standard_block_length,
+                        AreaType.DIRECT_ONESIDE: len(vts_and_rotations[vt]),
+                        AreaType.DIRECT_TWOSIDE: 0,
+                    }
+                }
+
+                # Delete existing depots and simulation results
+                delete_depots(scenario, session)
+                session.query(Rotation).update({"vehicle_id": None})
+                session.query(Event).delete()
+                session.query(Vehicle).delete()
+                session.flush()
+
+                # Create the depot
+                generate_depot(
+                    new_vts_and_counts,
+                    station,
+                    scenario,
+                    session,
+                    standard_block_length=standard_block_length,
+                    cleaning_duration=None,
+                    shunting_duration=None,
+                    charging_power=charging_power,
+                )
+                depot = (
+                    session.query(Depot).filter(Depot.scenario_id == scenario.id).one()
+                )
+
+                # Simulate the depot
+                simple_consumption_simulation(scenario, initialize_vehicles=True)
+                simulate_scenario(scenario)
+
+                # Find the peak usage of the depot
+                peak_occupancies: Dict[
+                    VehicleType, Dict[AreaType, int]
+                ] = find_peak_usage(depot, scenario, session)
+
+                if len(peak_occupancies.keys()) != 1:
+                    raise ValueError(
+                        "There should only be one vehicle type in the depot"
+                    )
+
+                peak_occupancy = peak_occupancies[vt]
+                area_for_line_areas = area_needed_for_vehicle_parking(
+                    vehicle_type=vt,
+                    area_type=AreaType.LINE,
+                    count=peak_occupancy[AreaType.LINE],
+                    standard_block_length=standard_block_length,
+                )
+                area_for_direct_areas = area_needed_for_vehicle_parking(
+                    vehicle_type=vt,
+                    area_type=AreaType.DIRECT_ONESIDE,
+                    count=peak_occupancy[AreaType.DIRECT_ONESIDE],
+                )
+
+                logger.debug(
+                    f"A{vt.name} in {amount_of_line_areas} line areas configuration:\n"
+                    f"{area_for_line_areas:.1f} m² for line areas, {area_for_direct_areas:.1f} m² for direct areas\n"
+                    f"(total: {area_for_line_areas + area_for_direct_areas:.1f} m²)\n"
+                    f"Direct areas occupancy: {peak_occupancy[AreaType.DIRECT_ONESIDE]}\n"
+                    f"Line areas occupancy: {peak_occupancy[AreaType.LINE]}\n"
+                )
+
+                # Find the vehicle count
+                vehicle_count_q = (
+                    session.query(Vehicle)
+                    .join(VehicleType)
+                    .join(Event)
+                    .join(Area)
+                    .join(Depot)
+                    .filter(Depot.id == depot.id)
+                    .filter(VehicleType.id == vt.id)
+                    .distinct()
+                    .count()
+                )
+                if vehicle_count_q <= vehicle_counts_all_direct[vt]:
+                    logger.debug(
+                        f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is <= than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
+                    )
+                    occupancy_of_direct_areas[vt][
+                        amount_of_line_areas
+                    ] = peak_occupancy[AreaType.DIRECT_ONESIDE]
+                    area_needed[vt][amount_of_line_areas] = (
+                        area_for_line_areas + area_for_direct_areas
+                    )
+
+                else:
+                    logger.debug(
+                        f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is > than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
+                    )
+            delete_depots(scenario, session)
+            session.query(Rotation).update({"vehicle_id": None})
+            session.query(Event).delete()
+            session.query(Vehicle).delete()
+            session.flush()
+            session.rollback()
+        # Identify the best configuration for each vehicle type
+        ret_val: Dict[VehicleType, Dict[AreaType, int]] = dict()
+        for vt in vts_and_rotations.keys():
+            best_config = min(area_needed[vt].keys(), key=lambda x: area_needed[vt][x])
+            ret_val[vt] = {
+                AreaType.LINE: best_config * standard_block_length,
+                AreaType.DIRECT_ONESIDE: occupancy_of_direct_areas[vt][best_config],
+                AreaType.DIRECT_TWOSIDE: 0,
+            }
+        return ret_val
+    finally:
+        # Delete existing depots and simulation results
+        delete_depots(scenario, session)
+        session.query(Rotation).update({"vehicle_id": None})
+        session.query(Event).delete()
+        session.query(Vehicle).delete()
+        session.flush()
+
+        session.rollback()
