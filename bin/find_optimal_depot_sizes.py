@@ -98,6 +98,16 @@ if __name__ == "__main__":
         # It is run here explicitly for clarity.
         delete_depots(scenario, session)
 
+        # Temporary workaround to set vehicle energy consumption manually
+        # TODO: Replace by "use DS consumption if LUT"
+        for vehicle_type in (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        ):
+            vehicle_type.consumption = 2.0
+            vehicle_type.vehicle_classes = []
+
         ##### Step 1: Find all potential depots #####
         # These are all the spots where a rotation starts and end
         warnings.simplefilter("ignore", category=ConsistencyWarning)
