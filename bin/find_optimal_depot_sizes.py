@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from eflips.depot.api import (
     delete_depots,
     group_rotations_by_start_end_stop,
+    simple_consumption_simulation,
 )
 from eflips.depot.api.private.depot import depot_smallest_possible_size
 
@@ -108,6 +109,10 @@ if __name__ == "__main__":
             vehicle_type.consumption = 2.0
             vehicle_type.vehicle_classes = []
 
+        ##### Step 0: Consumption Simulation #####
+        # Run the consumption simulation for all depots
+        simple_consumption_simulation(scenario, initialize_vehicles=True)
+
         ##### Step 1: Find all potential depots #####
         # These are all the spots where a rotation starts and end
         warnings.simplefilter("ignore", category=ConsistencyWarning)
@@ -122,10 +127,12 @@ if __name__ == "__main__":
                 raise ValueError("First and last stop of a rotation are not the same.")
 
             station = first_stop
-
             savepoint = session.begin_nested()
             try:
                 # (Temporarily) Delete all rotations not starting or ending at the station
+                logger.debug(
+                    f"Deleting all rotations not starting or ending at {station.name}"
+                )
                 all_rot_for_scenario = (
                     session.query(Rotation)
                     .filter(Rotation.scenario_id == scenario.id)
@@ -138,10 +145,14 @@ if __name__ == "__main__":
                         for trip in rot.trips:
                             for stop_time in trip.stop_times:
                                 to_delete.append(stop_time)
+                            for event in trip.events:
+                                to_delete.append(event)
                             to_delete.append(trip)
                         to_delete.append(rot)
                 for obj in tqdm(to_delete):
+                    session.flush()
                     session.delete(obj)
+                    session.flush()
 
                 logger.info(f"Generating depot layout for station {station.name}")
                 vt_capacities_for_station = depot_smallest_possible_size(

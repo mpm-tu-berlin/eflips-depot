@@ -807,7 +807,7 @@ def depot_smallest_possible_size(
     """
 
     # Local imports to avoid circular imports
-    from eflips.depot.api import simple_consumption_simulation, simulate_scenario
+    from eflips.depot.api import simulate_scenario
 
     logger = logging.getLogger(__name__)
 
@@ -825,16 +825,7 @@ def depot_smallest_possible_size(
 
     outer_savepoint = session.begin_nested()
 
-    # Run the consumption simulation for the depot
-    # Delete existing depots and simulation results
-    delete_depots(scenario, session)
-    session.query(Rotation).update({"vehicle_id": None})
-    session.query(Event).delete()
-    session.query(Vehicle).delete()
-    session.flush()
-    simple_consumption_simulation(scenario, initialize_vehicles=True)
-
-    # Start a nested transaction, its changes will be rolled back
+    # THis is the nested transaction for the initial "all direct" depot creation
     savepoint = session.begin_nested()
 
     try:
@@ -896,12 +887,6 @@ def depot_smallest_possible_size(
                     count[AreaType.DIRECT_ONESIDE] / standard_block_length
                 )
     finally:
-        # Delete existing depots and simulation results
-        # delete_depots(scenario, session)
-        # session.query(Rotation).update({"vehicle_id": None})
-        # session.query(Event).delete()
-        # session.query(Vehicle).delete()
-        # session.flush()
         savepoint.rollback()
 
     # Iterate over the vehicle types and line areas, calculating the total area demand.
@@ -911,6 +896,7 @@ def depot_smallest_possible_size(
     occupancy_of_direct_areas: Dict[VehicleType, Dict[int, int]] = dict()
     try:
         for vt, rotations in vts_and_rotations.items():
+            # This is the savepoint for each vehicle type
             savepoint = session.begin_nested()
 
             # Remove all rotations by other vehicle types from the database. This will speed up the process.
@@ -931,6 +917,7 @@ def depot_smallest_possible_size(
             area_needed[vt] = dict()
             occupancy_of_direct_areas[vt] = dict()
             for amount_of_line_areas in range(max_number_of_line_areas[vt] + 2):
+                # This is the savepoint for each number of line areas
                 inner_savepoint = session.begin_nested()
                 try:
                     # Create a depot with the given amount of line areas
@@ -1030,7 +1017,6 @@ def depot_smallest_possible_size(
                         continue
                 finally:
                     inner_savepoint.rollback()
-
             savepoint.rollback()
         # Identify the best configuration for each vehicle type
         ret_val: Dict[VehicleType, Dict[AreaType, int]] = dict()
