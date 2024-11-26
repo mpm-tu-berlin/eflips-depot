@@ -8,33 +8,14 @@ from api.test_api import TestHelpers
 from eflips.depot import Depotinput, SimpleTrip, SimulationHost
 from eflips.depot.api.private.depot import depot_to_template
 from eflips.depot.api.private.util import (
-    vehicle_type_to_eflips,
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
     check_depot_validity,
-)
-from eflips.depot.simple_vehicle import (
-    VehicleType as EflipsVehicleType,
 )
 from eflips.depot.standalone import Timetable as EflipsTimeTable
 
 
 class TestVehicleType(TestHelpers):
-    def test_vehicle_type_to_eflips(self, session, scenario):
-        # Add a vehicle type
-        vehicle_type = VehicleType(
-            scenario=scenario,
-            name="Test Vehicle Type",
-            battery_capacity=100,
-            charging_curve=[[0, 150], [1, 150]],
-            opportunity_charging_capable=True,
-        )
-        session.add(vehicle_type)
-        session.commit()
-
-        eflips_type = vehicle_type_to_eflips(vehicle_type)
-        assert isinstance(eflips_type, EflipsVehicleType)
-
     def test_vehicle_type_to_gc(self, session, scenario):
         # Add a vehicle type
         vehicle_type = VehicleType(

@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import argparse
+import logging
 import os
 import warnings
 
@@ -14,9 +15,9 @@ from eflips.depot.api import (
     init_simulation,
     insert_dummy_standby_departure_events,
     run_simulation,
-    generate_realistic_depot_layout,
     simple_consumption_simulation,
     apply_even_smart_charging,
+    generate_depot_layout,
 )
 
 
@@ -104,16 +105,18 @@ if __name__ == "__main__":
         for vehicle_type in scenario.vehicle_types:
             vehicle_type.consumption = 1
 
-        # Using simple consumption simulation
         # We suppress the ConsistencyWarning, because it happens a lot with BVG data and is fine
         # It could indicate a problem with the rotations with other data sources
         warnings.simplefilter("ignore", category=ConsistencyWarning)
-        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
+        logging.basicConfig(level=logging.DEBUG)
         ##### Step 2: Generate the depot layout
-        generate_realistic_depot_layout(
+        generate_depot_layout(
             scenario=scenario, charging_power=300, delete_existing_depot=True
         )
+
+        # Using simple consumption simulation
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
 
         ##### Step 3: Run the simulation
         # This can be done using eflips.api.run_simulation. Here, we use the three steps of

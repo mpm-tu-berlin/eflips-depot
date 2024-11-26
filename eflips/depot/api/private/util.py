@@ -20,7 +20,6 @@ from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable
-from eflips.depot import VehicleType as EflipsVehicleType
 
 
 @contextmanager
@@ -80,22 +79,6 @@ def create_session(
                 session.close()
             if engine is not None:
                 engine.dispose()
-
-
-def vehicle_type_to_eflips(vt: VehicleType) -> EflipsVehicleType:
-    """Convert a VehicleType object to an eflips-depot VehicleType object."""
-
-    # Create the depot VehicleType object
-    eflips_vehicle_type = EflipsVehicleType(
-        str(vt.id),
-        vt.battery_capacity,
-        0.0,
-        1.0,
-        1.0,
-        1.0,
-        vt.consumption,
-    )
-    return eflips_vehicle_type
 
 
 def vehicle_type_to_global_constants_dict(vt: VehicleType) -> Dict[str, float]:
@@ -342,7 +325,7 @@ class VehicleSchedule:
         )
         if len(events) != len(trips):
             raise ValueError(
-                f"Rotation {rot.id} has {len(trips)} trips but only {len(events)} events."
+                f"Rotation {rot.id} has {len(trips)} trips but {len(events)} events."
             )
         if set([event.trip_id for event in events]) != set([trip.id for trip in trips]):
             raise ValueError(f"The events of rotation {rot.id} do not match the trips.")
@@ -357,12 +340,12 @@ class VehicleSchedule:
         start_depot = (
             session.query(Depot)
             .filter(Depot.station_id == trips[0].route.departure_station_id)
-            .one()
+            .one_or_none()
         )
         end_depot = (
             session.query(Depot)
             .filter(Depot.station_id == trips[-1].route.arrival_station_id)
-            .one()
+            .one_or_none()
         )
 
         if start_depot is None or end_depot is None:

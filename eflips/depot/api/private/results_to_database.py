@@ -294,7 +294,8 @@ def complete_standby_departure_events(
             # End time of a standby_departure will be the start of the following trip
             if i == len(time_keys) - 1:
                 # The event reaches simulation end
-                end_time = latest_time
+                end_time = max(latest_time, max(time_keys))
+                # Lu: Apparently sometimes there are events going beyond the simulation end time?
             else:
                 end_time = time_keys[i + 1]
 
