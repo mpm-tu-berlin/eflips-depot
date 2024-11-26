@@ -594,6 +594,10 @@ class TestGenerateOptimalDepot(TestHelpers):
         station_to_create_at = (
             session.query(Station).filter(Station.name_short == "TS1").one()
         )
+
+        # Run a consumption simulation
+        simple_consumption_simulation(full_scenario, initialize_vehicles=True)
+
         depot_smallest_possible_size(
             station_to_create_at, full_scenario, session, standard_block_length=6
         )

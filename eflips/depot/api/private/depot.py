@@ -797,6 +797,10 @@ def depot_smallest_possible_size(
     type. Then, rows of LINE areas are iteratively added until there are as many LINE areas (by area) as there are
     DIRECT areas. For each count of line areas, the amount of still-needed direct areas is calculated.
 
+    Before calling this method:
+    - An initial energy consumption simulation, creating DRIVING events for all trips, should have been run
+    - The dataset should be reduced to only contain a single depot.
+
     Finally, the configuration with the smallest area footprint is returned.
 
     :param station: The station where the depot is located. Rotations starting and ending at this station are considered.
