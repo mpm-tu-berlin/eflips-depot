@@ -450,7 +450,8 @@ def update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) ->
     # Delete all non-depot events
     session.query(Event).filter(
         Event.scenario == scenario,
-        Event.trip_id.isnot(None) | Event.station_id.isnot(None),
+        Event.trip_id.isnot(None)
+        | (Event.station_id.isnot(None) & Event.area_id.is_(None)),
     ).delete(synchronize_session="auto")
 
     session.flush()
