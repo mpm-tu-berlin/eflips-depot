@@ -220,6 +220,7 @@ def simple_consumption_simulation(
                         scenario_id=scenario.id,
                         vehicle_type_id=vehicle.vehicle_type_id,
                         vehicle=vehicle,
+                        station_id=area.depot.station_id,
                         area_id=area.id,
                         subloc_no=area.capacity,
                         time_start=standby_start,
