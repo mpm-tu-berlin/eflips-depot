@@ -399,11 +399,16 @@ def add_events_into_database(
             logger.warning("Refusing to create an event with zero duration.")
             continue
 
+        # Get station_id of the current depot through area
+
+        current_area = session.query(Area).filter(Area.id == process_dict["area"]).one()
+        station_id = current_area.depot.station_id
+
         current_event = Event(
             scenario=scenario,
             vehicle_type_id=db_vehicle.vehicle_type_id,
             vehicle=db_vehicle,
-            station_id=None,
+            station_id=station_id,
             area_id=int(process_dict["area"]),
             subloc_no=int(process_dict["slot"]) - 1
             if "slot" in process_dict.keys()
