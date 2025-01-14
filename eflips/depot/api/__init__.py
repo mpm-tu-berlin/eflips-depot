@@ -25,13 +25,12 @@ The following steps are recommended for using the API:
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 """
 import copy
-import datetime
 import logging
 import os
 import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional, Union, List
@@ -1025,7 +1024,7 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
 
 
 def insert_dummy_standby_departure_events(
-    depot_id: int, session: Session, sim_time_end: Optional[datetime.datetime] = None
+    depot_id: int, session: Session, sim_time_end: Optional[datetime] = None
 ) -> None:
     """
     Workaround for the missing STANDBY_DEPARTURE events in the database.
