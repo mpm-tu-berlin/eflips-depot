@@ -486,6 +486,35 @@ def simple_consumption_simulation(
                             1,
                         )
 
+                        # If the post_charge_soc is 1, calculate when the vehicle was full
+                        if post_charge_soc == 1:
+                            # 1. Get the max charging power (kW)
+                            max_power = max([v[1] for v in vehicle_type.charging_curve])
+
+                            # 2. Energy needed (kWh) to go from current_soc to 100%
+                            energy_needed_kWh = (
+                                1 - current_soc
+                            ) * vehicle_type.battery_capacity
+
+                            # 3. Compute how long that takes at max_power (in hours)
+                            time_needed_hours = energy_needed_kWh / max_power
+
+                            # 4. Calculate the point in time the vehicle became full
+                            #    If charging effectively starts right after terminus_deadtime
+                            time_full = (
+                                trip.arrival_time
+                                + terminus_deadtime / 2
+                                + timedelta(hours=time_needed_hours)
+                            )
+
+                            # 5. Make sure it is before the time charging must end the latest
+                            assert time_full <= next_trip.departure_time - (
+                                terminus_deadtime / 2
+                            )
+
+                        else:
+                            time_full = None
+
                         # Create a simple timeseries for the charging event
                         timeseries = {
                             "time": [
@@ -503,6 +532,11 @@ def simple_consumption_simulation(
                                 post_charge_soc,
                             ],
                         }
+
+                        # If time_full is not None, add it to the timeseries in the middle
+                        if time_full is not None:
+                            timeseries["time"].insert(2, time_full.isoformat())
+                            timeseries["soc"].insert(2, 1)
 
                         # Create the charging event
                         current_event = Event(
