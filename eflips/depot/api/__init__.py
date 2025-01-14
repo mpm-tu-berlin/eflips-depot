@@ -186,6 +186,7 @@ def simple_consumption_simulation(
           - A :class:`eflips.model.Scenario` instance containing the input data for the simulation.
           - An integer specifying the ID of a scenario in the database.
           - Any other object with an integer ``id`` attribute.
+
         If not passing a :class:`eflips.model.Scenario` directly, the `database_url` parameter
         or the environment variable ``DATABASE_URL`` must point to a valid database.
 
@@ -747,9 +748,9 @@ def simulate_scenario(
     :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
         default is SmartChargingStrategy.NONE. The following strategies are available:
         - SmartChargingStrategy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
-          from the time they arrive at the depot until they are full (or leave the depot).
+        from the time they arrive at the depot until they are full (or leave the depot).
         - SmartChargingStrategy.EVEN: Use smart charging with an even distribution of charging power over the time the
-          bus is at the depot. This aims to minimize the peak power demand.
+        bus is at the depot. This aims to minimize the peak power demand.
         - SmartChargingStrategy.MIN_PRICE: Not implemented yet.
 
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.

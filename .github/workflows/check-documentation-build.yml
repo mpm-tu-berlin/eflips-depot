@@ -26,7 +26,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install poetry
-          poetry config experimental.system-git-client true
+          poetry config system-git-client true
       - name: Install Dependencies (dev only)
         run: |
           poetry install --no-root --only dev
