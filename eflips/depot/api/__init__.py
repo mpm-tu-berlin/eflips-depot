@@ -340,7 +340,10 @@ def simple_consumption_simulation(
             if vehicle_type.consumption is None:
                 # If the vehicle type has no consumption value, all trips must have a precomputed consumption result
                 all_trip_ids = [trip.id for trip in rotation.trips]
-                if not all(trip_id in consumption_result for trip_id in all_trip_ids):
+                if not (
+                    consumption_result is not None
+                    and all(trip_id in consumption_result for trip_id in all_trip_ids)
+                ):
                     raise ValueError(
                         "The vehicle type does not have a consumption value set and no consumption results are provided."
                     )
