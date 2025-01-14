@@ -30,10 +30,11 @@ import logging
 import os
 import warnings
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 import sqlalchemy.orm
 from eflips.model import (
@@ -107,47 +108,130 @@ class SmartChargingStrategy(Enum):
     """
 
 
+@dataclass
+class ConsumptionResult:
+    """
+    A dataclass that stores the results of a charging simulation for a single trip.
+
+    This class holds both the total change in battery State of Charge (SoC) over the trip
+    as well as an optional timeseries of timestamps and incremental SoC changes. When
+    an entry exists for a given trip in ``consumption_result``, the simulation will use
+    these precomputed values instead of recalculating the SoC changes from the vehicle
+    distance and consumption.
+
+    :param delta_soc_total:
+        The total change in the vehicle's State of Charge over the trip, typically
+        negative if the vehicle is consuming energy (e.g., -0.15 means the SoC
+        dropped by 15%).
+
+    :param timestamps:
+        A list of timestamps (e.g., arrival times at stops) that mark the times
+        associated with the SoC changes. The number of timestamps must match the
+        number of entries in ``delta_soc``.
+
+    :param delta_soc:
+        A list of cumulative SoC changes corresponding to the ``timestamps``.
+        For example, if ``delta_soc[i] = -0.02``, it means the SoC decreased by 2%
+        between from the start of the trip to ``timestamps[i]``. This list should typically
+        be a monotonic decreasing sequence.
+    """
+
+    delta_soc_total: float
+    timestamps: List[datetime] | None
+    delta_soc: List[float] | None
+
+
 def simple_consumption_simulation(
     scenario: Union[Scenario, int, Any],
     initialize_vehicles: bool,
     database_url: Optional[str] = None,
     calculate_timeseries: bool = False,
     terminus_deadtime: timedelta = timedelta(minutes=1),
+    consumption_result: Dict[int, ConsumptionResult] | None = None,
 ) -> None:
     """
-    A simple consumption simulation and vehicle initialization.
+    Run a simple consumption simulation and optionally initialize vehicles in the database.
 
-    Energy consumotion is calculated by multiplying the vehicle's total distance by a constant
-    ``VehicleType.consumption``.
+    This function calculates energy consumption by multiplying each vehicle's total traveled
+    distance by a constant ``VehicleType.consumption`` (kWh per km), then updates the database
+    with the resulting SoC (State of Charge) data. The function can also use precomputed results
+    for specific trips via the ``consumption_result`` parameter.
 
-    If run with ``initialize_vehicles=True``, the method will also initialize the vehicles in the database with the
-    correct vehicle type and assign them to rotations. If this is false, it will assume that there are already vehicle
-    entries and ``Rotation.vehicle_id`` is already set.
+    If ``initialize_vehicles`` is True, vehicles and an initial STANDBY event (with 100% SoC)
+    are created for each rotation that does not already have a vehicle. If it is False, existing
+    vehicles in the database are assumed, and a check is performed to ensure each rotation has a
+    vehicle.
 
-    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
-        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
-        ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
-        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
-        valid database URL.
+    Opportunity charging can optionally be applied at the end of each trip, if the vehicle and
+    station both allow it, and if the rotation is flagged to allow it. This charging event is
+    constrained by a configurable terminus deadtime.
 
-    :param initialize_vehicles: A boolean flag indicating whether the vehicles should be initialized in the database.
-        When running this function for the first time, this should be set to True. When running this function again
-        after the vehicles have been initialized, this should be set to False.
+    **SoC Constraints**
 
-    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a
-        valid database URL.
+    - When no precomputed results are provided, SoC is computed by subtracting energy used
+      (`consumption * distance / battery_capacity`) from the previous event’s SoC.
+    - When precomputed ``ConsumptionResult`` objects are provided in ``consumption_result``,
+      they must have a non-positive total change in SoC (``delta_soc_total <= 0``).
+      If the function detects a positive ``delta_soc_total``, it raises a ``ValueError``.
 
-    :param calculate_timeseries: A boolean flag indicating whether the timeseries should be calculated. If this is set
-        to True, the SoC at each stop is calculated and added to the "timeseries" column of the Event table. If this
-        is set to False, the "timeseries" column of the Event table will be set to ``None``. Setting this to false
-        may significantly speed up the simulation.
+    **Timeseries Calculation**
 
-    :param terminus_deadtime: The total deadtime taken to both attach and detach the charging cable at the terminus.
-                              If the total deadtime is greater than the time between the arrival and departure of the
-                              vehicle at the terminus, the vehicle will not be able to charge at the terminus.
+    - If ``calculate_timeseries`` is True, the function builds a more granular SoC timeseries
+      at each stop in the trip and stores it in the ``Event.timeseries`` column.
+    - If False, the event’s ``timeseries`` is set to ``None``, which may speed up the simulation
+      if you do not need intermediate SoC data.
 
-    :return: Nothing. The results are added to the database.
+    :param scenario:
+        One of:
+          - A :class:`eflips.model.Scenario` instance containing the input data for the simulation.
+          - An integer specifying the ID of a scenario in the database.
+          - Any other object with an integer ``id`` attribute.
+        If not passing a :class:`eflips.model.Scenario` directly, the `database_url` parameter
+        or the environment variable ``DATABASE_URL`` must point to a valid database.
+
+    :param initialize_vehicles:
+        A boolean flag indicating whether new vehicles should be created and assigned
+        to rotations in the database. Set this to True the first time you run the simulation
+        so that vehicles are initialized. In subsequent runs, set to False if vehicles
+        are already present.
+
+    :param database_url:
+        A database connection string (e.g., ``postgresql://user:pass@host/db``).
+        If you do not provide this and ``scenario`` is not a
+        :class:`eflips.model.Scenario` instance, the environment variable
+        ``DATABASE_URL`` must be set.
+
+    :param calculate_timeseries:
+        If True, each trip’s detailed SoC timeseries is computed and stored in the
+        ``timeseries`` column of the corresponding driving and charging events.
+        If False, only the start/end SoC is recorded, and ``timeseries`` is set to None.
+
+    :param terminus_deadtime:
+        The total time overhead (attach + detach) for charging at the terminus.
+        If this deadtime exceeds the available layover time, no charging is performed.
+
+    :param consumption_result:
+        A dictionary mapping trip IDs to :class:`ConsumptionResult` instances for
+        precomputed SoC changes. If an entry exists for a trip, this function uses
+        those precomputed SoC changes instead of calculating them from distance
+        and consumption. Each ``ConsumptionResult`` must have:
+
+        - A non-positive ``delta_soc_total`` (<= 0).
+        - Optionally, matching lists of timestamps and delta SoC values that are
+          decreasing (i.e., the vehicle only loses or maintains SoC).
+
+    :returns:
+        ``None``. All simulation results are written directly to the database as
+        :class:`eflips.model.Event` entries.
+
+    :raises ValueError:
+        - If a rotation in the scenario does not have a vehicle when
+          ``initialize_vehicles=False``.
+        - If the vehicle type has no ``consumption`` value.
+        - If a provided ``ConsumptionResult`` has inconsistent list lengths,
+          or if its ``delta_soc_total`` is positive.
+        - If SoC timeseries are not decreasing when provided
+          via ``consumption_result``.
     """
     logger = logging.getLogger(__name__)
 
@@ -211,7 +295,7 @@ def simple_consumption_simulation(
                     area = (
                         session.query(Area)
                         .filter(Area.scenario_id == scenario.id)
-                        .filter(Area.vehicle_type_id == Vehicle.vehicle_type_id)
+                        .filter(Area.vehicle_type_id == vehicle.vehicle_type_id)
                         .first()
                     )
 
@@ -253,9 +337,12 @@ def simple_consumption_simulation(
                     .one()
                 )
             if vehicle_type.consumption is None:
-                raise ValueError(
-                    "The vehicle type does not have a consumption value set."
-                )
+                # If the vehicle type has no consumption value, all trips must have a precomputed consumption result
+                all_trip_ids = [trip.id for trip in rotation.trips]
+                if not all(trip_id in consumption_result for trip_id in all_trip_ids):
+                    raise ValueError(
+                        "The vehicle type does not have a consumption value set and no consumption results are provided."
+                    )
             consumption = vehicle_type.consumption
 
             # The departure SoC for this rotation is the SoC of the last event preceding the first trip
@@ -270,36 +357,79 @@ def simple_consumption_simulation(
 
             for trip in rotation.trips:
                 # Set up a timeseries
-                soc_start = current_soc
-                if calculate_timeseries and len(trip.stop_times) > 0:
-                    timeseries = {
-                        "time": [],
-                        "soc": [],
-                        "distance": [],
-                    }
-                    for i in range(len(trip.stop_times)):
-                        current_time = trip.stop_times[i].arrival_time
-                        dwell_duration = trip.stop_times[i].dwell_duration
-                        elapsed_distance = trip.route.assoc_route_stations[
-                            i
-                        ].elapsed_distance
-                        elapsed_energy = consumption * (elapsed_distance / 1000)  # kWh
-                        soc = (
-                            current_soc - elapsed_energy / vehicle_type.battery_capacity
-                        )
-                        timeseries["time"].append(current_time.isoformat())
-                        timeseries["soc"].append(soc)
-                        timeseries["distance"].append(elapsed_distance)
-                        if dwell_duration > timedelta(seconds=0):
-                            timeseries["time"].append(
-                                (current_time + dwell_duration).isoformat()
+                if consumption_result is None or trip.id not in consumption_result:
+                    logger.info("Calculating timeseries for trip %s", trip.id)
+                    soc_start = current_soc
+                    if calculate_timeseries and len(trip.stop_times) > 0:
+                        timeseries = {
+                            "time": [],
+                            "soc": [],
+                            "distance": [],
+                        }
+                        for i in range(len(trip.stop_times)):
+                            current_time = trip.stop_times[i].arrival_time
+                            dwell_duration = trip.stop_times[i].dwell_duration
+                            elapsed_distance = trip.route.assoc_route_stations[
+                                i
+                            ].elapsed_distance
+                            elapsed_energy = consumption * (
+                                elapsed_distance / 1000
+                            )  # kWh
+                            soc = (
+                                current_soc
+                                - elapsed_energy / vehicle_type.battery_capacity
                             )
+                            timeseries["time"].append(current_time.isoformat())
                             timeseries["soc"].append(soc)
                             timeseries["distance"].append(elapsed_distance)
+                            if dwell_duration > timedelta(seconds=0):
+                                timeseries["time"].append(
+                                    (current_time + dwell_duration).isoformat()
+                                )
+                                timeseries["soc"].append(soc)
+                                timeseries["distance"].append(elapsed_distance)
+                    else:
+                        timeseries = None
+                    energy_used = consumption * trip.route.distance / 1000  # kWh
+                    current_soc = (
+                        soc_start - energy_used / vehicle_type.battery_capacity
+                    )
                 else:
-                    timeseries = None
-                energy_used = consumption * trip.route.distance / 1000  # kWh
-                current_soc = soc_start - energy_used / vehicle_type.battery_capacity
+                    logger.info(f"Using pre-calculated timeseries for trip {trip.id}")
+                    if (
+                        calculate_timeseries
+                        and consumption_result[trip.id].timestamps is not None
+                    ):
+                        assert consumption_result[trip.id].delta_soc is not None
+                        timestamps = consumption_result[trip.id].timestamps
+
+                        # Make sure the delta_soc is a monotonic decreasing function, with the same length as timestamps
+                        if len(consumption_result[trip.id].delta_soc) != len(
+                            timestamps
+                        ):
+                            raise ValueError(
+                                "The length of the delta_soc and timestamps lists must be the same."
+                            )
+                        delta_socs = consumption_result[trip.id].delta_soc
+                        if delta_socs[-1] > 0:
+                            raise ValueError(
+                                "The delta_soc must be a decreasing function."
+                            )
+
+                        socs = [current_soc + d for d in delta_socs]
+                        timeseries = {
+                            "time": [t.isoformat() for t in timestamps],
+                            "soc": socs,
+                        }
+                    else:
+                        timeseries = None
+
+                    if consumption_result[trip.id].delta_soc_total > 0:
+                        raise ValueError(
+                            "The current SoC must be <= 0 when using a consumption result."
+                        )
+                    soc_start = current_soc
+                    current_soc += consumption_result[trip.id].delta_soc_total
 
                 # Create a driving event
                 current_event = Event(
