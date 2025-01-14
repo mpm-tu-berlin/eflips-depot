@@ -719,22 +719,23 @@ def simulate_scenario(
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
     smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
+    ignore_unstable_simulation: bool = False,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
 
     It fills in the "Charging Events" in the :class:`eflips.model.Event` table and associates
     :class:`eflips.model.Vehicle` objects with all the existing "Driving Events" in the :class:`eflips.model.Event`
-    table.
+    table. If the simulation becomes unstable, an :class:`UnstableSimulationException` is raised.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
         an integer specifying the ID of a scenario in the database. Or any other object that has an attribute
         ``id`` that is an integer. If no :class:`eflips.model.Scenario` object is passed, the ``database_url``
-        parameter must be set to a valid database URL ot the environment variable ``DATABASE_URL`` must be set to a
+        parameter must be set to a valid database URL or the environment variable ``DATABASE_URL`` must be set to a
         valid database URL.
 
     :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. This
-        is needed because the result should be a steady-state result. THis can only be achieved by simulating a
+        is needed because the result should be a steady-state result. This can only be achieved by simulating a
         time period before and after our actual simulation, and then only using the "middle". eFLIPS tries to
         automatically detect whether the schedule should be repeated daily or weekly. If this fails, a ValueError is
         raised and repetition needs to be specified manually.
@@ -744,14 +745,22 @@ def simulate_scenario(
         URL.
 
     :param smart_charging_strategy: An optional parameter specifying the smart charging strategy to be used. The
-        default is SmartChargingStragegy.NONE. The following strategies are available:
-        - SmartChargingStragegy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
-        from the time they arrive at the depot until they are full (or leave the depot).
-        - SmartChargingStragegy.EVEN: Use smart charging with an even distribution of charging power over the time the
-        bus is at the depot. This aims to minimize the peak power demand.
+        default is SmartChargingStrategy.NONE. The following strategies are available:
+        - SmartChargingStrategy.NONE: Do not use smart charging. Buses are charged with the maximum power available,
+          from the time they arrive at the depot until they are full (or leave the depot).
+        - SmartChargingStrategy.EVEN: Use smart charging with an even distribution of charging power over the time the
+          bus is at the depot. This aims to minimize the peak power demand.
+        - SmartChargingStrategy.MIN_PRICE: Not implemented yet.
+
+    :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
 
     :return: Nothing. The results are added to the database.
+
+    :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
+        the parameters cause the solver to diverge.
     """
+    logger = logging.getLogger(__name__)
+
     with create_session(scenario, database_url) as (session, scenario):
         simulation_host = init_simulation(
             scenario=scenario,
@@ -759,7 +768,13 @@ def simulate_scenario(
             repetition_period=repetition_period,
         )
         ev = run_simulation(simulation_host)
-        add_evaluation_to_database(scenario, ev, session)
+        try:
+            add_evaluation_to_database(scenario, ev, session)
+        except eflips.depot.UnstableSimulationException as e:
+            if ignore_unstable_simulation:
+                logger.warning("Simulation is unstable. Continuing.")
+            else:
+                raise e
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -1098,6 +1113,9 @@ def add_evaluation_to_database(
         database.
 
     :return: Nothing. The results are added to the database.
+
+    :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
+        the parameters cause the solver to diverge.
     """
 
     # Read simulation start time
