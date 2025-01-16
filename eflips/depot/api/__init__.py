@@ -55,6 +55,11 @@ from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
 )
+from eflips.depot.api.private.consumption import (
+    initialize_vehicle,
+    add_initial_standby_event,
+    attempt_opportunity_charging_event,
+)
 from eflips.depot.api.private.depot import (
     delete_depots,
     depot_to_template,
@@ -246,76 +251,18 @@ def simple_consumption_simulation(
         )
         if initialize_vehicles:
             for rotation in rotations:
-                vehicle = Vehicle(
-                    vehicle_type_id=rotation.vehicle_type_id,
-                    scenario_id=scenario.id,
-                    name=f"Vehicle for rotation {rotation.id}",
-                )
-                session.add(vehicle)
-                rotation.vehicle = vehicle
+                initialize_vehicle(rotation, session)
 
-                # Additionally, add a short STANDBY event with 100% SoC immediately before the first trip
-                first_trip_start = rotation.trips[0].departure_time
-                standby_start = first_trip_start - timedelta(seconds=1)
-                standby_event = Event(
-                    scenario_id=scenario.id,
-                    vehicle_type_id=rotation.vehicle_type_id,
-                    vehicle=vehicle,
-                    station_id=rotation.trips[0].route.departure_station_id,
-                    subloc_no=0,
-                    time_start=standby_start,
-                    time_end=first_trip_start,
-                    soc_start=1,
-                    soc_end=1,
-                    event_type=EventType.CHARGING_OPPORTUNITY,
-                    description=f"DUMMY Initial standby event for rotation {rotation.id}.",
-                    timeseries=None,
-                )
-                session.add(standby_event)
-        else:
-            for rotation in rotations:
-                if rotation.vehicle is None:
-                    raise ValueError(
-                        "The rotation does not have a vehicle assigned to it."
-                    )
+        for rotation in rotations:
+            if rotation.vehicle is None:
+                raise ValueError("The rotation does not have a vehicle assigned to it.")
 
-            vehicles = (
-                session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).all()
-            )
-            for vehicle in vehicles:
-                if (
-                    session.query(Event).filter(Event.vehicle_id == vehicle.id).count()
-                    == 0
-                ):
-                    # Also add a dummy standby-departure event if this vehicle has no events
-                    rotation_per_vehicle = sorted(
-                        vehicle.rotations, key=lambda r: r.trips[0].departure_time
-                    )
-                    earliest_trip = rotation_per_vehicle[0].trips[0]
-                    area = (
-                        session.query(Area)
-                        .filter(Area.scenario_id == scenario.id)
-                        .filter(Area.vehicle_type_id == vehicle.vehicle_type_id)
-                        .first()
-                    )
-
-                    standby_start = earliest_trip.departure_time - timedelta(seconds=1)
-                    standby_event = Event(
-                        scenario_id=scenario.id,
-                        vehicle_type_id=vehicle.vehicle_type_id,
-                        vehicle=vehicle,
-                        station_id=area.depot.station_id,
-                        area_id=area.id,
-                        subloc_no=area.capacity,
-                        time_start=standby_start,
-                        time_end=earliest_trip.departure_time,
-                        soc_start=1,
-                        soc_end=1,
-                        event_type=EventType.STANDBY_DEPARTURE,
-                        description=f"DUMMY Initial standby event for rotation {earliest_trip.rotation_id}.",
-                        timeseries=None,
-                    )
-                    session.add(standby_event)
+        vehicles = (
+            session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).all()
+        )
+        for vehicle in vehicles:
+            if session.query(Event).filter(Event.vehicle_id == vehicle.id).count() == 0:
+                add_initial_standby_event(vehicle, session)
 
         # Since we are doing no_autoflush blocks later, we need to flush the session once here so that unflushed stuff
         # From preceding functions is visible in the database
@@ -361,7 +308,7 @@ def simple_consumption_simulation(
             for trip in rotation.trips:
                 # Set up a timeseries
                 if consumption_result is None or trip.id not in consumption_result:
-                    logger.info("Calculating timeseries for trip %s", trip.id)
+                    logger.debug("Calculating consumption for trip %s", trip.id)
                     soc_start = current_soc
                     if calculate_timeseries and len(trip.stop_times) > 0:
                         timeseries = {
@@ -398,7 +345,7 @@ def simple_consumption_simulation(
                         soc_start - energy_used / vehicle_type.battery_capacity
                     )
                 else:
-                    logger.info(f"Using pre-calculated timeseries for trip {trip.id}")
+                    logger.debug(f"Using pre-calculated timeseries for trip {trip.id}")
                     if (
                         calculate_timeseries
                         and consumption_result[trip.id].timestamps is not None
@@ -463,100 +410,17 @@ def simple_consumption_simulation(
                     and trip.route.arrival_station.is_electrified
                     and trip != rotation.trips[-1]
                 ):
-                    logger.debug(
-                        f"Adding opportunity charging event for trip {trip.id}"
-                    )
-                    # Identify the break time between trips
                     trip_index = rotation.trips.index(trip)
                     next_trip = rotation.trips[trip_index + 1]
-                    break_time = next_trip.departure_time - trip.arrival_time
 
-                    # How much energy can be charged in this time?
-                    energy_charged = (
-                        max([v[1] for v in vehicle_type.charging_curve])
-                        * (
-                            break_time.total_seconds()
-                            - terminus_deadtime.total_seconds()
-                        )
-                        / 3600
+                    current_soc = attempt_opportunity_charging_event(
+                        previous_trip=trip,
+                        next_trip=next_trip,
+                        vehicle=vehicle,
+                        charge_start_soc=current_soc,
+                        terminus_deadtime=terminus_deadtime,
+                        session=session,
                     )
-
-                    if energy_charged > 0:
-                        # Calculate the end SoC
-                        post_charge_soc = min(
-                            current_soc
-                            + energy_charged / vehicle_type.battery_capacity,
-                            1,
-                        )
-
-                        # If the post_charge_soc is 1, calculate when the vehicle was full
-                        if post_charge_soc == 1:
-                            # 1. Get the max charging power (kW)
-                            max_power = max([v[1] for v in vehicle_type.charging_curve])
-
-                            # 2. Energy needed (kWh) to go from current_soc to 100%
-                            energy_needed_kWh = (
-                                1 - current_soc
-                            ) * vehicle_type.battery_capacity
-
-                            # 3. Compute how long that takes at max_power (in hours)
-                            time_needed_hours = energy_needed_kWh / max_power
-
-                            # 4. Calculate the point in time the vehicle became full
-                            #    If charging effectively starts right after terminus_deadtime
-                            time_full = (
-                                trip.arrival_time
-                                + terminus_deadtime / 2
-                                + timedelta(hours=time_needed_hours)
-                            )
-
-                            # 5. Make sure it is before the time charging must end the latest
-                            assert time_full <= next_trip.departure_time - (
-                                terminus_deadtime / 2
-                            )
-
-                        else:
-                            time_full = None
-
-                        # Create a simple timeseries for the charging event
-                        timeseries = {
-                            "time": [
-                                trip.arrival_time.isoformat(),
-                                (trip.arrival_time + terminus_deadtime / 2).isoformat(),
-                                (
-                                    next_trip.departure_time - terminus_deadtime / 2
-                                ).isoformat(),
-                                next_trip.departure_time.isoformat(),
-                            ],
-                            "soc": [
-                                current_soc,
-                                current_soc,
-                                post_charge_soc,
-                                post_charge_soc,
-                            ],
-                        }
-
-                        # If time_full is not None, add it to the timeseries in the middle
-                        if time_full is not None:
-                            timeseries["time"].insert(2, time_full.isoformat())
-                            timeseries["soc"].insert(2, 1)
-
-                        # Create the charging event
-                        current_event = Event(
-                            scenario_id=scenario.id,
-                            vehicle_type_id=rotation.vehicle_type_id,
-                            vehicle=vehicle,
-                            station_id=trip.route.arrival_station_id,
-                            time_start=trip.arrival_time,
-                            time_end=next_trip.departure_time,
-                            soc_start=current_soc,
-                            soc_end=post_charge_soc,
-                            event_type=EventType.CHARGING_OPPORTUNITY,
-                            description=f"Opportunity charging event for trip {trip.id}.",
-                            timeseries=timeseries,
-                        )
-                        current_soc = post_charge_soc
-                        session.add(current_event)
 
 
 def generate_depot_layout(
