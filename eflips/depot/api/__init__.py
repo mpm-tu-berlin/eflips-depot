@@ -47,6 +47,7 @@ from eflips.model import (
     Vehicle,
     VehicleType,
     AreaType,
+    ChargeType,
 )
 from sqlalchemy.orm import Session
 
@@ -408,6 +409,7 @@ def simple_consumption_simulation(
                     rotation.vehicle_type.opportunity_charging_capable
                     and rotation.allow_opportunity_charging
                     and trip.route.arrival_station.is_electrified
+                    and trip.route.arrival_station.charge_type == ChargeType.OPPORTUNITY
                     and trip != rotation.trips[-1]
                 ):
                     trip_index = rotation.trips.index(trip)

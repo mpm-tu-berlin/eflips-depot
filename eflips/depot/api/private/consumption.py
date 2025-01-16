@@ -1,6 +1,10 @@
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
+from math import ceil
+from typing import Tuple
+from zoneinfo import ZoneInfo
 
+import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
     Area,
@@ -9,6 +13,8 @@ from eflips.model import (
     Rotation,
     Vehicle,
     Trip,
+    Station,
+    ChargeType,
 )
 
 
@@ -99,6 +105,151 @@ def add_initial_standby_event(
     session.add(standby_event)
 
 
+def find_charger_occupancy(
+    station: Station,
+    time_start: datetime,
+    time_end: datetime,
+    session: sqlalchemy.orm.session.Session,
+    resolution=timedelta(seconds=1),
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Build a timeseries of charger occupancy at a station between two points in time.
+
+    For each discrete timestep between ``time_start`` and ``time_end`` (at the given
+    ``resolution``), this function calculates how many charging events (from the database)
+    overlap with that time, thus producing a count of the active chargers at each timestep.
+
+    :param station:
+        The :class:`Station` whose charger occupancy is to be analyzed.
+    :param time_start:
+        The start time for the occupancy timeseries (inclusive).
+    :param time_end:
+        The end time for the occupancy timeseries (exclusive).
+    :param session:
+        An active SQLAlchemy :class:`Session` used to query the database.
+    :param resolution:
+        The timestep interval used to build the timeseries (default is 1 second).
+        Note that using a very fine resolution over a large time range can
+        produce large arrays.
+
+    :returns:
+        A tuple of two numpy arrays:
+          1. ``times``: The array of discrete timesteps (shape: ``(n,)``).
+          2. ``occupancy``: The array of integer occupancy values for each timestep
+             (shape: ``(n,)``), indicating how many charging events are active.
+    """
+    # Load all charging events that could be relevant
+    charging_events = (
+        session.query(Event)
+        .filter(
+            Event.station_id == station.id,
+            Event.time_start < time_end,
+            Event.time_end > time_start,
+        )
+        .all()
+    )
+
+    # We need to change the times to numpy datetime64 with implicit UTC timezone
+    tz = ZoneInfo("UTC")
+    time_start = np.datetime64(time_start.astimezone(tz).replace(tzinfo=None))
+    time_end = np.datetime64(time_end.astimezone(tz).replace(tzinfo=None))
+
+    times = np.arange(time_start, time_end, resolution)
+    occupancy = np.zeros_like(times, dtype=int)
+    for event in charging_events:
+        event_start = np.datetime64(
+            event.time_start.astimezone(tz).replace(tzinfo=None)
+        )
+        event_end = np.datetime64(event.time_end.astimezone(tz).replace(tzinfo=None))
+        start_idx = np.argmax(times >= event_start)
+        end_idx = np.argmax(times >= event_end)
+        occupancy[start_idx:end_idx] += 1
+
+    return times, occupancy
+
+
+def find_best_timeslot(
+    station: Station,
+    time_start: datetime,
+    time_end: datetime,
+    charging_duration: timedelta,
+    session: sqlalchemy.orm.session.Session,
+    resolution: timedelta = timedelta(seconds=1),
+) -> datetime:
+    times, occupancy = find_charger_occupancy(
+        station, time_start, time_end, session, resolution=resolution
+    )
+
+    total_span = times[-1] - times[0]
+    if charging_duration > total_span:
+        raise ValueError("The event duration exceeds the entire timeseries span.")
+
+    ## AUTHOR: ChatGPT o-1
+    # Step 1: Compute how many indices are needed to cover `event_duration`.
+    steps_needed = int(charging_duration / resolution)
+    if steps_needed == 0:
+        raise ValueError("event_duration is too small for the timeseries resolution.")
+
+    # Step 2: Build a prefix-sum array for occupancy
+    prefix_sum = np.zeros(len(occupancy) + 1, dtype=float)
+    for i in range(len(occupancy)):
+        prefix_sum[i + 1] = prefix_sum[i] + occupancy[i]
+
+    # Step 3: Slide over every possible start index, compute sum in O(1)
+    best_start_idx = 0
+    min_sum = float("inf")
+    max_start_idx = len(occupancy) - steps_needed
+    if max_start_idx < 0:
+        raise ValueError("event_duration is too large for the timeseries resolution.")
+
+    for start_idx in range(max_start_idx + 1):
+        window_sum = prefix_sum[start_idx + steps_needed] - prefix_sum[start_idx]
+        if window_sum < min_sum:
+            min_sum = window_sum
+            best_start_idx = start_idx
+
+    best_start_time = times[best_start_idx]
+    # Turn it back into a datetime object with explicit UTC timezone
+    tz = ZoneInfo("UTC")
+    best_start_time = best_start_time.astype(datetime).replace(tzinfo=tz)
+
+    # Unused plot code to visually verify that it's working
+    if False:
+        # Convert numpy datetime array to matplotlib format
+        # If `times` is not numpy datetime64, you can skip this or adapt as needed.
+        # If `times` is a list of Python `datetime` objects, also skip the conversion step.
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Plot the occupancy as a step or line plot
+        ax.plot(times, occupancy, label="Occupancy", drawstyle="steps-post", color="C0")
+
+        # Create a shaded region representing the best interval for the event
+        event_start = best_start_time
+        event_end = best_start_time + charging_duration
+        ax.axvspan(
+            event_start, event_end, color="C2", alpha=0.3, label="Chosen Interval"
+        )
+
+        # Format the x-axis to show date/time
+        # This only applies if your `times` are datetime objects or convertible to them
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
+        plt.xticks(rotation=45, ha="right")
+
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Occupancy (# of events)")
+        ax.set_title("Charger Occupancy with Chosen Event Interval")
+        ax.legend()
+        ax.grid(True)
+
+        plt.tight_layout()
+        plt.show()
+
+    return best_start_time
+
+
 def attempt_opportunity_charging_event(
     previous_trip: Trip,
     next_trip: Trip,
@@ -126,6 +277,7 @@ def attempt_opportunity_charging_event(
         vehicle.vehicle_type.opportunity_charging_capable
         and next_trip.rotation.allow_opportunity_charging
         and previous_trip.route.arrival_station.is_electrified
+        and previous_trip.route.arrival_station.charge_type == ChargeType.OPPORTUNITY
     ):
         raise ValueError(
             "Opportunity charging was requested even though it is not possible."
@@ -135,68 +287,73 @@ def attempt_opportunity_charging_event(
     break_time = next_trip.departure_time - previous_trip.arrival_time
 
     if break_time > terminus_deadtime:
+        logger.debug(f"Adding opportunity charging event after trip {previous_trip.id}")
+
         # How much energy can be charged in this time?
-        energy_charged = (
+        max_recharged_energy = (
             max([v[1] for v in vehicle.vehicle_type.charging_curve])
             * (break_time.total_seconds() - terminus_deadtime.total_seconds())
             / 3600
         )
+        needed_energy = (1 - charge_start_soc) * vehicle.vehicle_type.battery_capacity
 
-        logger.debug(f"Adding opportunity charging event after trip {previous_trip.id}")
+        if max_recharged_energy < needed_energy:
+            # We do not need to shift the time around. Just charge as much as possible
+            time_event_start = previous_trip.arrival_time
+            time_charge_start = time_event_start + terminus_deadtime / 2
+            time_charge_end = next_trip.departure_time - terminus_deadtime / 2
+            time_event_end = next_trip.departure_time
 
-        # Calculate the end SoC
-        post_charge_soc = min(
-            charge_start_soc + energy_charged / vehicle.vehicle_type.battery_capacity,
-            1,
-        )
-
-        # If the post_charge_soc is 1, calculate when the vehicle was full
-        if post_charge_soc == 1:
-            # 1. Get the max charging power (kW)
-            max_power = max([v[1] for v in vehicle.vehicle_type.charging_curve])
-
-            # 2. Energy needed (kWh) to go from current_soc to 100%
-            energy_needed_kWh = (
-                1 - charge_start_soc
-            ) * vehicle.vehicle_type.battery_capacity
-
-            # 3. Compute how long that takes at max_power (in hours)
-            time_needed_hours = energy_needed_kWh / max_power
-
-            # 4. Calculate the point in time the vehicle became full
-            #    If charging effectively starts right after terminus_deadtime
-            time_full = (
-                previous_trip.arrival_time
-                + terminus_deadtime / 2
-                + timedelta(hours=time_needed_hours)
+            soc_event_start = charge_start_soc
+            soc_charge_start = charge_start_soc
+            soc_charge_end = (
+                charge_start_soc
+                + max_recharged_energy / vehicle.vehicle_type.battery_capacity
             )
-
-            # 5. Make sure it is before the time charging must end the latest
-            assert time_full <= next_trip.departure_time - (terminus_deadtime / 2)
-
+            assert soc_charge_end <= 1
+            soc_event_end = soc_charge_end
         else:
-            time_full = None
+            needed_duration_purely_charing = timedelta(
+                seconds=(
+                    ceil(
+                        needed_energy
+                        * 3600
+                        / max([v[1] for v in vehicle.vehicle_type.charging_curve])
+                    )
+                )
+            )
+            needed_duration_total = needed_duration_purely_charing + terminus_deadtime
+
+            # We have to shift the time around to the time with the lowest occupancy
+            # Within this time band.
+
+            best_start_time = find_best_timeslot(
+                previous_trip.route.arrival_station,
+                previous_trip.arrival_time,
+                next_trip.departure_time,
+                needed_duration_total,
+                session,
+            )
+            time_event_start = best_start_time
+            time_charge_start = best_start_time + terminus_deadtime / 2
+            time_charge_end = time_charge_start + needed_duration_purely_charing
+            time_event_end = time_charge_end + (terminus_deadtime / 2)
+
+            soc_event_start = charge_start_soc
+            soc_charge_start = charge_start_soc
+            soc_charge_end = 1
+            soc_event_end = 1
 
         # Create a simple timeseries for the charging event
         timeseries = {
             "time": [
-                previous_trip.arrival_time.isoformat(),
-                (previous_trip.arrival_time + terminus_deadtime / 2).isoformat(),
-                (next_trip.departure_time - terminus_deadtime / 2).isoformat(),
-                next_trip.departure_time.isoformat(),
+                time_event_start.isoformat(),
+                time_charge_start.isoformat(),
+                time_charge_end.isoformat(),
+                time_event_end.isoformat(),
             ],
-            "soc": [
-                charge_start_soc,
-                charge_start_soc,
-                post_charge_soc,
-                post_charge_soc,
-            ],
+            "soc": [soc_event_start, soc_charge_start, soc_charge_end, soc_event_end],
         }
-
-        # If time_full is not None, add it to the timeseries in the middle
-        if time_full is not None:
-            timeseries["time"].insert(2, time_full.isoformat())
-            timeseries["soc"].insert(2, 1)
 
         # Create the charging event
         current_event = Event(
@@ -204,16 +361,17 @@ def attempt_opportunity_charging_event(
             vehicle_type_id=vehicle.vehicle_type_id,
             vehicle=vehicle,
             station_id=previous_trip.route.arrival_station_id,
-            time_start=previous_trip.arrival_time,
-            time_end=next_trip.departure_time,
+            time_start=time_event_start,
+            time_end=time_event_end,
             soc_start=charge_start_soc,
-            soc_end=post_charge_soc,
+            soc_end=soc_event_end,
             event_type=EventType.CHARGING_OPPORTUNITY,
             description=f"Opportunity charging event after trip {previous_trip.id}.",
             timeseries=timeseries,
         )
         session.add(current_event)
-        return post_charge_soc
+        session.flush()
+        return soc_event_end
 
     else:
         logger.debug(
