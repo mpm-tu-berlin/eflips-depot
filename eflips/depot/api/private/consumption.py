@@ -76,9 +76,18 @@ def add_initial_standby_event(
         ``None``. A new event is added to the session for the earliest trip,
         but changes are not yet committed.
     """
+    logger = logging.getLogger(__name__)
+
     rotation_per_vehicle = sorted(
         vehicle.rotations, key=lambda r: r.trips[0].departure_time
     )
+
+    # Only keep the rotations that contain trips
+    rotation_per_vehicle = [r for r in rotation_per_vehicle if len(r.trips) > 0]
+    if len(rotation_per_vehicle) == 0:
+        logger.warning(f"No trips found for vehicle {vehicle.id}.")
+        return
+
     earliest_trip = rotation_per_vehicle[0].trips[0]
     area = (
         session.query(Area)
