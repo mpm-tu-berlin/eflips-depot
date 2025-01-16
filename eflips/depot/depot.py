@@ -801,7 +801,6 @@ class DSFirst(BaseDispatchStrategy):
                     "vehicle_type",
                     "not_on_hold",
                     "no_active_uncancellable_processes",
-                    "sufficient_energy",
                     "isunblocked",
                 ],
                 vehicle_types=trip.vehicle_types,
@@ -816,7 +815,6 @@ class DSFirst(BaseDispatchStrategy):
                     "vehicle_type",
                     "not_on_hold",
                     "no_active_processes",
-                    "sufficient_energy",
                 ],
                 vehicle_types=trip.vehicle_types,
                 trip=trip,
@@ -839,7 +837,6 @@ class DSSmart(BaseDispatchStrategy):
             "vehicle_type",
             "not_on_hold",
             "no_active_uncancellable_processes",
-            "sufficient_energy",
             "isunblocked",
         ]
     )
@@ -848,7 +845,6 @@ class DSSmart(BaseDispatchStrategy):
             "vehicle_type",
             "not_on_hold",
             "no_active_processes",
-            "sufficient_energy",
         ]
     )
 
