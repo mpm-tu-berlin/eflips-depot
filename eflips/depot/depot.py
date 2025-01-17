@@ -835,6 +835,7 @@ class DSSmart(BaseDispatchStrategy):
     vf_urgent = VehicleFilter(
         filter_names=[
             "vehicle_type",
+            "sufficient_energy",
             "not_on_hold",
             "no_active_uncancellable_processes",
             "isunblocked",
@@ -843,6 +844,7 @@ class DSSmart(BaseDispatchStrategy):
     vf_usual = VehicleFilter(
         filter_names=[
             "vehicle_type",
+            "sufficient_energy",
             "not_on_hold",
             "no_active_processes",
         ]

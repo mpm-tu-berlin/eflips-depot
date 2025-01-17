@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import warnings
 
 import eflips
@@ -224,6 +225,12 @@ class VehicleFilter:
         Attributes required in self:
         trip: eflips.depot.standalone.SimpleTrip object
         """
+        # This is a very, very ugly hack. I want to disable the "sufficient_energy" fcondition,
+        # only if a file named "disable_sufficient_energy" is present in the working directory.
+        # This is a quick and dirty way to disable the condition without changing the code.
+        if os.path.isfile("disable_sufficient_energy"):
+            return True
+
         if globalConstants["depot"]["consumption_calc_mode"] == "CR_distance_based":
             energy_reserve = globalConstants["depot"]["energy_reserve"]
             required_energy = (
