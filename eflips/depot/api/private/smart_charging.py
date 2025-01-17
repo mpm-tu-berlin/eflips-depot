@@ -18,7 +18,7 @@ def optimize_charging_events_even(
     :return: Nothing, the charging events are updated in place
     """
 
-    TEMPORAL_RESOLUTION = timedelta(seconds=60)
+    TEMPORAL_RESOLUTION = timedelta(seconds=1)
 
     assert all(
         [event.event_type == EventType.CHARGING_DEPOT for event in charging_events]
