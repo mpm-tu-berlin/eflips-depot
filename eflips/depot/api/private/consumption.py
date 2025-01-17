@@ -191,7 +191,7 @@ def find_best_timeslot(
     )
 
     total_span = times[-1] - times[0]
-    if charging_duration > total_span:
+    if charging_duration - timedelta(seconds=1) > total_span:
         raise ValueError("The event duration exceeds the entire timeseries span.")
 
     ## AUTHOR: ChatGPT o-1
