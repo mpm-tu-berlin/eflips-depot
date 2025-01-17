@@ -151,6 +151,7 @@ def find_charger_occupancy(
     charging_events = (
         session.query(Event)
         .filter(
+            Event.event_type == EventType.CHARGING_OPPORTUNITY,
             Event.station_id == station.id,
             Event.time_start < time_end,
             Event.time_end > time_start,
@@ -379,7 +380,43 @@ def attempt_opportunity_charging_event(
             timeseries=timeseries,
         )
         session.add(current_event)
-        session.flush()
+
+        # If there is time between the previous trip's end and the charging event's start, add a STANDBY event
+        if time_event_start > previous_trip.arrival_time:
+            standby_event = Event(
+                scenario_id=vehicle.scenario_id,
+                vehicle_type_id=vehicle.vehicle_type_id,
+                vehicle=vehicle,
+                station_id=previous_trip.route.arrival_station_id,
+                time_start=previous_trip.arrival_time,
+                time_end=time_event_start,
+                soc_start=charge_start_soc,  # SoC is unchanged while in STANDBY
+                soc_end=charge_start_soc,
+                event_type=EventType.STANDBY,
+                description=f"Standby event before charging after trip {previous_trip.id}.",
+                timeseries=None,
+            )
+            session.add(standby_event)
+
+        # If there is time between the charging event's end and the next trip's start, add a STANDBY_DEPARTURE event
+        if time_event_end < next_trip.departure_time:
+            standby_departure_event = Event(
+                scenario_id=vehicle.scenario_id,
+                vehicle_type_id=vehicle.vehicle_type_id,
+                vehicle=vehicle,
+                station_id=previous_trip.route.arrival_station_id,
+                time_start=time_event_end,
+                time_end=next_trip.departure_time,
+                soc_start=soc_event_end,  # SoC is unchanged while in STANDBY
+                soc_end=soc_event_end,
+                event_type=EventType.STANDBY_DEPARTURE,
+                description=(
+                    f"Standby departure event after charging, before trip {next_trip.id}."
+                ),
+                timeseries=None,
+            )
+            session.add(standby_departure_event)
+
         return soc_event_end
 
     else:
