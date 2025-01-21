@@ -48,6 +48,7 @@ from eflips.model import (
     VehicleType,
     AreaType,
     ChargeType,
+    Route,
 )
 from sqlalchemy.orm import Session
 
@@ -246,7 +247,11 @@ def simple_consumption_simulation(
             session.query(Rotation)
             .filter(Rotation.scenario_id == scenario.id)
             .order_by(Rotation.id)
-            .options(sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route))
+            .options(
+                sqlalchemy.orm.joinedload(Rotation.trips)
+                .joinedload(Trip.route)
+                .joinedload(Route.arrival_station)
+            )
             .options(sqlalchemy.orm.joinedload(Rotation.vehicle_type))
             .options(sqlalchemy.orm.joinedload(Rotation.vehicle))
         )
