@@ -1,4 +1,5 @@
 import logging
+import warnings
 from datetime import timedelta, datetime
 from math import ceil
 from typing import Tuple
@@ -7,7 +8,6 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import sqlalchemy.orm
 from eflips.model import (
-    Area,
     Event,
     EventType,
     Rotation,
@@ -15,6 +15,7 @@ from eflips.model import (
     Trip,
     Station,
     ChargeType,
+    ConsistencyWarning,
 )
 
 
@@ -51,7 +52,7 @@ def initialize_vehicle(rotation: Rotation, session: sqlalchemy.orm.session.Sessi
 
 def add_initial_standby_event(
     vehicle: Vehicle, session: sqlalchemy.orm.session.Session
-):
+) -> None:
     """
     Create and add a standby event immediately before the earliest trip of the given vehicle.
 
@@ -76,25 +77,20 @@ def add_initial_standby_event(
         ``None``. A new event is added to the session for the earliest trip,
         but changes are not yet committed.
     """
-    logger = logging.getLogger(__name__)
 
-    rotation_per_vehicle = sorted(
-        vehicle.rotations, key=lambda r: r.trips[0].departure_time
-    )
-
-    # Only keep the rotations that contain trips
-    rotation_per_vehicle = [r for r in rotation_per_vehicle if len(r.trips) > 0]
-    if len(rotation_per_vehicle) == 0:
-        logger.warning(f"No trips found for vehicle {vehicle.id}.")
-        return
-
-    earliest_trip = rotation_per_vehicle[0].trips[0]
-    area = (
-        session.query(Area)
-        .filter(Area.scenario_id == vehicle.scenario_id)
-        .filter(Area.vehicle_type_id == vehicle.vehicle_type_id)
+    earliest_trip = (
+        session.query(Trip)
+        .join(Rotation)
+        .filter(Rotation.vehicle == vehicle)
+        .order_by(Trip.departure_time)
         .first()
     )
+    if earliest_trip is None:
+        warnings.warn(
+            f"No trips found for vehicle {vehicle.id}. Cannot add initial standby event.",
+            ConsistencyWarning,
+        )
+        return
 
     standby_start = earliest_trip.departure_time - timedelta(seconds=1)
     standby_event = Event(
@@ -148,15 +144,11 @@ def find_charger_occupancy(
              (shape: ``(n,)``), indicating how many charging events are active.
     """
     # Load all charging events that could be relevant
-    charging_events = (
-        session.query(Event)
-        .filter(
-            Event.event_type == EventType.CHARGING_OPPORTUNITY,
-            Event.station_id == station.id,
-            Event.time_start < time_end,
-            Event.time_end > time_start,
-        )
-        .all()
+    charging_events_q = session.query(Event).filter(
+        Event.event_type == EventType.CHARGING_OPPORTUNITY,
+        Event.station_id == station.id,
+        Event.time_start < time_end,
+        Event.time_end > time_start,
     )
 
     # We need to change the times to numpy datetime64 with implicit UTC timezone
@@ -166,7 +158,7 @@ def find_charger_occupancy(
 
     times = np.arange(time_start, time_end, resolution)
     occupancy = np.zeros_like(times, dtype=int)
-    for event in charging_events:
+    for event in charging_events_q:
         event_start = np.datetime64(
             event.time_start.astimezone(tz).replace(tzinfo=None)
         )
@@ -272,9 +264,11 @@ def attempt_opportunity_charging_event(
 
     # Sanity checks
     if previous_trip.route.arrival_station_id != next_trip.route.departure_station_id:
-        raise ValueError(
-            f"Trips {previous_trip.id} and {next_trip.id} are not consecutive."
+        warnings.warn(
+            f"Trips {previous_trip.id} and {next_trip.id} are not consecutive.",
+            ConsistencyWarning,
         )
+        return charge_start_soc
     if previous_trip.rotation_id != next_trip.rotation_id:
         raise ValueError(
             f"Trips {previous_trip.id} and {next_trip.id} are not in the same rotation."
