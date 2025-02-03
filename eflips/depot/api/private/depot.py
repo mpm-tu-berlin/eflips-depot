@@ -111,7 +111,13 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             }
         else:
             # If the vehicle type id is not set, the area is for all vehicle types
-            template["areas"][area_name]["entry_filter"] = dict()
+            scenario = depot.scenario
+            all_vehicle_type_ids = [str(vt.id) for vt in scenario.vehicle_types]
+
+            template["areas"][area_name]["entry_filter"] = {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": all_vehicle_type_ids,
+            }
 
         for process in area.processes:
             # Add process into process list
