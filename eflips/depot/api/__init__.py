@@ -789,6 +789,10 @@ def init_simulation(
         if "None" in vehicle_types_for_depot:
             vehicle_types_for_depot.remove("None")
 
+        # In this case, all types are allowed
+        if len(vehicle_types_for_depot) == 0:
+            vehicle_types_for_depot = set([str(vt.id) for vt in scenario.vehicle_types])
+
         # If we have a vehicle count dictionary, we validate and use ir
         if vehicle_count_dict is not None and depot_id in vehicle_count_dict.keys():
             if set(vehicle_count_dict[depot_id].keys()) < vehicle_types_for_depot:
@@ -804,8 +808,11 @@ def init_simulation(
             for vehicle_type in vehicle_types_for_depot:
                 vehicle_count = 0
                 for area in depot.areas:
-                    if area.vehicle_type_id == int(vehicle_type):
-                        # TODO potential edit if we make vehicle type of an area a list
+                    if (
+                        area.vehicle_type_id == int(vehicle_type)
+                        or area.vehicle_type_id is None
+                    ):
+                        # The areas allow either one type, or all vehicle types
                         for p in area.processes:
                             if p.electric_power is not None and p.duration is None:
                                 vehicle_count += area.capacity
