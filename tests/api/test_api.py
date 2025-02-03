@@ -1180,6 +1180,19 @@ class TestApi(TestHelpers):
         )
         session.commit()
 
+    def test_simulation_with_areas_of_none_vehicle_types(self, session, full_scenario):
+        generate_depot_layout(
+            scenario=full_scenario, charging_power=90, delete_existing_depot=True
+        )
+
+        for areas in full_scenario.areas:
+            areas.vehicle_type = None
+
+        session.flush()
+
+        simulate_scenario(scenario=full_scenario)
+        session.commit()
+
     def test_reassign_vehicle_id(self, session, full_scenario):
         generate_depot_layout(
             scenario=full_scenario, charging_power=90, delete_existing_depot=True
