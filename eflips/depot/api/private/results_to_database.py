@@ -4,7 +4,8 @@ import logging
 from datetime import timedelta
 from typing import List, Dict
 
-from eflips.model import Event, EventType, Rotation, Vehicle, Area
+import numpy as np
+from eflips.model import Event, EventType, Rotation, Vehicle, Area, AreaType
 from sqlalchemy import select
 
 from eflips.depot import SimpleVehicle, ProcessStatus
@@ -317,35 +318,25 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
         battery_log_list.append((log.t, log.energy / log.energy_real))
 
     time_keys = sorted(dict_of_events.keys())
+
+    battery_log_times = [log[0] for log in battery_log_list]
+    battery_log_socs = [log[1] for log in battery_log_list]
+
     for i in range(len(time_keys)):
         # Get soc
-        soc_start = None
-        soc_end = None
+
         start_time = time_keys[i]
         process_dict = dict_of_events[time_keys[i]]
-        for j in range(len(battery_log_list)):
-            # Access the correct battery log according to time since there is only one battery log for each time
-            log = battery_log_list[j]
 
-            if process_dict["type"] != "Trip":
-                if log[0] == start_time:
-                    soc_start = log[1]
-                if log[0] == process_dict["end"]:
-                    soc_end = log[1]
-                if log[0] < start_time < battery_log_list[j + 1][0]:
-                    soc_start = log[1]
-                if log[0] < process_dict["end"] < battery_log_list[j + 1][0]:
-                    soc_end = log[1]
-
-                if soc_start is not None:
-                    soc_start = min(soc_start, 1)  # so
-                process_dict["soc_start"] = soc_start
-                if soc_end is not None:
-                    soc_end = min(soc_end, 1)  # soc should not exceed 1
-                process_dict["soc_end"] = soc_end
-
-            else:
-                continue
+        if process_dict["type"] != "Trip":
+            soc_start = np.interp(start_time, battery_log_times, battery_log_socs)
+            process_dict["soc_start"] = min(float(soc_start), 1.0)
+            soc_end = np.interp(
+                process_dict["end"], battery_log_times, battery_log_socs
+            )
+            process_dict["soc_end"] = min(float(soc_end), 1.0)
+        else:
+            continue
 
 
 def add_events_into_database(
