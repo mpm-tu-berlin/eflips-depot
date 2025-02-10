@@ -49,7 +49,7 @@ def get_finished_schedules_per_vehicle(
 
     for i in range(len(list_of_finished_trips)):
         assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std, (
-            "The trip {current_trip.ID} is delayed. The simulation doesn't "
+            f"The trip {list_of_finished_trips[i].ID} is delayed. The simulation doesn't "
             "support delayed trips for now."
         )
 
