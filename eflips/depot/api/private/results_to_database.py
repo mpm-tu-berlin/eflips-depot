@@ -203,35 +203,50 @@ def generate_vehicle_events(
                                     f"A process with no duration could only "
                                     f"happen in the last area before dispatched"
                                 )
-                                if (
-                                    time_stamp in dict_of_events.keys()
-                                    and "end" in dict_of_events[time_stamp].keys()
-                                ):
+                                start_this_event = None
+                                if time_stamp in dict_of_events.keys():
+                                    assert "end" in dict_of_events[time_stamp].keys(), (
+                                        f"The former event of {process} "
+                                        f"should have an end time."
+                                    )
                                     start_this_event = dict_of_events[time_stamp]["end"]
-                                    if start_this_event in dict_of_events.keys():
+                                else:
+                                    for other_process in process_log:
                                         if (
-                                            dict_of_events[start_this_event]["type"]
-                                            == "Trip"
+                                            other_process.ID != process.ID
+                                            and other_process.dur > 0
                                         ):
-                                            logger.info(
-                                                f"Vehicle {current_vehicle.ID} must depart immediately after charged. "
-                                                f"Thus there will be no STANDBY_DEPARTURE event."
-                                            )
+                                            start_this_event = other_process.ends[0]
+                                            break
 
-                                        else:
-                                            raise ValueError(
-                                                f"There is already an event "
-                                                f"{dict_of_events[start_this_event]} at {start_this_event}."
-                                            )
+                                assert (
+                                    start_this_event is not None
+                                ), f"Current process {process} should have a start time by now"
 
-                                        continue
+                                if start_this_event in dict_of_events.keys():
+                                    if (
+                                        dict_of_events[start_this_event]["type"]
+                                        == "Trip"
+                                    ):
+                                        logger.info(
+                                            f"Vehicle {current_vehicle.ID} must depart immediately after charged. "
+                                            f"Thus there will be no STANDBY_DEPARTURE event."
+                                        )
 
-                                    dict_of_events[start_this_event] = {
-                                        "type": type(process).__name__,
-                                        "area": current_area.ID,
-                                        "slot": current_slot,
-                                        "id": process.ID,
-                                    }
+                                    else:
+                                        raise ValueError(
+                                            f"There is already an event "
+                                            f"{dict_of_events[start_this_event]} at {start_this_event}."
+                                        )
+
+                                    continue
+
+                                dict_of_events[start_this_event] = {
+                                    "type": type(process).__name__,
+                                    "area": current_area.ID,
+                                    "slot": current_slot,
+                                    "id": process.ID,
+                                }
 
                         case ProcessStatus.IN_PROGRESS:
                             assert (
