@@ -164,8 +164,7 @@ def generate_vehicle_events(
         "dwd.active_processes_copy"
     ].items():
         if earliest_time <= time_stamp <= latest_time:
-            num_process = len(process_log)
-            if num_process == 0:
+            if len(process_log) == 0:
                 # A departure happens and this trip should already be stored in the dictionary
                 pass
             else:
