@@ -90,6 +90,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     list_of_processes = []
 
     # Get dictionary of each area
+    # For line areas, generate an dictionary item for total areas, later it will be split into individual lines
     for area in depot.areas:
         area_name = str(area.id)
         template["areas"][area_name] = {
@@ -130,8 +131,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             # Charging interfaces
             if process_type(process) == ProcessType.CHARGING:
                 ci_per_area = []
-                row_count_per_area = area.row_count if area.row_count else 1
-                for i in range(area.capacity * row_count_per_area):
+                for i in range(area.capacity):
                     ID = "ci_" + str(len(template["resources"]))
                     template["resources"][ID] = {
                         "typename": "DepotChargingInterface",
@@ -145,6 +145,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
             if process_type(process) == ProcessType.STANDBY_DEPARTURE:
                 template["areas"][area_name]["issink"] = True
 
+    # Generate line areas in the unit of a single line for the simulation core and assigning charging interfaces
     area_template = template["areas"]
 
     line_area_template = {}
@@ -152,16 +153,17 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     for name, area in area_template.items():
         if area["typename"] == "LineArea":
             line_areas_to_delete.append(name)
+            capacity_per_line = int(area["capacity"] / area["row_count"])
             for i in range(area["row_count"]):
                 area_name = name + "_row_" + str(i)
                 line_area_template[area_name] = {
                     "typename": "LineArea",
-                    "capacity": area["capacity"],
+                    "capacity": capacity_per_line,
                     "available_processes": area["available_processes"],
                     "issink": area["issink"],
                     "entry_filter": area["entry_filter"],
                     "charging_interfaces": area["charging_interfaces"][
-                        i * area["capacity"] : (i + 1) * area["capacity"]
+                        i * capacity_per_line : (i + 1) * capacity_per_line
                     ],
                 }
     area_template.update(line_area_template)
@@ -591,7 +593,7 @@ def generate_depot(
         capacities: Dict[AreaType, None | int]
         if capacities[AreaType.LINE] is not None and capacities[AreaType.LINE] > 0:
             # Create a number of LINE areas
-            number_of_areas = capacities[AreaType.LINE] // standard_block_length
+            number_of_rows = capacities[AreaType.LINE] // standard_block_length
 
             area = Area(
                 scenario=scenario,
@@ -599,8 +601,8 @@ def generate_depot(
                 depot=depot,
                 area_type=AreaType.LINE,
                 vehicle_type=vehicle_type,
-                capacity=standard_block_length,
-                row_count=number_of_areas,
+                capacity=capacities[AreaType.LINE],
+                row_count=number_of_rows,
             )
             area.processes.append(charging)
             area.processes.append(standby_departure)

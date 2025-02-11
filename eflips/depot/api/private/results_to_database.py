@@ -419,9 +419,8 @@ def add_events_into_database(
         station_id = current_area.depot.station_id
 
         if current_area.area_type == AreaType.LINE:
-            process_dict["slot"] = (
-                current_area.capacity * row + process_dict["slot"] - 1
-            )
+            capacity_per_line = int(current_area.capacity / current_area.row_count)
+            process_dict["slot"] = capacity_per_line * row + process_dict["slot"] - 1
 
         current_event = Event(
             scenario=scenario,
