@@ -266,8 +266,18 @@ def simple_consumption_simulation(
         vehicles = (
             session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).all()
         )
+
+        # Get the event count for each vbehicle in a single query using a groub_py clause
+        vehicle_event_count_q = (
+            session.query(Event.vehicle_id, sqlalchemy.func.count(Event.id))
+            .join(Vehicle)
+            .filter(Vehicle.scenario_id == scenario.id)
+            .group_by(Event.vehicle_id)
+        )
+        vehicle_event_count = dict(vehicle_event_count_q.all())
+
         for vehicle in vehicles:
-            if session.query(Event).filter(Event.vehicle_id == vehicle.id).count() == 0:
+            if vehicle.id not in vehicle_event_count.keys():
                 add_initial_standby_event(vehicle, session)
 
         # Since we are doing no_autoflush blocks later, we need to flush the session once here so that unflushed stuff

@@ -78,13 +78,14 @@ def add_initial_standby_event(
         but changes are not yet committed.
     """
 
-    earliest_trip = (
+    earliest_trip_q = (
         session.query(Trip)
         .join(Rotation)
         .filter(Rotation.vehicle == vehicle)
         .order_by(Trip.departure_time)
-        .first()
+        .limit(1)
     )
+    earliest_trip = earliest_trip_q.one_or_none()
     if earliest_trip is None:
         warnings.warn(
             f"No trips found for vehicle {vehicle.id}. Cannot add initial standby event.",
