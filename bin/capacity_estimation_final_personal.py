@@ -255,6 +255,7 @@ def simulations_loop(result_by_area,session,scenario,depot):
                 "VehicleType": vehicle_type,
                 "Area": flaeche,
                 "Line Parking Slots": line_parking_slots,
+                "Given Line Lenght": standard_block_length,
                 "Direct Parking Slots": direct_parking_slots,
                 "Vehicle Count": vehicle_count,
                 "Simulation with ExtraLine": simulation_with_extra_line,
