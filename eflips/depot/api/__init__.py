@@ -35,24 +35,8 @@ from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional, Union, List
 
-import sqlalchemy.orm
-from eflips.model import (
-    Area,
-    Depot,
-    Event,
-    EventType,
-    Rotation,
-    Scenario,
-    Trip,
-    Vehicle,
-    VehicleType,
-    AreaType,
-    ChargeType,
-    Route,
-)
-from sqlalchemy.orm import Session
-
 import eflips.depot
+import sqlalchemy.orm
 from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
@@ -77,7 +61,10 @@ from eflips.depot.api.private.results_to_database import (
     update_vehicle_in_rotation,
     update_waiting_events,
 )
-from eflips.depot.api.private.smart_charging import optimize_charging_events_even
+from eflips.depot.api.private.smart_charging import (
+    optimize_charging_events_even,
+    add_slack_time_to_events_of_depot,
+)
 from eflips.depot.api.private.util import (
     create_session,
     repeat_vehicle_schedules,
@@ -86,6 +73,21 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
+from eflips.model import (
+    Area,
+    Depot,
+    Event,
+    EventType,
+    Rotation,
+    Scenario,
+    Trip,
+    Vehicle,
+    VehicleType,
+    AreaType,
+    ChargeType,
+    Route,
+)
+from sqlalchemy.orm import Session
 
 
 class SmartChargingStrategy(Enum):
@@ -545,8 +547,11 @@ def apply_even_smart_charging(
     with create_session(scenario, database_url) as (session, scenario):
         depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
         for depot in depots:
-            # Load all the charging events at this depot
-            charging_events = (
+            add_slack_time_to_events_of_depot(
+                depot, session, standby_departure_duration
+            )
+
+            events_for_depot = (
                 session.query(Event)
                 .join(Area)
                 .filter(Area.depot_id == depot.id)
@@ -554,55 +559,9 @@ def apply_even_smart_charging(
                 .all()
             )
 
-            # For each event, take the subsequent STANDBY_DEPARTURE event of the same vehicle
-            # Reduce the STANDBY_DEPARTURE events duration to 5 minutes
-            # Move the end time of the charging event to the start time of the STANDBY_DEPARTURE event
-            for charging_event in charging_events:
-                next_event = (
-                    session.query(Event)
-                    .filter(Event.time_start >= charging_event.time_end)
-                    .filter(Event.vehicle_id == charging_event.vehicle_id)
-                    .order_by(Event.time_start)
-                    .first()
-                )
-
-                if (
-                    next_event is None
-                    or next_event.event_type != EventType.STANDBY_DEPARTURE
-                ):
-                    logger.info(
-                        f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
-                        f"event. No room for smart charging."
-                    )
-                    continue
-
-                assert next_event.time_start == charging_event.time_end
-
-                if (
-                    next_event.time_end - next_event.time_start
-                ) > standby_departure_duration:
-                    next_event.time_start = (
-                        next_event.time_end - standby_departure_duration
-                    )
-                    session.flush()
-                    # Add a timeseries to the charging event
-                    assert charging_event.timeseries is None
-                    charging_event.timeseries = {
-                        "time": [
-                            charging_event.time_start.isoformat(),
-                            charging_event.time_end.isoformat(),
-                            next_event.time_start.isoformat(),
-                        ],
-                        "soc": [
-                            charging_event.soc_start,
-                            charging_event.soc_end,
-                            charging_event.soc_end,
-                        ],
-                    }
-                    charging_event.time_end = next_event.time_start
-                    session.flush()
-
-            optimize_charging_events_even(charging_events)
+            optimize_charging_events_even(events_for_depot)
+            for event in events_for_depot:
+                session.add(event)
 
 
 def simulate_scenario(
