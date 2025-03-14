@@ -85,14 +85,19 @@ def event_has_space_for_smart_charging(event: Event) -> bool:
 @dataclass
 class SmartChargingEvent:
     original_event: Event
-    vehicle_present: npt.NDArray[
-        np.bool
-    ]  # A boolean array indicating whether the vehicle is present at the depot
-    energy_packets_needed: int  # How many energy packets are needed (quantized energy)
-    energy_packets_per_time_step: int  # How many energy packets can be transferred per time step (quantized max power)
-    energy_packets_transferred: npt.NDArray[
-        int
-    ]  # How many energy packets have been transferred at each time step (result)
+    """The original event that is being optimized."""
+
+    vehicle_present: npt.NDArray[np.bool]
+    """Array of booleans indicating whether a vehicle is present at each time step."""
+
+    energy_packets_needed: int
+    """The number of energy packets needed to transfer the energy."""
+
+    energy_packets_per_time_step: int
+    """How many energy packets can be transferred per time step (quantized max power)."""
+
+    energy_packets_transferred: npt.NDArray[int]
+    """The number of energy packets transferred at each time step (this is the result)."""
 
     @classmethod
     def from_event(
@@ -106,7 +111,7 @@ class SmartChargingEvent:
                                  This will be used to discretize the event
         :return: A SmartChargingEvent
         """
-        assert event_has_space_for_smart_charging(event)
+        logger = logging.getLogger(__name__)
 
         # Find the Number of the first discrete time step after the event starts
         start_idx = [
@@ -127,8 +132,8 @@ class SmartChargingEvent:
             event.soc_end - event.soc_start
         )
         energy_packets_needed = int(
-            np.ceil(energy_transferred / ENERGY_PER_PACKET)
-        )  # Rounded up, wo we may have to reduce the energy transferred
+            np.floor(energy_transferred / ENERGY_PER_PACKET)
+        )  # Rounded up, wo we may have to increase the energy trasferred later
 
         # Calculate the energy packets per time step
         max_power = max_charging_power_for_event(event)
@@ -144,9 +149,11 @@ class SmartChargingEvent:
         ), "Energy packets per time step must be at least 1"
 
         # Sanity check: The energy packets needed must be <= number of time steps * energy packets per time step
-        assert (
-            sum(vehicle_present) * energy_packets_per_time_step >= energy_packets_needed
-        ), "Not enough time steps to transfer the energy"
+        if sum(vehicle_present) * energy_packets_per_time_step < energy_packets_needed:
+            logger.warning(
+                f"Energy packets needed ({energy_packets_needed}) has no flexibility. Scaling down."
+            )
+            energy_packets_needed = sum(vehicle_present) * energy_packets_per_time_step
 
         return cls(
             original_event=event,
@@ -194,7 +201,7 @@ class SmartChargingEvent:
         delta_soc_from_optimization = socs[-1] - socs[0]
 
         # Scale down
-        assert delta_soc_from_optimization >= delta_soc_from_event
+        assert delta_soc_from_optimization <= delta_soc_from_event
         scale_factor = delta_soc_from_event / delta_soc_from_optimization
         socs *= scale_factor
 
@@ -217,11 +224,15 @@ class SmartChargingEvent:
             "soc": socs.tolist(),
         }
 
-        if debug_plot:
-            original_time = [
-                datetime.fromisoformat(t) for t in original_timeseries["time"]
-            ]
-            original_soc = original_timeseries["soc"]
+        if debug_plot and event.id:
+            if original_timeseries is not None and len(original_timeseries) > 0:
+                original_time = [
+                    datetime.fromisoformat(t) for t in original_timeseries["time"]
+                ]
+                original_soc = original_timeseries["soc"]
+            else:
+                original_time = []
+                original_soc = []
 
             # attach first and last time
             original_time = [event.time_start] + original_time + [event.time_end]
@@ -271,17 +282,6 @@ def optimize_charging_events_even(
         for i in range(int((end_time - start_time) / TIME_STEP_DURATION))
     ]
 
-    # Keep only the charging events that have space for smart charging
-    len_before = len(charging_events)
-    charging_events = [
-        event for event in charging_events if event_has_space_for_smart_charging(event)
-    ]
-    len_after = len(charging_events)
-    if len_before != len_after:
-        logger.warning(
-            f"Removed {len_before - len_after} out of {len_before} charging events because they did not have space for smart charging."
-        )
-
     # Create the SmartChargingEvents
     smart_charging_events = [
         SmartChargingEvent.from_event(event, time_steps) for event in charging_events
@@ -321,8 +321,10 @@ def solve_peak_shaving(
     - Vehicles are present during some discrete timesteps
     - In each timestep where a vehicle is present, decide how much charging power to provide
     - Constraints:
-      1. Charging power must not exceed the maximum in any timestep
-      2. Each vehicle must receive its required total energy
+
+          1. Charging power must not exceed the maximum in any timestep
+          2. Each vehicle must receive its required total energy
+
     - Objective: Minimize the peak sum of all vehicles' charging powers
 
     Args:
