@@ -287,6 +287,11 @@ def optimize_charging_events_even(
         SmartChargingEvent.from_event(event, time_steps) for event in charging_events
     ]
 
+    # Dicard the ones that need 0 energy
+    smart_charging_events = [
+        event for event in smart_charging_events if event.energy_packets_needed > 0
+    ]
+
     # Solve the peak shaving problem
     try:
         updated_events, peak_power = solve_peak_shaving(
@@ -674,10 +679,12 @@ if __name__ == "__main__":
     scenarios = session.query(Scenario).all()
 
     for scenario in scenarios:
+        print(f"Optimizing smart charging for scenario {scenario.name_short}")
         # Get all depots
         depots = session.query(Depot).filter(Depot.scenario == scenario).all()
 
         for depot in depots:
+            print(f"Optimizing smart charging for depot {depot.name}")
             add_slack_time_to_events_of_depot(depot, session)
 
             # Get all charging events for the depot
