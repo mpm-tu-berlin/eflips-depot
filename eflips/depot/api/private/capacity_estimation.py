@@ -23,9 +23,7 @@ from eflips.model import (
     Process,
 )
 import eflips.depot.api
-#from eflips.depot import VehicleType
 from sqlalchemy import func
-standard_block_length = 6
 
 
 @dataclass
@@ -38,7 +36,7 @@ class DrivewayAndSpacing:
     TODO: Verify that these are the values in VDV 822
     """
 
-    side_by_side: float = 0.9
+    side_by_side: float = 1.0
     """Distance between two buses that are side by side."""
     front_to_back: float = 0.5
     """Distance between the front of one bus and the back of the next bus."""
@@ -125,22 +123,64 @@ class CapacityEstimate:
 
 
 def area_square_meters(
-    area: Area, spacing_params: DrivewayAndSpacing = DrivewayAndSpacing()
+    area: Area,
+    spacing_params: DrivewayAndSpacing = DrivewayAndSpacing(),
+    standard_block_length: int = 6
 ) -> float:
     """
     For a given `Area` object, calculate the actual area needed in square meters.
+    Provided that the given `Area` needs driving lanes.
 
     :param area: An `Area` object. Vehicle length and width will be taken from `Area.vehicle_type`. The area
     type and size will be taken directly from the `Area`. Note that `AreaType.DIRECT_TWOSIDE` is not supported.
     :return: The area required in square meters.
     """
-    raise NotImplementedError("This function is not yet implemented")
+
+    vehicle_length = area.vehicle_type.length 
+    vehicle_width = area.vehicle_type.width 
+    area_capacity = area.capacity 
+
+    front_to_back = spacing_params.front_to_back
+    side_by_side = spacing_params.side_by_side
+
+    direct_area_left = spacing_params.direct_area_left
+    direct_area_right = direct_area_left
+
+    line_area_top = spacing_params.line_area_top
+    line_area_bottom = line_area_top
+
+
+    if area.area_type is AreaType.LINE:
+        amount_of_lines = area_capacity/standard_block_length
+
+        #The Area-Length including driving-lanes for entering and exiting.
+        parking_area_length = standard_block_length*vehicle_length + (standard_block_length-1)*front_to_back + line_area_top + line_area_bottom
+
+        #The Area-Width inculding a spacing of `side_by_side` for the two outermost rows.
+        parking_area_width = amount_of_lines*vehicle_width + (amount_of_lines+1)*side_by_side 
+
+        parking_area = parking_area_length*parking_area_width
+
+    elif area.area_type is AreaType.DIRECT:
+        #The Area-Width including driving-lanes to the left and to the right for entering and exiting.
+        parking_area_width = vehicle_length*math.sin(math.radians(45))+vehicle_width*math.sin(math.radians(45)) + direct_area_left + direct_area_right 
+        #The Area-Length including a spacing of `side_by_side` between each parkingslot.
+        parking_area_length = vehicle_length*math.sin(math.radians(45))+vehicle_width*math.sin(math.radians(45)) + (area_capacity-1) * vehicle_width/math.cos(math.radians(45))+ (area_capacity-1)*side_by_side*math.sin(math.radians(45))
+
+        parking_area = parking_area_length*parking_area_width
+
+    else:
+        raise NotImplementedError("This AreaType is not supported.")
+
+
+    return parking_area
 
 
 def capacity_estimation(
     scenario: Scenario,
     session: sqlalchemy.orm.session.Session,
     spacing_params: DrivewayAndSpacing = DrivewayAndSpacing(),
+    standard_block_length: int = 6
 ) -> Dict[Depot, Dict[VehicleType, CapacityEstimate]]:
     """
     Find the capacity estimates for all depots in the scenario.
@@ -184,8 +224,8 @@ def capacity_estimation(
 
 
 
-    # Function to query the necessary objects for the simulation
-    def necessary_object_query(session, scenario, depot):
+    # Function to query the necessary processes for the simulation
+    def necessary_processes_query(session, scenario, depot):
         plan = session.query(Plan).filter(Plan.scenario_id == scenario.id, Plan.id == depot.default_plan_id).first()
         clean = session.query(Process).filter(Process.scenario_id == scenario.id, Process.name == "Clean").one()
         charging = session.query(Process).filter(Process.scenario_id == scenario.id, Process.name == "Charging").one()
@@ -195,7 +235,7 @@ def capacity_estimation(
 
 
     # Function to link the Assocs before each simulation
-    def create_depot_areas_and_processes(session,scenario,plan,clean,charging,standby_departure):
+    def associate_plan_with_processes(session,scenario,plan,clean,charging,standby_departure):
 
         assocs = [
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
@@ -207,12 +247,21 @@ def capacity_estimation(
 
     # Function to determine the Direct peak usages of the different Charging Areas for the different Vehicle Types
     def give_back_peak_usage_direct_for_multiple_types(session, charging_areas, scenario):
+        """
+        Determine the peak number of concurrent charging operations (peak usage) for each charging area
+        across different vehicle types in a given scenario.
+        This function uses a sweep-line algorithm to calculate the maximum number of simultaneous charging events.
+        It retrieves all events of type CHARGING_DEPOT for each charging area, sorts the start and end times,
+        and then iterates through these time points to count concurrent events. In addition, it queries the total 
+        number of vehicles associated with the charging areas vehicle type.
+        """
         result_by_area = {}
 
+        # Ensure the charging_areas variable is a list so we can iterate uniformly.
         if not isinstance(charging_areas, list):
             charging_areas = [charging_areas]
             
-
+        # Process each charging area individually.
         for charging_area in charging_areas:
             # Step 1: Load all relevant events for the current charging area
             charging_events = session.query(Event).filter(
@@ -226,7 +275,7 @@ def capacity_estimation(
                 print(f"No charging events found for {charging_area.name}.")
                 cur_direct_peak = 0
             else:
-                # Sort the events by start time
+                # Sort the charging events by their start time to ensure proper ordering.
                 events_sorted_by_time = sorted(charging_events, key=lambda e: e.time_start)
 
                 # Initialization for peak usage calculation
@@ -234,7 +283,7 @@ def capacity_estimation(
                 cur_direct_peak = 0
                 time_points = []
 
-                # Collect all start and end points in a list
+                # Build a list of time points indicating the start and end of each event.
                 for event in events_sorted_by_time:
                     time_points.append((event.time_start, 'start'))
                     time_points.append((event.time_end, 'end'))
@@ -242,7 +291,7 @@ def capacity_estimation(
                 # Sort the time points
                 time_points.sort()
 
-                # Iterate through all time points and calculate concurrent charging operations
+                # Iterate over all time points to calculate the maximum number of simultaneous charging events.
                 for time, point_type in time_points:
                     if point_type == 'start':
                         current_count += 1
@@ -250,7 +299,7 @@ def capacity_estimation(
                     elif point_type == 'end':
                         current_count -= 1
 
-            # Number of vehicles for the current vehicle type in the charging area
+            # Query the number of vehicles in the scenario for the given vehicle type associated with the charging area.
             vehicle_count_by_type = session.query(func.count(Vehicle.id)).filter(
                 Vehicle.vehicle_type_id == charging_area.vehicle_type_id,
                 Vehicle.scenario_id == scenario.id
@@ -261,7 +310,7 @@ def capacity_estimation(
                 VehicleType.id == charging_area.vehicle_type_id
             ).first()
 
-            # Store peak usage, vehicle count, and vehicle type in the result dictionary
+            # Store the results for this charging area in the output dictionary.
             result_by_area[charging_area.name] = {
                 'peak_usage': cur_direct_peak,
                 'vehicle_count': vehicle_count_by_type,
@@ -271,7 +320,7 @@ def capacity_estimation(
         return result_by_area
 
     # Function to determine the required rows of line-parking-spaces for current VehicleType 
-    def calc_num_of_line_parking_spaces(session,peak_count,vehicle_type):
+    def calc_num_of_line_parking_spaces(session,peak_count,vehicle_type,standard_block_length):
         # Query length and width for current VehicleType 
         x = session.query(VehicleType.length).filter(VehicleType.id == vehicle_type.id).scalar() #length 
         z = session.query(VehicleType.width).filter(VehicleType.id==vehicle_type.id).scalar() #width
@@ -282,18 +331,18 @@ def capacity_estimation(
             # Area calculated for the Direct-Area divided by the are of Line-parking-spaces = maximum number of Line-parking-spaces   
             width = x*math.sin(math.radians(45))+z*math.sin(math.radians(45))
             length = x*math.sin(math.radians(45))+z*math.sin(math.radians(45)) + (peak_count-1) * z/math.cos(math.radians(45)) 
-            max_line_busse = math.floor((width*length)/(x*z))
+            max_line_buses = math.floor((width*length)/(x*z))
 
             # For given row length 
             # How many rows for the amount of Line-parking-spaces 
-            max_row_count = int(max_line_busse/standard_block_length)
+            max_row_count = int(max_line_buses/standard_block_length)
 
             # Is an additional Line-row needed? 
             extra_line_length = 0
             # ChargingArea from AreaType Line with capacity: 1 not possible 
-            if max_line_busse % standard_block_length not in (1, 0):
+            if max_line_buses % standard_block_length not in (1, 0):
                 max_row_count += 1
-                extra_line_length = max_line_busse%standard_block_length
+                extra_line_length = max_line_buses%standard_block_length
                 extra_line = True
                 print(f"Es wird {max_row_count} Iterationen geben. Davon ist eine, eine Extra-Line mit der Kapazität von {extra_line_length} Parkplätzen")
             else:
@@ -310,7 +359,7 @@ def capacity_estimation(
 
 
     # Function to determine the required area for iteration i for current VehicleType 
-    def calculate_area_demand(session,i,cur_direct_peak,extra_line,extra_line_length,max_line_count,vehicle_type):
+    def calculate_area_demand(session,i,cur_direct_peak,extra_line,extra_line_length,max_line_count,vehicle_type,standard_block_length):
 
         # Query length and width for current VehicleType 
         x = session.query(VehicleType.length).filter(VehicleType.id == vehicle_type.id).scalar() #length 
@@ -355,27 +404,28 @@ def capacity_estimation(
     # ----------------------------------------------------------
 
     
-    # First simulation run with Direct parking spaces only
-    # Result: Number of Direct parking spaces, for each VehicleType, with which a simulation is possible.
     def first_simulation_run(session,scenario,depot):
+        """
+        First simulation run with Direct parking spaces only
+        Result: Number of Direct parking spaces, for each VehicleType, with which a simulation is possible.
+        """
 
         # Query of all existing VehicleTypes in the Scanario
         # If no VehicleTypes are found --> abort 
         vehicle_types = session.query(VehicleType).filter(VehicleType.scenario_id == scenario.id).all()
         if not vehicle_types:
-            print("In dem aktuellen Scenario befinden sich keine VehicleType Objekte.")
-            return None
+            raise ValueError("In dem aktuellen Scenario befinden sich keine VehicleType Objekte.")
         
         for vehicle_type in vehicle_types:
             print(f"Für Depot {depot.id} wurde der Fahrzeugtyp {vehicle_type.name} (ID {vehicle_type.id}) wurde gefunden.") 
 
         # Query of the objects required for the simulation
-            necessary_objects = necessary_object_query(session,scenario,depot)
-            if any(value is None for value in necessary_objects):
-                print("Plan oder einer der Prozesse konnte nicht aus dem Scenario abgefragt werden")
-                continue
-            else:
-                plan,clean,charging,standby_departure = necessary_objects
+        necessary_processes = necessary_processes_query(session,scenario,depot)
+        if any(value is None for value in necessary_processes):
+            print("Plan oder einer der Prozesse konnte nicht aus dem Scenario abgefragt werden")
+            return None 
+        else:
+            plan,clean,charging,standby_departure = necessary_processes
 
         # Query for the number of rotations
         rotations = session.query(Rotation).filter(Rotation.scenario_id == scenario.id).count()
@@ -398,7 +448,7 @@ def capacity_estimation(
             charging_area.processes.append(standby_departure)
 
         # Creation of Assocs 
-        create_depot_areas_and_processes(session,scenario,plan,clean,charging,standby_departure)
+        associate_plan_with_processes(session,scenario,plan,clean,charging,standby_departure)
         
         # Clear previous vehicle and event data
         session.query(Rotation).filter(Rotation.scenario_id == scenario.id).update({"vehicle_id": None})
@@ -439,7 +489,7 @@ def capacity_estimation(
         return result_by_area
 
 
-    def simulations_loop(result_by_area,session,scenario,depot):
+    def simulations_loop(result_by_area,session,scenario,depot,standard_block_length):
         """
         This function runs the depot simulation in a loop, where a block parking line is added in each iteration.
         In the end, the parking configuration with the smallest area is chosen for each VehicleType.
@@ -450,8 +500,8 @@ def capacity_estimation(
             print("Die übergebenen Ergebnisse sind fehlerhalft.")
             return None
         
-        # Creation of Assocs
-        plan,clean,charging,standby_departure = necessary_object_query(session,scenario,depot)
+        # Query of the processes required for the simulation
+        plan,clean,charging,standby_departure = necessary_processes_query(session,scenario,depot)
 
         # List of needed processes
         processes = [charging,standby_departure]
@@ -472,7 +522,7 @@ def capacity_estimation(
             results = []
 
             # Calculation of how many line parking spaces are still smaller than the required direct parking spaces for a VehicleType
-            num_of_line_parking_spaces = calc_num_of_line_parking_spaces(session,peak_count,vehicle_type)
+            num_of_line_parking_spaces = calc_num_of_line_parking_spaces(session,peak_count,vehicle_type,standard_block_length)
             if num_of_line_parking_spaces is None:
                 print("Keine Werte für Breite oder Länge in VehicleType Objekt gefunden")
                 return None 
@@ -508,12 +558,12 @@ def capacity_estimation(
                         vehicle_count = data['vehicle_count']
                         if other_vehicle_type != vehicle_type:
                             # Charging area for buffer parking spaces
-                            charging_area_buffer = create_charging_area(session,scenario,depot,name,AreaType.LINE,vehicle_count+5,other_vehicle_type,processes)
+                            charging_area_buffer = create_charging_area(session,scenario,depot,name,AreaType.DIRECT_ONESIDE,vehicle_count+5,other_vehicle_type,processes)
                             
                                     
                     
                     # Call the function to connect processes
-                    create_depot_areas_and_processes(session,scenario,plan,clean,charging,standby_departure)
+                    associate_plan_with_processes(session,scenario,plan,clean,charging,standby_departure)
                     
                     # Simulation 
                     # Clear previous vehicle and event data
@@ -551,19 +601,19 @@ def capacity_estimation(
                     continue
 
                 # Determine peak usage of direct parking spaces for the configuration with i * block_length block parking spaces:
-            
                 result_dict = give_back_peak_usage_direct_for_multiple_types(session, charging_area, scenario)
                 cur_direct_peak = result_dict[charging_area.name]['peak_usage']
+                #print(cur_direct_peak)
 
-                print(cur_direct_peak)
-                
                 # Determine the area requirement in square meters for the current configuration
-                flaeche,line_parking_slots,direct_parking_slots,simulation_with_extra_line = calculate_area_demand(session,i,cur_direct_peak,extra_line,extra_line_length,max_line_count,vehicle_type)
+                area,line_parking_slots,direct_parking_slots,simulation_with_extra_line = calculate_area_demand(session,i,cur_direct_peak,extra_line,extra_line_length,max_line_count,vehicle_type,standard_block_length)
+
+
                 
-            # Store the results of this iteration for the selected VehicleType
+                # Store the results of this iteration for the selected VehicleType
                 zeile = {
                     "VehicleType": vehicle_type,
-                    "Area": flaeche,
+                    "Area": area,
                     "Line Parking Slots": line_parking_slots,
                     "Given Line Length": standard_block_length,
                     "Direct Parking Slots": direct_parking_slots,
@@ -588,60 +638,7 @@ def capacity_estimation(
 
         return total_results
     
-    # Simulation and saving of the best depot configuration
-    def optimal_simulation(total_results,session,scenario,depot):
-        if not total_results:
-            print("Die übergebenen Ergebnisse sind fehlerhalft.")
-            return
-
-        plan,clean,charging,standby_departure = necessary_object_query(session,scenario,depot)
-        
-        # List of needed processes
-        processes = [charging,standby_departure]
-        
-
-        for key, value in total_results.items():
-            # Unpacking the values from the inner dictionary 
-            vehicle_type = value["VehicleType"]
-            flaeche = value["Area"]
-            line_parking_slots = value["Line Parking Slots"]
-            direct_parking_slots = value["Direct Parking Slots"]
-            vehicle_used = value["Vehicle Count"]
-            optimum_with_extra_line = value["Simulation with ExtraLine"]
-            extra_line_length = value["ExtraLine Length"]
-            iteration = value["Iteration"]
-            name = "ChargingArea for optimum depot configuration"
-
-            if optimum_with_extra_line:
-                charging_line_area_extra = create_charging_area(session,scenario,depot,name,AreaType.LINE,extra_line_length,vehicle_type,processes)
-                
-                for b in range(iteration-1):
-                    charging_line_area = create_charging_area(session,scenario,depot,name,AreaType.LINE,standard_block_length,vehicle_type,processes)
-                    
-            else:
-                for b in range(iteration):
-                    charging_line_area = create_charging_area(session,scenario,depot,name,AreaType.LINE,standard_block_length,vehicle_type,processes)
-
-            if direct_parking_slots > 0:   
-                charging_area = create_charging_area(session,scenario,depot,name,AreaType.DIRECT_ONESIDE,direct_parking_slots,vehicle_type,processes) 
-
-
-            create_depot_areas_and_processes(session,scenario,plan,clean,charging,standby_departure)
-
-        session.commit()
-        # Simulation 
-        # Clear previous vehicle and event data
-        session.query(Rotation).filter(Rotation.scenario_id == scenario.id).update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario == scenario).delete()
-        session.query(Vehicle).filter(Vehicle.scenario == scenario).delete()
-
-        # Run the simulation
-        eflips.depot.api.simple_consumption_simulation(scenario, initialize_vehicles=True)
-        session.commit()
-        eflips.depot.api.simulate_scenario(scenario, repetition_period=timedelta(days=1))
-        eflips.depot.api.simple_consumption_simulation(scenario, initialize_vehicles=False)
-
-
+    
 
     # ----------------------------------------------------------
     # Function Calls
@@ -651,16 +648,24 @@ def capacity_estimation(
     capacity_estimates: Dict[Depot, Dict[VehicleType, CapacityEstimate]] = {}
 
     for depot in depots:
-
-        result_by_area = first_simulation_run(session,scenario,depot)
+        try:
+            result_by_area = first_simulation_run(session, scenario, depot)
+        #If no VehicleTypes exist in the current scenario, abort the entire process.
+        except ValueError as e:
+            if str(e) == "In dem aktuellen Scenario befinden sich keine VehicleType Objekte.":
+                print(f"Abbruch: {e}")
+                return None
+            else:
+                continue        
+        
         if result_by_area is None:
             continue
 
-        total_results = simulations_loop(result_by_area, session, scenario,depot)
+        total_results = simulations_loop(result_by_area, session, scenario,depot, standard_block_length)
         if total_results is None:
             continue
 
-        optimal_simulation(total_results, session, scenario,depot)
+        #optimal_simulation(total_results, session, scenario,depot)
 
         depot_estimates: Dict[VehicleType, CapacityEstimate] = {}
         for key, result in total_results.items():
@@ -675,9 +680,7 @@ def capacity_estimation(
         capacity_estimates[depot] = depot_estimates
 
 
-
     return capacity_estimates
-    #raise NotImplementedError("This function is not yet implemented")
 
 
 def update_depot_capacities(
@@ -694,4 +697,48 @@ def update_depot_capacities(
                                `CapacityEstimate` object as the value.
     :return:
     """
-    raise NotImplementedError("This function is not yet implemented")
+    charging = session.query(Process).filter(Process.scenario_id == scenario.id, Process.name == "Charging").one()
+    standby_departure = session.query(Process).filter(Process.scenario_id == scenario.id, Process.name == "Standby Departure").one()
+
+    # Iterate over each depot in the dictionary
+    for depot, vehicle_estimates in capacity_estimates.items():
+        # Optional: Prüfen, ob das Depot zum übergebenen Scenario gehört
+        if depot.scenario_id != scenario.id:
+            continue
+
+        # Für jeden VehicleType im aktuellen Depot
+        for vehicle_type, cap_est in vehicle_estimates.items():
+            # Berechne die Anzahl der anzulegenden LINE Areas
+            num_line_areas = cap_est.line_count  # line_count = ceil(line_peak_util / line_length)
+            for i in range(num_line_areas):
+                line_area = Area(
+                    scenario_id=scenario.id,
+                    depot_id=depot.id,
+                    vehicle_type_id=vehicle_type.id,
+                    area_type= AreaType.LINE,  
+                    capacity=cap_est.line_length,
+                    name=f"Line Area {i+1} for {vehicle_type.name} at {depot.name}",
+                    name_short=f"LINE-{vehicle_type.name[:5]}-{i+1}"
+                )
+                session.add(line_area)
+                line_area.processes.append(charging)
+                line_area.processes.append(standby_departure)
+
+            # Erstelle die DIRECT Area für den aktuellen VehicleType
+            if cap_est.direct_count > 0:
+                direct_area = Area(
+                    scenario_id=scenario.id,
+                    depot_id=depot.id,
+                    vehicle_type_id=vehicle_type.id,
+                    area_type= AreaType.DIRECT_ONESIDE, 
+                    capacity=cap_est.direct_count,
+                    name=f"Direct Area for {vehicle_type.name} at {depot.name}",
+                    name_short=f"DIRECT-{vehicle_type.name[:5]}"
+                )
+                session.add(direct_area)
+                direct_area.processes.append(charging)
+                direct_area.processes.append(standby_departure)
+        
+
+    session.commit()
+    
