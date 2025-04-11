@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Oct  1 12:50:18 2017
+Created on Sun Oct  1 12:50:18 2017.
 
 @author: p.mundt, e.lauth
 
 Complementary components that are necessary for a standalone run of the depot
 simulation.
-
 """
 from math import ceil
 from warnings import warn
@@ -25,7 +24,6 @@ class VehicleGenerator(BackgroundStore):
 
     Attributes:
     items: [list] containing all generated vehicles
-
     """
 
     def __init__(self, env):
@@ -34,7 +32,8 @@ class VehicleGenerator(BackgroundStore):
         self.map_depots = None
 
     def _complete(self, depots):
-        """Preparations that must take place before self.run and simulation
+        """Preparations that must take place before self.run and simulation.
+
         start, but may not be possible during the depot configuration phase.
         """
         self.map_depots = {depot.ID: depot for depot in depots}
@@ -43,7 +42,9 @@ class VehicleGenerator(BackgroundStore):
             self.logger = DataLogger(self.env, self, "BACKGROUNDSTORE")
 
     def run(self, depots):
-        """Intialize vehicles based on data in eflips settings. Executed and
+        """Intialize vehicles based on data in eflips settings.
+
+        Executed and
         completed at simulation start.
 
         depots: [list] of Depot objects
@@ -140,6 +141,8 @@ class SimpleTrip:
         arrival at the depot. Must be provided if globalConstants['depot'][
         'consumption_calc_mode'] == 'soc_given'. May be omitted if consumption
         calculation is CR-based.
+    minimal_soc: [int or float] minimal soc thar is encountered during the trip. Only relevant for opportunity
+        charging, where it may be lower than end_soc.
     charge_on_track: [bool] For the use with globalConstants['depot'][
         'consumption_calc_mode'] == 'soc_given'. If True, opportunity charging
         on track is assumed and start_soc is interpreted as sufficient soc for
@@ -165,12 +168,14 @@ class SimpleTrip:
     periodic_trigger_scheduled: [bool] flag to prevent recursion when
         scheduling a dispatch trigger for delayed trips
     ID_orig: [str] ID of trip this trip is a copy from, if not an original
-
     """
 
     delay_event_cls = None
-    """Event that succeeds if departure delay occurs. Must be set before 
-    calling init to be applied."""
+    """Event that succeeds if departure delay occurs.
+
+    Must be set before
+    calling init to be applied.
+    """
 
     def __init__(
         self,
@@ -185,6 +190,7 @@ class SimpleTrip:
         distance,
         start_soc=None,
         end_soc=None,
+        minimal_soc: float | None = None,
         charge_on_track=False,
         is_copy=False,
     ):
@@ -234,7 +240,8 @@ class SimpleTrip:
 
     @property
     def vehicle_types_joinedstr(self):
-        """Return the IDs of self.vehicle_types comma-separated in a single
+        """Return the IDs of self.vehicle_types comma-separated in a single.
+
         string.
         Example returns:
         ['EN'] -> 'EN'
@@ -244,7 +251,9 @@ class SimpleTrip:
 
     @property
     def delay_departure(self):
-        """Return the departure delay [int] in seconds. Return None until
+        """Return the departure delay [int] in seconds.
+
+        Return None until
         scheduled time of departure.
         """
         if self.env.now < self.std:
@@ -260,6 +269,7 @@ class SimpleTrip:
     @property
     def delayed_departure(self):
         """Return True if the trip is delayed upon departure or False if not.
+
         Return None until scheduled time of departure.
         """
         delay = self.delay_departure
@@ -270,7 +280,9 @@ class SimpleTrip:
 
     @property
     def delay_arrival(self):
-        """Return the arrival delay [int] in seconds. Return None until
+        """Return the arrival delay [int] in seconds.
+
+        Return None until
         scheduled time of arrival.
         """
         if self.env.now < self.sta:
@@ -284,6 +296,7 @@ class SimpleTrip:
     @property
     def delayed_arrival(self):
         """Return True if the trip is delayed upon arrival or False if not.
+
         Return None until scheduled time of arrival.
         """
         delay = self.delay_arrival
@@ -299,13 +312,17 @@ class SimpleTrip:
 
     @property
     def actual_duration(self):
-        """Return the actual duration [int] of the trip. Return None until the
-        trip is finished."""
+        """Return the actual duration [int] of the trip.
+
+        Return None until the
+        trip is finished.
+        """
         return self.ata - self.atd if self.ata is not None else None
 
     @property
     def lead_time_match(self):
-        """Return the time interval [int] of how early the trip was matched
+        """Return the time interval [int] of how early the trip was matched.
+
         with a vehicle. May be negative if the trip is delayed. Return None if
         self.t_match is None.
         """
@@ -315,7 +332,8 @@ class SimpleTrip:
             return self.std - self.t_match
 
     def notify_due_departure(self, t):
-        """Wait until simulation time *t* and then trigger the depot's
+        """Wait until simulation time *t* and then trigger the depot's.
+
         assignment process if the trip has no vehicle. No action if *t* < now.
         """
         if t >= self.env.now:
@@ -324,7 +342,8 @@ class SimpleTrip:
                 self.origin.depot_control.trigger_dispatch()
 
     def notify_delay(self):
-        """Instantiate self.delay_event_cls if the trip hasn't started one
+        """Instantiate self.delay_event_cls if the trip hasn't started one.
+
         second after self.std.
         """
         yield self.env.timeout(self.std + 1 - self.env.now)
@@ -336,6 +355,7 @@ class SimpleTrip:
 
 class Timetable:
     """Timetable with a list of SimpleTrip objects from imported data.
+
     Processes the list of trips and requests matching vehicles from a depot.
 
     Parameters:
@@ -354,7 +374,6 @@ class Timetable:
     all_trips: working [list] of all trips after scheduling including copies
     reservations: {dict} helper variable for the prioritize_init_store option
     fully_reserved: [bool] helper variable for the prioritize_init_store option
-
     """
 
     def __init__(self, env, trips):
@@ -371,7 +390,8 @@ class Timetable:
         self.fully_reserved = False
 
     def _complete(self, depots):
-        """Completion of trip instantiation that must take place before
+        """Completion of trip instantiation that must take place before.
+
         simulation start, but may not be possible during the depot
         configuration phase.
         """
@@ -421,7 +441,8 @@ class Timetable:
             self.reserve_trips(self.trips)
 
     def run(self, depots):
-        """Assure that trips are issued at depots with a time buffer of
+        """Assure that trips are issued at depots with a time buffer of.
+
         self.days_ahead.
         Infinite loop that checks if there is enough buffer. If not, copy the
         basic list of trips, raise the time values and issue them at the
@@ -443,7 +464,9 @@ class Timetable:
 
     @staticmethod
     def issue_request(trip):
-        """Issue request for vehicle at the trip's departure depot. The vehicle
+        """Issue request for vehicle at the trip's departure depot.
+
+        The vehicle
         has to match *filter*. Waiting time is possible. Called in run().
         """
         # Please dont add restrictions here!
@@ -453,7 +476,8 @@ class Timetable:
         trip.origin.request_vehicle(trip, filter=vf)
 
     def reserve_trips(self, trips):
-        """Mark the first trips equal to the amount of matching vehicles to
+        """Mark the first trips equal to the amount of matching vehicles to.
+
         be served by the depot's init store.
         Call only if option prioritize_init_store is on.
         """
@@ -497,7 +521,6 @@ class ExcelSheetData:
     """Methods to import an Excel sheet and save its data row-wise to a list.
 
     data: [list] containing the imported data with one entry per row.
-
     """
 
     def __init__(self, filename, sheetname):
@@ -535,7 +558,9 @@ class ExcelSheetData:
 
 
 def timetabledata_from_excel(filename):
-    """Load data from excel to use for timetable initialization. The loaded
+    """Load data from excel to use for timetable initialization.
+
+    The loaded
     data can be reused for multiple identical independent timetables.
     Return an ExcelSheetData object.
 
@@ -548,7 +573,8 @@ def timetabledata_from_excel(filename):
 
 
 def timetable_from_timetabledata(env, timetabledata):
-    """Initialize and return a Timetable instance with SimpleTrip objects
+    """Initialize and return a Timetable instance with SimpleTrip objects.
+
     based on *timetabledata*.
 
     timetabledata: [ExcelSheetData] from timetabledata_from_excel()
@@ -559,7 +585,8 @@ def timetable_from_timetabledata(env, timetabledata):
 
 
 def timetabledata_to_trips(env, timetabledata):
-    """Convert route data from excel to a list of SimpleTrip objects usable by
+    """Convert route data from excel to a list of SimpleTrip objects usable by.
+
     Timetable.
 
     timetabledata: [ExcelSheetData] object that contains a list of trips. Has

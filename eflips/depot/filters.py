@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import warnings
 
-import eflips
 from eflips.settings import globalConstants
-from eflips.helperFunctions import flexprint
+
+import eflips
 
 
 class VehicleFilter:
-    """Class to build and apply filters for vehicles. Designed to work with
+    """Class to build and apply filters for vehicles.
+
+    Designed to work with
     simpy FilterStore and subclasses in the depot simulation: Implements
     __call__ to make an instance directly callable and return the all()-result
     of the criteria. Can be recalled. Usable e.g. for simpyExt.FilterStoreExt
@@ -46,7 +48,6 @@ class VehicleFilter:
         parameters as keyword arguments during init adds them automatically as
         attribute of the VehicleFilter. Alternatively, attributes might be
         added after init, before calling the filter.
-
     """
 
     def __init__(self, filter_names=None, **kwargs):
@@ -83,20 +84,26 @@ class VehicleFilter:
         self.filters_from_names()
 
     def __call__(self, vehicle):
-        """Method that actually applies filters. Return True if all of
-        self.filter return True or self.filters is empty."""
+        """Method that actually applies filters.
+
+        Return True if all of
+        self.filter return True or self.filters is empty.
+        """
         result = all(filter(vehicle) for filter in self.filters)
         return result
 
     def any(self, vehicle):
-        """Return True if any of the filters in self.filters is True or
+        """Return True if any of the filters in self.filters is True or.
+
         self.filters is empty. Optional method in addition to the standard
-        usage with logical all which is implemented in __call__."""
+        usage with logical all which is implemented in __call__.
+        """
         result = any(filter(vehicle) for filter in self.filters)
         return result
 
     def filters_from_names(self):
-        """Append references to methods specified in filter_names to
+        """Append references to methods specified in filter_names to.
+
         self.filters. Extends the given strings by 'filter_' at the beginning,
         so that part does not have to be passed during instantiation.
         Filters can alternatively be added after instantiation using append().
@@ -111,12 +118,16 @@ class VehicleFilter:
             self.append(filter)
 
     def append(self, filter):
-        """Append *filter* to self.filters. Filter must be a callable accepting
-        vehicle as argument and returning a boolean value."""
+        """Append *filter* to self.filters.
+
+        Filter must be a callable accepting
+        vehicle as argument and returning a boolean value.
+        """
         self.filters.append(filter)
 
     def filter_vehicle_type(self, vehicle):
-        """Return True if the vehicle type matches ANY item in
+        """Return True if the vehicle type matches ANY item in.
+
         self.vehicle_types.
 
         Attributes required in self:
@@ -127,7 +138,9 @@ class VehicleFilter:
         return vehicle.vehicle_type in self.vehicle_types
 
     def get_vt_objects(self, force=False):
-        """Helper for filter methods using self.vehicle_types. Get objects for
+        """Helper for filter methods using self.vehicle_types.
+
+        Get objects for
         strings in self.vehicle_types.
         If *force* is False and self.vehicle_types_converted is True, the
         conversion is skipped (useful for reusing the filter object with the
@@ -166,7 +179,8 @@ class VehicleFilter:
             self.vehicle_types_converted = True
 
     def filter_trip_vehicle_match(self, vehicle):
-        """Return True if vehicle is suitable for self.trip (for vehicles that
+        """Return True if vehicle is suitable for self.trip (for vehicles that.
+
         have not entered the system yet) or if vehicle and self.trip were
         matched by the dispatching.
 
@@ -187,7 +201,8 @@ class VehicleFilter:
 
     @staticmethod
     def filter_no_active_uncancellable_processes(vehicle):
-        """Return True if the vehicle has no active processes or only those
+        """Return True if the vehicle has no active processes or only those.
+
         that can be cancelled for dispatch.
         """
         if not vehicle.dwd.any_active_processes:
@@ -209,7 +224,8 @@ class VehicleFilter:
         return vehicle.battery.soc == 1
 
     def filter_min_energy(self, vehicle):
-        """Return True if the remaining energy of the vehicle's battery is at
+        """Return True if the remaining energy of the vehicle's battery is at.
+
         least self.min_energy.
 
         Attributes required in self:
@@ -218,7 +234,8 @@ class VehicleFilter:
         return self.min_energy <= vehicle.battery.energy_remaining
 
     def filter_sufficient_energy(self, vehicle):
-        """Return True if the remaining energy of the vehicle's battery plus a
+        """Return True if the remaining energy of the vehicle's battery plus a.
+
         reserve is sufficient for the trip.
 
         Attributes required in self:
@@ -245,7 +262,7 @@ class VehicleFilter:
 
         elif globalConstants["depot"]["consumption_calc_mode"] == "soc_given":
             if self.trip.charge_on_track:
-                result = round(vehicle.battery.soc, 5) >= self.trip.start_soc
+                result = round(vehicle.battery.soc, 5) >= self.trip.minimal_soc
             else:
                 required_energy = (
                     self.trip.start_soc - self.trip.end_soc
@@ -277,7 +294,8 @@ class VehicleFilter:
         return result
 
     def filter_soc_lower_than(self, vehicle):
-        """Return True if the soc of the vehicle's battery is lower than
+        """Return True if the soc of the vehicle's battery is lower than.
+
         self.soc.
 
         Attributes required in self:
@@ -286,7 +304,8 @@ class VehicleFilter:
         return vehicle.battery.soc < self.soc
 
     def filter_service_need(self, vehicle):
-        """Return True if the vehicle needs service, i.e. the cumulated trip
+        """Return True if the vehicle needs service, i.e. the cumulated trip.
+
         time since last service is greater than self.service_need_td or the
         elapsed time since last service is greater than
         self.service_need_t_elapsed.
@@ -346,7 +365,8 @@ class VehicleFilter:
             return t0 <= now <= 86400 or now <= t1
 
     def filter_in_period_days(self, vehicle):
-        """Return True if the time is in period and it is the third, fourth,
+        """Return True if the time is in period and it is the third, fourth,.
+
         ... day.
 
         Attributes required in self:

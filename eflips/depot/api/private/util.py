@@ -379,18 +379,6 @@ class VehicleSchedule:
         :return: A :class:`eflips.depot.standalone.SimpleTrip` object.
         """
 
-        # Handle the "minimal SoC" for opportunity charging vehicles.
-        # For opportunity charging vehicles, the required minimal SoC is not departure_soc-arrival_soc, but
-        # rather departure_soc-minimal_soc.
-        # The "sufficient energy" in the simulation will then dispatch a "charge_on_track" event if the vehicle's
-        # start soc is a certain value. This certain value therefore needs to be departure_soc-minimal_soc.
-        if self.opportunity_charging:
-            start_soc = self.departure_soc - self.minimal_soc
-            end_soc = self.arrival_soc - self.minimal_soc
-        else:
-            start_soc = self.departure_soc
-            end_soc = self.arrival_soc
-
         vehicle_types = [self.vehicle_type]
         departure = int((self.departure - simulation_start_time).total_seconds())
         arrival = int((self.arrival - simulation_start_time).total_seconds())
@@ -404,8 +392,9 @@ class VehicleSchedule:
             std=departure,
             sta=arrival,
             distance=None,
-            start_soc=start_soc,
-            end_soc=end_soc,
+            start_soc=self.departure_soc,
+            end_soc=self.arrival_soc,
+            minimal_soc=self.minimal_soc,
             charge_on_track=self.opportunity_charging,
             is_copy=self._is_copy,
         )
