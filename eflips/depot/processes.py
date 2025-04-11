@@ -762,8 +762,6 @@ class ChargeAbstract(VehicleProcess, ABC):
             if called by Charge(sub-)-classes). Leave None for update requests
             from outside the process.
         """
-        self.last_update = self.env.now
-
         if amount is None and (
             self.last_update == self.env.now or self.starts[-1] == self.env.now
         ):
@@ -791,6 +789,7 @@ class ChargeAbstract(VehicleProcess, ABC):
         self.vehicle.battery_logs.append(
             BatteryLog(self.env.now, self.vehicle, event_name)
         )
+        self.last_update = self.env.now
 
 
 class Charge(ChargeAbstract):
@@ -906,9 +905,7 @@ class Charge(ChargeAbstract):
 
         except simpy.Interrupt:
             flexprint("charge interrupted", env=self.env, switch="processes")
-            actual_charging_duration = self.env.now - self.starts[0]
-            actual_charged_energy = (effective_power * actual_charging_duration) / 3600
-            self.update_battery("charge_interrupt", amount=actual_charged_energy)
+            self.update_battery("charge_interrupt")
 
         self.charging_interface.current_power = 0
         self.vehicle.power_logs[self.env.now] = 0
