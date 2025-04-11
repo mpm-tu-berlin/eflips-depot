@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.6.8"
+version = "4.7.0"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -23,6 +23,8 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.2.0"
 xlrd = "<=1.2.0"
 scipy = "^1.14.0"
+gurobipy = "^12.0.1"
+pyomo = "^6.9.1"
 
 
 [tool.pytest.ini_options]
