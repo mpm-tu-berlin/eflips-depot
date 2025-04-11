@@ -500,14 +500,21 @@ def generate_depot_layout(
                     AreaType.DIRECT_ONESIDE: rotation_count,
                     AreaType.DIRECT_TWOSIDE: None,
                 }
+
+            total_rotation_count = (
+                session.query(Rotation)
+                .filter(Rotation.scenario_id == scenario.id)
+                .count()
+            )
+
             generate_depot(
                 vt_capacity_dict,
                 first_stop,
                 scenario,
                 session,
                 charging_power=charging_power,
-                num_shunting_slots=max(rotation_count // 10, 1),
-                num_cleaning_slots=max(rotation_count // 10, 1),
+                num_shunting_slots=max(total_rotation_count // 10, 1),
+                num_cleaning_slots=max(total_rotation_count // 10, 1),
             )
 
 
