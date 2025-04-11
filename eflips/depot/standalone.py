@@ -205,6 +205,7 @@ class SimpleTrip:
         self.distance = distance
         self.start_soc = start_soc
         self.end_soc = end_soc
+        self.minimal_soc = minimal_soc
         self.charge_on_track = charge_on_track
         self.is_copy = is_copy
 
