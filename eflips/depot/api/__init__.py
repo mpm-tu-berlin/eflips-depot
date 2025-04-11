@@ -604,6 +604,7 @@ def simulate_scenario(
     database_url: Optional[str] = None,
     smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
     ignore_unstable_simulation: bool = False,
+    ignore_delayed_trips: bool = False,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -637,11 +638,13 @@ def simulate_scenario(
         - SmartChargingStrategy.MIN_PRICE: Not implemented yet.
 
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
+    :param ignore_delayed_trips: If True, the simulation will not raise an exception if there are delayed trips.
 
     :return: Nothing. The results are added to the database.
 
     :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
         the parameters cause the solver to diverge.
+    :raises DelayedTripException: If there are delayed trips in the simulation.
     """
     logger = logging.getLogger(__name__)
 
@@ -657,6 +660,11 @@ def simulate_scenario(
         except eflips.depot.UnstableSimulationException as e:
             if ignore_unstable_simulation:
                 logger.warning("Simulation is unstable. Continuing.")
+            else:
+                raise e
+        except eflips.depot.DelayedTripException as e:
+            if ignore_delayed_trips:
+                logger.warning("Simulation has delayed trips. Continuing.")
             else:
                 raise e
 
@@ -1007,6 +1015,8 @@ def add_evaluation_to_database(
 
     :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
         the parameters cause the solver to diverge.
+    :raises DelayedTripException: If there are delayed trips in the simulation.
+
     """
 
     # Read simulation start time

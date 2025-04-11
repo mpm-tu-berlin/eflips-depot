@@ -9,6 +9,7 @@ from eflips.model import Event, EventType, Rotation, Vehicle, Area, AreaType
 from sqlalchemy import select
 
 from eflips.depot import SimpleVehicle, ProcessStatus
+from eflips.depot import UnstableSimulationException, DelayedTripException
 
 
 def get_finished_schedules_per_vehicle(
@@ -48,10 +49,13 @@ def get_finished_schedules_per_vehicle(
     latest_time = None
 
     for i in range(len(list_of_finished_trips)):
-        assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std, (
-            f"The trip {list_of_finished_trips[i].ID} is delayed. The simulation doesn't "
-            "support delayed trips for now."
-        )
+        try:
+            assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std
+        except AssertionError:
+            raise DelayedTripException(
+                f"The trip {list_of_finished_trips[i].ID} is delayed. The simulation doesn't "
+                "support delayed trips for now."
+            )
 
         if list_of_finished_trips[i].is_copy is False:
             current_trip = list_of_finished_trips[i]
@@ -62,7 +66,7 @@ def get_finished_schedules_per_vehicle(
                 "id": int(current_trip.ID),
             }
             if i == 0:
-                raise ValueError(
+                raise UnstableSimulationException(
                     f"New Vehicle required for the trip {current_trip.ID}, which suggests the fleet or the "
                     f"infrastructure might not be enough for the full electrification. Please add charging "
                     f"interfaces or increase charging power ."
