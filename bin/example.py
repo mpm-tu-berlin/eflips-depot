@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 import argparse
-import logging
 import os
 import warnings
 
@@ -13,9 +12,9 @@ from eflips.depot.api import (
     add_evaluation_to_database,
     delete_depots,
     init_simulation,
-    insert_dummy_standby_departure_events,
     run_simulation,
     simple_consumption_simulation,
+    apply_even_smart_charging,
     generate_depot_layout,
 )
 
@@ -108,7 +107,6 @@ if __name__ == "__main__":
         # It could indicate a problem with the rotations with other data sources
         warnings.simplefilter("ignore", category=ConsistencyWarning)
 
-        logging.basicConfig(level=logging.DEBUG)
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
             scenario=scenario, charging_power=300, delete_existing_depot=True
@@ -183,15 +181,7 @@ if __name__ == "__main__":
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
         # consumption. This is done by shifting the charging times of the vehicles. The method is called
         # apply_even_smart_charging and is part of the eflips.depot.api module.
-        try:
-            from eflips.depot.api import apply_even_smart_charging
-
-            apply_even_smart_charging(scenario)
-        except ImportError:
-            print(
-                "The apply_even_smart_charging method is not available. This is not a problem, but the simulation will "
-                "not use even smart charging. Install eflips-opt >= 0.2.0 to use this method."
-            )
+        apply_even_smart_charging(scenario)
 
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()
