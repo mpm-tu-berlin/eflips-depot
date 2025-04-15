@@ -35,8 +35,24 @@ from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional, Union, List
 
-import eflips.depot
 import sqlalchemy.orm
+from eflips.model import (
+    Area,
+    Depot,
+    Event,
+    EventType,
+    Rotation,
+    Scenario,
+    Trip,
+    Vehicle,
+    VehicleType,
+    AreaType,
+    ChargeType,
+    Route,
+)
+from sqlalchemy.orm import Session
+
+import eflips.depot
 from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
@@ -61,10 +77,6 @@ from eflips.depot.api.private.results_to_database import (
     update_vehicle_in_rotation,
     update_waiting_events,
 )
-from eflips.depot.api.private.smart_charging import (
-    optimize_charging_events_even,
-    add_slack_time_to_events_of_depot,
-)
 from eflips.depot.api.private.util import (
     create_session,
     repeat_vehicle_schedules,
@@ -73,21 +85,6 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
-from eflips.model import (
-    Area,
-    Depot,
-    Event,
-    EventType,
-    Rotation,
-    Scenario,
-    Trip,
-    Vehicle,
-    VehicleType,
-    AreaType,
-    ChargeType,
-    Route,
-)
-from sqlalchemy.orm import Session
 
 
 class SmartChargingStrategy(Enum):
@@ -520,50 +517,6 @@ def generate_depot_layout(
             )
 
 
-def apply_even_smart_charging(
-    scenario: Union[Scenario, int, Any],
-    database_url: Optional[str] = None,
-    standby_departure_duration: timedelta = timedelta(minutes=5),
-) -> None:
-    """
-    Takes a scenario where depot simulation has been run and applies smart charging to the depot.
-
-    This modifies the time and power of the charging events in the database. The arrival and departure times and SoCs at
-    these times are not modified.
-
-    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
-
-    :param database_url: An optional database URL. If no database URL is passed and the `scenario` parameter is not a
-        :class:`eflips.model.Scenario` object, the environment variable `DATABASE_URL` must be set to a valid database
-        URL.
-
-    :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
-        allowed to wait at the depot before it has to leave. The default is 5 minutes.
-
-    :return: None. The results are added to the database.
-    """
-    logger = logging.getLogger(__name__)
-
-    with create_session(scenario, database_url) as (session, scenario):
-        depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
-        for depot in depots:
-            add_slack_time_to_events_of_depot(
-                depot, session, standby_departure_duration
-            )
-
-            events_for_depot = (
-                session.query(Event)
-                .join(Area)
-                .filter(Area.depot_id == depot.id)
-                .filter(Event.event_type == EventType.CHARGING_DEPOT)
-                .all()
-            )
-
-            optimize_charging_events_even(events_for_depot)
-            for event in events_for_depot:
-                session.add(event)
-
-
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
@@ -638,7 +591,19 @@ def simulate_scenario(
             case SmartChargingStrategy.NONE:
                 pass
             case SmartChargingStrategy.EVEN:
-                apply_even_smart_charging(scenario, database_url)
+                try:
+                    from eflips.opt.smart_charging import apply_even_smart_charging
+
+                    apply_even_smart_charging(scenario, database_url)
+                except ImportError:
+                    logger.warning(
+                        "The even smart charging strategy is not available. "
+                        "Please install the eflips-opt package >= 0.2.0."
+                    )
+                    raise NotImplementedError(
+                        "The even smart charging strategy is not available. "
+                        "Please install the eflips-opt package >= 0.2.0"
+                    )
             case SmartChargingStrategy.MIN_PRICE:
                 raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
             case _:
