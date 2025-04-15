@@ -394,6 +394,7 @@ class VehicleSchedule:
             distance=None,
             start_soc=self.departure_soc,
             end_soc=self.arrival_soc,
+            minimal_soc=self.minimal_soc,
             charge_on_track=self.opportunity_charging,
             is_copy=self._is_copy,
         )
