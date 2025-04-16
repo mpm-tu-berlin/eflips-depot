@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 import argparse
-import logging
 import os
 import warnings
 
@@ -13,7 +12,6 @@ from eflips.depot.api import (
     add_evaluation_to_database,
     delete_depots,
     init_simulation,
-    insert_dummy_standby_departure_events,
     run_simulation,
     simple_consumption_simulation,
     apply_even_smart_charging,
@@ -109,7 +107,6 @@ if __name__ == "__main__":
         # It could indicate a problem with the rotations with other data sources
         warnings.simplefilter("ignore", category=ConsistencyWarning)
 
-        logging.basicConfig(level=logging.DEBUG)
         ##### Step 2: Generate the depot layout
         generate_depot_layout(
             scenario=scenario, charging_power=300, delete_existing_depot=True

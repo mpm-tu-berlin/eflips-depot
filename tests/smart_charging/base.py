@@ -1,11 +1,6 @@
 import os
 
 import pytest
-from eflips.depot.api import (
-    simple_consumption_simulation,
-    simulate_scenario,
-    SmartChargingStrategy,
-)
 from eflips.model import (
     Base,
     setup_database,
@@ -30,6 +25,12 @@ from eflips.model import (
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+from eflips.depot.api import (
+    simple_consumption_simulation,
+    simulate_scenario,
+    SmartChargingStrategy,
+)
 
 
 class BaseTest:
@@ -68,7 +69,7 @@ class BaseTest:
             scenario=scenario,
             name="Bus Typ Dagobert",
             battery_capacity=200,
-            charging_curve=[[0, 200], [1, 150]],
+            charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
             consumption=1,
         )
