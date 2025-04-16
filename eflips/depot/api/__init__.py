@@ -576,7 +576,7 @@ def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
-    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
+    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.NONE,
     ignore_unstable_simulation: bool = False,
     ignore_delayed_trips: bool = False,
 ) -> None:
