@@ -3,10 +3,10 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import sqlalchemy.orm
-from typing import Dict,List, Tuple
+from typing import Dict, List, Tuple
 from matplotlib.offsetbox import AnchoredText
 import seaborn as sns
-from eflips.model import VehicleType, Area, AreaType,Depot,Process
+from eflips.model import VehicleType, Area, AreaType, Depot, Process
 import eflips.depot.api
 from rectpack import newPacker
 
@@ -36,6 +36,7 @@ Returns (for best_possible_packing method):
 # ----------------------------------------------------------
 # Bin-Packing with external solver: rectpack
 # ----------------------------------------------------------
+
 
 @dataclass
 class DepotLayout:
@@ -69,23 +70,37 @@ class DepotLayout:
                 'line_capacity_sum', 'direct_capacity', and 'line_length' (all as integers).
         """
         # Load the Charging process to consider only the relevant areas
-        charging_process = self.session.query(Process).filter(Process.name == "Charging",Process.scenario_id == self.depot.scenario_id).one_or_none()
-        
+        charging_process = (
+            self.session.query(Process)
+            .filter(
+                Process.name == "Charging",
+                Process.scenario_id == self.depot.scenario_id,
+            )
+            .one_or_none()
+        )
+
         if charging_process is None:
-            raise ValueError("Kein Charging-Prozess für das Scenario des Depots gefunden.")
-        
+            raise ValueError(
+                "Kein Charging-Prozess für das Scenario des Depots gefunden."
+            )
+
         # Retrieve all areas of the depot that are linked to the Charging process
-        areas = (self.session.query(Area).join(Area.processes).filter(Area.depot_id == self.depot.id,Process.id == charging_process.id).all())
-        
+        areas = (
+            self.session.query(Area)
+            .join(Area.processes)
+            .filter(Area.depot_id == self.depot.id, Process.id == charging_process.id)
+            .all()
+        )
+
         results: Dict[VehicleType, Dict[str, int]] = {}
-        
+
         for area in areas:
-            vehicletype = area.vehicle_type  
+            vehicletype = area.vehicle_type
             if vehicletype not in results:
                 results[vehicletype] = {
                     "line_capacity_sum": 0,
                     "direct_capacity": 0,
-                    "line_length": 0
+                    "line_length": 0,
                 }
             # Distinguish areas based on their area_type
             if area.area_type == AreaType.LINE:
@@ -95,11 +110,13 @@ class DepotLayout:
                 if results[vehicletype]["line_length"] == 0:
                     results[vehicletype]["line_length"] = area.capacity
             elif area.area_type == AreaType.DIRECT_ONESIDE:
-                results[vehicletype]["direct_capacity"] = area.capacity  # Es wird angenommen, dass es nur eine DIRECT Area pro VehicleType gibt.
-        
-        return results
-    
+                results[vehicletype][
+                    "direct_capacity"
+                ] = (
+                    area.capacity
+                )  # Es wird angenommen, dass es nur eine DIRECT Area pro VehicleType gibt.
 
+        return results
 
     def create_rectangles(self) -> Tuple[List[Tuple], int]:
         """
@@ -124,12 +141,22 @@ class DepotLayout:
             standard_length_linerow = estimate["line_length"]
 
             # Query and store the length and width of the VehicleType from the database
-            bus_length = self.session.query(VehicleType.length).filter(VehicleType.id == vehicle_type.id).scalar() 
-            bus_width = self.session.query(VehicleType.width).filter(VehicleType.id==vehicle_type.id).scalar() 
+            bus_length = (
+                self.session.query(VehicleType.length)
+                .filter(VehicleType.id == vehicle_type.id)
+                .scalar()
+            )
+            bus_width = (
+                self.session.query(VehicleType.width)
+                .filter(VehicleType.id == vehicle_type.id)
+                .scalar()
+            )
             if bus_length is None or bus_width is None:
-                raise ValueError(f"Keine Länge für Fahrzeugtyp {vehicle_type} gefunden.")
-            
-            is_line = True 
+                raise ValueError(
+                    f"Keine Länge für Fahrzeugtyp {vehicle_type} gefunden."
+                )
+
+            is_line = True
 
             # --- LINE-AREA ---
             if line_parking_slots > 0:
@@ -143,11 +170,14 @@ class DepotLayout:
                 flaeche_block = (vehicle_type, area_height * area_width)
                 line_area = (vehicle_type, area_width, area_height, is_line)
                 # Line parking area with surrounding driveway
-                line_area_withframe = (vehicle_type, area_width + self.max_driving_lane_width, area_height + self.max_driving_lane_width, is_line)
+                line_area_withframe = (
+                    vehicle_type,
+                    area_width + self.max_driving_lane_width,
+                    area_height + self.max_driving_lane_width,
+                    is_line,
+                )
 
                 areas_withframe.append(line_area_withframe)
-        
-
 
             # --- DIRECT-Area ---
             if direct_parking_slots > 0:
@@ -155,19 +185,39 @@ class DepotLayout:
                 sin_45 = math.sin(math.radians(45))
                 cos_45 = math.cos(math.radians(45))
                 width_of_direct_area = bus_length * sin_45 + bus_width * sin_45
-                length_of_direct_area = bus_length * sin_45 + bus_width * sin_45 + (direct_parking_slots-1) * bus_width/cos_45
-                direct_flaeche = (vehicle_type,width_of_direct_area*length_of_direct_area)
-                direct_area = (vehicle_type, width_of_direct_area, length_of_direct_area, not is_line)
+                length_of_direct_area = (
+                    bus_length * sin_45
+                    + bus_width * sin_45
+                    + (direct_parking_slots - 1) * bus_width / cos_45
+                )
+                direct_flaeche = (
+                    vehicle_type,
+                    width_of_direct_area * length_of_direct_area,
+                )
+                direct_area = (
+                    vehicle_type,
+                    width_of_direct_area,
+                    length_of_direct_area,
+                    not is_line,
+                )
                 # Direct parking area with surrounding driveway
-                direct_area_with_frame = (vehicle_type, width_of_direct_area+ self.max_driving_lane_width, length_of_direct_area + self.max_driving_lane_width, not is_line)
+                direct_area_with_frame = (
+                    vehicle_type,
+                    width_of_direct_area + self.max_driving_lane_width,
+                    length_of_direct_area + self.max_driving_lane_width,
+                    not is_line,
+                )
 
                 areas_withframe.append(direct_area_with_frame)
-        
-        return  areas_withframe, standard_length_linerow
-    
 
-    
-    def create_bin(self, areas_withframe: List[Tuple], candidate_w: int = None, candidate_h: int = None) -> Tuple[List[Tuple], int, int]:
+        return areas_withframe, standard_length_linerow
+
+    def create_bin(
+        self,
+        areas_withframe: List[Tuple],
+        candidate_w: int = None,
+        candidate_h: int = None,
+    ) -> Tuple[List[Tuple], int, int]:
         """
         This function creates the bin in which the generated rectangles (including surrounding driveways) are to be placed.
         If no external dimensions for the bin are provided, a sufficiently large square bin is automatically generated.
@@ -186,7 +236,9 @@ class DepotLayout:
             outer_width = candidate_w
             outer_height = candidate_h
         else:
-            area_in_square_meters = sum(width * length for _, width, length, _ in areas_withframe)
+            area_in_square_meters = sum(
+                width * length for _, width, length, _ in areas_withframe
+            )
             if self.bin_width is None or self.bin_height is None:
                 max_height_val = max(item[2] for item in areas_withframe)
                 self.bin_width = math.ceil(math.sqrt(area_in_square_meters) * 1.4)
@@ -195,40 +247,41 @@ class DepotLayout:
             outer_width = self.bin_width
             outer_height = self.bin_height
 
-        '''
+        """
         # Preliminary check:
         # Check whether the container's area is sufficient for the total area of all parking spaces (including driveways)
         if self.bin_width is not None and self.bin_height is not None:
             bin_area = self.bin_width * self.bin_height
             if bin_area < area_in_square_meters:
                raise ValueError("Die Übergebene Parkfläche reicht nicht vom Flächeninhalt, um alle Stellplätze zu plazieren.")
-        '''
-
+        """
 
         # Second preliminary check according to Mundt:
         # Check if any of the parking space dimensions exceed the dimensions of the parking area.
         max_width = max(item[1] for item in areas_withframe)
         max_height_val = max(item[2] for item in areas_withframe)
         if max_width > outer_width:
-            raise ValueError("Die Breite einer Stellfläche übersteigt die Breite der Parkfläche")
+            raise ValueError(
+                "Die Breite einer Stellfläche übersteigt die Breite der Parkfläche"
+            )
         if max_height_val > outer_height:
-            raise ValueError("Die Höhe einer Stellfläche übersteigt die Höhe der Parkfläche")
-
+            raise ValueError(
+                "Die Höhe einer Stellfläche übersteigt die Höhe der Parkfläche"
+            )
 
         # Driveway border of the parking area for visualization
         driveways = []
-        left_edge   = (0, 0, dlw, outer_height)
-        upper_edge  = (0, outer_height - dlw, outer_width, dlw)
-        right_edge  = (outer_width - dlw, 0, dlw, outer_height)
-        lower_edge  = (0, 0, outer_width, dlw)
+        left_edge = (0, 0, dlw, outer_height)
+        upper_edge = (0, outer_height - dlw, outer_width, dlw)
+        right_edge = (outer_width - dlw, 0, dlw, outer_height)
+        lower_edge = (0, 0, outer_width, dlw)
         driveways.extend([left_edge, upper_edge, right_edge, lower_edge])
-        
 
         return driveways, outer_width, outer_height
-    
 
-    
-    def solver(self, areas_withframe: List[Tuple], bin_width: int, bin_height: int) -> List[Tuple]:
+    def solver(
+        self, areas_withframe: List[Tuple], bin_width: int, bin_height: int
+    ) -> List[Tuple]:
         """
         This function passes the list of rectangles to be placed, along with the bin dimensions, to the external solver.
 
@@ -241,11 +294,11 @@ class DepotLayout:
         bin_width = bin_width - self.max_driving_lane_width
         bin_height = bin_height - self.max_driving_lane_width
 
-        packer = newPacker(rotation = False)
+        packer = newPacker(rotation=False)
 
         # Add the rectangles to packing queue
         for vehicle_type, width, height, is_line in areas_withframe:
-            packer.add_rect(width, height, rid=(vehicle_type,is_line))
+            packer.add_rect(width, height, rid=(vehicle_type, is_line))
 
         container = [(bin_width, bin_height)]
 
@@ -256,133 +309,248 @@ class DepotLayout:
         # Start packing
         packer.pack()
         if len(packer.rect_list()) != len(areas_withframe):
-            raise ValueError("Bin-Packing fehlgeschlagen: Es konnten nicht alle Stellplätze in dem Behälter platziert werden.")
+            raise ValueError(
+                "Bin-Packing fehlgeschlagen: Es konnten nicht alle Stellplätze in dem Behälter platziert werden."
+            )
 
         placed_areas = []
-        for b,x,y,w,h,rid in packer.rect_list():
-            placed_areas.append((x,y,w,h,rid))
+        for b, x, y, w, h, rid in packer.rect_list():
+            placed_areas.append((x, y, w, h, rid))
 
         return placed_areas
-    
 
-
-    def visualize(self, placed_areas: List[Tuple], driveways: List[Tuple], bin_width: int, bin_height: int, save_path: str = None):
-
-        dlw = self.driving_lane_width 
+    def visualize(
+        self,
+        placed_areas: List[Tuple],
+        driveways: List[Tuple],
+        bin_width: int,
+        bin_height: int,
+        save_path: str = None,
+    ):
+        dlw = self.driving_lane_width
 
         # Angle of dsr-area
         angle = 315
-        
+
         areas_without_drivinglane = []
 
         for area in placed_areas:
             # Unpacking
-            x, y, width, height, rid = area 
+            x, y, width, height, rid = area
             vehicle_type, is_line = rid
 
-            # Determine the actual parking space without the driveway 
-            areas_without_drivinglane.append((vehicle_type, x + 2*dlw, y + 2*dlw, width - self.max_driving_lane_width, height - self.max_driving_lane_width, is_line))
-
+            # Determine the actual parking space without the driveway
+            areas_without_drivinglane.append(
+                (
+                    vehicle_type,
+                    x + 2 * dlw,
+                    y + 2 * dlw,
+                    width - self.max_driving_lane_width,
+                    height - self.max_driving_lane_width,
+                    is_line,
+                )
+            )
 
         unique_vehicle_types = {entry[0] for entry in areas_without_drivinglane}
-        count_vehicle_types = len(unique_vehicle_types)    
+        count_vehicle_types = len(unique_vehicle_types)
         color_list = sns.color_palette("husl", count_vehicle_types)
-        
+
         color_map = {}
         color_index = 0
 
-
         # Create a figure and an axis
-        fig, ax = plt.subplots(figsize = (5,5))
+        fig, ax = plt.subplots(figsize=(5, 5))
         ax.set_xlim(0, bin_width)
         ax.set_ylim(0, bin_height)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
         ax.set_xlabel("Breite")
         ax.set_ylabel("Höhe")
-        
+
         # Draw the bin
-        container = patches.Rectangle((0, 0),bin_width, bin_height, linewidth=1, edgecolor='black', facecolor='none')
+        container = patches.Rectangle(
+            (0, 0),
+            bin_width,
+            bin_height,
+            linewidth=1,
+            edgecolor="black",
+            facecolor="none",
+        )
         ax.add_patch(container)
 
         # Draw the inner driveway surrounding the parking area
-        for i, (x,y,width,height) in enumerate(driveways):
-            rect = patches.Rectangle((x,y), width , height,linewidth=1, edgecolor = 'black', facecolor= 'black', hatch = '/', alpha=0.3 )
+        for i, (x, y, width, height) in enumerate(driveways):
+            rect = patches.Rectangle(
+                (x, y),
+                width,
+                height,
+                linewidth=1,
+                edgecolor="black",
+                facecolor="black",
+                hatch="/",
+                alpha=0.3,
+            )
             ax.add_patch(rect)
 
         # Draw the driveways of the parking spaces
-        for ( x, y, breite, hoehe, _ )in placed_areas:
-            driving_lane = patches.Rectangle((x+dlw, y+ dlw), breite, hoehe, linewidth=1, edgecolor='black', facecolor='black', alpha=0.3)
+        for x, y, breite, hoehe, _ in placed_areas:
+            driving_lane = patches.Rectangle(
+                (x + dlw, y + dlw),
+                breite,
+                hoehe,
+                linewidth=1,
+                edgecolor="black",
+                facecolor="black",
+                alpha=0.3,
+            )
             ax.add_patch(driving_lane)
 
-        # Draw the parking areas 
-        for i, (vehicle_type, x, y, width, height,is_line) in enumerate(areas_without_drivinglane):
-
+        # Draw the parking areas
+        for i, (vehicle_type, x, y, width, height, is_line) in enumerate(
+            areas_without_drivinglane
+        ):
             # Query and store the length and width of the VehicleType
-            bus_length = self.session.query(VehicleType.length).filter(VehicleType.id == vehicle_type.id).scalar() 
-            bus_width = self.session.query(VehicleType.width).filter(VehicleType.id==vehicle_type.id).scalar() 
+            bus_length = (
+                self.session.query(VehicleType.length)
+                .filter(VehicleType.id == vehicle_type.id)
+                .scalar()
+            )
+            bus_width = (
+                self.session.query(VehicleType.width)
+                .filter(VehicleType.id == vehicle_type.id)
+                .scalar()
+            )
 
             if vehicle_type not in color_map:
                 color_map[vehicle_type] = color_list[color_index]
-                color_index = color_index +1
+                color_index = color_index + 1
 
             color = color_map[vehicle_type]
 
             # Draw their rectangle frame first
-            rect = patches.Rectangle((x, y), width, height, linewidth=1, edgecolor = 'black', facecolor= color, alpha=0.3)
+            rect = patches.Rectangle(
+                (x, y),
+                width,
+                height,
+                linewidth=1,
+                edgecolor="black",
+                facecolor=color,
+                alpha=0.3,
+            )
             ax.add_patch(rect)
-            
-            # Draw the vehicles-spots in their frame 
+
+            # Draw the vehicles-spots in their frame
             # DSR-parking-spaces
             if not is_line:
                 direct = []
                 # Determine the number of dsr-parking-spaces
-                direct_parking_slots = math.ceil(1 + (height - ((bus_length + bus_width) * math.sqrt(2) / 2)) / (bus_width * math.sqrt(2)))
+                direct_parking_slots = math.ceil(
+                    1
+                    + (height - ((bus_length + bus_width) * math.sqrt(2) / 2))
+                    / (bus_width * math.sqrt(2))
+                )
                 for i in range(direct_parking_slots):
                     if i == 0:
-                        bus = patches.Rectangle((x, y + bus_width*math.cos(math.radians(45)) ), bus_width, bus_length, angle= angle, edgecolor= 'black', fill = False, linewidth = 0.3)
+                        bus = patches.Rectangle(
+                            (x, y + bus_width * math.cos(math.radians(45))),
+                            bus_width,
+                            bus_length,
+                            angle=angle,
+                            edgecolor="black",
+                            fill=False,
+                            linewidth=0.3,
+                        )
                         ax.add_patch(bus)
                         direct.append(bus)
                     else:
                         prev_bus = direct[-1]
-                        new_y = prev_bus.get_y() + bus_width/(math.cos(math.radians(45)))
-                        next_bus = patches.Rectangle((x, new_y), bus_width, bus_length, angle= angle, edgecolor= 'black', fill = False, linewidth = 0.3)
+                        new_y = prev_bus.get_y() + bus_width / (
+                            math.cos(math.radians(45))
+                        )
+                        next_bus = patches.Rectangle(
+                            (x, new_y),
+                            bus_width,
+                            bus_length,
+                            angle=angle,
+                            edgecolor="black",
+                            fill=False,
+                            linewidth=0.3,
+                        )
                         ax.add_patch(next_bus)
                         direct.append(next_bus)
             else:
-                # Draw line-parking spaces 
+                # Draw line-parking spaces
                 # Determine the number of vehicles parked in a row (this should usually correspond to standard_length_linerow)
-                bus_number_in_row = math.ceil(height/bus_length)
-                number_of_rows = math.ceil(width/bus_width)
+                bus_number_in_row = math.ceil(height / bus_length)
+                number_of_rows = math.ceil(width / bus_width)
 
                 for row in range(number_of_rows):
                     for bus in range(bus_number_in_row):
-                        rect_x = x + row*bus_width
-                        rect_y = y + bus* bus_length
-                        rect = patches.Rectangle((rect_x,rect_y), bus_width, bus_length,edgecolor= 'black', fill = False, linewidth = 0.3)
+                        rect_x = x + row * bus_width
+                        rect_y = y + bus * bus_length
+                        rect = patches.Rectangle(
+                            (rect_x, rect_y),
+                            bus_width,
+                            bus_length,
+                            edgecolor="black",
+                            fill=False,
+                            linewidth=0.3,
+                        )
                         ax.add_patch(rect)
 
             # Numbering of the parking areas
-            ax.text(x + width / 2, y + height / 2, f"{i+1}", ha='center', va='center', fontsize=8, color='black')
+            ax.text(
+                x + width / 2,
+                y + height / 2,
+                f"{i+1}",
+                ha="center",
+                va="center",
+                fontsize=8,
+                color="black",
+            )
 
         # Axis labeling and display of the visualization
         legend_ = []
         for vehicle_types, color in color_map.items():
-            legend_.append(patches.Patch(facecolor= color , edgecolor= 'black',label = vehicle_types.name))
-            
-        legend_.append(patches.Patch(facecolor='black', alpha = 0.3, edgecolor='black', hatch = '/', label = "Fahrwege"))
-        ax.legend(handles=legend_, loc='center', bbox_to_anchor=(0.5, -0.25), title="Legende", ncol=2)
+            legend_.append(
+                patches.Patch(
+                    facecolor=color, edgecolor="black", label=vehicle_types.name
+                )
+            )
+
+        legend_.append(
+            patches.Patch(
+                facecolor="black",
+                alpha=0.3,
+                edgecolor="black",
+                hatch="/",
+                label="Fahrwege",
+            )
+        )
+        ax.legend(
+            handles=legend_,
+            loc="center",
+            bbox_to_anchor=(0.5, -0.25),
+            title="Legende",
+            ncol=2,
+        )
 
         info_text = f"Breite: {bin_width} m\nHöhe: {bin_height} m\nFläche: {bin_width*bin_height} m²"
-        info_box = AnchoredText(info_text,loc='lower center',bbox_to_anchor=(0.5, -0.5),bbox_transform=ax.transAxes,frameon=True,prop=dict(size=10))
+        info_box = AnchoredText(
+            info_text,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.5),
+            bbox_transform=ax.transAxes,
+            frameon=True,
+            prop=dict(size=10),
+        )
         ax.add_artist(info_box)
         plt.subplots_adjust(bottom=0.7)
-      
+
         # Save figure if save_path is provided, else show the plot.
         if save_path:
             plt.savefig(save_path)
         else:
             plt.show()
-
 
     def best_possible_packing(self) -> Tuple[List[Tuple], List[Tuple], int, int]:
         """
@@ -391,7 +559,7 @@ class DepotLayout:
         2) Continue reducing only the width.
         3) Continue reducing only the height.
         """
-        # Definition of: Reduction step size 
+        # Definition of: Reduction step size
         reduction_step = 5
 
         areas_withframe, standard_length_linerow = self.create_rectangles()
@@ -400,19 +568,18 @@ class DepotLayout:
         beginning_width = bin_width
         beginning_height = bin_height
 
-        result = self.solver(areas_withframe,bin_width,bin_height)
+        result = self.solver(areas_withframe, bin_width, bin_height)
         if not result:
             raise ValueError("Initiales Bin-Packing ist fehlgeschlagen.")
-        
+
         last_success = (result, driveways, bin_width, bin_height)
         current_width, current_height = bin_width, bin_height
-
 
         # ----------------------------------------------------------
         # 1) Simultaneous reduction of width and height
         # ----------------------------------------------------------
         counter_sim = 0
-        
+
         while True:
             # Next candidate
             candidate_w = current_width - reduction_step
@@ -423,14 +590,21 @@ class DepotLayout:
                 break
 
             try:
-                driveways, bin_width, bin_height = self.create_bin(areas_withframe,candidate_w,candidate_h)
+                driveways, bin_width, bin_height = self.create_bin(
+                    areas_withframe, candidate_w, candidate_h
+                )
                 candidate_result = self.solver(areas_withframe, bin_width, bin_height)
                 current_width, current_height = bin_width, bin_height
-                last_success = (candidate_result, driveways, current_width, current_height)
+                last_success = (
+                    candidate_result,
+                    driveways,
+                    current_width,
+                    current_height,
+                )
                 counter_sim += 1
             # Failure -> stick with (current_width, current_height)
             except ValueError:
-                break    
+                break
 
         # Here ends the last working (current_width, current_height)
         # => "Simultaneously" reduced.
@@ -450,16 +624,23 @@ class DepotLayout:
             candidate_w = current_width - reduction_step
             if candidate_w <= 0:
                 break
-            
+
             try:
-                driveways, bin_width, bin_height = self.create_bin(areas_withframe,candidate_w,current_height)
+                driveways, bin_width, bin_height = self.create_bin(
+                    areas_withframe, candidate_w, current_height
+                )
                 candidate_result = self.solver(areas_withframe, bin_width, bin_height)
                 current_width, current_height = bin_width, bin_height
-                last_success = (candidate_result, driveways, current_width, current_height)
+                last_success = (
+                    candidate_result,
+                    driveways,
+                    current_width,
+                    current_height,
+                )
                 counter_w += 1
             except ValueError:
                 break
-                
+
         # ----------------------------------------------------------
         # 3) Continue reducing only the height
         # ----------------------------------------------------------
@@ -474,26 +655,38 @@ class DepotLayout:
             if candidate_h <= 0:
                 break
             try:
-                driveways, bin_width, bin_height = self.create_bin(areas_withframe,current_width,candidate_h)
+                driveways, bin_width, bin_height = self.create_bin(
+                    areas_withframe, current_width, candidate_h
+                )
                 candidate_result = self.solver(areas_withframe, bin_width, bin_height)
                 current_width, current_height = bin_width, bin_height
-                last_success = (candidate_result, driveways, current_width, current_height)
+                last_success = (
+                    candidate_result,
+                    driveways,
+                    current_width,
+                    current_height,
+                )
                 counter_h += 1
             except ValueError:
                 break
-              
+
         # ----------------------------------------------------------
         # Unpack and output the last successful result "last_success"
         # ----------------------------------------------------------
-        placed_areas, driveways,final_width,final_height = last_success
+        placed_areas, driveways, final_width, final_height = last_success
 
         print("Ergebnis:")
-        print(f"Die Parkfläche wurde {counter_sim} Mal simultan um {reduction_step}x{reduction_step} reduziert")
-        print(f"Anschließend wurde die Breite um weitere {counter_w} Mal um {reduction_step} reduziert")
-        print(f"Abschließend wurde die Höhe um weitere {counter_h} Mal um {reduction_step} reduziert")
+        print(
+            f"Die Parkfläche wurde {counter_sim} Mal simultan um {reduction_step}x{reduction_step} reduziert"
+        )
+        print(
+            f"Anschließend wurde die Breite um weitere {counter_w} Mal um {reduction_step} reduziert"
+        )
+        print(
+            f"Abschließend wurde die Höhe um weitere {counter_h} Mal um {reduction_step} reduziert"
+        )
         print(f"Ursprüngliche Breite x Länge: {beginning_width} x {beginning_height}")
         print(f"Endgültige Breite x Länge   : {final_width} x {final_height}")
         print(f"Parkfläche: {final_width * final_height} Quadratmeter")
 
         return placed_areas, driveways, final_width, final_height
-    
