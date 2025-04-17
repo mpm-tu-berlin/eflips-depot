@@ -1093,3 +1093,80 @@ def add_evaluation_to_database(
         # Postprocessing of events
         update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         update_waiting_events(session, scenario, waiting_area_id)
+
+
+# TODO reformat at the end
+from eflips.depot.api.private.capacity_estimation import (
+    CapacityEstimate,
+    first_simulation_run,
+    simulations_loop,
+)
+
+
+def capacity_estimation(
+    scenario: Scenario,
+    session: sqlalchemy.orm.session.Session,
+    # spacing_params: DrivewayAndSpacing = DrivewayAndSpacing(),
+    standard_block_length: int = 6,
+) -> Dict[Depot, Dict[VehicleType, CapacityEstimate]]:
+    """
+    Find the capacity estimates for all depots in the scenario.
+
+    This is done be TODO DANIAL SUMMARIZE HOW.
+
+    :param scenario: A `Scenario` object. It must have the `Depot` objects for each depot and DRIVING `Event`s. So
+                     the consumption simulation should have been run before calling this function.
+    :param session:  An open database session.
+    :param spacing_params: A `DrivewayAndSpacing` object that contains the driveway and spacing information. Default
+                           values are taken from the VDV 822 standard.
+    :return: A nested dictionary with the depots as the first key, the vehicle types as the second key, and the
+             `CapacityEstimate` object as the value.
+    """
+
+    # raise NotImplementedError
+    capacity_estimates: Dict[Depot, Dict[VehicleType, CapacityEstimate]] = {}
+
+    # We assume a standard depot simulation should be run before this function and depots are already created.
+    depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
+    if len(depots) == 0:
+        raise ValueError(
+            "No depots found in the scenario. Please run a depot simulation first."
+        )
+
+    dict_station_vehicletypes = group_rotations_by_start_end_stop(scenario.id, session)
+
+    # Which means areas are already created and have a vehicle type assigned. How to deal with this?
+
+    for depot in depots:
+        rotations_by_vehicle_types = dict_station_vehicletypes[
+            (depot.station, depot.station)
+        ]
+
+        result_by_area = first_simulation_run(
+            session, scenario, depot, rotations_by_vehicle_types
+        )
+
+        if result_by_area is None:
+            continue
+
+        total_results = simulations_loop(
+            result_by_area, session, scenario, depot, standard_block_length
+        )
+        if total_results is None:
+            continue
+
+        # optimal_simulation(total_results, session, scenario,depot)
+
+        depot_estimates: Dict[VehicleType, CapacityEstimate] = {}
+        for key, result in total_results.items():
+            vehicle_type = result["VehicleType"]
+            estimate = CapacityEstimate(
+                line_peak_util=result["Line Parking Slots"],
+                line_length=result["Given Line Length"],
+                direct_count=result["Direct Parking Slots"],
+                area_square_meters=result["Area"],
+            )
+            depot_estimates[vehicle_type] = estimate
+        capacity_estimates[depot] = depot_estimates
+
+    return capacity_estimates
