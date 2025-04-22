@@ -438,6 +438,20 @@ def calculate_area_demand(
     vehicle_type,
     standard_block_length,
 ):
+    """
+
+    Calculate the area demand for a given vehicle type and configuration. The returned area is the total area of all line slots plus
+    the area of a direct area with slots number equal to the peak number of vehicles in direct area.
+    :param session:
+    :param num_line_area:
+    :param cur_direct_peak:
+    :param extra_line:
+    :param extra_line_length:
+    :param max_line_count:
+    :param vehicle_type:
+    :param standard_block_length:
+    :return:
+    """
     # Query length and width for current VehicleType
     x = (
         session.query(VehicleType.length)
@@ -761,11 +775,12 @@ def simulations_loop(result_by_area, session, scenario, depot, standard_block_le
                 session.query(Vehicle).filter(Vehicle.scenario == scenario).delete()
 
                 # TODO: temporarily assign a constant energy consumption to all vehicles
-                vehicle_types = session.query(VehicleType).filter(
+                # TODO here make the name different as the vehicle_type in the loop
+                vehicle_types_for_consumption = session.query(VehicleType).filter(
                     VehicleType.scenario_id == scenario.id
                 )
-                for vehicle_type in vehicle_types:
-                    vehicle_type.consumption = 1.0
+                for vt in vehicle_types_for_consumption:
+                    vt.consumption = 1.0
 
                 eflips.depot.api.simple_consumption_simulation(
                     scenario, initialize_vehicles=True
@@ -816,11 +831,56 @@ def simulations_loop(result_by_area, session, scenario, depot, standard_block_le
 
             # TODO: I assume that the "area" in this loop, passed by the first_simulation_run()
             # is the same as the one in the current database state. If not, we need to query it again.
-            cur_direct_peak = int(
-                power_and_occupancy(area.id, session)["occupancy"].max()
-            )
+            try:
+                cur_direct_peak = int(
+                    power_and_occupancy(area.id, session)["occupancy"].max()
+                )
+            except ValueError:
+                cur_direct_peak = 0
+
+            # TODO for debugging
+            # Plot the occupancy of direct area
+            # from eflips.eval.output.visualize import (
+            #     power_and_occupancy as plot_power_and_occupancy,
+            # )
+            #
+            # data_direct = power_and_occupancy(area.id, session)
+            # fig_direct = plot_power_and_occupancy(data_direct)
+            # fig_direct.show()
+            #
+            # areas_line = session.query(Area.id).filter(
+            #     Area.depot_id == depot.id,
+            #     Area.area_type == AreaType.LINE,
+            #     Area.processes.any(
+            #         and_(
+            #             Process.electric_power.isnot(None),
+            #             Process.duration.is_(None),
+            #         )
+            #     ),
+            # )
+            #
+            # data_line = power_and_occupancy(areas_line, session)
+            # fig_line = plot_power_and_occupancy(data_line)
+            # fig_line.show()
+            #
+            # all_area_ids = session.query(Area.id).filter(
+            #     Area.depot_id == depot.id,
+            #     Area.vehicle_type_id == vehicle_type.id,
+            #     Area.processes.any(
+            #         and_(
+            #             Process.electric_power.isnot(None),
+            #             Process.duration.is_(None),
+            #         )
+            #     ),
+            # )
+
+            # data_all = power_and_occupancy(all_area_ids, session)
+            # fig_all = plot_power_and_occupancy(data_all)
+            # fig_all.show()
 
             # Determine the area requirement in square meters for the current configuration
+
+            # TODO the problem might be that the direct area is actually preferred.
             (
                 demanded_area,
                 line_parking_slots,

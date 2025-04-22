@@ -1164,7 +1164,7 @@ def capacity_estimation(
                 line_peak_util=result["Line Parking Slots"],
                 line_length=result["Given Line Length"],
                 direct_count=result["Direct Parking Slots"],
-                area_square_meters=result["Area"],
+                area_square_meters=result["Demanded Area"],
             )
             depot_estimates[vehicle_type] = estimate
         capacity_estimates[depot] = depot_estimates
