@@ -86,96 +86,39 @@ if __name__ == "__main__":
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
         assert isinstance(scenario, Scenario)
 
-        ##### Step 0: Clean up the database, remove results from previous runs #####
+        # from eflips.depot.api import capacity_estimation
+        #
+        # estimated_capacity = capacity_estimation(scenario, session)
+        # print(f"Estimated capacity: {estimated_capacity}")
+        #
+        # from eflips.depot.api.private.capacity_estimation import update_depot_capacities
+        #
+        # update_depot_capacities(scenario, session, estimated_capacity)
 
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        # from eflips.depot.api.private.binpacking import DepotLayout
 
-        # Delete the old depot
-        # This is a private API method automatically called by the generate_depot_layout method
-        # It is run here explicitly for clarity.
-        delete_depots(scenario, session)
+        # # TODO test it with example depot
+        depot = scenario.depots[0]
+        #
+        # layout = DepotLayout(depot=depot, max_driving_lane_width=8)
+        # (
+        #     placed_areas,
+        #     driving_lanes,
+        #     final_width,
+        #     final_height,
+        # ) = layout.best_possible_packing()
+        # layout.visualize(placed_areas, driving_lanes, final_width, final_height)
 
-        # Temporary workaround to set vehicle energy consumption manually
-        # TODO: Replace by "use DS consumption if LUT"
-        for vehicle_type in (
-            session.query(VehicleType)
-            .filter(VehicleType.scenario_id == scenario.id)
-            .all()
-        ):
-            vehicle_type.consumption = 2.0
-            vehicle_type.vehicle_classes = []
+        # TODO is it possible to integrate two packing approaches into one class?
 
-        ##### Step 0: Consumption Simulation #####
-        # Run the consumption simulation for all depots
-        simple_consumption_simulation(scenario, initialize_vehicles=True)
+        from eflips.depot.api.private.binpacking_partial_conflicts import (
+            best_possible_packing_parcial,
+        )
 
-        ##### Step 1: Find all potential depots #####
-        # These are all the spots where a rotation starts and end
-        warnings.simplefilter("ignore", category=ConsistencyWarning)
-        warnings.simplefilter("ignore", category=UserWarning)
-
-        for (
-            first_last_stop_tup,
-            vehicle_type_dict,
-        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
-            first_stop, last_stop = first_last_stop_tup
-            if first_stop != last_stop:
-                raise ValueError("First and last stop of a rotation are not the same.")
-
-            station = first_stop
-            savepoint = session.begin_nested()
-            try:
-                # (Temporarily) Delete all rotations not starting or ending at the station
-                logger.debug(
-                    f"Deleting all rotations not starting or ending at {station.name}"
-                )
-                all_rot_for_scenario = (
-                    session.query(Rotation)
-                    .filter(Rotation.scenario_id == scenario.id)
-                    .all()
-                )
-                to_delete = []
-                for rot in tqdm(all_rot_for_scenario):
-                    first_stop = rot.trips[0].route.departure_station
-                    if first_stop != station:
-                        for trip in rot.trips:
-                            for stop_time in trip.stop_times:
-                                to_delete.append(stop_time)
-                            for event in trip.events:
-                                to_delete.append(event)
-                            to_delete.append(trip)
-                        to_delete.append(rot)
-                for obj in tqdm(to_delete):
-                    session.flush()
-                    session.delete(obj)
-                    session.flush()
-
-                logger.info(f"Generating depot layout for station {station.name}")
-                vt_capacities_for_station = depot_smallest_possible_size(
-                    station, scenario, session, charging_power=150
-                )
-
-                # Change the dictionary for pickling:
-                # Replace the vehicle type objects with their ids
-                vt_capacities_for_station = {
-                    vt.id: capacity
-                    for vt, capacity in vt_capacities_for_station.items()
-                }
-                # Replace the AreaType objects with their string representation
-                for vt_id, capacity in vt_capacities_for_station.items():
-                    vt_capacities_for_station[vt_id] = {
-                        str(area_type): capacity
-                        for area_type, capacity in capacity.items()
-                    }
-
-                with open(
-                    f"depot_at_{station.id} (Scenario {scenario.id} station {station.name}.json",
-                    "w",
-                ) as f:
-                    json.dump(vt_capacities_for_station, f, indent=4)
-            finally:
-                savepoint.rollback()
+        (
+            placed_areas,
+            driving_lanes,
+            final_width,
+            final_length,
+            available_spaces,
+        ) = best_possible_packing_parcial(session, depot)

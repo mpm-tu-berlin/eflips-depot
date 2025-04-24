@@ -23,6 +23,7 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.2.0"
 xlrd = "<=1.2.0"
 scipy = "^1.14.0"
+rectpack = "^0.2.2"
 
 
 [tool.pytest.ini_options]

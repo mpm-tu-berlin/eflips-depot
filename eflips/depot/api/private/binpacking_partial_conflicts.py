@@ -213,23 +213,14 @@ def retrieve_depot_capacities(
         'line_capacity_sum', 'direct_capacity', and 'line_length' (all as integers).
     """
 
-    # Load the Charging process to consider only the relevant areas
-    charging_process = (
-        session.query(Process)
-        .filter(Process.name == "Charging", Process.scenario_id == depot.scenario_id)
-        .one_or_none()
-    )
+    areas = []
 
-    if charging_process is None:
-        raise ValueError("Kein Charging-Prozess für das Scenario des Depots gefunden.")
-
-    # Retrieve all areas of the depot that are linked to the Charging process
-    areas = (
-        session.query(Area)
-        .join(Area.processes)
-        .filter(Area.depot_id == depot.id, Process.id == charging_process.id)
-        .all()
-    )
+    for area in depot.areas:
+        if area.processes:
+            for process in area.processes:
+                if process.electric_power is not None and process.duration is None:
+                    areas.append(area)
+                    break
 
     results: Dict[VehicleType, Dict[str, int]] = {}
 

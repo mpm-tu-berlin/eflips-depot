@@ -398,7 +398,7 @@ def calc_num_of_line_parking_spaces(
             + (peak_count - 1) * z / math.cos(math.radians(45))
         )
 
-        # TODO dont understand that
+        # TODO equivalent number of lines with the same area
         max_line_buses = math.floor((width * length) / (x * z))
 
         # For given row length
@@ -932,79 +932,6 @@ def simulations_loop(result_by_area, session, scenario, depot, standard_block_le
 # ----------------------------------------------------------
 
 
-def capacity_estimation(
-    scenario: Scenario,
-    session: sqlalchemy.orm.session.Session,
-    # spacing_params: DrivewayAndSpacing = DrivewayAndSpacing(),
-    standard_block_length: int = 6,
-) -> Dict[Depot, Dict[VehicleType, CapacityEstimate]]:
-    """
-    Find the capacity estimates for all depots in the scenario.
-
-    This is done be TODO DANIAL SUMMARIZE HOW.
-
-    :param scenario: A `Scenario` object. It must have the `Depot` objects for each depot and DRIVING `Event`s. So
-                     the consumption simulation should have been run before calling this function.
-    :param session:  An open database session.
-    :param spacing_params: A `DrivewayAndSpacing` object that contains the driveway and spacing information. Default
-                           values are taken from the VDV 822 standard.
-    :return: A nested dictionary with the depots as the first key, the vehicle types as the second key, and the
-             `CapacityEstimate` object as the value.
-    """
-    raise ValueError("deprecated!")
-    # ----------------------------------------------------------
-    # Helper Functions
-    # ----------------------------------------------------------
-
-    # Creates a new charging area (Area object) and associates the specified processes with it.
-
-    # ----------------------------------------------------------
-    # Function Calls
-    # ----------------------------------------------------------
-
-    depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
-    capacity_estimates: Dict[Depot, Dict[VehicleType, CapacityEstimate]] = {}
-
-    for depot in depots:
-        try:
-            result_by_area = first_simulation_run(session, scenario, depot)
-        # If no VehicleTypes exist in the current scenario, abort the entire process.
-        except ValueError as e:
-            if (
-                str(e)
-                == "In dem aktuellen Scenario befinden sich keine VehicleType Objekte."
-            ):
-                print(f"Abbruch: {e}")
-                return None
-            else:
-                continue
-
-        if result_by_area is None:
-            continue
-
-        total_results = simulations_loop(
-            result_by_area, session, scenario, depot, standard_block_length
-        )
-        if total_results is None:
-            continue
-
-        # optimal_simulation(total_results, session, scenario,depot)
-
-        depot_estimates: Dict[VehicleType, CapacityEstimate] = {}
-        for key, result in total_results.items():
-            vehicle_type = result["VehicleType"]
-            estimate = CapacityEstimate(
-                line_peak_util=result["Line Parking Slots"],
-                line_length=result["Given Line Length"],
-                direct_count=result["Direct Parking Slots"],
-                area_square_meters=result["Area"],
-            )
-            depot_estimates[vehicle_type] = estimate
-        capacity_estimates[depot] = depot_estimates
-
-    return capacity_estimates
-
-
 def update_depot_capacities(
     scenario: Scenario,
     session: sqlalchemy.orm.session.Session,
@@ -1019,22 +946,37 @@ def update_depot_capacities(
                                `CapacityEstimate` object as the value.
     :return:
     """
-    charging = (
-        session.query(Process)
-        .filter(Process.scenario_id == scenario.id, Process.name == "Charging")
-        .one()
-    )
-    standby_departure = (
-        session.query(Process)
-        .filter(Process.scenario_id == scenario.id, Process.name == "Standby Departure")
-        .one()
-    )
+
+    # Delete all events
+
+    session.query(Event).filter(Event.scenario_id == scenario.id).delete()
 
     # Iterate over each depot in the dictionary
     for depot, vehicle_estimates in capacity_estimates.items():
         # Optional: Prüfen, ob das Depot zum übergebenen Scenario gehört
         if depot.scenario_id != scenario.id:
             continue
+
+        # Delete charging areas in this depot
+
+        charging_areas = (
+            session.query(Area)
+            .filter(
+                Area.depot_id == depot.id,
+                Area.processes.any(
+                    and_(
+                        Process.electric_power.isnot(None),
+                        Process.duration.is_(None),
+                    )
+                ),
+            )
+            .all()
+        )
+
+        processes = charging_areas[0].processes
+
+        for area in charging_areas:
+            session.delete(area)
 
         # Für jeden VehicleType im aktuellen Depot
         for vehicle_type, cap_est in vehicle_estimates.items():
@@ -1051,10 +993,9 @@ def update_depot_capacities(
                     capacity=cap_est.line_length,
                     name=f"Line Area {i+1} for {vehicle_type.name} at {depot.name}",
                     name_short=f"LINE-{vehicle_type.name[:5]}-{i+1}",
+                    processes=processes,
                 )
                 session.add(line_area)
-                line_area.processes.append(charging)
-                line_area.processes.append(standby_departure)
 
             # Erstelle die DIRECT Area für den aktuellen VehicleType
             if cap_est.direct_count > 0:
@@ -1066,9 +1007,8 @@ def update_depot_capacities(
                     capacity=cap_est.direct_count,
                     name=f"Direct Area for {vehicle_type.name} at {depot.name}",
                     name_short=f"DIRECT-{vehicle_type.name[:5]}",
+                    processes=processes,
                 )
                 session.add(direct_area)
-                direct_area.processes.append(charging)
-                direct_area.processes.append(standby_departure)
 
     session.commit()
