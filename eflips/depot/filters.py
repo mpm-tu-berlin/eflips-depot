@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import warnings
 
-import eflips
 from eflips.settings import globalConstants
-from eflips.helperFunctions import flexprint
+
+import eflips
 
 
 class VehicleFilter:
@@ -245,7 +245,7 @@ class VehicleFilter:
 
         elif globalConstants["depot"]["consumption_calc_mode"] == "soc_given":
             if self.trip.charge_on_track:
-                result = round(vehicle.battery.soc, 5) >= self.trip.start_soc
+                result = round(vehicle.battery.soc, 5) >= self.trip.minimal_soc
             else:
                 required_energy = (
                     self.trip.start_soc - self.trip.end_soc

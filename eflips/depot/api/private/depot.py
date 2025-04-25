@@ -908,8 +908,11 @@ def depot_smallest_possible_size(
         )
         depot = session.query(Depot).filter(Depot.scenario_id == scenario.id).one()
 
+        # Local imports to avoid circular imports
+        from eflips.depot.api import SmartChargingStrategy
+
         # Simulate the depot
-        simulate_scenario(scenario)
+        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStrategy.NONE)
 
         # Find the peak usage of the depot
         peak_occupancies: Dict[VehicleType, Dict[AreaType, int]] = find_peak_usage(
@@ -1005,7 +1008,9 @@ def depot_smallest_possible_size(
                     )
 
                     # Simulate the depot
-                    simulate_scenario(scenario)
+                    simulate_scenario(
+                        scenario, smart_charging_strategy=SmartChargingStrategy.NONE
+                    )
 
                     # Find the peak usage of the depot
                     peak_occupancies: Dict[

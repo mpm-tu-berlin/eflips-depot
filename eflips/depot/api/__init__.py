@@ -77,7 +77,6 @@ from eflips.depot.api.private.results_to_database import (
     update_vehicle_in_rotation,
     update_waiting_events,
 )
-from eflips.depot.api.private.smart_charging import optimize_charging_events_even
 from eflips.depot.api.private.util import (
     create_session,
     repeat_vehicle_schedules,
@@ -266,8 +265,18 @@ def simple_consumption_simulation(
         vehicles = (
             session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).all()
         )
+
+        # Get the event count for each vbehicle in a single query using a groub_py clause
+        vehicle_event_count_q = (
+            session.query(Event.vehicle_id, sqlalchemy.func.count(Event.id))
+            .join(Vehicle)
+            .filter(Vehicle.scenario_id == scenario.id)
+            .group_by(Event.vehicle_id)
+        )
+        vehicle_event_count = dict(vehicle_event_count_q.all())
+
         for vehicle in vehicles:
-            if session.query(Event).filter(Event.vehicle_id == vehicle.id).count() == 0:
+            if vehicle.id not in vehicle_event_count.keys():
                 add_initial_standby_event(vehicle, session)
 
         # Since we are doing no_autoflush blocks later, we need to flush the session once here so that unflushed stuff
@@ -490,14 +499,21 @@ def generate_depot_layout(
                     AreaType.DIRECT_ONESIDE: rotation_count,
                     AreaType.DIRECT_TWOSIDE: None,
                 }
+
+            total_rotation_count = (
+                session.query(Rotation)
+                .filter(Rotation.scenario_id == scenario.id)
+                .count()
+            )
+
             generate_depot(
                 vt_capacity_dict,
                 first_stop,
                 scenario,
                 session,
                 charging_power=charging_power,
-                num_shunting_slots=max(rotation_count // 10, 1),
-                num_cleaning_slots=max(rotation_count // 10, 1),
+                num_shunting_slots=max(total_rotation_count // 10, 1),
+                num_cleaning_slots=max(total_rotation_count // 10, 1),
             )
 
 
@@ -525,11 +541,25 @@ def apply_even_smart_charging(
     """
     logger = logging.getLogger(__name__)
 
+    try:
+        from eflips.opt.smart_charging import (
+            optimize_charging_events_even,
+            add_slack_time_to_events_of_depot,
+        )
+    except ImportError:
+        logger.error(
+            "The eFLIPS smart charging module is not installed. Please install eflips-opt >= 0.2.0."
+        )
+        raise
+
     with create_session(scenario, database_url) as (session, scenario):
         depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
         for depot in depots:
-            # Load all the charging events at this depot
-            charging_events = (
+            add_slack_time_to_events_of_depot(
+                depot, session, standby_departure_duration
+            )
+
+            events_for_depot = (
                 session.query(Event)
                 .join(Area)
                 .filter(Area.depot_id == depot.id)
@@ -537,63 +567,18 @@ def apply_even_smart_charging(
                 .all()
             )
 
-            # For each event, take the subsequent STANDBY_DEPARTURE event of the same vehicle
-            # Reduce the STANDBY_DEPARTURE events duration to 5 minutes
-            # Move the end time of the charging event to the start time of the STANDBY_DEPARTURE event
-            for charging_event in charging_events:
-                next_event = (
-                    session.query(Event)
-                    .filter(Event.time_start >= charging_event.time_end)
-                    .filter(Event.vehicle_id == charging_event.vehicle_id)
-                    .order_by(Event.time_start)
-                    .first()
-                )
-
-                if (
-                    next_event is None
-                    or next_event.event_type != EventType.STANDBY_DEPARTURE
-                ):
-                    logger.info(
-                        f"Event {charging_event.id} has no STANDBY_DEPARTURE event after a CHARGING_DEPOT "
-                        f"event. No room for smart charging."
-                    )
-                    continue
-
-                assert next_event.time_start == charging_event.time_end
-
-                if (
-                    next_event.time_end - next_event.time_start
-                ) > standby_departure_duration:
-                    next_event.time_start = (
-                        next_event.time_end - standby_departure_duration
-                    )
-                    session.flush()
-                    # Add a timeseries to the charging event
-                    assert charging_event.timeseries is None
-                    charging_event.timeseries = {
-                        "time": [
-                            charging_event.time_start.isoformat(),
-                            charging_event.time_end.isoformat(),
-                            next_event.time_start.isoformat(),
-                        ],
-                        "soc": [
-                            charging_event.soc_start,
-                            charging_event.soc_end,
-                            charging_event.soc_end,
-                        ],
-                    }
-                    charging_event.time_end = next_event.time_start
-                    session.flush()
-
-            optimize_charging_events_even(charging_events)
+            optimize_charging_events_even(events_for_depot)
+            for event in events_for_depot:
+                session.add(event)
 
 
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
-    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.EVEN,
+    smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.NONE,
     ignore_unstable_simulation: bool = False,
+    ignore_delayed_trips: bool = False,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -627,11 +612,13 @@ def simulate_scenario(
         - SmartChargingStrategy.MIN_PRICE: Not implemented yet.
 
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
+    :param ignore_delayed_trips: If True, the simulation will not raise an exception if there are delayed trips.
 
     :return: Nothing. The results are added to the database.
 
     :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
         the parameters cause the solver to diverge.
+    :raises DelayedTripException: If there are delayed trips in the simulation.
     """
     logger = logging.getLogger(__name__)
 
@@ -647,6 +634,11 @@ def simulate_scenario(
         except eflips.depot.UnstableSimulationException as e:
             if ignore_unstable_simulation:
                 logger.warning("Simulation is unstable. Continuing.")
+            else:
+                raise e
+        except eflips.depot.DelayedTripException as e:
+            if ignore_delayed_trips:
+                logger.warning("Simulation has delayed trips. Continuing.")
             else:
                 raise e
 
@@ -1001,6 +993,7 @@ def add_evaluation_to_database(
 
     :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
         the parameters cause the solver to diverge.
+    :raises DelayedTripException: If there are delayed trips in the simulation.
     """
 
     # Read simulation start time

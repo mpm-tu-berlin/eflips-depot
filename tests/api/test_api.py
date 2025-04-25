@@ -333,7 +333,7 @@ class TestHelpers:
             name="Charging",
             scenario=scenario,
             dispatchable=False,
-            electric_power=15,
+            electric_power=50,
         )
 
         standby_departure = Process(
@@ -657,7 +657,7 @@ class TestHelpers:
             name="Charging",
             scenario=multi_depot_scenario,
             dispatchable=False,
-            electric_power=15,
+            electric_power=50,
         )
 
         standby_departure = Process(
@@ -960,7 +960,7 @@ class TestHelpers:
             name="Charging",
             scenario=multi_depot_scenario,
             dispatchable=False,
-            electric_power=15,
+            electric_power=50,
         )
 
         standby_departure = Process(
@@ -1245,7 +1245,7 @@ class TestApi(TestHelpers):
         from eflips.depot.api import SmartChargingStrategy
 
         simulate_scenario(
-            full_scenario, smart_charging_strategy=SmartChargingStrategy.EVEN
+            full_scenario, smart_charging_strategy=SmartChargingStrategy.NONE
         )
 
         # Query all charging events and see if there is an increase in Soc
