@@ -290,7 +290,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
 
             if process_type(process) == ProcessType.CHARGING:
                 template["groups"][group_name]["typename"] = "ParkingAreaGroup"
-                template["groups"][group_name]["parking_strategy_name"] = "FIRST"
+                template["groups"][group_name]["parking_strategy_name"] = "LINEFIRST"
 
         # Fill in locations of the plan
         template["plans"]["default"]["locations"].append(group_name)

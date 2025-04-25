@@ -2224,6 +2224,37 @@ class PSFirst(BaseParkingStrategy):
         return None
 
 
+class PSLineFirst(BaseParkingStrategy):
+    name = "LINEFIRST"
+    short_description = "first available (default)"
+    tooltip = (
+        "This strategy will try to park a vehicle on the first "
+        "available\n line area with maxim vacant slot. If there are no available line area, "
+        "assign to the first available area."
+    )
+
+    @staticmethod
+    def determine_store(preselected_stores, *args, **kwargs):
+        # TODO temporary edit it to a linearea priority method. If it works, an independent strategy will be implemented.
+        # I want to return the line area with most accessible slots
+        line_area_in_stores = []
+
+        for store in preselected_stores:
+            if store.vacant_accessible and type(store).__name__ == "LineArea":
+                line_area_in_stores.append(store)
+
+        if line_area_in_stores:
+            sorted(line_area_in_stores, key=lambda x: x.vacant_accessible, reverse=True)
+            return line_area_in_stores[0]
+
+        else:
+            sorted(preselected_stores, key=lambda x: x.vacant_accessible, reverse=True)
+            if preselected_stores[0].vacant_accessible:
+                return preselected_stores[0]
+
+        return None
+
+
 class PSEven(BaseParkingStrategy):
     name = "EVEN"
     short_description = "even"
@@ -2574,6 +2605,7 @@ class ParkingAreaGroup(AreaGroup):
         PSMixed.name: PSMixed,
         PSSmart.name: PSSmart,
         PSSmart2.name: PSSmart2,
+        PSLineFirst.name: PSLineFirst,
     }
 
     def __init__(self, env, stores, ID, parking_strategy_name="FIRST"):
