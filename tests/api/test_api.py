@@ -317,6 +317,7 @@ class TestHelpers:
             depot=depot,
             area_type=AreaType.LINE,
             capacity=24,
+            row_count=4,
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
@@ -641,6 +642,7 @@ class TestHelpers:
             depot=depot,
             area_type=AreaType.LINE,
             capacity=24,
+            row_count=4,
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type
@@ -944,6 +946,7 @@ class TestHelpers:
             depot=depot_no_2,
             area_type=AreaType.LINE,
             capacity=24,
+            row_count=4,
         )
         session.add(charging_area)
         charging_area.vehicle_type = vehicle_type_2

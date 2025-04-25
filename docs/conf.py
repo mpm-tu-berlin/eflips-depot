@@ -9,7 +9,7 @@
 project = "eFLIPS-Depot"
 copyright = "2023, MPM TU Berlin"
 author = "MPM TU Berlin"
-release = "4.7.1"
+release = "4.8.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

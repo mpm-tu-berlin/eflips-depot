@@ -410,18 +410,29 @@ def add_events_into_database(
 
         # Get station_id of the current depot through area
 
-        current_area = session.query(Area).filter(Area.id == process_dict["area"]).one()
+        # TODO needs better implementation
+        if type(process_dict["area"]) == str and "_" in process_dict["area"]:
+            area_name = process_dict["area"].split("_")
+            area_id = int(area_name[0])
+            row = int(area_name[-1])
+
+        else:
+            area_id = int(process_dict["area"])
+
+        current_area = session.query(Area).filter(Area.id == area_id).one()
         station_id = current_area.depot.station_id
+
+        if current_area.area_type == AreaType.LINE:
+            capacity_per_line = int(current_area.capacity / current_area.row_count)
+            process_dict["slot"] = capacity_per_line * row + process_dict["slot"] - 1
 
         current_event = Event(
             scenario=scenario,
             vehicle_type_id=db_vehicle.vehicle_type_id,
             vehicle=db_vehicle,
             station_id=station_id,
-            area_id=int(process_dict["area"]),
-            subloc_no=int(process_dict["slot"]) - 1
-            if "slot" in process_dict.keys()
-            else 00,
+            area_id=area_id,
+            subloc_no=process_dict["slot"] if "slot" in process_dict.keys() else 00,
             trip_id=None,
             time_start=timedelta(seconds=start_time) + simulation_start_time,
             time_end=timedelta(seconds=process_dict["end"]) + simulation_start_time,

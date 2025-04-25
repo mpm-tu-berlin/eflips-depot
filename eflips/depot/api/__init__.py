@@ -812,7 +812,11 @@ def init_simulation(
                         # The areas allow either one type, or all vehicle types
                         for p in area.processes:
                             if p.electric_power is not None and p.duration is None:
-                                vehicle_count += area.capacity
+                                row_count = (
+                                    area.row_count if area.row_count is not None else 1
+                                )
+
+                                vehicle_count += area.capacity * row_count
 
                 assert (
                     vehicle_count > 0

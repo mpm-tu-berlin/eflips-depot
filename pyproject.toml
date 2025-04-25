@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.7.1"
+version = "4.8.0"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -14,7 +14,6 @@ packages = [{ include = "eflips/depot" }]
 [tool.poetry.dependencies]
 python = ">=3.10, <3.14"
 simpy = "^4.0.1"
-eflips-model = ">=6.0.6, <7.0.0"
 tqdm = "^4.67.0"
 
 # Legacy dependencies, which are still needed until we refactor the code
@@ -23,6 +22,8 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.2.0"
 xlrd = "<=1.2.0"
 scipy = "^1.14.0"
+eflips-model = "^7.0.0"
+eflips-opt = "^0.3.0"
 
 
 [tool.pytest.ini_options]
@@ -45,7 +46,6 @@ django-environ = "^0.11.2"
 pre-commit = "^3.4.0"
 coverage = "^7.3.2"
 openpyxl = "^3.1.2"
-eflips-opt = ">=0.2.0"
 
 [build-system]
 requires = ["poetry-core"]
