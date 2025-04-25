@@ -199,9 +199,9 @@ class TestGenerateDepot(TestHelpers):
 
         # What should happen is that now, a depot exists in the database
         depot = session.query(Depot).one()
-        # The depot should have six charging areas (two line, one direct for each vehicle type), two shunting areas,
+        # The depot should have six charging areas (one line area with 2 lines, one direct for each vehicle type), two shunting areas,
         # one cleaning area and one waiting area.
-        assert len(depot.areas) == 10
+        assert len(depot.areas) == 8
 
         # The plan should have
         # 1) shunting
@@ -245,9 +245,9 @@ class TestGenerateDepot(TestHelpers):
 
         # What should happen is that now, a depot exists in the database
         depot = session.query(Depot).one()
-        # The depot should have six charging areas (two line, one direct for each vehicle type), ~~two shunting areas~~,
+        # The depot should have six charging areas (one line area with 2 lines, one direct for each vehicle type), ~~two shunting areas~~,
         # one cleaning area and one waiting area.
-        assert len(depot.areas) == 8
+        assert len(depot.areas) == 6
 
         # The plan should have
         # 1) ~~shunting~~
@@ -291,9 +291,9 @@ class TestGenerateDepot(TestHelpers):
 
         # What should happen is that now, a depot exists in the database
         depot = session.query(Depot).one()
-        # The depot should have six charging areas (two line, one direct for each vehicle type), two shunting areas,
+        # The depot should have six charging areas (one line area with 2 lines, one direct for each vehicle type), two shunting areas,
         # ~~one cleaning area~~ and one waiting area.
-        assert len(depot.areas) == 9
+        assert len(depot.areas) == 7
 
         # The plan should have
         # 1) shunting
@@ -338,9 +338,9 @@ class TestGenerateDepot(TestHelpers):
 
         # What should happen is that now, a depot exists in the database
         depot = session.query(Depot).one()
-        # The depot should have six charging areas (two line, one direct for each vehicle type), ~~two shunting areas~~,
+        # The depot should have six charging areas (one line area with two lines, one direct for each vehicle type), ~~two shunting areas~~,
         # ~~one cleaning area~~ and one waiting area.
-        assert len(depot.areas) == 7
+        assert len(depot.areas) == 5
 
         # The plan should have
         # 1) ~~shunting~~

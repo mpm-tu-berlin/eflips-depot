@@ -527,6 +527,7 @@ class BaseTest:
             area_type=AreaType.LINE,
             capacity=6,
             vehicle_type=vehicle_type_1,
+            row_count=1,
         )
         session.add(charging_area)
 
