@@ -2229,14 +2229,12 @@ class PSLineFirst(BaseParkingStrategy):
     short_description = "first available (default)"
     tooltip = (
         "This strategy will try to park a vehicle on the first "
-        "available\n line area with maxim vacant slot. If there are no available line area, "
-        "assign to the first available area."
+        "available\n line area with most vacant slot. If there are no available line area, "
+        "assign to the area with most vacant slot."
     )
 
     @staticmethod
     def determine_store(preselected_stores, *args, **kwargs):
-        # TODO temporary edit it to a linearea priority method. If it works, an independent strategy will be implemented.
-        # I want to return the line area with most accessible slots
         line_area_in_stores = []
 
         for store in preselected_stores:
