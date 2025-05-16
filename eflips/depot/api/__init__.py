@@ -495,19 +495,14 @@ def generate_depot_layout(
 
             # Create one direct slot for each rotation (it's way too much, but should work)
             vt_capacity_dict: Dict[VehicleType, Dict[AreaType, None | int]] = {}
+            rotation_count_depot = 0
             for vehicle_type, rotations in vehicle_type_dict.items():
-                rotation_count = len(rotations)
                 vt_capacity_dict[vehicle_type] = {
                     AreaType.LINE: None,
-                    AreaType.DIRECT_ONESIDE: rotation_count,
+                    AreaType.DIRECT_ONESIDE: len(rotations),
                     AreaType.DIRECT_TWOSIDE: None,
                 }
-
-            total_rotation_count = (
-                session.query(Rotation)
-                .filter(Rotation.scenario_id == scenario.id)
-                .count()
-            )
+                rotation_count_depot += len(rotations)
 
             generate_depot(
                 vt_capacity_dict,
@@ -515,8 +510,8 @@ def generate_depot_layout(
                 scenario,
                 session,
                 charging_power=charging_power,
-                num_shunting_slots=max(total_rotation_count // 10, 1),
-                num_cleaning_slots=max(total_rotation_count // 10, 1),
+                num_shunting_slots=max(rotation_count_depot // 10, 1),
+                num_cleaning_slots=max(rotation_count_depot // 10, 1),
             )
 
 
