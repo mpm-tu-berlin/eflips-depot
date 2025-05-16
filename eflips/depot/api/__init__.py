@@ -49,6 +49,8 @@ from eflips.model import (
     AreaType,
     ChargeType,
     Route,
+    ConsistencyWarning,
+    Station,
 )
 from sqlalchemy.orm import Session
 
@@ -67,6 +69,7 @@ from eflips.depot.api.private.depot import (
     depot_to_template,
     group_rotations_by_start_end_stop,
     generate_depot,
+    depot_smallest_possible_size,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -1097,3 +1100,129 @@ def add_evaluation_to_database(
         # Postprocessing of events
         update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         update_waiting_events(session, scenario, waiting_area_id)
+
+
+def generate_depot_optimal_size(
+    scenario: Scenario,
+    standard_block_length: int = 6,
+    charging_power: float = 90,
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+) -> None:
+    """ """
+
+    logger = logging.getLogger(__name__)
+
+    with create_session(scenario, database_url) as (session, scenario):
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        # Handles existing depot
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError("Depot already exists.")
+
+            delete_depots(scenario, session)
+
+        # Temporary workaround to set vehicle energy consumption manually
+        # TODO: Replace by "use DS consumption if LUT"
+        for vehicle_type in (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        ):
+            vehicle_type.consumption = 2.0
+            vehicle_type.vehicle_classes = []
+
+        ##### Step 0: Consumption Simulation #####
+        # Run the consumption simulation for all depots
+        simple_consumption_simulation(scenario, initialize_vehicles=True)
+
+        ##### Step 1: Find all potential depots #####
+        # These are all the spots where a rotation starts and end
+        warnings.simplefilter("ignore", category=ConsistencyWarning)
+        warnings.simplefilter("ignore", category=UserWarning)
+
+        depot_capacities_for_scenario: Dict[
+            Station, Dict[VehicleType, Dict[AreaType, int]]
+        ] = {}
+
+        num_rotations_for_scenario: Dict[Station, int] = {}
+
+        for (
+            first_last_stop_tup,
+            vehicle_type_dict,
+        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+            first_stop, last_stop = first_last_stop_tup
+            if first_stop != last_stop:
+                raise ValueError("First and last stop of a rotation are not the same.")
+
+            station = first_stop
+            rotation_count_depot = sum(
+                len(rotations) for vehicle_type, rotations in vehicle_type_dict.items()
+            )
+
+            savepoint = session.begin_nested()
+            try:
+                # (Temporarily) Delete all rotations not starting or ending at the station
+                logger.debug(
+                    f"Deleting all rotations not starting or ending at {station.name}"
+                )
+                all_rot_for_scenario = (
+                    session.query(Rotation)
+                    .filter(Rotation.scenario_id == scenario.id)
+                    .all()
+                )
+                to_delete = []
+                for rot in all_rot_for_scenario:
+                    first_stop = rot.trips[0].route.departure_station
+                    if first_stop != station:
+                        for trip in rot.trips:
+                            for stop_time in trip.stop_times:
+                                to_delete.append(stop_time)
+                            for event in trip.events:
+                                to_delete.append(event)
+                            to_delete.append(trip)
+                        to_delete.append(rot)
+                for obj in to_delete:
+                    session.flush()
+                    session.delete(obj)
+                    session.flush()
+
+                logger.info(f"Generating depot layout for station {station.name}")
+                vt_capacities_for_station = depot_smallest_possible_size(
+                    station,
+                    scenario,
+                    session,
+                    standard_block_length,
+                    charging_power,
+                    # num_rotations=rotation_count_depot,
+                )
+
+                depot_capacities_for_scenario[station] = vt_capacities_for_station
+                num_rotations_for_scenario[station] = rotation_count_depot
+            finally:
+                savepoint.rollback()
+
+    # create depot with the calculated area sizes
+
+    for depot_station, capacities in depot_capacities_for_scenario.items():
+        generate_depot(
+            capacities,
+            depot_station,
+            scenario,
+            session,
+            charging_power=charging_power,
+            num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
+            num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
+        )
+
+    # Delete all vehicles and events again. Only depot layout is kept
+
+    rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+    rotation_q.update({"vehicle_id": None})
+    session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+    session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
