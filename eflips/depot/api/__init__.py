@@ -1194,7 +1194,6 @@ def generate_depot_optimal_size(
                     session,
                     standard_block_length,
                     charging_power,
-                    # num_rotations=rotation_count_depot,
                 )
 
                 depot_capacities_for_scenario[station] = vt_capacities_for_station
@@ -1210,6 +1209,7 @@ def generate_depot_optimal_size(
             depot_station,
             scenario,
             session,
+            standard_block_length=standard_block_length,
             charging_power=charging_power,
             num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
             num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
