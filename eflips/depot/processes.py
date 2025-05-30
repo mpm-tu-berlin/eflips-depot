@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from enum import auto, Enum
 from warnings import warn
 
+import numpy as np
 import simpy
 from eflips.helperFunctions import flexprint
 from eflips.settings import globalConstants
@@ -1426,6 +1427,23 @@ def exponential_power(vehicle, charging_interface, peq_params, *args, **kwargs):
             * (math.exp(SoC) - math.exp(SoC_threshold))
             + P_max
         )
+
+
+def power_from_table(vehicle, charging_interface, peq_params):
+    # TODO might write something similar to exponential_power for getting the power from the stored 2d arrays
+    # Using interpolation
+    # get the array from somewhere, need to be stored in depot_to_template()
+    # interpolation
+    # return the power
+
+    current_soc = vehicle.battery.soc
+    p_max = charging_interface.max_power
+
+    current_power = min(
+        p_max, np.interp(current_soc, peq_params["soc"], peq_params["power"])
+    )
+
+    return current_power
 
 
 class Standby(VehicleProcess):
