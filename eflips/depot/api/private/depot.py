@@ -90,7 +90,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     list_of_processes = []
 
     # Get dictionary of each area
-    # For line areas, generate an dictionary item for total areas, later it will be split into individual lines
+    # For line areas, generate a dictionary item for total areas, later it will be split into individual lines
     for area in depot.areas:
         area_name = str(area.id)
         template["areas"][area_name] = {
@@ -112,6 +112,19 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                 "filter_names": ["vehicle_type"],
                 "vehicle_types": [str(area.vehicle_type_id)],
             }
+            # TODO: if there are any charging processes in this area, add a unique charging process for each vehicle
+            #  type of this area in available_processes
+            for processes_in_area in area.processes:
+                if process_type(processes_in_area) == ProcessType.CHARGING:
+                    # Add the charging process for this vehicle type
+                    template["areas"][area_name]["available_processes"].append(
+                        str(processes_in_area.id) + str(area.vehicle_type_id)
+                    )
+                    # Delete the original charging process
+                    template["areas"][area_name]["available_processes"].remove(
+                        str(processes_in_area.id)
+                    )
+
         else:
             # If the vehicle type id is not set, the area is for all vehicle types
             scenario = depot.scenario
@@ -122,6 +135,19 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                 "vehicle_types": all_vehicle_type_ids,
             }
 
+            # if there are any charging areas, all a unique charging process for each vehicle type
+            for processes_in_area in area.processes:
+                if process_type(processes_in_area) == ProcessType.CHARGING:
+                    # Add the charging process for this vehicle type
+                    for vt in scenario.vehicle_types:
+                        template["areas"][area_name]["available_processes"].append(
+                            str(processes_in_area.id) + str(vt.id)
+                        )
+                    # Delete the original charging process
+                    template["areas"][area_name]["available_processes"].remove(
+                        str(processes_in_area.id)
+                    )
+
         for process in area.processes:
             # Add process into process list
             list_of_processes.append(
@@ -130,6 +156,8 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
 
             # Charging interfaces
             if process_type(process) == ProcessType.CHARGING:
+                # TODO here edit the "available_processes" to only include the charging processes for existing vehicle types
+                # Downside: matching with names might be unstable?
                 ci_per_area = []
                 for i in range(area.capacity):
                     ID = "ci_" + str(len(template["resources"]))
@@ -171,7 +199,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     for name in line_areas_to_delete:
         del area_template[name]
 
-    # Fill in the dictionary of processess
+    # Fill in the dictionary of processes
     for process in list_of_processes:
         process_name = str(process.id)
         # Shared template for all processes
@@ -244,8 +272,48 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                     ] = list_of_breaks_in_seconds
 
             case ProcessType.CHARGING:
-                template["processes"][process_name]["typename"] = "Charge"
-                del template["processes"][process_name]["dur"]
+                # TODO here is the interface for enabling charging curves
+                # TODO there are 3 types (currently) of charging curves supported by the simulation core. we are now using
+                # the constant one. steps and exponential are other two options.
+                # typename corresponds to the charge types in eflips core processes
+                # TODO check if I update the processes in the areas?
+
+                all_vehicle_types = depot.scenario.vehicle_types
+
+                for vt in all_vehicle_types:
+                    charging_curve = vt.charging_curve
+                    template["processes"][process_name + str(vt.id)] = template[
+                        "processes"
+                    ][process_name].copy()
+                    template["processes"][process_name + str(vt.id)][
+                        "typename"
+                    ] = "ChargeEquationSteps"
+                    template["processes"][process_name + str(vt.id)][
+                        "vehicle_filter"
+                    ] = {
+                        "filter_names": ["vehicle_type"],
+                        "vehicle_types": [str(vt.id)],
+                    }
+
+                    template["processes"][process_name + str(vt.id)][
+                        "peq_name"
+                    ] = "power_from_table"
+                    template["processes"][process_name + str(vt.id)]["peq_params"] = {
+                        "soc": [soc_power_pair[0] for soc_power_pair in charging_curve],
+                        "power": [
+                            soc_power_pair[1] for soc_power_pair in charging_curve
+                        ],
+                    }
+
+                    del template["processes"][process_name + str(vt.id)]["dur"]
+
+                # delete the original process
+                del template["processes"][process_name]
+
+                # The original one
+                # template["processes"][process_name]["typename"] = "Charge"
+
+                # del template["processes"][process_name]["dur"]
 
             case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
                 template["processes"][process_name]["typename"] = "Standby"
