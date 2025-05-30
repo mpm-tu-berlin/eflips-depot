@@ -1070,7 +1070,8 @@ def depot_smallest_possible_size(
                         logger.debug(
                             f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is > than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
                         )
-                except ValueError as e:
+                except Exception as e:
+                    # This change is made after Unstable exception and delay exceptions are introduced
                     if (
                         "which suggests the fleet or the infrastructure might not be enough for the full electrification. Please add charging interfaces or increase charging power ."
                         in repr(e)
