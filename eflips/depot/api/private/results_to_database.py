@@ -384,7 +384,7 @@ def add_events_into_database(
         match process_dict["type"]:
             case "Serve":
                 event_type = EventType.SERVICE
-            case "Charge":
+            case "Charge" | "ChargeSteps" | "ChargeEquationSteps":  # TODO that might be problematic
                 event_type = EventType.CHARGING_DEPOT
             case "Standby":
                 if (
