@@ -1104,7 +1104,20 @@ def generate_depot_optimal_size(
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
 ) -> None:
-    """ """
+    """
+    Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
+     with given block length area preferred. The existing depot will be deleted if `delete_existing_depot` is set to True.
+
+    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :param standard_block_length: The standard block length for the depot layout in meters. Default is 6.
+    :param charging_power: The charging power of the charging area in kW. Default is 90.
+    :param database_url: An optional database URL. Used if no database url is given by the environment variable.
+    :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
+        existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
+
+    :return: None. The depot layout will be added to the database.
+
+    """
 
     logger = logging.getLogger(__name__)
 
