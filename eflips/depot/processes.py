@@ -1443,7 +1443,7 @@ def power_from_table(vehicle, charging_interface, peq_params):
         p_max, np.interp(current_soc, peq_params["soc"], peq_params["power"])
     )
 
-    return current_power
+    return float(current_power)
 
 
 class Standby(VehicleProcess):
