@@ -673,7 +673,7 @@ class ChargeAbstract(VehicleProcess, ABC):
         cancellable_for_dispatch=False,
         efficiency=1,
         *args,
-        **kwargs
+        **kwargs,
     ):
         if required_resources is not None:
             raise ValueError(
