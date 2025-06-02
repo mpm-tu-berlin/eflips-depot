@@ -163,8 +163,6 @@ def generate_vehicle_events(
                 "is_waiting": True,
             }
 
-    # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
-
     for time_stamp, process_log in current_vehicle.logger.loggedData[
         "dwd.active_processes_copy"
     ].items():
@@ -214,13 +212,18 @@ def generate_vehicle_events(
                                     )
                                     start_this_event = dict_of_events[time_stamp]["end"]
                                 else:
-                                    for other_process in process_log:
-                                        if (
-                                            other_process.ID != process.ID
-                                            and other_process.dur > 0
-                                        ):
-                                            start_this_event = other_process.ends[0]
-                                            break
+                                    if len(process_log) > 1:
+                                        # This is for the case where the charging and standby_departure happen in the same area, and the standby_departure is the last process.
+                                        for other_process in process_log:
+                                            if (
+                                                other_process.ID != process.ID
+                                                and other_process.dur > 0
+                                            ):
+                                                start_this_event = other_process.ends[0]
+                                                break
+                                    else:
+                                        # This is for the case where only standby_departure happens in the last area.
+                                        start_this_event = time_stamp
 
                                 assert (
                                     start_this_event is not None
