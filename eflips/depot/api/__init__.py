@@ -519,6 +519,7 @@ def apply_even_smart_charging(
     scenario: Union[Scenario, int, Any],
     database_url: Optional[str] = None,
     standby_departure_duration: timedelta = timedelta(minutes=5),
+    delete_existing_charging_timeseries: bool = False,
 ) -> None:
     """
     Takes a scenario where depot simulation has been run and applies smart charging to the depot.
@@ -534,6 +535,8 @@ def apply_even_smart_charging(
 
     :param standby_departure_duration: The duration of the STANDBY_DEPARTURE event. This is the time the vehicle is
         allowed to wait at the depot before it has to leave. The default is 5 minutes.
+
+    :param delete_existing_timeseries: If True, the existing timeseries in the charging events will be deleted.
 
     :return: None. The results are added to the database.
     """
@@ -551,6 +554,19 @@ def apply_even_smart_charging(
         raise
 
     with create_session(scenario, database_url) as (session, scenario):
+        if delete_existing_charging_timeseries is False:
+            raise ValueError(
+                "The existing timeseries of charging events needed to be deleted. Set "
+                "delete_existing_charging_timeseries=True to delete them."
+            )
+
+        # Delete existing timeseries in charging events
+        session.query(Event).filter(
+            Event.event_type == EventType.CHARGING_DEPOT,
+            Event.scenario_id == scenario.id,
+        ).update({"timeseries": None}, synchronize_session=False)
+        session.expire_all()
+
         depots = session.query(Depot).filter(Depot.scenario_id == scenario.id).all()
         for depot in depots:
             add_slack_time_to_events_of_depot(

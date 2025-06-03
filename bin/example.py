@@ -181,7 +181,7 @@ if __name__ == "__main__":
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
         # consumption. This is done by shifting the charging times of the vehicles. The method is called
         # apply_even_smart_charging and is part of the eflips.depot.api module.
-        apply_even_smart_charging(scenario)
+        apply_even_smart_charging(scenario, delete_existing_charging_timeseries=True)
 
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()
