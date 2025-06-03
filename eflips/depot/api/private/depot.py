@@ -268,7 +268,6 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                     ] = list_of_breaks_in_seconds
 
             case ProcessType.CHARGING:
-
                 all_vehicle_types = depot.scenario.vehicle_types
 
                 for vt in all_vehicle_types:
