@@ -112,8 +112,6 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                 "filter_names": ["vehicle_type"],
                 "vehicle_types": [str(area.vehicle_type_id)],
             }
-            # TODO: if there are any charging processes in this area, add a unique charging process for each vehicle
-            #  type of this area in available_processes
             for processes_in_area in area.processes:
                 if process_type(processes_in_area) == ProcessType.CHARGING:
                     # Add the charging process for this vehicle type
@@ -156,8 +154,6 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
 
             # Charging interfaces
             if process_type(process) == ProcessType.CHARGING:
-                # TODO here edit the "available_processes" to only include the charging processes for existing vehicle types
-                # Downside: matching with names might be unstable?
                 ci_per_area = []
                 for i in range(area.capacity):
                     ID = "ci_" + str(len(template["resources"]))
@@ -272,11 +268,6 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                     ] = list_of_breaks_in_seconds
 
             case ProcessType.CHARGING:
-                # TODO here is the interface for enabling charging curves
-                # TODO there are 3 types (currently) of charging curves supported by the simulation core. we are now using
-                # the constant one. steps and exponential are other two options.
-                # typename corresponds to the charge types in eflips core processes
-                # TODO check if I update the processes in the areas?
 
                 all_vehicle_types = depot.scenario.vehicle_types
 
