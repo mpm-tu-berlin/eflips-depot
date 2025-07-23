@@ -1,9 +1,11 @@
 import logging
 import warnings
+from dataclasses import dataclass
 from datetime import timedelta, datetime
 from math import ceil
-from typing import Tuple
+from typing import Tuple, List
 from zoneinfo import ZoneInfo
+import scipy
 
 import numpy as np
 import sqlalchemy.orm
@@ -12,11 +14,281 @@ from eflips.model import (
     EventType,
     Rotation,
     Vehicle,
+    VehicleType,
+    VehicleClass,
     Trip,
     Station,
     ChargeType,
     ConsistencyWarning,
+    ConsumptionLut,
+    Scenario,
 )
+from sqlalchemy.orm import joinedload
+
+from eflips.depot.api.private.util import temperature_for_trip, create_session
+
+
+@dataclass
+class ConsumptionResult:
+    """
+    A dataclass that stores the results of a charging simulation for a single trip.
+
+    This class holds both the total change in battery State of Charge (SoC) over the trip
+    as well as an optional timeseries of timestamps and incremental SoC changes. When
+    an entry exists for a given trip in ``consumption_result``, the simulation will use
+    these precomputed values instead of recalculating the SoC changes from the vehicle
+    distance and consumption.
+
+    :param delta_soc_total:
+        The total change in the vehicle's State of Charge over the trip, typically
+        negative if the vehicle is consuming energy (e.g., -0.15 means the SoC
+        dropped by 15%).
+
+    :param timestamps:
+        A list of timestamps (e.g., arrival times at stops) that mark the times
+        associated with the SoC changes. The number of timestamps must match the
+        number of entries in ``delta_soc``.
+
+    :param delta_soc:
+        A list of cumulative SoC changes corresponding to the ``timestamps``.
+        For example, if ``delta_soc[i] = -0.02``, it means the SoC decreased by 2%
+        between from the start of the trip to ``timestamps[i]``. This list should typically
+        be a monotonic decreasing sequence.
+    """
+
+    delta_soc_total: float
+    timestamps: List[datetime] | None
+    delta_soc: List[float] | None
+
+
+@dataclass
+class ConsumptionInformation:
+    """
+    A dataclass to hold the information needed for the consumption simulation.
+
+    :param trip_id:
+        The ID of the trip for which the consumption is calculated.
+    :param consumption_lut:
+        The ConsumptionLut object for the vehicle class. This is used to calculate the
+        consumption based on the trip parameters.
+    :param average_speed:
+        The average speed of the trip in km/h. This is used to calculate the consumption.
+    :param distance:
+        The distance of the trip in km. This is used to calculate the total consumption.
+    :param temperature:
+        The ambient temperature in °C. This is used to calculate the consumption.
+    :param level_of_loading:
+        The level of loading of the vehicle as a fraction of its maximum payload.
+    :param incline:
+        The incline of the trip as a fraction (0.0-1.0). This is used to calculate the consumption.
+    :param consumption:
+        The total consumption of the trip in kWh. This is calculated based on the LUT and trip parameters.
+    :param consumption_per_km:
+        The consumption per km in kWh. This is calculated based on the LUT and trip parameters.
+    """
+
+    trip_id: int
+    consumption_lut: ConsumptionLut | None  # the LUT for the vehicle class
+    average_speed: float  # the average speed of the trip in km/h
+    distance: float  # the distance of the trip in km
+    temperature: float  # The ambient temperature in °C
+    level_of_loading: float
+    incline: float = 0.0  # The incline of the trip in 0.0-1.0
+    consumption: float = None  # The consumption of the trip in kWh
+    consumption_per_km: float = None  # The consumption per km in kWh
+
+    def calculate(self):
+        """
+        Calculates the consumption for the trip. Returns a float in kWh.
+
+        :return: The energy consumption in kWh. This is already the consumption for the whole trip.
+        """
+
+        # Make sure the consumption lut has 4 dimensions and the columns are in the correct order
+        if self.consumption_lut.columns != [
+            "incline",
+            "t_amb",
+            "level_of_loading",
+            "mean_speed_kmh",
+        ]:
+            raise ValueError(
+                "The consumption LUT must have the columns 'incline', 't_amb', 'level_of_loading', 'mean_speed_kmh'"
+            )
+
+        # Recover the scales along each of the four axes from the datapoints
+        incline_scale = sorted(set([x[0] for x in self.consumption_lut.data_points]))
+        temperature_scale = sorted(
+            set([x[1] for x in self.consumption_lut.data_points])
+        )
+        level_of_loading_scale = sorted(
+            set([x[2] for x in self.consumption_lut.data_points])
+        )
+        speed_scale = sorted(set([x[3] for x in self.consumption_lut.data_points]))
+
+        # Create the 4d array
+        consumption_lut = np.zeros(
+            (
+                len(incline_scale),
+                len(temperature_scale),
+                len(level_of_loading_scale),
+                len(speed_scale),
+            )
+        )
+
+        # Fill it with NaNs
+        consumption_lut.fill(np.nan)
+
+        for i, (incline, temperature, level_of_loading, speed) in enumerate(
+            self.consumption_lut.data_points
+        ):
+            consumption_lut[
+                incline_scale.index(incline),
+                temperature_scale.index(temperature),
+                level_of_loading_scale.index(level_of_loading),
+                speed_scale.index(speed),
+            ] = self.consumption_lut.values[i]
+
+        # Interpolate the consumption
+        interpolator = scipy.interpolate.RegularGridInterpolator(
+            (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
+            consumption_lut,
+            bounds_error=False,
+            fill_value=None,
+            method="linear",
+        )
+        consumption_per_km = interpolator(
+            [self.incline, self.temperature, self.level_of_loading, self.average_speed]
+        )[0]
+
+        # This is a temporary workaround to handle cases where the LUT does not contain
+        if consumption_per_km is None or np.isnan(consumption_per_km):
+            # Add a warning if we had to use nearest neighbor interpolation
+            warnings.warn(
+                f"Consumption LUT for trip {self.trip_id} with parameters: "
+                f"incline={self.incline}, temperature={self.temperature}, "
+                f"level_of_loading={self.level_of_loading}, average_speed={self.average_speed} "
+                f"returned NaN. Using nearest neighbor interpolation instead. The result may be less accurate.",
+                ConsistencyWarning,
+            )
+
+            interpolator_nn = scipy.interpolate.RegularGridInterpolator(
+                (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
+                consumption_lut,
+                bounds_error=False,
+                fill_value=None,  # Fill NaN with 0.0
+                method="nearest",
+            )
+            consumption_per_km = interpolator_nn(
+                [
+                    self.incline,
+                    self.temperature,
+                    self.level_of_loading,
+                    self.average_speed,
+                ]
+            )[0]
+
+            # Add a warning if we had to use nearest neighbor interpolation
+
+        if consumption_per_km is None or np.isnan(consumption_per_km):
+            raise ValueError(
+                f"Could not calculate consumption for trip {self.trip_id} with parameters: "
+                f"incline={self.incline}, temperature={self.temperature}, "
+                f"level_of_loading={self.level_of_loading}, average_speed={self.average_speed}. "
+                f"Possible reason: data points missing in the LUT."
+            )
+
+        self.consumption = consumption_per_km * self.distance
+        self.consumption_per_km = consumption_per_km
+        self.consumption_lut = None  # To save memory
+
+    def generate_consumption_result(self, battery_capacity) -> ConsumptionResult:
+        """
+        Generates a ConsumptionResult object from the current instance.
+
+        :param battery_capacity: The battery capacity in kWh.
+        :return: A ConsumptionResult object containing the total change in SoC and optional timeseries.
+        """
+        if self.consumption is None:
+            raise ValueError(
+                "Consumption must be calculated before generating a result."
+            )
+
+        # TODO implement a timeseries of timestamps and delta_soc
+        consumption_result = ConsumptionResult(
+            delta_soc_total=-float(self.consumption) / battery_capacity,
+            timestamps=None,
+            delta_soc=None,
+        )
+        return consumption_result
+
+
+def extract_trip_information(
+    trip_id: int,
+    scenario: Scenario,
+    passenger_mass=68,
+    passenger_count=17.6,
+) -> ConsumptionInformation:
+    """
+    Extracts the information needed for the consumption simulation from a trip.
+    """
+
+    with create_session(scenario) as (session, scenario):
+        # Load the trip with its route and rotation, including vehicle type and consumption LUT
+        # We use joinedload to avoid N+1 queries
+
+        trip = (
+            session.query(Trip)
+            .filter(Trip.id == trip_id)
+            .options(joinedload(Trip.route))
+            .options(
+                joinedload(Trip.rotation)
+                .joinedload(Rotation.vehicle_type)
+                .joinedload(VehicleType.vehicle_classes)
+                .joinedload(VehicleClass.consumption_lut)
+            )
+            .one()
+        )
+        # Check exactly one of the vehicle classes has a consumption LUT
+        all_consumption_luts = [
+            vehicle_class.consumption_lut
+            for vehicle_class in trip.rotation.vehicle_type.vehicle_classes
+        ]
+        all_consumption_luts = [x for x in all_consumption_luts if x is not None]
+        if len(all_consumption_luts) != 1:
+            raise ValueError(
+                f"Expected exactly one consumption LUT, got {len(all_consumption_luts)}"
+            )
+        consumption_lut = all_consumption_luts[0]
+        # Disconnect the consumption LUT from the session to avoid loading the whole table
+
+        del all_consumption_luts
+
+        total_distance = trip.route.distance / 1000  # km
+        total_duration = (
+            trip.arrival_time - trip.departure_time
+        ).total_seconds() / 3600
+        average_speed = total_distance / total_duration  # km/h
+
+        temperature = temperature_for_trip(trip_id, session)
+
+        payload_mass = passenger_mass * passenger_count
+        full_payload = (
+            trip.rotation.vehicle_type.allowed_mass
+            - trip.rotation.vehicle_type.empty_mass
+        )
+        level_of_loading = payload_mass / full_payload
+
+        info = ConsumptionInformation(
+            trip_id=trip.id,
+            consumption_lut=consumption_lut,
+            average_speed=average_speed,
+            distance=total_distance,
+            temperature=temperature,
+            level_of_loading=level_of_loading,
+        )
+
+        info.calculate()
+    return info
 
 
 def initialize_vehicle(rotation: Rotation, session: sqlalchemy.orm.session.Session):
