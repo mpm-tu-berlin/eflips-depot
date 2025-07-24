@@ -1516,6 +1516,10 @@ class DepotControl:
 
     def schedule_for_matching(self, trip):
         """Wait *delay* and then schedule *trip* for matching with a vehicle."""
+
+        # Shuyao: This delay does not mean the trip is delayed. It means the trip must be scheduled one hour before departure
+        # so the time of the environment is "delayed" until 1 hour before departure.
+
         delay = self.dispatch_strategy.scheduling_delay(self.env, trip)
         yield self.env.timeout(delay)
         self.depot.unassigned_trips.append(trip)

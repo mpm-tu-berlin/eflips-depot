@@ -67,7 +67,7 @@ def get_finished_schedules_per_vehicle(
             }
             if i == 0:
                 raise UnstableSimulationException(
-                    f"New Vehicle required for the trip {current_trip.ID}, which suggests the fleet or the "
+                    f"New Vehicle required for the rotation/block {current_trip.ID}, which suggests the fleet or the "
                     f"infrastructure might not be enough for the full electrification. Please add charging "
                     f"interfaces or increase charging power ."
                 )

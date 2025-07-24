@@ -51,6 +51,7 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
+    ConsumptionLut,
 )
 from sqlalchemy.orm import Session
 
@@ -59,10 +60,12 @@ from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
 )
+from eflips.depot.api.private.consumption import ConsumptionResult
 from eflips.depot.api.private.consumption import (
     initialize_vehicle,
     add_initial_standby_event,
     attempt_opportunity_charging_event,
+    extract_trip_information,
 )
 from eflips.depot.api.private.depot import (
     delete_depots,
@@ -116,37 +119,33 @@ class SmartChargingStrategy(Enum):
     """
 
 
-@dataclass
-class ConsumptionResult:
+def generate_consumption_result(scenario):
     """
-    A dataclass that stores the results of a charging simulation for a single trip.
+    Generate consumption information for the scenario.
 
-    This class holds both the total change in battery State of Charge (SoC) over the trip
-    as well as an optional timeseries of timestamps and incremental SoC changes. When
-    an entry exists for a given trip in ``consumption_result``, the simulation will use
-    these precomputed values instead of recalculating the SoC changes from the vehicle
-    distance and consumption.
+    This function retrieves the consumption LUT and vehicle classes from the database and returns a dictionary
+    containing the consumption information for each vehicle type in the scenario.
 
-    :param delta_soc_total:
-        The total change in the vehicle's State of Charge over the trip, typically
-        negative if the vehicle is consuming energy (e.g., -0.15 means the SoC
-        dropped by 15%).
+    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
 
-    :param timestamps:
-        A list of timestamps (e.g., arrival times at stops) that mark the times
-        associated with the SoC changes. The number of timestamps must match the
-        number of entries in ``delta_soc``.
-
-    :param delta_soc:
-        A list of cumulative SoC changes corresponding to the ``timestamps``.
-        For example, if ``delta_soc[i] = -0.02``, it means the SoC decreased by 2%
-        between from the start of the trip to ``timestamps[i]``. This list should typically
-        be a monotonic decreasing sequence.
+    :return: A dictionary containing the consumption information for each vehicle type in the scenario.
     """
 
-    delta_soc_total: float
-    timestamps: List[datetime] | None
-    delta_soc: List[float] | None
+    with create_session(scenario) as (session, scenario):
+        trips = session.query(Trip).filter(Trip.scenario_id == scenario.id).all()
+        consumption_results = {}
+        for trip in trips:
+            consumption_info = extract_trip_information(
+                trip.id,
+                scenario,
+            )
+            battery_capacity_current_vt = trip.rotation.vehicle_type.battery_capacity
+            consumption_result = consumption_info.generate_consumption_result(
+                battery_capacity_current_vt
+            )
+            consumption_results[trip.id] = consumption_result
+
+    return consumption_results
 
 
 def simple_consumption_simulation(
@@ -1119,6 +1118,7 @@ def generate_depot_optimal_size(
     charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
+    consumption_results: Optional[Dict[int, ConsumptionResult]] = None,
 ) -> None:
     """
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
@@ -1130,6 +1130,8 @@ def generate_depot_optimal_size(
     :param database_url: An optional database URL. Used if no database url is given by the environment variable.
     :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
+    :param consumption_results: A dictionary of consumption results for each vehicle type. It is used to simulate the consumption with
+        given look-up tables. If not given, the constant consumption will be used in the simulation.
 
     :return: None. The depot layout will be added to the database.
 
@@ -1151,19 +1153,11 @@ def generate_depot_optimal_size(
 
             delete_depots(scenario, session)
 
-        # Temporary workaround to set vehicle energy consumption manually
-        # TODO: Replace by "use DS consumption if LUT"
-        for vehicle_type in (
-            session.query(VehicleType)
-            .filter(VehicleType.scenario_id == scenario.id)
-            .all()
-        ):
-            vehicle_type.consumption = 2.0
-            vehicle_type.vehicle_classes = []
-
         ##### Step 0: Consumption Simulation #####
         # Run the consumption simulation for all depots
-        simple_consumption_simulation(scenario, initialize_vehicles=True)
+        simple_consumption_simulation(
+            scenario, initialize_vehicles=True, consumption_result=consumption_results
+        )
 
         ##### Step 1: Find all potential depots #####
         # These are all the spots where a rotation starts and end
@@ -1232,21 +1226,22 @@ def generate_depot_optimal_size(
 
     # create depot with the calculated area sizes
 
-    for depot_station, capacities in depot_capacities_for_scenario.items():
-        generate_depot(
-            capacities,
-            depot_station,
-            scenario,
-            session,
-            standard_block_length=standard_block_length,
-            charging_power=charging_power,
-            num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
-            num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
-        )
+    with create_session(scenario, database_url) as (session, scenario):
+        for depot_station, capacities in depot_capacities_for_scenario.items():
+            generate_depot(
+                capacities,
+                depot_station,
+                scenario,
+                session,
+                standard_block_length=standard_block_length,
+                charging_power=charging_power,
+                num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
+                num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
+            )
 
-    # Delete all vehicles and events again. Only depot layout is kept
+        # Delete all vehicles and events again. Only depot layout is kept
 
-    rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-    rotation_q.update({"vehicle_id": None})
-    session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-    session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
