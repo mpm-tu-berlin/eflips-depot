@@ -7,6 +7,7 @@ from datetime import timedelta, datetime
 from typing import Union, Any, Optional, Tuple, Dict, List
 
 import simpy
+import numpy as np
 from eflips.model import (
     Scenario,
     VehicleType,
@@ -15,6 +16,7 @@ from eflips.model import (
     EventType,
     Trip,
     Depot,
+    Temperatures,
 )
 from sqlalchemy import inspect, create_engine
 from sqlalchemy.orm import Session
@@ -197,6 +199,38 @@ def check_depot_validity(depot: Depot) -> None:
         assert (
             process.electric_power is not None or process.duration is not None
         ), "All processes except the last one must have electric power."
+
+
+def temperature_for_trip(trip_id: int, session: Session) -> float:
+    """
+    Returns the temperature for a trip. Finds the temperature for the mid-point of the trip.
+
+    :param trip_id: The ID of the trip
+    :param session: The SQLAlchemy session
+    :return: A temperature in °C
+    """
+
+    trip = session.query(Trip).filter(Trip.id == trip_id).one()
+    temperatures = (
+        session.query(Temperatures)
+        .filter(Temperatures.scenario_id == trip.scenario_id)
+        .one()
+    )
+
+    # Find the mid-point of the trip
+    mid_time = trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
+
+    if temperatures.use_only_time:
+        # The temperatures are only given by time. We change our mid-time to be the date of the temperatures
+        mid_time = datetime.combine(temperatures.datetimes[0].date(), mid_time.time())
+
+    mid_time = mid_time.timestamp()
+
+    datetimes = [dt.timestamp() for dt in temperatures.datetimes]
+    temperatures = temperatures.data
+
+    temperature = np.interp(mid_time, datetimes, temperatures)
+    return float(temperature)
 
 
 @dataclass
