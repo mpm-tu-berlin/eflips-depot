@@ -124,7 +124,8 @@ def generate_consumption_result(scenario):
     Generate consumption information for the scenario.
 
     This function retrieves the consumption LUT and vehicle classes from the database and returns a dictionary
-    containing the consumption information for each vehicle type in the scenario.
+    containing the consumption information for each vehicle type in the scenario. If a trip has no corresponding
+    consumption LUT, it won't be included in the results.
 
     :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
 
@@ -135,10 +136,18 @@ def generate_consumption_result(scenario):
         trips = session.query(Trip).filter(Trip.scenario_id == scenario.id).all()
         consumption_results = {}
         for trip in trips:
-            consumption_info = extract_trip_information(
-                trip.id,
-                scenario,
-            )
+            try:
+                consumption_info = extract_trip_information(
+                    trip.id,
+                    scenario,
+                )
+            except ValueError as e:
+                # If the trip has no consumption information, skip it
+                logging.warning(
+                    f"Skipping trip {trip.id} due to missing consumption information: {e}"
+                )
+                continue
+
             battery_capacity_current_vt = trip.rotation.vehicle_type.battery_capacity
             consumption_result = consumption_info.generate_consumption_result(
                 battery_capacity_current_vt
@@ -1118,7 +1127,7 @@ def generate_depot_optimal_size(
     charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
-    consumption_results: Optional[Dict[int, ConsumptionResult]] = None,
+    use_consumption_lut: bool = False,
 ) -> None:
     """
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
@@ -1130,8 +1139,8 @@ def generate_depot_optimal_size(
     :param database_url: An optional database URL. Used if no database url is given by the environment variable.
     :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
-    :param consumption_results: A dictionary of consumption results for each vehicle type. It is used to simulate the consumption with
-        given look-up tables. If not given, the constant consumption will be used in the simulation.
+    :param using_consumption_lut: If True, the depot layout will be generated based on the consumption lookup table.
+        If False, constant consumption stored in VehicleType table will be used.
 
     :return: None. The depot layout will be added to the database.
 
@@ -1155,9 +1164,18 @@ def generate_depot_optimal_size(
 
         ##### Step 0: Consumption Simulation #####
         # Run the consumption simulation for all depots
-        simple_consumption_simulation(
-            scenario, initialize_vehicles=True, consumption_result=consumption_results
-        )
+
+        if use_consumption_lut:
+            # If using the consumption lookup table, we need to calculate the consumption results
+            consumption_results = generate_consumption_result(scenario)
+            simple_consumption_simulation(
+                scenario,
+                initialize_vehicles=True,
+                consumption_result=consumption_results,
+            )
+        else:
+            # If not using the consumption lookup table, we need to initialize the vehicles with the constant consumption
+            simple_consumption_simulation(scenario, initialize_vehicles=True)
 
         ##### Step 1: Find all potential depots #####
         # These are all the spots where a rotation starts and end
