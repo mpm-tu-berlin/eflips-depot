@@ -1106,7 +1106,7 @@ def add_evaluation_to_database(
 
 
 def generate_depot_optimal_size(
-    scenario: Scenario,
+    scenario: Union[Scenario, int, Any],
     standard_block_length: int = 6,
     charging_power: float = 90,
     database_url: Optional[str] = None,
@@ -1117,7 +1117,9 @@ def generate_depot_optimal_size(
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
      with given block length area preferred. The existing depot will be deleted if `delete_existing_depot` is set to True.
 
-    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id" containing
+        an integer pointing to a unique scenario id.
     :param standard_block_length: The standard block length for the depot layout in meters. Default is 6.
     :param charging_power: The charging power of the charging area in kW. Default is 90.
     :param database_url: An optional database URL. Used if no database url is given by the environment variable.
