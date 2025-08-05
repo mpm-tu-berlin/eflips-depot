@@ -28,6 +28,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 
+class MissingVehicleDimensionError(ValueError):
+    pass
+
+
 def delete_depots(scenario: Scenario, session: Session) -> None:
     """This function deletes all depot-related data from the database for a given scenario.
 
@@ -676,7 +680,10 @@ def area_needed_for_vehicle_parking(
     width = vehicle_type.width
 
     if length is None or width is None:
-        raise ValueError(f"No length or width found for VehicleType {vehicle_type}")
+        raise MissingVehicleDimensionError(
+            f"No length or width found for VehicleType {vehicle_type}. VehicleType dimensions are required to "
+            f"calculate the area needed for parking."
+        )
 
     # This is the angle the vehicles are parked at in direct areas
     # zero is equivalent to the direction they would be parked in a line area
@@ -1070,6 +1077,9 @@ def depot_smallest_possible_size(
                         logger.debug(
                             f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is > than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
                         )
+
+                except MissingVehicleDimensionError as e:
+                    raise e
                 except Exception as e:
                     # This change is made after Unstable exception and delay exceptions are introduced
                     if (
