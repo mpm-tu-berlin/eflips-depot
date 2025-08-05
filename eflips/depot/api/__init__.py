@@ -1228,9 +1228,9 @@ def generate_depot_optimal_size(
             finally:
                 savepoint.rollback()
 
-    # create depot with the calculated area sizes
 
-    with create_session(scenario, database_url) as (session, scenario):
+        # Create depot using the calculated capacities
+
         for depot_station, capacities in depot_capacities_for_scenario.items():
             generate_depot(
                 capacities,
