@@ -1144,7 +1144,9 @@ def generate_depot_optimal_size(
         # Handles existing depot
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
-                raise ValueError("Depot already exists.")
+                raise ValueError(
+                    "Depot already exists. Set delete_existing_depot to True to delete it."
+                )
 
             delete_depots(scenario, session)
 
@@ -1227,7 +1229,6 @@ def generate_depot_optimal_size(
                 num_rotations_for_scenario[station] = rotation_count_depot
             finally:
                 savepoint.rollback()
-
 
         # Create depot using the calculated capacities
 
