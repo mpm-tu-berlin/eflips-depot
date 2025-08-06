@@ -1135,13 +1135,11 @@ def generate_depot_optimal_size(
     logger = logging.getLogger(__name__)
 
     with create_session(scenario, database_url) as (session, scenario):
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        # Delete all depot events
+        session.query(Event).filter(
+            Event.scenario_id == scenario.id, Event.area_id.isnot(None)
+        ).delete()
 
-        # Handles existing depot
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
             if delete_existing_depot is False:
                 raise ValueError(
@@ -1149,6 +1147,15 @@ def generate_depot_optimal_size(
                 )
 
             delete_depots(scenario, session)
+
+        outer_savepoint = session.begin_nested()
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        # Handles existing depot
 
         ##### Step 0: Consumption Simulation #####
         # Run the consumption simulation for all depots
@@ -1189,7 +1196,7 @@ def generate_depot_optimal_size(
                 len(rotations) for vehicle_type, rotations in vehicle_type_dict.items()
             )
 
-            savepoint = session.begin_nested()
+            inner_savepoint = session.begin_nested()
             try:
                 # (Temporarily) Delete all rotations not starting or ending at the station
                 logger.debug(
@@ -1228,10 +1235,11 @@ def generate_depot_optimal_size(
                 depot_capacities_for_scenario[station] = vt_capacities_for_station
                 num_rotations_for_scenario[station] = rotation_count_depot
             finally:
-                savepoint.rollback()
+                inner_savepoint.rollback()
+
+        outer_savepoint.rollback()
 
         # Create depot using the calculated capacities
-
         for depot_station, capacities in depot_capacities_for_scenario.items():
             generate_depot(
                 capacities,
@@ -1243,10 +1251,3 @@ def generate_depot_optimal_size(
                 num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
                 num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
             )
-
-        # Delete all vehicles and events again. Only depot layout is kept
-
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
