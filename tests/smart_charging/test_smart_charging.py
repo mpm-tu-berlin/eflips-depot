@@ -26,7 +26,10 @@ class TestSmartCharging(BaseTest):
             start_socs[event.id] = event.soc_start
             end_socs_for_event[event.id] = event.soc_end
 
-        apply_even_smart_charging(post_simulation_scenario_no_smart_charging)
+        apply_even_smart_charging(
+            post_simulation_scenario_no_smart_charging,
+            delete_existing_charging_timeseries=True,
+        )
 
         # Check that the
         # - socs match before the optimization
