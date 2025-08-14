@@ -823,31 +823,33 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the charging area with a 2x margin
+            # Calculate it from the amount of rotations with a 4x margin because 4 times of repetition
+            # in repeat_vehicle_schedules()
+            rotations = grouped_rotations[(depot.station, depot.station)]
 
             for vehicle_type in vehicle_types_for_depot:
-                vehicle_count = 0
-                for area in depot.areas:
-                    if (
-                        area.vehicle_type_id == int(vehicle_type)
-                        or area.vehicle_type_id is None
-                    ):
-                        # The areas allow either one type, or all vehicle types
-                        for p in area.processes:
-                            if p.electric_power is not None and p.duration is None:
-                                row_count = (
-                                    area.row_count if area.row_count is not None else 1
-                                )
+                vehicle_type_object = (
+                    session.query(VehicleType)
+                    .filter(
+                        VehicleType.id == vehicle_type,
+                        VehicleType.scenario_id == scenario.id,
+                    )
+                    .one()
+                )
+                vehicle_count = len(rotations.get(vehicle_type_object, []))
 
-                                vehicle_count += area.capacity * row_count
 
-                assert (
-                    vehicle_count > 0
-                ), f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
-
-                eflips.globalConstants["depot"]["vehicle_count"][depot_id][
-                    vehicle_type
-                ] = (vehicle_count * 2)
+                if vehicle_count > 0:
+                    eflips.globalConstants["depot"]["vehicle_count"][depot_id][
+                        vehicle_type
+                    ] = (
+                        vehicle_count
+                        * 4  # We multiply by 4 because we repeat the vehicle schedules 4 times
+                    )
+                else:
+                    warnings.warn(
+                        f"There are no rotations assigned to type {vehicle_type_object} in depot {depot_id}"
+                    )
 
     # We  need to put the vehicle type objects into the GlobalConstants
     for vehicle_type in (

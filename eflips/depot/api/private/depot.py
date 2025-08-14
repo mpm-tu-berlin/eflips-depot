@@ -583,12 +583,17 @@ def generate_depot(
     session.add_all(assocs)  # It's complete, so add all at once
 
     # Create shared waiting area
+    rotation_count = len(
+        session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
+    )
+
     waiting_area = Area(
         scenario=scenario,
         name=f"Waiting Area for every type of vehicle",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=100,
+        capacity=rotation_count
+        * 4,  # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
     )
     session.add(waiting_area)
 
