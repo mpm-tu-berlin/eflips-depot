@@ -18,7 +18,8 @@ from eflips.model import (
     Depot,
     Temperatures,
 )
-from sqlalchemy import inspect, create_engine
+from eflips.model import create_engine
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable

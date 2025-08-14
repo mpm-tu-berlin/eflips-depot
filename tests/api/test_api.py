@@ -27,7 +27,9 @@ from eflips.model import (
     VehicleClass,
     VehicleType,
 )
-from sqlalchemy import create_engine
+from eflips.model import create_engine
+from geoalchemy2.shape import from_shape
+from shapely import Point
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
@@ -117,7 +119,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -126,7 +128,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -135,7 +137,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -420,7 +422,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -429,7 +431,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -438,7 +440,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -721,7 +723,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 7",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_4)
@@ -730,7 +732,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 8",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_5)
@@ -739,7 +741,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 9",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 

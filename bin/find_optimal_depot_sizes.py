@@ -6,7 +6,7 @@ import os
 import warnings
 
 from eflips.model import *
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import Session
 from tqdm.auto import tqdm
 
