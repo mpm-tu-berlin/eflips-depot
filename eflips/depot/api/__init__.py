@@ -838,7 +838,6 @@ def init_simulation(
                 )
                 vehicle_count = len(rotations.get(vehicle_type_object, []))
 
-
                 if vehicle_count > 0:
                     eflips.globalConstants["depot"]["vehicle_count"][depot_id][
                         vehicle_type
@@ -1130,6 +1129,7 @@ def generate_depot_optimal_size(
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
     use_consumption_lut: bool = False,
+    repetition_period: Optional[timedelta] = None,
 ) -> None:
     """
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
@@ -1143,8 +1143,12 @@ def generate_depot_optimal_size(
     :param database_url: An optional database URL. Used if no database url is given by the environment variable.
     :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
-    :param using_consumption_lut: If True, the depot layout will be generated based on the consumption lookup table.
+    :param use_consumption_lut: If True, the depot layout will be generated based on the consumption lookup table.
         If False, constant consumption stored in VehicleType table will be used.
+    :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. If not
+        specified, a default repetition period will be generated in simulate_scenario(). If the depot layout generated
+        in this function will be used for further simulations, make sure that the repetition period is set to the same
+        value as in the simulation.
 
     :return: None. The depot layout will be added to the database.
 
@@ -1241,6 +1245,7 @@ def generate_depot_optimal_size(
                     session,
                     standard_block_length,
                     charging_power,
+                    repetition_period,
                 )
 
                 depot_capacities_for_scenario[station] = vt_capacities_for_station

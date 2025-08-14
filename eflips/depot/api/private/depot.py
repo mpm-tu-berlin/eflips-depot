@@ -854,6 +854,7 @@ def depot_smallest_possible_size(
     session: sqlalchemy.orm.session.Session,
     standard_block_length: int = 6,
     charging_power: float = 90,
+    repetition_period: Optional[timedelta] = None,
 ) -> Dict[VehicleType, Dict[AreaType, None | int]]:
     """
     Identifies the smallest (in terms of area footprint) depot that can still fit the required vehicles.
@@ -924,7 +925,12 @@ def depot_smallest_possible_size(
         from eflips.depot.api import SmartChargingStrategy
 
         # Simulate the depot
-        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStrategy.NONE)
+
+        simulate_scenario(
+            scenario,
+            smart_charging_strategy=SmartChargingStrategy.NONE,
+            repetition_period=repetition_period,
+        )
 
         # Find the peak usage of the depot
         peak_occupancies: Dict[VehicleType, Dict[AreaType, int]] = find_peak_usage(
