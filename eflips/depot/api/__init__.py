@@ -29,7 +29,6 @@ import logging
 import os
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass
 from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
@@ -51,7 +50,6 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
-    ConsumptionLut,
 )
 from sqlalchemy.orm import Session
 
@@ -59,6 +57,9 @@ import eflips.depot
 from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
+    UnstableSimulationException,
+    DelayedTripException,
+    MultipleErrors,
 )
 from eflips.depot.api.private.consumption import ConsumptionResult
 from eflips.depot.api.private.consumption import (
@@ -637,16 +638,30 @@ def simulate_scenario(
         ev = run_simulation(simulation_host)
         try:
             add_evaluation_to_database(scenario, ev, session)
-        except eflips.depot.UnstableSimulationException as e:
-            if ignore_unstable_simulation:
-                logger.warning("Simulation is unstable. Continuing.")
-            else:
-                raise e
-        except eflips.depot.DelayedTripException as e:
-            if ignore_delayed_trips:
-                logger.warning("Simulation has delayed trips. Continuing.")
-            else:
-                raise e
+
+        except MultipleErrors as e:
+            if e.errors:
+                for error in e.errors:
+                    if (
+                        isinstance(error, DelayedTripException)
+                        and not ignore_delayed_trips
+                    ):
+                        logger.error(
+                            "There are delayed trips in the simulation. "
+                            "Please check the input data and try again."
+                        )
+                        raise error
+                    if (
+                        isinstance(error, UnstableSimulationException)
+                        and not ignore_unstable_simulation
+                    ):
+                        logger.error(
+                            "Simulation became unstable. "
+                            "Please check the input data and try again."
+                        )
+                        raise error
+
+                    logger.warning("An error occurred during the simulation: %s", error)
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -783,6 +798,8 @@ def init_simulation(
     # Step 4: Set up the vehicle types
     # Clear old vehicle counts, if they exist
     eflips.globalConstants["depot"]["vehicle_count"] = {}
+
+    grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
 
     # We need to calculate roughly how many vehicles we need for each depot
     for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
@@ -1023,6 +1040,9 @@ def add_evaluation_to_database(
             f"one waiting area."
         )
 
+        unstable_exp = UnstableSimulationException()
+        delay_exp = DelayedTripException()
+
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             # Vehicle-layer operations
 
@@ -1039,6 +1059,9 @@ def add_evaluation_to_database(
             session.add(current_vehicle_db)
             session.flush()
 
+            unstable_exp = eflips.depot.UnstableSimulationException()
+            delay_exp = eflips.depot.DelayedTripException()
+
             dict_of_events = OrderedDict()
 
             (
@@ -1049,22 +1072,15 @@ def add_evaluation_to_database(
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
             ) = get_finished_schedules_per_vehicle(
-                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
+                dict_of_events,
+                current_vehicle.finished_trips,
+                current_vehicle_db.id,
+                unstable_exp,
+                delay_exp,
             )
 
-            try:
-                assert earliest_time is not None and latest_time is not None
-
-            except AssertionError as e:
-                warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
-                    f"will not be written into database."
-                )
+            if schedule_current_vehicle is None:
                 continue
-
-            assert (
-                earliest_time < latest_time
-            ), f"Earliest time {earliest_time} is not less than latest time {latest_time}."
 
             list_of_assigned_schedules.extend(schedule_current_vehicle)
 
@@ -1082,16 +1098,6 @@ def add_evaluation_to_database(
 
             add_soc_to_events(dict_of_events, current_vehicle.battery_logs)
 
-            try:
-                assert (not dict_of_events) is False
-            except AssertionError as e:
-                warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has no valid events. The vehicle will not be written "
-                    f"into database."
-                )
-
-                continue
-
             add_events_into_database(
                 current_vehicle_db,
                 dict_of_events,
@@ -1103,6 +1109,16 @@ def add_evaluation_to_database(
         # Postprocessing of events
         update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         update_waiting_events(session, scenario, waiting_area_id)
+
+        errors = []
+
+        if delay_exp.has_errors:
+            errors.append(delay_exp)
+        if unstable_exp.has_errors:
+            errors.append(unstable_exp)
+
+        if len(errors) > 0:
+            raise MultipleErrors(errors)
 
 
 def generate_depot_optimal_size(
