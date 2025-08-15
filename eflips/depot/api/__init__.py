@@ -1205,10 +1205,12 @@ def generate_depot_optimal_size(
 
         num_rotations_for_scenario: Dict[Station, int] = {}
 
+        grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
+
         for (
             first_last_stop_tup,
             vehicle_type_dict,
-        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+        ) in grouped_rotations.items():
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
@@ -1262,8 +1264,44 @@ def generate_depot_optimal_size(
 
         outer_savepoint.rollback()
 
+        # Estimation of the number of shunting and cleaning slots
+
         # Create depot using the calculated capacities
         for depot_station, capacities in depot_capacities_for_scenario.items():
+            vehicle_type_rot_dict = grouped_rotations[depot_station, depot_station]
+
+            all_rotations_this_depot = []
+
+            for vehicle_type, rotations in vehicle_type_rot_dict.items():
+                all_rotations_this_depot.extend(rotations)
+
+            # sort the rotations by their start time
+            all_rotations_this_depot.sort(key=lambda r: r.trips[0].departure_time)
+
+            start_time = all_rotations_this_depot[0].trips[0].departure_time
+            end_time = all_rotations_this_depot[-1].trips[-1].arrival_time
+
+            elapsed_time = (end_time - start_time).total_seconds()
+            # make them into a numpy with 30 min resolution
+            import numpy as np
+
+            TIME_RESOLUTION = 30 * 60  # 30 minutes in seconds
+
+            time_range = np.zeros(int(elapsed_time / TIME_RESOLUTION) + 1)
+            # calculate the number of rotations per time slot
+            for rot in all_rotations_this_depot:
+                start_time_index = int(
+                    (rot.trips[0].departure_time - start_time).total_seconds()
+                    // TIME_RESOLUTION
+                )
+                end_time_index = int(
+                    (rot.trips[-1].arrival_time - start_time).total_seconds()
+                    // TIME_RESOLUTION
+                )
+                # interpolate the start and end time to the time range
+
+                time_range[start_time_index : end_time_index + 1] += 1
+
             generate_depot(
                 capacities,
                 depot_station,
@@ -1271,6 +1309,6 @@ def generate_depot_optimal_size(
                 session,
                 standard_block_length=standard_block_length,
                 charging_power=charging_power,
-                num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
-                num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
+                num_shunting_slots=int(max(time_range)),
+                num_cleaning_slots=int(max(time_range)),
             )
