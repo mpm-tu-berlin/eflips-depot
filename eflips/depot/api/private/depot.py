@@ -3,7 +3,7 @@ import logging
 import math
 from datetime import timedelta
 from enum import Enum, auto
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import numpy as np
 import sqlalchemy.orm
@@ -583,12 +583,17 @@ def generate_depot(
     session.add_all(assocs)  # It's complete, so add all at once
 
     # Create shared waiting area
+    rotation_count = len(
+        session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
+    )
+
     waiting_area = Area(
         scenario=scenario,
         name=f"Waiting Area for every type of vehicle",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=100,
+        capacity=rotation_count
+        * 4,  # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
     )
     session.add(waiting_area)
 
@@ -849,6 +854,7 @@ def depot_smallest_possible_size(
     session: sqlalchemy.orm.session.Session,
     standard_block_length: int = 6,
     charging_power: float = 90,
+    repetition_period: Optional[timedelta] = None,
 ) -> Dict[VehicleType, Dict[AreaType, None | int]]:
     """
     Identifies the smallest (in terms of area footprint) depot that can still fit the required vehicles.
@@ -919,7 +925,12 @@ def depot_smallest_possible_size(
         from eflips.depot.api import SmartChargingStrategy
 
         # Simulate the depot
-        simulate_scenario(scenario, smart_charging_strategy=SmartChargingStrategy.NONE)
+
+        simulate_scenario(
+            scenario,
+            smart_charging_strategy=SmartChargingStrategy.NONE,
+            repetition_period=repetition_period,
+        )
 
         # Find the peak usage of the depot
         peak_occupancies: Dict[VehicleType, Dict[AreaType, int]] = find_peak_usage(
