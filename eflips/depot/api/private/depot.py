@@ -27,13 +27,15 @@ from eflips.model import (
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+import eflips.depot
+
 
 class MissingVehicleDimensionError(ValueError):
     pass
 
 
-def delete_depots(scenario: Scenario, session: Session) -> None:
-    """This function deletes all depot-related data from the database for a given scenario.
+def delete_depot(scenario: Scenario, session: Session, depot_id: int) -> None:
+    """This function deletes depot with given id.
 
     Used before a new depot in this scenario is created.
 
@@ -43,28 +45,48 @@ def delete_depots(scenario: Scenario, session: Session) -> None:
     :return: None. The depot-related data will be deleted from the database.
     """
 
-    # Delete assocs
-    session.query(AssocPlanProcess).filter(
-        AssocPlanProcess.scenario_id == scenario.id
-    ).delete()
-    list_of_area = session.query(Area).filter(Area.scenario_id == scenario.id).all()
+    # Plan for this depot
+
+    # # Delete assocs
+    assocs_plan_process = (
+        session.query(AssocPlanProcess)
+        .join(Plan)
+        .join(Depot, Plan.id == Depot.default_plan_id)
+        .filter(AssocPlanProcess.scenario_id == scenario.id, Depot.id == depot_id)
+        .all()
+    )
+
+    for assoc in assocs_plan_process:
+        session.query(AssocPlanProcess).filter(AssocPlanProcess.id == assoc.id).delete()
+
+    list_of_area = (
+        session.query(Area)
+        .filter(Area.scenario_id == scenario.id, Area.depot_id == depot_id)
+        .all()
+    )
 
     for area in list_of_area:
         session.query(AssocAreaProcess).filter(
             AssocAreaProcess.area_id == area.id
         ).delete()
         session.query(Event).filter(Event.area_id == area.id).delete()
+        # delete process
+        session.query(Process).filter(
+            Process.scenario_id == scenario.id,
+            Process.id.in_([p.id for p in area.processes]),
+        ).delete()
+        #    delete areas
+        # delete area
+        session.query(Area).filter(Area.id == area.id).delete()
 
-    # delete processes
-    session.query(Process).filter(Process.scenario_id == scenario.id).delete()
-
-    # delete areas
-    session.query(Area).filter(Area.scenario_id == scenario.id).delete()
     # delete depot
-    session.query(Depot).filter(Depot.scenario_id == scenario.id).delete()
+    depot_query = session.query(Depot).filter(
+        Depot.scenario_id == scenario.id, Depot.id == depot_id
+    )
+    plan_id = depot_query.first().default_plan_id
+    depot_query.delete()
     # delete plan
-    session.query(Plan).filter(Plan.scenario_id == scenario.id).delete()
-    # delete assoc_plan_process
+    session.query(Plan).filter(Plan.id == plan_id).delete()
 
 
 def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
@@ -919,7 +941,11 @@ def depot_smallest_possible_size(
             shunting_duration=None,
             charging_power=charging_power,
         )
-        depot = session.query(Depot).filter(Depot.scenario_id == scenario.id).one()
+        depot = (
+            session.query(Depot)
+            .filter(Depot.scenario_id == scenario.id, Depot.station_id == station.id)
+            .one()
+        )
 
         # Local imports to avoid circular imports
         from eflips.depot.api import SmartChargingStrategy
@@ -1021,7 +1047,10 @@ def depot_smallest_possible_size(
                     )
                     depot = (
                         session.query(Depot)
-                        .filter(Depot.scenario_id == scenario.id)
+                        .filter(
+                            Depot.scenario_id == scenario.id,
+                            Depot.station_id == station.id,
+                        )
                         .one()
                     )
 
@@ -1091,14 +1120,18 @@ def depot_smallest_possible_size(
 
                 except MissingVehicleDimensionError as e:
                     raise e
-                except Exception as e:
+                except eflips.depot.DelayedTripException as e:
                     # This change is made after Unstable exception and delay exceptions are introduced
-                    if (
-                        "which suggests the fleet or the infrastructure might not be enough for the full electrification. Please add charging interfaces or increase charging power ."
-                        in repr(e)
-                    ):
-                        logger.debug(f"Depot is too small.")
-                        continue
+                    logger.warning("This depot configuration causes delays.")
+                    continue
+                except eflips.depot.DepotTooSmallException as e:
+                    # This means the depot is too small for the given configuration
+                    logger.warning(
+                        f"This depot configuration leads to unstable result."
+                    )
+                    continue
+                except Exception as e:
+                    raise e
                 finally:
                     inner_savepoint.rollback()
             savepoint.rollback()

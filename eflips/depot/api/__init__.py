@@ -69,7 +69,7 @@ from eflips.depot.api.private.consumption import (
     extract_trip_information,
 )
 from eflips.depot.api.private.depot import (
-    delete_depots,
+    delete_depot,
     depot_to_template,
     group_rotations_by_start_end_stop,
     generate_depot,
@@ -456,6 +456,7 @@ def generate_depot_layout(
     charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
+    depots_to_keep: Optional[List[int]] = None,
 ) -> None:
     """
     Generates one or more depots for the scenario.
@@ -486,12 +487,26 @@ def generate_depot_layout(
 
     :return: None. The depot layout will be added to the database.
     """
+
+    logger = logging.getLogger(__name__)
     with create_session(scenario, database_url) as (session, scenario):
         # Handles existing depot
-        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+
+        depots = session.query(Depot.id).filter(Depot.scenario_id == scenario.id).all()
+        depots = [depot_id[0] for depot_id in depots]
+
+        if len(depots) != 0:
             if delete_existing_depot is False:
-                raise ValueError("Depot already exists.")
-            delete_depots(scenario, session)
+                raise ValueError(
+                    "Depot already exists. Set delete_existing_depot to True to delete the existing depot."
+                )
+
+            for depot_id in depots:
+                if depots_to_keep is None or (
+                    depots_to_keep is not None and depot_id not in depots_to_keep
+                ):
+                    logger.info(f"Deleting depot with id {depot_id}")
+                    delete_depot(scenario, session, depot_id)
 
         # Identify all the spots that serve as start *and* end of a rotation
         for (
@@ -501,6 +516,13 @@ def generate_depot_layout(
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
+
+            if first_stop.depot is not None and first_stop.depot.id in depots_to_keep:
+                # If the depot is in the list of depots to keep, we will not generate a new depot layout for it
+                logger.info(
+                    f"Depot for station {first_stop.name} already exists. Skipping generation."
+                )
+                continue
 
             # Create one direct slot for each rotation (it's way too much, but should work)
             vt_capacity_dict: Dict[VehicleType, Dict[AreaType, None | int]] = {}
@@ -804,6 +826,9 @@ def init_simulation(
     # We need to calculate roughly how many vehicles we need for each depot
     for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
         depot_id = str(depot.id)
+        if (depot.station, depot.station) not in grouped_rotations:
+            logging.info("no rotations for depot %s", depot_id)
+            continue
         eflips.globalConstants["depot"]["vehicle_count"][depot_id] = {}
         vehicle_types_for_depot = set(str(area.vehicle_type_id) for area in depot.areas)
         if "None" in vehicle_types_for_depot:
@@ -1127,6 +1152,7 @@ def generate_depot_optimal_size(
     delete_existing_depot: bool = False,
     use_consumption_lut: bool = False,
     repetition_period: Optional[timedelta] = None,
+    depots_to_keep: Optional[List[int]] = None,
 ) -> None:
     """
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
@@ -1146,6 +1172,8 @@ def generate_depot_optimal_size(
         specified, a default repetition period will be generated in simulate_scenario(). If the depot layout generated
         in this function will be used for further simulations, make sure that the repetition period is set to the same
         value as in the simulation.
+    :param depots_to_keep: A list of station IDs to keep. If specified, only these depots will be kept and all others
+        will be deleted. This is useful if you want to keep some depots and delete others
 
     :return: None. The depot layout will be added to the database.
 
@@ -1159,13 +1187,21 @@ def generate_depot_optimal_size(
             Event.scenario_id == scenario.id, Event.area_id.isnot(None)
         ).delete()
 
-        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+        depots = session.query(Depot.id).filter(Depot.scenario_id == scenario.id).all()
+        depots = [depot_id[0] for depot_id in depots]
+
+        if len(depots) != 0:
             if delete_existing_depot is False:
                 raise ValueError(
-                    "Depot already exists. Set delete_existing_depot to True to delete it."
+                    "Depot already exists. Set delete_existing_depot to True to delete the existing depot."
                 )
 
-            delete_depots(scenario, session)
+            for depot_id in depots:
+                if depots_to_keep is None or (
+                    depots_to_keep is not None and depot_id not in depots_to_keep
+                ):
+                    logger.info(f"Deleting depot with id {depot_id}")
+                    delete_depot(scenario, session, depot_id)
 
         outer_savepoint = session.begin_nested()
         # Delete all vehicles and events, also disconnect the vehicles from the rotations
@@ -1211,6 +1247,13 @@ def generate_depot_optimal_size(
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
+
+            if first_stop.depot is not None and first_stop.depot.id in depots_to_keep:
+                # If the depot is in the list of depots to keep, we will not generate a new depot layout for it
+                logger.info(
+                    f"Depot for station {first_stop.name} already exists. Skipping generation."
+                )
+                continue
 
             station = first_stop
             rotation_count_depot = sum(
