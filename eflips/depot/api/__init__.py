@@ -1060,9 +1060,6 @@ def add_evaluation_to_database(
             session.add(current_vehicle_db)
             session.flush()
 
-            unstable_exp = eflips.depot.UnstableSimulationException()
-            delay_exp = eflips.depot.DelayedTripException()
-
             dict_of_events = OrderedDict()
 
             (
