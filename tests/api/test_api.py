@@ -39,6 +39,7 @@ from eflips.depot.api import (
     simple_consumption_simulation,
     simulate_scenario,
     add_evaluation_to_database,
+    schedule_duration_days,
 )
 
 
@@ -1457,3 +1458,29 @@ class TestSimpleConsumptionSimulation(TestHelpers):
                 else:
                     assert trip.events[0].soc_start < 1
                 assert trip.events[0].soc_end < 1
+
+    def test_schedule_duration(self, session, full_scenario):
+        duration = schedule_duration_days(full_scenario)
+        assert duration == timedelta(days=1)
+
+        # Now, try changing the departure of the last trip to be one week after the first trip
+        last_trip = (
+            session.query(Trip)
+            .filter(Trip.scenario_id == full_scenario.id)
+            .order_by(Trip.departure_time.desc())
+            .first()
+        )
+        first_trip = (
+            session.query(Trip)
+            .filter(Trip.scenario_id == full_scenario.id)
+            .order_by(Trip.departure_time.asc())
+            .first()
+        )
+        with session.no_autoflush:
+            last_trip.departure_time = first_trip.departure_time + timedelta(weeks=1)
+            last_trip.arrival_time = last_trip.departure_time + timedelta(minutes=30)
+            session.query(StopTime).filter(StopTime.trip_id == last_trip.id).delete()
+        session.flush()
+
+        new_duration = schedule_duration_days(full_scenario)
+        assert new_duration == timedelta(weeks=1)
