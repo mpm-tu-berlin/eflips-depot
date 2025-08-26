@@ -32,7 +32,7 @@ from collections import OrderedDict
 from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, Optional, Union
 
 import sqlalchemy.orm
 from eflips.model import (
@@ -51,6 +51,7 @@ from eflips.model import (
     ConsistencyWarning,
     Station,
 )
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import eflips.depot
@@ -761,28 +762,15 @@ def init_simulation(
         .all()
     ]
 
-    first_departure_time = min(
-        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
-    )
-    last_arrival_time = max(
-        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
-    )
-
-    # We take first arrival time as simulation start
-    total_duration = (last_arrival_time - first_departure_time).total_seconds()
-    schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
-
-    if repetition_period is None and schedule_duration_days in [1, 2]:
-        repetition_period = timedelta(days=1)
-    elif repetition_period is None and schedule_duration_days in [7, 8]:
-        repetition_period = timedelta(weeks=1)
-    elif repetition_period is None:
-        raise ValueError(
-            "Could not automatically detect repetition period. Please specify manually."
-        )
+    if repetition_period is None:
+        repetition_period = schedule_duration_days(scenario)
+        if repetition_period not in (timedelta(days=1), timedelta(days=7)):
+            warnings.warn(
+                f"Non-standard schedule duration of {repetition_period}. Please make sure this is intended.",
+                UserWarning,
+            )
 
     # Now, we need to repeat the vehicle schedules
-
     vehicle_schedules = repeat_vehicle_schedules(vehicle_schedules, repetition_period)
 
     sim_start_stime, total_duration_seconds = start_and_end_times(vehicle_schedules)
@@ -1129,7 +1117,9 @@ def generate_depot_optimal_size(
     repetition_period: Optional[timedelta] = None,
 ) -> None:
     """
-    Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
+    Generates an optimal depot layout with the smallest possible size for each depot in the scenario.
+
+    Line charging areas
      with given block length area preferred. The existing depot will be deleted if `delete_existing_depot` is set to True.
 
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
@@ -1148,7 +1138,6 @@ def generate_depot_optimal_size(
         value as in the simulation.
 
     :return: None. The depot layout will be added to the database.
-
     """
 
     logger = logging.getLogger(__name__)
@@ -1309,3 +1298,47 @@ def generate_depot_optimal_size(
                 num_shunting_slots=int(max(time_range)),
                 num_cleaning_slots=int(max(time_range)),
             )
+
+
+def schedule_duration_days(
+    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
+) -> timedelta:
+    """
+    This method calculates the duration of a given scenario in days.
+
+    This is the duration
+    between the first departure of the first day, and the last departure on the last day, rounded up to full days.
+
+    Most of the time, this is the "natural" repetition period of the scenario. We are simulating one full period, and
+    this period – continuously repeated – is what happens in reality.
+
+    This method can be used to show the user what the detected repetition period is and to auto-set the repetition
+    period if none is provided.
+
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id"
+        containing an integer pointing to a unique scenario id.
+    :param database_url: An optional database URL. Used if no database url is given by the environment variable.
+    :return: a timedelta object representing the duration in days.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        first_departure = (
+            session.query(func.min(Trip.departure_time))
+            .filter(Trip.scenario_id == scenario.id)
+            .scalar()
+        )
+        if first_departure is None:
+            raise ValueError("No trips found in the scenario.")
+
+        last_departure = (
+            session.query(func.max(Trip.departure_time))
+            .filter(Trip.scenario_id == scenario.id)
+            .scalar()
+        )
+        if last_departure is None:
+            raise ValueError("No trips found in the scenario.")
+
+        duration = last_departure - first_departure
+        duration_days = ceil(duration.total_seconds() / (24 * 60 * 60))
+
+        return timedelta(days=duration_days)
