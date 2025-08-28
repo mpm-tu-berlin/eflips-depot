@@ -27,6 +27,8 @@ from eflips.model import (
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from eflips.depot import UnstableSimulationException, DelayedTripException
+
 
 class MissingVehicleDimensionError(ValueError):
     pass
@@ -1091,14 +1093,15 @@ def depot_smallest_possible_size(
 
                 except MissingVehicleDimensionError as e:
                     raise e
-                except Exception as e:
+                except UnstableSimulationException as e:
                     # This change is made after Unstable exception and delay exceptions are introduced
-                    if (
-                        "which suggests the fleet or the infrastructure might not be enough for the full electrification. Please add charging interfaces or increase charging power ."
-                        in repr(e)
-                    ):
-                        logger.debug(f"Depot is too small.")
-                        continue
+                    logger.debug(
+                        f"Results are unstable, suggesting depot is too small."
+                    )
+                    continue
+                except DelayedTripException as e:
+                    logger.debug(f"Trips are delayed, suggesting depot is too small.")
+                    continue
                 finally:
                     inner_savepoint.rollback()
             savepoint.rollback()
