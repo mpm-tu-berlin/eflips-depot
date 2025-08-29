@@ -60,7 +60,6 @@ from eflips.depot import (
     SimulationHost,
     UnstableSimulationException,
     DelayedTripException,
-    MultipleErrors,
 )
 from eflips.depot.api.private.consumption import ConsumptionResult
 from eflips.depot.api.private.consumption import (
@@ -640,29 +639,20 @@ def simulate_scenario(
         try:
             add_evaluation_to_database(scenario, ev, session)
 
-        except MultipleErrors as e:
-            if e.errors:
-                for error in e.errors:
-                    if (
-                        isinstance(error, DelayedTripException)
-                        and not ignore_delayed_trips
-                    ):
-                        logger.error(
-                            "There are delayed trips in the simulation. "
-                            "Please check the input data and try again."
-                        )
-                        raise error
-                    if (
-                        isinstance(error, UnstableSimulationException)
-                        and not ignore_unstable_simulation
-                    ):
-                        logger.error(
-                            "Simulation became unstable. "
-                            "Please check the input data and try again."
-                        )
-                        raise error
-
-                    logger.warning("An error occurred during the simulation: %s", error)
+        except* DelayedTripException as delay_exp:
+            if not ignore_delayed_trips:
+                logger.error(
+                    "There are delayed trips in the simulation. "
+                    "Please check the input data and try again."
+                )
+                raise delay_exp
+        except* UnstableSimulationException as unstable_exp:
+            if not ignore_unstable_simulation:
+                logger.error(
+                    "The simulation became unstable. "
+                    "Please check the input data and try again."
+                )
+                raise unstable_exp
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -1104,7 +1094,9 @@ def add_evaluation_to_database(
             errors.append(unstable_exp)
 
         if len(errors) > 0:
-            raise MultipleErrors(errors)
+            raise ExceptionGroup(
+                "Simulation is either unstable or including delayed blocks", errors
+            )
 
 
 def generate_depot_optimal_size(

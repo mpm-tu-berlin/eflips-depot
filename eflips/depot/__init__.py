@@ -95,8 +95,3 @@ class UnstableSimulationException(Exception):
             f"The following blocks/rotations require a new vehicle. This suggests an unstable "
             f" simulation result, where a repeated schedule might require more vehicles: {trip_names}"
         )
-
-
-class MultipleErrors(Exception):
-    def __init__(self, errors):
-        self.errors = errors
