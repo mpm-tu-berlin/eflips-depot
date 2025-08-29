@@ -1094,7 +1094,9 @@ def add_evaluation_to_database(
             errors.append(unstable_exp)
 
         if len(errors) > 0:
-            raise ExceptionGroup("Simulation is either unstable or including delayed blocks", errors)
+            raise ExceptionGroup(
+                "Simulation is either unstable or including delayed blocks", errors
+            )
 
 
 def generate_depot_optimal_size(
