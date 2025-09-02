@@ -5,9 +5,9 @@ from datetime import timedelta, datetime
 from math import ceil
 from typing import Tuple, List
 from zoneinfo import ZoneInfo
-import scipy
 
 import numpy as np
+import scipy
 import sqlalchemy.orm
 from eflips.model import (
     Event,
@@ -99,7 +99,9 @@ class ConsumptionInformation:
 
     def calculate(self):
         """
-        Calculates the consumption for the trip. Returns a float in kWh.
+        Calculates the consumption for the trip.
+
+        Returns a float in kWh.
 
         :return: The energy consumption in kWh. This is already the consumption for the whole trip.
         """
@@ -171,12 +173,26 @@ class ConsumptionInformation:
                 ConsistencyWarning,
             )
 
-            interpolator_nn = scipy.interpolate.RegularGridInterpolator(
-                (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
-                consumption_lut,
-                bounds_error=False,
-                fill_value=None,  # Fill NaN with 0.0
-                method="nearest",
+            x, y, z, alpha = np.meshgrid(
+                incline_scale,
+                temperature_scale,
+                level_of_loading_scale,
+                speed_scale,
+                indexing="ij",
+            )
+            points_array = np.column_stack(
+                [x.ravel(), y.ravel(), z.ravel(), alpha.ravel()]
+            )
+            consumption_lut_flattened = consumption_lut.ravel()
+
+            # Remove the NaN entries from consumption_lut and points_array
+            valid_mask = ~np.isnan(consumption_lut_flattened)
+            points_array = points_array[valid_mask]
+            consumption_lut = consumption_lut_flattened[valid_mask]
+
+            interpolator_nn = scipy.interpolate.NearestNDInterpolator(
+                x=points_array,
+                y=consumption_lut.ravel(),
             )
             consumption_per_km = interpolator_nn(
                 [
@@ -228,9 +244,7 @@ def extract_trip_information(
     passenger_mass=68,
     passenger_count=17.6,
 ) -> ConsumptionInformation:
-    """
-    Extracts the information needed for the consumption simulation from a trip.
-    """
+    """Extracts the information needed for the consumption simulation from a trip."""
 
     with create_session(scenario) as (session, scenario):
         # Load the trip with its route and rotation, including vehicle type and consumption LUT
