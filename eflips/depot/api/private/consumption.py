@@ -106,26 +106,54 @@ class ConsumptionInformation:
         :return: The energy consumption in kWh. This is already the consumption for the whole trip.
         """
 
-        # Make sure the consumption lut has 4 dimensions and the columns are in the correct order
-        if self.consumption_lut.columns != [
-            "incline",
-            "t_amb",
-            "level_of_loading",
-            "mean_speed_kmh",
-        ]:
+        # Make sure the consumption lut has 4 dimensions with the correct columns
+        if not all(
+            col in self.consumption_lut.columns
+            for col in [
+                "incline",
+                "t_amb",
+                "level_of_loading",
+                "mean_speed_kmh",
+            ]
+        ):
             raise ValueError(
                 "The consumption LUT must have the columns 'incline', 't_amb', 'level_of_loading', 'mean_speed_kmh'"
             )
 
         # Recover the scales along each of the four axes from the datapoints
-        incline_scale = sorted(set([x[0] for x in self.consumption_lut.data_points]))
+
+        incline_scale = sorted(
+            set(
+                [
+                    x[self.consumption_lut.columns.index("incline_scale")]
+                    for x in self.consumption_lut.data_points
+                ]
+            )
+        )
         temperature_scale = sorted(
-            set([x[1] for x in self.consumption_lut.data_points])
+            set(
+                [
+                    x[self.consumption_lut.columns.index["temperature_scale"]]
+                    for x in self.consumption_lut.data_points
+                ]
+            )
         )
         level_of_loading_scale = sorted(
-            set([x[2] for x in self.consumption_lut.data_points])
+            set(
+                [
+                    x[self.consumption_lut.columns.index["level_of_loading_scale"]]
+                    for x in self.consumption_lut.data_points
+                ]
+            )
         )
-        speed_scale = sorted(set([x[3] for x in self.consumption_lut.data_points]))
+        speed_scale = sorted(
+            set(
+                [
+                    x[self.consumption_lut.columns.index["speed_scale"]]
+                    for x in self.consumption_lut.data_points
+                ]
+            )
+        )
 
         # Create the 4d array
         consumption_lut = np.zeros(
