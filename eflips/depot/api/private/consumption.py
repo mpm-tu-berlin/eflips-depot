@@ -125,7 +125,7 @@ class ConsumptionInformation:
         incline_scale = sorted(
             set(
                 [
-                    x[self.consumption_lut.columns.index("incline_scale")]
+                    x[self.consumption_lut.columns.index("incline")]
                     for x in self.consumption_lut.data_points
                 ]
             )
@@ -133,7 +133,7 @@ class ConsumptionInformation:
         temperature_scale = sorted(
             set(
                 [
-                    x[self.consumption_lut.columns.index["temperature_scale"]]
+                    x[self.consumption_lut.columns.index("t_amb")]
                     for x in self.consumption_lut.data_points
                 ]
             )
@@ -141,7 +141,7 @@ class ConsumptionInformation:
         level_of_loading_scale = sorted(
             set(
                 [
-                    x[self.consumption_lut.columns.index["level_of_loading_scale"]]
+                    x[self.consumption_lut.columns.index("level_of_loading")]
                     for x in self.consumption_lut.data_points
                 ]
             )
@@ -149,7 +149,7 @@ class ConsumptionInformation:
         speed_scale = sorted(
             set(
                 [
-                    x[self.consumption_lut.columns.index["speed_scale"]]
+                    x[self.consumption_lut.columns.index("mean_speed_kmh")]
                     for x in self.consumption_lut.data_points
                 ]
             )
