@@ -314,6 +314,14 @@ def extract_trip_information(
         temperature = temperature_for_trip(trip_id, session)
 
         payload_mass = passenger_mass * passenger_count
+        assert (
+            trip.rotation.vehicle_type.allowed_mass is not None
+        ), f"allowed_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
+        assert (
+            trip.rotation.vehicle_type.empty_mass is not None
+        ), f"empty_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
         full_payload = (
             trip.rotation.vehicle_type.allowed_mass
             - trip.rotation.vehicle_type.empty_mass
