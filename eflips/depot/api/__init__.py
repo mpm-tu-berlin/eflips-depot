@@ -32,7 +32,8 @@ from collections import OrderedDict
 from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
+
 
 import sqlalchemy.orm
 from eflips.model import (
@@ -74,6 +75,7 @@ from eflips.depot.api.private.depot import (
     group_rotations_by_start_end_stop,
     generate_depot,
     depot_smallest_possible_size,
+    create_depots_from_wish,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -92,6 +94,8 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
+
+from eflips.depot.api.private.depot import AreaInformation, DepotConfigurationWish
 
 
 class SmartChargingStrategy(Enum):
@@ -1334,3 +1338,144 @@ def schedule_duration_days(
         duration_days = ceil(duration.total_seconds() / (24 * 60 * 60))
 
         return timedelta(days=duration_days)
+
+def generate_optimized_depot(
+    depot_wish: DepotConfigurationWish,
+    session,
+    scenario,
+) -> List["DepotConfigurationWish"]:
+    logger = logging.getLogger(__name__)
+
+    station = session.query(Station).filter(Station.id == depot_wish.station_id).one()
+
+    warnings.simplefilter("ignore", category=ConsistencyWarning)
+    warnings.simplefilter("ignore", category=UserWarning)
+
+    inner_savepoint = session.begin_nested()
+    try:
+        # (Temporarily) Delete all rotations not starting or ending at the station
+        logger.debug(f"Deleting all rotations not starting or ending at {station.name}")
+        all_rot_for_scenario = (
+            session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
+        )
+        to_delete = []
+        for rot in all_rot_for_scenario:
+            first_stop = rot.trips[0].route.departure_station
+            if first_stop != station:
+                for trip in rot.trips:
+                    for stop_time in trip.stop_times:
+                        to_delete.append(stop_time)
+                    to_delete.append(trip)
+                to_delete.append(rot)
+
+        # debugging
+        events_to_delete = [o for o in to_delete if isinstance(o, Event)]
+        for obj in to_delete:
+            session.flush()
+            session.delete(obj)
+            session.flush()
+
+        # Consumption simulation for rotations of this depot
+
+        consumption_results = generate_consumption_result(scenario)
+        simple_consumption_simulation(
+            scenario,
+            initialize_vehicles=True,
+            consumption_result=consumption_results,
+        )
+
+        logger.info(f"Generating depot layout for station {station.name}")
+        vt_capacities_for_station = depot_smallest_possible_size(
+            station,
+            scenario,
+            session,
+            depot_wish.standard_block_length,
+            depot_wish.default_power,
+        )
+
+        area_list: List[AreaInformation] = []
+
+        for vt, capacity in vt_capacities_for_station.items():
+            if capacity[AreaType.LINE] > 0:
+                area_list.append(
+                    AreaInformation(
+                        area_type=AreaType.LINE,
+                        capacity=capacity[AreaType.LINE],
+                        block_length=depot_wish.standard_block_length,
+                        power=depot_wish.default_power,
+                        vehicle_type_id=vt.id,
+                    )
+                )
+
+            if capacity[AreaType.DIRECT_ONESIDE] > 0:
+                area_list.append(
+                    AreaInformation(
+                        area_type=AreaType.DIRECT_ONESIDE,
+                        capacity=capacity[AreaType.DIRECT_ONESIDE],
+                        block_length=None,
+                        power=depot_wish.default_power,
+                        vehicle_type_id=vt.id,
+                    )
+                )
+
+        depot_wish.areas = area_list
+
+    finally:
+        inner_savepoint.rollback()
+
+    session.expire_all()
+def generate_optimal_depot_layout(
+    depot_config_wishes: Optional[List[DepotConfigurationWish]],
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+):
+    """
+    This function generates depot layouts based on the provided configuration wishes. The generated layouts will be
+    returned as a list of DepotLayout objects.
+    """
+
+    logger = logging.getLogger(__name__)
+
+    with create_session(scenario, database_url) as (session, scenario):
+        # Delete all depot events
+        session.query(Event).filter(
+            Event.scenario_id == scenario.id, Event.area_id.isnot(None)
+        ).delete()
+
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError(
+                    "Depot already exists. Set delete_existing_depot to True to delete it."
+                )
+
+            delete_depots(scenario, session)
+
+        # Group all the rotations by their start and end stop (depot)
+
+        grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
+        assert len(grouped_rotations) == len(depot_config_wishes), (
+            "The number of depot configuration wishes must be equal to the number of depots in the scenario."
+            f"Found {len(depot_config_wishes)} wishes and {len(grouped_rotations)} depots."
+        )
+
+        savepoint = session.begin_nested()
+
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
+        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+        rotation_q.update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        session.expire_all()
+        for depot_wish in depot_config_wishes:
+            if depot_wish.auto_generate is False:
+                continue
+
+            generate_optimized_depot(
+                depot_wish,
+                session,
+                scenario,
+            )
+
+        savepoint.rollback()
+        create_depots_from_wish(depot_config_wishes, grouped_rotations, scenario, session)
