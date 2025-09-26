@@ -1230,11 +1230,18 @@ def depot_smallest_possible_size(
 def estimate_service_capacity(
     all_rotations_this_depot: List[Rotation], service_duration: timedelta
 ) -> int:
+    """
+    Estimate the number of service slots needed based on the rotations and a given service duration.
+    It is estimated as the maximum arrivals in the time window of the service duration.
+    :param all_rotations_this_depot: A list of all rotations starting and ending at the depot's station.
+    :param service_duration: A timedelta representing the duration of the service.
+    :return: Estimated number of service slots needed without waiting.
+    """
     if not all_rotations_this_depot:
         return 0
 
     # Sort by the first trip’s departure time
-    all_rotations_this_depot.sort(key=lambda r: r.trips[0].departure_time)
+    all_rotations_this_depot.sort(key=lambda r: r.trips[0].arrival_time)
 
     max_arrivals = 0
     left = 0
@@ -1258,13 +1265,19 @@ def estimate_service_capacity(
 
 def create_depots_from_wish(
     depot_config_wishes: List[DepotConfigurationWish],
-    grouped_rotations,
-    scenario,
-    session,
+    grouped_rotations: Dict[Tuple[Station, Station], Dict[VehicleType, List[Rotation]]],
+    scenario: Scenario,
+    session: Session,
 ) -> None:
     """
     This function only creates depots and their areas based on the provided configuration wishes. the result will be
-    written into the database
+    written into the database.
+
+    :param depot_config_wishes: A list of depot configuration wishes.
+    :param grouped_rotations: A dictionary of grouped rotations by (start_station, end_station)
+    :param scenario: The scenario to be simulated.
+    :param session: An open SQLAlchemy session.
+    :return: None. The depots are added to the database.
     """
     for depot_wish in depot_config_wishes:
         station = (
@@ -1333,32 +1346,6 @@ def create_depots_from_wish(
             )
         )
 
-        shunting_2 = Process(
-            name="Shunting 2",
-            scenario=scenario,
-            dispatchable=False,
-            duration=shunting_duration,
-        )
-        session.add(shunting_2)
-        shunting_area_2 = Area(
-            scenario=scenario,
-            name=f"Shunting Area 2",
-            depot=depot,
-            area_type=AreaType.DIRECT_ONESIDE,
-            vehicle_type=None,  # Meaning any vehicle type can be shunted here
-            capacity=shunting_slots,
-        )
-        session.add(shunting_area_2)
-        shunting_area_2.processes.append(shunting_2)
-        plan_process_assocs.append(
-            AssocPlanProcess(
-                scenario=scenario,
-                process=shunting_2,
-                plan=plan,
-                ordinal=len(plan_process_assocs),
-            )
-        )
-
         if depot_wish.cleaning_slots is None:
             cleaning_slots = estimate_service_capacity(
                 all_rotations_this_depot, cleaning_duration
@@ -1386,6 +1373,32 @@ def create_depots_from_wish(
             AssocPlanProcess(
                 scenario=scenario,
                 process=clean,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+
+        shunting_2 = Process(
+            name="Shunting 2",
+            scenario=scenario,
+            dispatchable=False,
+            duration=shunting_duration,
+        )
+        session.add(shunting_2)
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be shunted here
+            capacity=shunting_slots,
+        )
+        session.add(shunting_area_2)
+        shunting_area_2.processes.append(shunting_2)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=shunting_2,
                 plan=plan,
                 ordinal=len(plan_process_assocs),
             )
