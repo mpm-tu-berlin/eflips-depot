@@ -28,7 +28,10 @@ from eflips.model import (
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from eflips.depot import UnstableSimulationException, DelayedTripException
+from eflips.depot.api.private.results_to_database import (
+    UnstableSimulationException,
+    DelayedTripException,
+)
 
 
 class MissingVehicleDimensionError(ValueError):

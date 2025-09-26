@@ -59,8 +59,6 @@ import eflips.depot
 from eflips.depot import (
     DepotEvaluation,
     SimulationHost,
-    UnstableSimulationException,
-    DelayedTripException,
 )
 from eflips.depot.api.private.consumption import ConsumptionResult
 from eflips.depot.api.private.consumption import (
@@ -85,6 +83,8 @@ from eflips.depot.api.private.results_to_database import (
     add_events_into_database,
     update_vehicle_in_rotation,
     update_waiting_events,
+    UnstableSimulationException,
+    DelayedTripException,
 )
 from eflips.depot.api.private.util import (
     create_session,
@@ -640,6 +640,8 @@ def simulate_scenario(
             repetition_period=repetition_period,
         )
         ev = run_simulation(simulation_host)
+
+        errors = []
         try:
             add_evaluation_to_database(scenario, ev, session)
 
@@ -649,14 +651,19 @@ def simulate_scenario(
                     "There are delayed trips in the simulation. "
                     "Please check the input data and try again."
                 )
-                raise delay_exp
+                errors.append(delay_exp.exceptions[0])
         except* UnstableSimulationException as unstable_exp:
             if not ignore_unstable_simulation:
                 logger.error(
                     "The simulation became unstable. "
                     "Please check the input data and try again."
                 )
-                raise unstable_exp
+                errors.append(unstable_exp.exceptions[0])
+
+        # There will be exactly one UnstableSimulationException or DelayedTripException in the list.
+        # Only the DelayedTripException will be raised if both exceptions are in the list.
+        for e in errors:
+            raise e
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -1004,6 +1011,10 @@ def add_evaluation_to_database(
 
     # Read simulation start time
 
+    unstable_exp = UnstableSimulationException()
+    delay_exp = DelayedTripException()
+    errors = []
+
     for depot_id, depot_evaluation in depot_evaluations.items():
         simulation_start_time = depot_evaluation.sim_start_datetime
 
@@ -1023,8 +1034,7 @@ def add_evaluation_to_database(
             f"one waiting area."
         )
 
-        unstable_exp = UnstableSimulationException()
-        delay_exp = DelayedTripException()
+
 
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             # Vehicle-layer operations
@@ -1090,17 +1100,15 @@ def add_evaluation_to_database(
         update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         update_waiting_events(session, scenario, waiting_area_id)
 
-        errors = []
+    if delay_exp.has_errors:
+        errors.append(delay_exp)
+    if unstable_exp.has_errors:
+        errors.append(unstable_exp)
 
-        if delay_exp.has_errors:
-            errors.append(delay_exp)
-        if unstable_exp.has_errors:
-            errors.append(unstable_exp)
-
-        if len(errors) > 0:
-            raise ExceptionGroup(
-                "Simulation is either unstable or including delayed blocks", errors
-            )
+    if len(errors) > 0:
+        raise ExceptionGroup(
+            "Simulation is either unstable or including delayed blocks", errors
+        )
 
 
 def generate_depot_optimal_size(
