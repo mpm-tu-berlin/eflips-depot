@@ -1034,8 +1034,6 @@ def add_evaluation_to_database(
             f"one waiting area."
         )
 
-
-
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             # Vehicle-layer operations
 
