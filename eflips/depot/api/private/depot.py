@@ -4,6 +4,7 @@ import math
 from datetime import timedelta
 from enum import Enum, auto
 from typing import Dict, List, Tuple, Optional
+from dataclasses import dataclass
 
 import numpy as np
 import sqlalchemy.orm
@@ -27,11 +28,118 @@ from eflips.model import (
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from eflips.depot import UnstableSimulationException, DelayedTripException
+from eflips.depot.api.private.results_to_database import (
+    UnstableSimulationException,
+    DelayedTripException,
+)
 
 
 class MissingVehicleDimensionError(ValueError):
     pass
+
+
+@dataclass
+class AreaInformation:
+    """ """
+
+    area_type: AreaType
+    """
+    Type of the area, defined in AreaType enum.
+    """
+    capacity: int
+    """Capacity of the area."""
+    block_length: int | None
+    """Block length of the area in meters. Only needed for AreaType.LINE."""
+    power: float
+    """Charging power of the area in kW."""
+    vehicle_type_id: int
+    """Vehicle type ID of the area."""
+
+    def __init__(self, area_type, capacity, power, vehicle_type_id, block_length=None):
+        self.area_type = area_type
+        self.capacity = capacity
+        self.block_length = block_length
+        self.power = power
+        self.vehicle_type_id = vehicle_type_id
+        # do some simple validation here
+        if self.area_type == AreaType.LINE and (
+            self.block_length is None
+            or self.block_length <= 0
+            or self.capacity % self.block_length != 0
+        ):
+            raise ValueError(
+                "Block length must be a positive integer for LINE areas, "
+                "and must be multiple of the standard block length."
+            )
+        if self.area_type != AreaType.LINE and self.block_length is not None:
+            raise ValueError("Block length must be None for non-LINE areas.")
+
+        if self.capacity <= 0:
+            raise ValueError("Capacity must be a positive integer.")
+        if self.power <= 0:
+            raise ValueError("Power must be a positive float.")
+        if self.vehicle_type_id <= 0:
+            raise ValueError("Vehicle type ID must be a positive integer.")
+
+
+@dataclass
+class DepotConfigurationWish:
+
+    """ """
+
+    station_id: int
+    """
+    ID of the station where the depot should be located.
+    """
+    auto_generate: bool
+    """
+    True if the depot should be auto-generated, False if the depot should be created from user input.
+    """
+    default_power: float | None
+    standard_block_length: int | None
+    cleaning_slots: int | None
+    cleaning_duration: timedelta | None
+    shunting_slots: int | None
+    shunting_duration: timedelta | None
+    areas: list[AreaInformation] | None  #
+
+    def __init__(
+        self,
+        station_id,
+        auto_generate: bool = False,
+        default_power: float | None = None,
+        standard_block_length: int | None = None,
+        cleaning_slots: int | None = None,
+        cleaning_duration: timedelta | None = None,
+        shunting_slots: int | None = None,
+        shunting_duration: timedelta | None = None,
+        areas: list[AreaInformation] | None = None,
+    ):
+        self.station_id = station_id
+        self.auto_generate = auto_generate
+        self.default_power = default_power
+        self.standard_block_length = standard_block_length
+        self.cleaning_slots = cleaning_slots
+        self.cleaning_duration = cleaning_duration
+        self.shunting_slots = shunting_slots
+        self.shunting_duration = shunting_duration
+        self.areas = areas
+
+        if self.auto_generate is True:
+            if self.default_power is None or self.standard_block_length is None:
+                raise ValueError(
+                    "If auto_generate is True, default_power, standard_block_length, cleaning_slots, cleaning_duration and shunting_slots must be provided."
+                )
+            if (
+                self.cleaning_slots is not None
+                or self.cleaning_duration is not None
+                or self.shunting_slots is not None
+                or self.shunting_duration is not None
+            ):
+                raise ValueError(
+                    "If auto_generate is True, default_power, standard_block_length, cleaning_slots, cleaning_duration and shunting_slots cannot be provided."
+                )
+        # do some simple validation here
 
 
 def delete_depots(scenario: Scenario, session: Session) -> None:
@@ -1117,3 +1225,257 @@ def depot_smallest_possible_size(
         return ret_val
     finally:
         outer_savepoint.rollback()
+
+
+def estimate_service_capacity(
+    all_rotations_this_depot: List[Rotation], service_duration: timedelta
+) -> int:
+    """
+    Estimate the number of service slots needed based on the rotations and a given service duration.
+    It is estimated as the maximum arrivals in the time window of the service duration.
+    :param all_rotations_this_depot: A list of all rotations starting and ending at the depot's station.
+    :param service_duration: A timedelta representing the duration of the service.
+    :return: Estimated number of service slots needed without waiting.
+    """
+    if not all_rotations_this_depot:
+        return 0
+
+    # Sort by the first trip’s departure time
+    all_rotations_this_depot.sort(key=lambda r: r.trips[0].arrival_time)
+
+    max_arrivals = 0
+    left = 0
+
+    # Sliding window: move right pointer
+    for right, rotation in enumerate(all_rotations_this_depot):
+        start_time = rotation.trips[0].departure_time
+
+        # Shrink window from the left until within service_duration
+        while (
+            start_time - all_rotations_this_depot[left].trips[0].departure_time
+            > service_duration
+        ):
+            left += 1
+
+        # Window size = number of rotations within the service duration
+        max_arrivals = max(max_arrivals, right - left + 1)
+
+    return max_arrivals
+
+
+def create_depots_from_wish(
+    depot_config_wishes: List[DepotConfigurationWish],
+    grouped_rotations: Dict[Tuple[Station, Station], Dict[VehicleType, List[Rotation]]],
+    scenario: Scenario,
+    session: Session,
+) -> None:
+    """
+    This function only creates depots and their areas based on the provided configuration wishes. the result will be
+    written into the database.
+
+    :param depot_config_wishes: A list of depot configuration wishes.
+    :param grouped_rotations: A dictionary of grouped rotations by (start_station, end_station)
+    :param scenario: The scenario to be simulated.
+    :param session: An open SQLAlchemy session.
+    :return: None. The depots are added to the database.
+    """
+    for depot_wish in depot_config_wishes:
+        station = (
+            session.query(Station).filter(Station.id == depot_wish.station_id).one()
+        )
+        depot = Depot(
+            scenario=scenario,
+            name=f"Depot at {station.name}",
+            name_short=station.name_short,
+            station_id=station.id,
+        )
+        session.add(depot)
+
+        plan = Plan(scenario=scenario, name=f"Default Plan")
+        session.add(plan)
+
+        depot.default_plan = plan
+
+        all_rotations_with_type = grouped_rotations[station, station]
+        all_rotations_this_depot = [
+            r for vt, rotations in all_rotations_with_type.items() for r in rotations
+        ]
+
+        # Create processes
+
+        plan_process_assocs: List[AssocPlanProcess] = []
+
+        if depot_wish.shunting_duration is None:
+            shunting_duration = timedelta(minutes=5)
+        else:
+            shunting_duration = depot_wish.shunting_duration
+        if depot_wish.cleaning_duration is None:
+            cleaning_duration = timedelta(minutes=30)
+        else:
+            cleaning_duration = depot_wish.cleaning_duration
+
+        if depot_wish.shunting_slots is None:
+            shunting_slots = estimate_service_capacity(
+                all_rotations_this_depot, shunting_duration
+            )
+        else:
+            shunting_slots = depot_wish.shunting_slots
+        shunting_1 = Process(
+            name="Shunting 1",
+            scenario=scenario,
+            dispatchable=False,
+            duration=shunting_duration,
+        )
+        session.add(shunting_1)
+        shunting_area_1 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 1",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be shunted here
+            capacity=shunting_slots,
+        )
+        session.add(shunting_area_1)
+        shunting_area_1.processes.append(shunting_1)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=shunting_1,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+
+        if depot_wish.cleaning_slots is None:
+            cleaning_slots = estimate_service_capacity(
+                all_rotations_this_depot, cleaning_duration
+            )
+        else:
+            cleaning_slots = depot_wish.cleaning_slots
+        clean = Process(
+            name="Arrival Cleaning",
+            scenario=scenario,
+            dispatchable=False,
+            duration=cleaning_duration,
+        )
+        session.add(clean)
+        cleaning_area = Area(
+            scenario=scenario,
+            name=f"Cleaning Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be cleaned here
+            capacity=cleaning_slots,
+        )
+        session.add(cleaning_area)
+        cleaning_area.processes.append(clean)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=clean,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+
+        shunting_2 = Process(
+            name="Shunting 2",
+            scenario=scenario,
+            dispatchable=False,
+            duration=shunting_duration,
+        )
+        session.add(shunting_2)
+        shunting_area_2 = Area(
+            scenario=scenario,
+            name=f"Shunting Area 2",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be shunted here
+            capacity=shunting_slots,
+        )
+        session.add(shunting_area_2)
+        shunting_area_2.processes.append(shunting_2)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=shunting_2,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+
+        # TODO: we only do constant charging power per depot for now. Might be possible in the future to have different
+        # powers per area
+
+        if depot_wish.auto_generate:
+            charging_power = depot_wish.default_power
+        else:
+            charging_power = depot_wish.areas[0].power
+
+        charging = Process(
+            name="Charging",
+            scenario=scenario,
+            dispatchable=True,
+            electric_power=charging_power,
+        )
+        session.add(charging)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=charging,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+
+        standby_departure = Process(
+            name="Standby Pre-departure",
+            scenario=scenario,
+            dispatchable=True,
+        )
+        session.add(standby_departure)
+        plan_process_assocs.append(
+            AssocPlanProcess(
+                scenario=scenario,
+                process=standby_departure,
+                plan=plan,
+                ordinal=len(plan_process_assocs),
+            )
+        )
+        session.add_all(plan_process_assocs)  # It's complete, so add all at once
+
+        # Create shared waiting area
+        rotation_count = len(
+            session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
+        )
+
+        waiting_area = Area(
+            scenario=scenario,
+            name=f"Waiting Area for every type of vehicle",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            capacity=rotation_count * 4,
+            # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
+        )
+        session.add(waiting_area)
+
+        for area_info in depot_wish.areas:
+            area = Area(
+                scenario=scenario,
+                name=f"{area_info.area_type.name} Area for {session.query(VehicleType).filter(VehicleType.id == area_info.vehicle_type_id).one().name_short}",
+                depot=depot,
+                area_type=area_info.area_type,
+                vehicle_type_id=area_info.vehicle_type_id,
+                capacity=area_info.capacity,
+                row_count=(
+                    area_info.capacity // area_info.block_length
+                    if area_info.area_type == AreaType.LINE
+                    and area_info.block_length is not None
+                    else None
+                ),
+            )
+            area.processes.append(charging)
+            area.processes.append(standby_departure)
+            session.add(area)
+
+        session.flush()
