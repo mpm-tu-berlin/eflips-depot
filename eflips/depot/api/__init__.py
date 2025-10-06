@@ -1381,10 +1381,11 @@ def auto_generate_depot_inplace(
                 for trip in rot.trips:
                     for stop_time in trip.stop_times:
                         to_delete.append(stop_time)
+                    for event in trip.events:
+                        to_delete.append(event)
                     to_delete.append(trip)
                 to_delete.append(rot)
 
-        # debugging
         for obj in to_delete:
             session.flush()
             session.delete(obj)
@@ -1392,12 +1393,48 @@ def auto_generate_depot_inplace(
 
         # Consumption simulation for rotations of this depot
 
-        consumption_results = generate_consumption_result(scenario)
-        simple_consumption_simulation(
-            scenario,
-            initialize_vehicles=True,
-            consumption_result=consumption_results,
+        # if the driving events are already in the database, we do not need to run the consumption simulation again
+        current_driving_trips = (
+            session.query(Event.trip_id)
+            .filter(
+                Event.scenario_id == scenario.id, Event.event_type == EventType.DRIVING
+            )
+            .all()
         )
+        current_trips = (
+            session.query(Trip.id).filter(Trip.scenario_id == scenario.id).all()
+        )
+
+        # if the two lists are identical, we can skip the consumption simulation
+        if set([t[0] for t in current_driving_trips]) != set(
+            [t[0] for t in current_trips]
+        ):
+            logger.info(
+                "Running eflips consumption simulation for depot layout generation since the driving events do not cover all trips"
+            )
+            driving_events_to_delete = (
+                session.query(Event)
+                .filter(
+                    Event.scenario_id == scenario.id,
+                    Event.event_type == EventType.DRIVING,
+                )
+                .all()
+            )
+            if len(driving_events_to_delete) > 0:
+                logger.info(
+                    "Deleting existing driving events before running consumption simulation"
+                )
+                for event in driving_events_to_delete:
+                    session.delete(event)
+                session.flush()
+
+            logger.warning("Starting eflips consumption sim")
+            consumption_results = generate_consumption_result(scenario)
+            simple_consumption_simulation(
+                scenario,
+                initialize_vehicles=True,
+                consumption_result=consumption_results,
+            )
 
         logger.info(f"Generating depot layout for station {station.name}")
         vt_capacities_for_station = depot_smallest_possible_size(
@@ -1460,9 +1497,9 @@ def generate_optimal_depot_layout(
     """
 
     with create_session(scenario, database_url) as (session, scenario):
-        # Delete all depot events
+        # Delete all non-Driving events
         session.query(Event).filter(
-            Event.scenario_id == scenario.id, Event.area_id.isnot(None)
+            Event.scenario_id == scenario.id, Event.event_type != EventType.DRIVING
         ).delete()
 
         if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
@@ -1486,9 +1523,7 @@ def generate_optimal_depot_layout(
         # Delete all vehicles and events, also disconnect the vehicles from the rotations
         rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
         rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
-        session.expire_all()
+
         for depot_wish in depot_config_wishes:
             if depot_wish.auto_generate is False:
                 continue
