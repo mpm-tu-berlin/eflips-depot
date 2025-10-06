@@ -121,38 +121,29 @@ class ConsumptionInformation:
             )
 
         # Recover the scales along each of the four axes from the datapoints
+        incline_col_index = self.consumption_lut.columns.index("incline")
+        temperature_col_index = self.consumption_lut.columns.index("t_amb")
+        level_of_loading_col_index = self.consumption_lut.columns.index(
+            "level_of_loading"
+        )
+        speed_col_index = self.consumption_lut.columns.index("mean_speed_kmh")
 
         incline_scale = sorted(
-            set(
-                [
-                    x[self.consumption_lut.columns.index("incline")]
-                    for x in self.consumption_lut.data_points
-                ]
-            )
+            set([x[incline_col_index] for x in self.consumption_lut.data_points])
         )
         temperature_scale = sorted(
-            set(
-                [
-                    x[self.consumption_lut.columns.index("t_amb")]
-                    for x in self.consumption_lut.data_points
-                ]
-            )
+            set([x[temperature_col_index] for x in self.consumption_lut.data_points])
         )
         level_of_loading_scale = sorted(
             set(
                 [
-                    x[self.consumption_lut.columns.index("level_of_loading")]
+                    x[level_of_loading_col_index]
                     for x in self.consumption_lut.data_points
                 ]
             )
         )
         speed_scale = sorted(
-            set(
-                [
-                    x[self.consumption_lut.columns.index("mean_speed_kmh")]
-                    for x in self.consumption_lut.data_points
-                ]
-            )
+            set([x[speed_col_index] for x in self.consumption_lut.data_points])
         )
 
         # Create the 4d array
@@ -168,9 +159,14 @@ class ConsumptionInformation:
         # Fill it with NaNs
         consumption_lut.fill(np.nan)
 
-        for i, (incline, temperature, level_of_loading, speed) in enumerate(
-            self.consumption_lut.data_points
-        ):
+        for (
+            i,
+            data_point,
+        ) in enumerate(self.consumption_lut.data_points):
+            incline = data_point[incline_col_index]
+            temperature = data_point[temperature_col_index]
+            level_of_loading = data_point[level_of_loading_col_index]
+            speed = data_point[speed_col_index]
             consumption_lut[
                 incline_scale.index(incline),
                 temperature_scale.index(temperature),
