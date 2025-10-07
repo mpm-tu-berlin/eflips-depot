@@ -1429,12 +1429,14 @@ def exponential_power(vehicle, charging_interface, peq_params, *args, **kwargs):
         )
 
 
-def power_from_table(vehicle, charging_interface, peq_params):
-    # TODO might write something similar to exponential_power for getting the power from the stored 2d arrays
-    # Using interpolation
-    # get the array from somewhere, need to be stored in depot_to_template()
-    # interpolation
-    # return the power
+def charging_curve_power(vehicle, charging_interface, peq_params):
+    """
+    Return power in kW for given peq_params in the format of dict[flaot, float]
+    :param vehicle: SimpleVehicle
+    :param charging_interface: DepotChargingInterface storing maximum power from charger
+    :param peq_params: A dictionary with "soc" storing soc turning points and "power" for corresponding charging power
+    :return: charging power in float for given SimpleVehicle
+    """
 
     current_soc = vehicle.battery.soc
     p_max = charging_interface.max_power
