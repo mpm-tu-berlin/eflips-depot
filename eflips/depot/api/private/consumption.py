@@ -5,9 +5,9 @@ from datetime import timedelta, datetime
 from math import ceil
 from typing import Tuple, List
 from zoneinfo import ZoneInfo
-import scipy
 
 import numpy as np
+import scipy
 import sqlalchemy.orm
 from eflips.model import (
     Event,
@@ -99,31 +99,52 @@ class ConsumptionInformation:
 
     def calculate(self):
         """
-        Calculates the consumption for the trip. Returns a float in kWh.
+        Calculates the consumption for the trip.
+
+        Returns a float in kWh.
 
         :return: The energy consumption in kWh. This is already the consumption for the whole trip.
         """
 
-        # Make sure the consumption lut has 4 dimensions and the columns are in the correct order
-        if self.consumption_lut.columns != [
-            "incline",
-            "t_amb",
-            "level_of_loading",
-            "mean_speed_kmh",
-        ]:
+        # Make sure the consumption lut has 4 dimensions with the correct columns
+        if not all(
+            col in self.consumption_lut.columns
+            for col in [
+                "incline",
+                "t_amb",
+                "level_of_loading",
+                "mean_speed_kmh",
+            ]
+        ):
             raise ValueError(
                 "The consumption LUT must have the columns 'incline', 't_amb', 'level_of_loading', 'mean_speed_kmh'"
             )
 
         # Recover the scales along each of the four axes from the datapoints
-        incline_scale = sorted(set([x[0] for x in self.consumption_lut.data_points]))
+        incline_col_index = self.consumption_lut.columns.index("incline")
+        temperature_col_index = self.consumption_lut.columns.index("t_amb")
+        level_of_loading_col_index = self.consumption_lut.columns.index(
+            "level_of_loading"
+        )
+        speed_col_index = self.consumption_lut.columns.index("mean_speed_kmh")
+
+        incline_scale = sorted(
+            set([x[incline_col_index] for x in self.consumption_lut.data_points])
+        )
         temperature_scale = sorted(
-            set([x[1] for x in self.consumption_lut.data_points])
+            set([x[temperature_col_index] for x in self.consumption_lut.data_points])
         )
         level_of_loading_scale = sorted(
-            set([x[2] for x in self.consumption_lut.data_points])
+            set(
+                [
+                    x[level_of_loading_col_index]
+                    for x in self.consumption_lut.data_points
+                ]
+            )
         )
-        speed_scale = sorted(set([x[3] for x in self.consumption_lut.data_points]))
+        speed_scale = sorted(
+            set([x[speed_col_index] for x in self.consumption_lut.data_points])
+        )
 
         # Create the 4d array
         consumption_lut = np.zeros(
@@ -138,9 +159,14 @@ class ConsumptionInformation:
         # Fill it with NaNs
         consumption_lut.fill(np.nan)
 
-        for i, (incline, temperature, level_of_loading, speed) in enumerate(
-            self.consumption_lut.data_points
-        ):
+        for (
+            i,
+            data_point,
+        ) in enumerate(self.consumption_lut.data_points):
+            incline = data_point[incline_col_index]
+            temperature = data_point[temperature_col_index]
+            level_of_loading = data_point[level_of_loading_col_index]
+            speed = data_point[speed_col_index]
             consumption_lut[
                 incline_scale.index(incline),
                 temperature_scale.index(temperature),
@@ -171,12 +197,26 @@ class ConsumptionInformation:
                 ConsistencyWarning,
             )
 
-            interpolator_nn = scipy.interpolate.RegularGridInterpolator(
-                (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
-                consumption_lut,
-                bounds_error=False,
-                fill_value=None,  # Fill NaN with 0.0
-                method="nearest",
+            x, y, z, alpha = np.meshgrid(
+                incline_scale,
+                temperature_scale,
+                level_of_loading_scale,
+                speed_scale,
+                indexing="ij",
+            )
+            points_array = np.column_stack(
+                [x.ravel(), y.ravel(), z.ravel(), alpha.ravel()]
+            )
+            consumption_lut_flattened = consumption_lut.ravel()
+
+            # Remove the NaN entries from consumption_lut and points_array
+            valid_mask = ~np.isnan(consumption_lut_flattened)
+            points_array = points_array[valid_mask]
+            consumption_lut = consumption_lut_flattened[valid_mask]
+
+            interpolator_nn = scipy.interpolate.NearestNDInterpolator(
+                x=points_array,
+                y=consumption_lut.ravel(),
             )
             consumption_per_km = interpolator_nn(
                 [
@@ -228,9 +268,7 @@ def extract_trip_information(
     passenger_mass=68,
     passenger_count=17.6,
 ) -> ConsumptionInformation:
-    """
-    Extracts the information needed for the consumption simulation from a trip.
-    """
+    """Extracts the information needed for the consumption simulation from a trip."""
 
     with create_session(scenario) as (session, scenario):
         # Load the trip with its route and rotation, including vehicle type and consumption LUT
@@ -272,6 +310,14 @@ def extract_trip_information(
         temperature = temperature_for_trip(trip_id, session)
 
         payload_mass = passenger_mass * passenger_count
+        assert (
+            trip.rotation.vehicle_type.allowed_mass is not None
+        ), f"allowed_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
+        assert (
+            trip.rotation.vehicle_type.empty_mass is not None
+        ), f"empty_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
         full_payload = (
             trip.rotation.vehicle_type.allowed_mass
             - trip.rotation.vehicle_type.empty_mass

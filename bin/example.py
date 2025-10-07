@@ -5,7 +5,7 @@ import warnings
 
 from eflips.model import *
 from eflips.model import ConsistencyWarning
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (

@@ -27,7 +27,9 @@ from eflips.model import (
     VehicleClass,
     VehicleType,
 )
-from sqlalchemy import create_engine
+from eflips.model import create_engine
+from geoalchemy2.shape import from_shape
+from shapely import Point
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
@@ -37,6 +39,7 @@ from eflips.depot.api import (
     simple_consumption_simulation,
     simulate_scenario,
     add_evaluation_to_database,
+    schedule_duration_days,
 )
 
 
@@ -117,7 +120,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -126,7 +129,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -135,7 +138,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -420,7 +423,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -429,7 +432,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -438,7 +441,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -721,7 +724,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 7",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_4)
@@ -730,7 +733,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 8",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_5)
@@ -739,7 +742,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 9",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -1455,3 +1458,29 @@ class TestSimpleConsumptionSimulation(TestHelpers):
                 else:
                     assert trip.events[0].soc_start < 1
                 assert trip.events[0].soc_end < 1
+
+    def test_schedule_duration(self, session, full_scenario):
+        duration = schedule_duration_days(full_scenario)
+        assert duration == timedelta(days=1)
+
+        # Now, try changing the departure of the last trip to be one week after the first trip
+        last_trip = (
+            session.query(Trip)
+            .filter(Trip.scenario_id == full_scenario.id)
+            .order_by(Trip.departure_time.desc())
+            .first()
+        )
+        first_trip = (
+            session.query(Trip)
+            .filter(Trip.scenario_id == full_scenario.id)
+            .order_by(Trip.departure_time.asc())
+            .first()
+        )
+        with session.no_autoflush:
+            last_trip.departure_time = first_trip.departure_time + timedelta(weeks=1)
+            last_trip.arrival_time = last_trip.departure_time + timedelta(minutes=30)
+            session.query(StopTime).filter(StopTime.trip_id == last_trip.id).delete()
+        session.flush()
+
+        new_duration = schedule_duration_days(full_scenario)
+        assert new_duration == timedelta(weeks=1)

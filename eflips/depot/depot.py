@@ -556,6 +556,11 @@ class BaseDispatchStrategy(ABC):
             for proc in vehicle.dwd.active_processes:
                 # Cancel active processes for early departure
                 proc.cancel()
+                # Update the soc of assigned trip if the charging is interrupted
+                current_soc = vehicle.battery.soc
+                trip_delta_soc = trip.start_soc - trip.end_soc
+                trip.start_soc = current_soc
+                trip.end_soc = current_soc - trip_delta_soc
 
             trip.got_early_vehicle = True
             trip.t_got_early_vehicle = env.now
@@ -830,6 +835,7 @@ class DSFirst(BaseDispatchStrategy):
 
 
 class DSSmart(BaseDispatchStrategy):
+    # TODO see what happens if charging process is cancelled for dispatch. Do we need to modify the vehicle schedule soc start as well?
     name = "SMART"
     short_description = "smart"
     tooltip = "Match trips and vehicles using DispatchRating."

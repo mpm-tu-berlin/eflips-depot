@@ -29,11 +29,11 @@ import logging
 import os
 import warnings
 from collections import OrderedDict
-from dataclasses import dataclass
 from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional, Union, List
+
 
 import sqlalchemy.orm
 from eflips.model import (
@@ -51,8 +51,8 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
-    ConsumptionLut,
 )
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import eflips.depot
@@ -73,6 +73,7 @@ from eflips.depot.api.private.depot import (
     group_rotations_by_start_end_stop,
     generate_depot,
     depot_smallest_possible_size,
+    create_depots_from_wish,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -82,6 +83,8 @@ from eflips.depot.api.private.results_to_database import (
     add_events_into_database,
     update_vehicle_in_rotation,
     update_waiting_events,
+    UnstableSimulationException,
+    DelayedTripException,
 )
 from eflips.depot.api.private.util import (
     create_session,
@@ -91,6 +94,8 @@ from eflips.depot.api.private.util import (
     VehicleSchedule,
     check_depot_validity,
 )
+
+from eflips.depot.api.private.depot import AreaInformation, DepotConfigurationWish
 
 
 class SmartChargingStrategy(Enum):
@@ -651,18 +656,30 @@ def simulate_scenario(
             repetition_period=repetition_period,
         )
         ev = run_simulation(simulation_host)
+
+        errors = []
         try:
             add_evaluation_to_database(scenario, ev, session)
-        except eflips.depot.UnstableSimulationException as e:
-            if ignore_unstable_simulation:
-                logger.warning("Simulation is unstable. Continuing.")
-            else:
-                raise e
-        except eflips.depot.DelayedTripException as e:
-            if ignore_delayed_trips:
-                logger.warning("Simulation has delayed trips. Continuing.")
-            else:
-                raise e
+
+        except* DelayedTripException as delay_exp:
+            if not ignore_delayed_trips:
+                logger.error(
+                    "There are delayed trips in the simulation. "
+                    "Please check the input data and try again."
+                )
+                errors.append(delay_exp.exceptions[0])
+        except* UnstableSimulationException as unstable_exp:
+            if not ignore_unstable_simulation:
+                logger.error(
+                    "The simulation became unstable. "
+                    "Please check the input data and try again."
+                )
+                errors.append(unstable_exp.exceptions[0])
+
+        # There will be exactly one UnstableSimulationException or DelayedTripException in the list.
+        # Only the DelayedTripException will be raised if both exceptions are in the list.
+        for e in errors:
+            raise e
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -762,28 +779,15 @@ def init_simulation(
         .all()
     ]
 
-    first_departure_time = min(
-        [vehicle_schedule.departure for vehicle_schedule in vehicle_schedules]
-    )
-    last_arrival_time = max(
-        [vehicle_schedule.arrival for vehicle_schedule in vehicle_schedules]
-    )
-
-    # We take first arrival time as simulation start
-    total_duration = (last_arrival_time - first_departure_time).total_seconds()
-    schedule_duration_days = ceil(total_duration / (24 * 60 * 60))
-
-    if repetition_period is None and schedule_duration_days in [1, 2]:
-        repetition_period = timedelta(days=1)
-    elif repetition_period is None and schedule_duration_days in [7, 8]:
-        repetition_period = timedelta(weeks=1)
-    elif repetition_period is None:
-        raise ValueError(
-            "Could not automatically detect repetition period. Please specify manually."
-        )
+    if repetition_period is None:
+        repetition_period = schedule_duration_days(scenario)
+        if repetition_period not in (timedelta(days=1), timedelta(days=7)):
+            warnings.warn(
+                f"Non-standard schedule duration of {repetition_period}. Please make sure this is intended.",
+                UserWarning,
+            )
 
     # Now, we need to repeat the vehicle schedules
-
     vehicle_schedules = repeat_vehicle_schedules(vehicle_schedules, repetition_period)
 
     sim_start_stime, total_duration_seconds = start_and_end_times(vehicle_schedules)
@@ -799,6 +803,8 @@ def init_simulation(
     # Step 4: Set up the vehicle types
     # Clear old vehicle counts, if they exist
     eflips.globalConstants["depot"]["vehicle_count"] = {}
+
+    grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
 
     # We need to calculate roughly how many vehicles we need for each depot
     for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
@@ -822,31 +828,32 @@ def init_simulation(
                 depot_id
             ] = vehicle_count_dict[depot_id]
         else:
-            # Calculate it from the size of the charging area with a 2x margin
+            # Calculate it from the amount of rotations with a 4x margin because 4 times of repetition
+            # in repeat_vehicle_schedules()
+            rotations = grouped_rotations[(depot.station, depot.station)]
 
             for vehicle_type in vehicle_types_for_depot:
-                vehicle_count = 0
-                for area in depot.areas:
-                    if (
-                        area.vehicle_type_id == int(vehicle_type)
-                        or area.vehicle_type_id is None
-                    ):
-                        # The areas allow either one type, or all vehicle types
-                        for p in area.processes:
-                            if p.electric_power is not None and p.duration is None:
-                                row_count = (
-                                    area.row_count if area.row_count is not None else 1
-                                )
+                vehicle_type_object = (
+                    session.query(VehicleType)
+                    .filter(
+                        VehicleType.id == vehicle_type,
+                        VehicleType.scenario_id == scenario.id,
+                    )
+                    .one()
+                )
+                vehicle_count = len(rotations.get(vehicle_type_object, []))
 
-                                vehicle_count += area.capacity * row_count
-
-                assert (
-                    vehicle_count > 0
-                ), f"The charging area capacity for vehicle type {vehicle_type} should not be 0."
-
-                eflips.globalConstants["depot"]["vehicle_count"][depot_id][
-                    vehicle_type
-                ] = (vehicle_count * 2)
+                if vehicle_count > 0:
+                    eflips.globalConstants["depot"]["vehicle_count"][depot_id][
+                        vehicle_type
+                    ] = (
+                        vehicle_count
+                        * 4  # We multiply by 4 because we repeat the vehicle schedules 4 times
+                    )
+                else:
+                    warnings.warn(
+                        f"There are no rotations assigned to type {vehicle_type_object} in depot {depot_id}"
+                    )
 
     # We  need to put the vehicle type objects into the GlobalConstants
     for vehicle_type in (
@@ -1020,6 +1027,10 @@ def add_evaluation_to_database(
 
     # Read simulation start time
 
+    unstable_exp = UnstableSimulationException()
+    delay_exp = DelayedTripException()
+    errors = []
+
     for depot_id, depot_evaluation in depot_evaluations.items():
         simulation_start_time = depot_evaluation.sim_start_datetime
 
@@ -1065,22 +1076,15 @@ def add_evaluation_to_database(
                 # handled. It is usually the departure time of the last copy trip in the "early-shifted" copy
                 # schedules and the departure time of the first copy trip in the "late-shifted" copy schedules.
             ) = get_finished_schedules_per_vehicle(
-                dict_of_events, current_vehicle.finished_trips, current_vehicle_db.id
+                dict_of_events,
+                current_vehicle.finished_trips,
+                current_vehicle_db.id,
+                unstable_exp,
+                delay_exp,
             )
 
-            try:
-                assert earliest_time is not None and latest_time is not None
-
-            except AssertionError as e:
-                warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has only copied trips. The profiles of this vehicle "
-                    f"will not be written into database."
-                )
+            if schedule_current_vehicle is None:
                 continue
-
-            assert (
-                earliest_time < latest_time
-            ), f"Earliest time {earliest_time} is not less than latest time {latest_time}."
 
             list_of_assigned_schedules.extend(schedule_current_vehicle)
 
@@ -1098,16 +1102,6 @@ def add_evaluation_to_database(
 
             add_soc_to_events(dict_of_events, current_vehicle.battery_logs)
 
-            try:
-                assert (not dict_of_events) is False
-            except AssertionError as e:
-                warnings.warn(
-                    f"Vehicle {current_vehicle_db.id} has no valid events. The vehicle will not be written "
-                    f"into database."
-                )
-
-                continue
-
             add_events_into_database(
                 current_vehicle_db,
                 dict_of_events,
@@ -1120,35 +1114,67 @@ def add_evaluation_to_database(
         update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
         update_waiting_events(session, scenario, waiting_area_id)
 
+    if delay_exp.has_errors:
+        errors.append(delay_exp)
+    if unstable_exp.has_errors:
+        errors.append(unstable_exp)
+
+    if len(errors) > 0:
+        raise ExceptionGroup(
+            "Simulation is either unstable or including delayed blocks", errors
+        )
+
 
 def generate_depot_optimal_size(
-    scenario: Scenario,
+    scenario: Union[Scenario, int, Any],
     standard_block_length: int = 6,
     charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
     use_consumption_lut: bool = False,
+    repetition_period: Optional[timedelta] = None,
 ) -> None:
     """
-    Generates an optimal depot layout with the smallest possible size for each depot in the scenario. Line charging areas
+    Generates an optimal depot layout with the smallest possible size for each depot in the scenario.
+
+    Line charging areas
      with given block length area preferred. The existing depot will be deleted if `delete_existing_depot` is set to True.
 
-    :param scenario: A :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id" containing
+        an integer pointing to a unique scenario id.
     :param standard_block_length: The standard block length for the depot layout in meters. Default is 6.
     :param charging_power: The charging power of the charging area in kW. Default is 90.
     :param database_url: An optional database URL. Used if no database url is given by the environment variable.
     :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
         existing depot. Set to False and a ValueError will be raised if there is a depot in this scenario.
-    :param using_consumption_lut: If True, the depot layout will be generated based on the consumption lookup table.
+    :param use_consumption_lut: If True, the depot layout will be generated based on the consumption lookup table.
         If False, constant consumption stored in VehicleType table will be used.
+    :param repetition_period: An optional timedelta object specifying the period of the vehicle schedules. If not
+        specified, a default repetition period will be generated in simulate_scenario(). If the depot layout generated
+        in this function will be used for further simulations, make sure that the repetition period is set to the same
+        value as in the simulation.
 
     :return: None. The depot layout will be added to the database.
-
     """
 
     logger = logging.getLogger(__name__)
 
     with create_session(scenario, database_url) as (session, scenario):
+        # Delete all depot events
+        session.query(Event).filter(
+            Event.scenario_id == scenario.id, Event.area_id.isnot(None)
+        ).delete()
+
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError(
+                    "Depot already exists. Set delete_existing_depot to True to delete it."
+                )
+
+            delete_depots(scenario, session)
+
+        outer_savepoint = session.begin_nested()
         # Delete all vehicles and events, also disconnect the vehicles from the rotations
         rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
         rotation_q.update({"vehicle_id": None})
@@ -1156,11 +1182,6 @@ def generate_depot_optimal_size(
         session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
 
         # Handles existing depot
-        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
-            if delete_existing_depot is False:
-                raise ValueError("Depot already exists.")
-
-            delete_depots(scenario, session)
 
         ##### Step 0: Consumption Simulation #####
         # Run the consumption simulation for all depots
@@ -1188,10 +1209,12 @@ def generate_depot_optimal_size(
 
         num_rotations_for_scenario: Dict[Station, int] = {}
 
+        grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
+
         for (
             first_last_stop_tup,
             vehicle_type_dict,
-        ) in group_rotations_by_start_end_stop(scenario.id, session).items():
+        ) in grouped_rotations.items():
             first_stop, last_stop = first_last_stop_tup
             if first_stop != last_stop:
                 raise ValueError("First and last stop of a rotation are not the same.")
@@ -1201,7 +1224,7 @@ def generate_depot_optimal_size(
                 len(rotations) for vehicle_type, rotations in vehicle_type_dict.items()
             )
 
-            savepoint = session.begin_nested()
+            inner_savepoint = session.begin_nested()
             try:
                 # (Temporarily) Delete all rotations not starting or ending at the station
                 logger.debug(
@@ -1235,17 +1258,54 @@ def generate_depot_optimal_size(
                     session,
                     standard_block_length,
                     charging_power,
+                    repetition_period,
                 )
 
                 depot_capacities_for_scenario[station] = vt_capacities_for_station
                 num_rotations_for_scenario[station] = rotation_count_depot
             finally:
-                savepoint.rollback()
+                inner_savepoint.rollback()
 
-    # create depot with the calculated area sizes
+        outer_savepoint.rollback()
 
-    with create_session(scenario, database_url) as (session, scenario):
+        # Estimation of the number of shunting and cleaning slots
+
+        # Create depot using the calculated capacities
         for depot_station, capacities in depot_capacities_for_scenario.items():
+            vehicle_type_rot_dict = grouped_rotations[depot_station, depot_station]
+
+            all_rotations_this_depot = []
+
+            for vehicle_type, rotations in vehicle_type_rot_dict.items():
+                all_rotations_this_depot.extend(rotations)
+
+            # sort the rotations by their start time
+            all_rotations_this_depot.sort(key=lambda r: r.trips[0].departure_time)
+
+            start_time = all_rotations_this_depot[0].trips[0].departure_time
+            end_time = all_rotations_this_depot[-1].trips[-1].arrival_time
+
+            elapsed_time = (end_time - start_time).total_seconds()
+            # make them into a numpy with 30 min resolution
+            import numpy as np
+
+            TIME_RESOLUTION = 30 * 60  # 30 minutes in seconds
+
+            time_range = np.zeros(int(elapsed_time / TIME_RESOLUTION) + 1)
+            # calculate the number of rotations per time slot
+            for rot in all_rotations_this_depot:
+                start_time_index = int(
+                    (rot.trips[0].departure_time - start_time).total_seconds()
+                    // TIME_RESOLUTION
+                )
+                end_time_index = int(
+                    (rot.trips[-1].arrival_time - start_time).total_seconds()
+                    // TIME_RESOLUTION
+                )
+                # interpolate the start and end time to the time range
+
+                time_range[start_time_index : end_time_index + 1] += 1
+
             generate_depot(
                 capacities,
                 depot_station,
@@ -1253,13 +1313,244 @@ def generate_depot_optimal_size(
                 session,
                 standard_block_length=standard_block_length,
                 charging_power=charging_power,
-                num_shunting_slots=num_rotations_for_scenario[depot_station] // 10,
-                num_cleaning_slots=num_rotations_for_scenario[depot_station] // 10,
+                num_shunting_slots=int(max(time_range)),
+                num_cleaning_slots=int(max(time_range)),
             )
 
-        # Delete all vehicles and events again. Only depot layout is kept
 
+def schedule_duration_days(
+    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
+) -> timedelta:
+    """
+    This method calculates the duration of a given scenario in days.
+
+    This is the duration
+    between the first departure of the first day, and the last departure on the last day, rounded up to full days.
+
+    Most of the time, this is the "natural" repetition period of the scenario. We are simulating one full period, and
+    this period – continuously repeated – is what happens in reality.
+
+    This method can be used to show the user what the detected repetition period is and to auto-set the repetition
+    period if none is provided.
+
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id"
+        containing an integer pointing to a unique scenario id.
+    :param database_url: An optional database URL. Used if no database url is given by the environment variable.
+    :return: a timedelta object representing the duration in days.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        first_departure = (
+            session.query(func.min(Trip.departure_time))
+            .filter(Trip.scenario_id == scenario.id)
+            .scalar()
+        )
+        if first_departure is None:
+            raise ValueError("No trips found in the scenario.")
+
+        last_departure = (
+            session.query(func.max(Trip.departure_time))
+            .filter(Trip.scenario_id == scenario.id)
+            .scalar()
+        )
+        if last_departure is None:
+            raise ValueError("No trips found in the scenario.")
+
+        duration = last_departure - first_departure
+        duration_days = ceil(duration.total_seconds() / (24 * 60 * 60))
+
+        return timedelta(days=duration_days)
+
+
+def auto_generate_depot_inplace(
+    depot_wish: DepotConfigurationWish,
+    session,
+    scenario,
+) -> None:
+    """
+    This method calculates an optimal depot layout for auto-generated depots and modifies the instance of
+    :class:`eflips.depot.api.private.depot.DepotConfigurationWish` objects in place.
+
+    :param depot_wish: a :class:`eflips.depot.api.private.depot.DepotConfigurationWish` object. It represents a depot to be generated by eflips calulation.
+    :param session: a :class:'sqlalchemy.orm.Session' object.
+    :param scenario: a :class:`eflips.model.Scenario` object containing the input data for the simulation.
+    :return: None. The depot layout will be written inplace to the depot_wish object.
+    """
+    logger = logging.getLogger(__name__)
+
+    station = session.query(Station).filter(Station.id == depot_wish.station_id).one()
+
+    warnings.simplefilter("ignore", category=ConsistencyWarning)
+    warnings.simplefilter("ignore", category=UserWarning)
+
+    inner_savepoint = session.begin_nested()
+    try:
+        # (Temporarily) Delete all rotations not starting or ending at the station
+        logger.debug(f"Deleting all rotations not starting or ending at {station.name}")
+        all_rot_for_scenario = (
+            session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
+        )
+        to_delete = []
+        for rot in all_rot_for_scenario:
+            first_stop = rot.trips[0].route.departure_station
+            if first_stop != station:
+                for trip in rot.trips:
+                    for stop_time in trip.stop_times:
+                        to_delete.append(stop_time)
+                    for event in trip.events:
+                        to_delete.append(event)
+                    to_delete.append(trip)
+                to_delete.append(rot)
+
+        for obj in to_delete:
+            session.flush()
+            session.delete(obj)
+            session.flush()
+
+        # Consumption simulation for rotations of this depot
+
+        # if the driving events are already in the database, we do not need to run the consumption simulation again
+        current_driving_trips = (
+            session.query(Event.trip_id)
+            .filter(
+                Event.scenario_id == scenario.id, Event.event_type == EventType.DRIVING
+            )
+            .all()
+        )
+        current_trips = (
+            session.query(Trip.id).filter(Trip.scenario_id == scenario.id).all()
+        )
+
+        # if the two lists are identical, we can skip the consumption simulation
+        if set([t[0] for t in current_driving_trips]) != set(
+            [t[0] for t in current_trips]
+        ):
+            logger.info(
+                "Running eflips consumption simulation for depot layout generation since the driving events do not cover all trips"
+            )
+            driving_events_to_delete = (
+                session.query(Event)
+                .filter(
+                    Event.scenario_id == scenario.id,
+                    Event.event_type == EventType.DRIVING,
+                )
+                .all()
+            )
+            if len(driving_events_to_delete) > 0:
+                logger.info(
+                    "Deleting existing driving events before running consumption simulation"
+                )
+                for event in driving_events_to_delete:
+                    session.delete(event)
+                session.flush()
+
+            logger.warning("Starting eflips consumption sim")
+            consumption_results = generate_consumption_result(scenario)
+            simple_consumption_simulation(
+                scenario,
+                initialize_vehicles=True,
+                consumption_result=consumption_results,
+            )
+
+        logger.info(f"Generating depot layout for station {station.name}")
+        vt_capacities_for_station = depot_smallest_possible_size(
+            station,
+            scenario,
+            session,
+            depot_wish.standard_block_length,
+            depot_wish.default_power,
+        )
+
+        area_list: List[AreaInformation] = []
+
+        for vt, capacity in vt_capacities_for_station.items():
+            if capacity[AreaType.LINE] > 0:
+                area_list.append(
+                    AreaInformation(
+                        area_type=AreaType.LINE,
+                        capacity=capacity[AreaType.LINE],
+                        block_length=depot_wish.standard_block_length,
+                        power=depot_wish.default_power,
+                        vehicle_type_id=vt.id,
+                    )
+                )
+
+            if capacity[AreaType.DIRECT_ONESIDE] > 0:
+                area_list.append(
+                    AreaInformation(
+                        area_type=AreaType.DIRECT_ONESIDE,
+                        capacity=capacity[AreaType.DIRECT_ONESIDE],
+                        block_length=None,
+                        power=depot_wish.default_power,
+                        vehicle_type_id=vt.id,
+                    )
+                )
+
+        depot_wish.areas = area_list
+
+    finally:
+        inner_savepoint.rollback()
+
+    session.expire_all()
+
+
+def generate_optimal_depot_layout(
+    depot_config_wishes: List[DepotConfigurationWish],
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    delete_existing_depot: bool = False,
+) -> None:
+    """
+
+    :param depot_config_wishes: a list of :class:`eflips.depot.api.private.depot.DepotConfigurationWish` objects.
+    :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
+        an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id" containing
+        an integer pointing to a unique scenario id.
+    :param database_url: An optional database URL. Used if no database url is given by the environment variable.
+    :param delete_existing_depot: If there is already a depot existing in this scenario, set True to delete this
+        existing depot. Set to False and a ValueError will be raised if there is a depot
+    :return: None. The depot layout will be added to the database.
+    """
+
+    with create_session(scenario, database_url) as (session, scenario):
+        # Delete all non-Driving events
+        session.query(Event).filter(
+            Event.scenario_id == scenario.id, Event.event_type != EventType.DRIVING
+        ).delete()
+
+        if session.query(Depot).filter(Depot.scenario_id == scenario.id).count() != 0:
+            if delete_existing_depot is False:
+                raise ValueError(
+                    "Depot already exists. Set delete_existing_depot to True to delete it."
+                )
+
+            delete_depots(scenario, session)
+
+        # Group all the rotations by their start and end stop (depot)
+
+        grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
+        assert len(grouped_rotations) == len(depot_config_wishes), (
+            "The number of depot configuration wishes must be equal to the number of depots in the scenario."
+            f"Found {len(depot_config_wishes)} wishes and {len(grouped_rotations)} depots."
+        )
+
+        savepoint = session.begin_nested()
+
+        # Delete all vehicles and events, also disconnect the vehicles from the rotations
         rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
         rotation_q.update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        for depot_wish in depot_config_wishes:
+            if depot_wish.auto_generate is False:
+                continue
+
+            auto_generate_depot_inplace(
+                depot_wish,
+                session,
+                scenario,
+            )
+
+        savepoint.rollback()
+        create_depots_from_wish(
+            depot_config_wishes, grouped_rotations, scenario, session
+        )

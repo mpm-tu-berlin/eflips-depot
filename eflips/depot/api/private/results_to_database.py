@@ -1,6 +1,7 @@
 import datetime
 import itertools
 import logging
+import warnings
 from datetime import timedelta
 from typing import List, Dict
 
@@ -9,11 +10,57 @@ from eflips.model import Event, EventType, Rotation, Vehicle, Area, AreaType
 from sqlalchemy import select
 
 from eflips.depot import SimpleVehicle, ProcessStatus
-from eflips.depot import UnstableSimulationException, DelayedTripException
+
+
+class DelayedTripException(Exception):
+    def __init__(self):
+        self._delayed_trips = []
+
+    def raise_later(self, simple_trip):
+        self._delayed_trips.append(simple_trip)
+
+    @property
+    def has_errors(self):
+        return len(self._delayed_trips) > 0
+
+    def __str__(self):
+        trip_names = ", ".join(
+            f"{trip.ID} originally departure at {trip.std}"
+            for trip in self._delayed_trips
+        )
+
+        return (
+            f"The following blocks/rotations are delayed. "
+            f"Ignoring this error will write related depot events into database. However, this may lead to errors due "
+            f"to conflicts with driving events: {trip_names}"
+        )
+
+
+class UnstableSimulationException(Exception):
+    def __init__(self):
+        self._unstable_trips = []
+
+    def raise_later(self, simple_trip):
+        self._unstable_trips.append(simple_trip)
+
+    @property
+    def has_errors(self):
+        return len(self._unstable_trips) > 0
+
+    def __str__(self):
+        trip_names = ", ".join(str(trip.ID) for trip in self._unstable_trips)
+        return (
+            f"The following blocks/rotations require a new vehicle. This suggests an unstable "
+            f" simulation result, where a repeated schedule might require more vehicles: {trip_names}"
+        )
 
 
 def get_finished_schedules_per_vehicle(
-    dict_of_events, list_of_finished_trips: List, db_vehicle_id: int
+    dict_of_events,
+    list_of_finished_trips: List,
+    db_vehicle_id: int,
+    unstable_exp: UnstableSimulationException,
+    delay_exp: DelayedTripException,
 ):
     """
     This function completes the following tasks:
@@ -42,47 +89,62 @@ def get_finished_schedules_per_vehicle(
     :return: A tuple of three elements. The first element is a list of finished schedules of the vehicle. The second and
         third elements are the earliest and latest time of the vehicle's schedules.
     """
-    finished_schedules = []
 
     list_of_finished_trips.sort(key=lambda x: x.atd)
-    earliest_time = None
-    latest_time = None
 
     for i in range(len(list_of_finished_trips)):
-        try:
-            assert list_of_finished_trips[i].atd == list_of_finished_trips[i].std
-        except AssertionError:
-            raise DelayedTripException(
-                f"The trip {list_of_finished_trips[i].ID} is delayed. The simulation doesn't "
-                "support delayed trips for now."
-            )
+        if list_of_finished_trips[i].atd != list_of_finished_trips[i].std:
+            delay_exp.raise_later(list_of_finished_trips[i])
 
-        if list_of_finished_trips[i].is_copy is False:
-            current_trip = list_of_finished_trips[i]
+    non_copy_trips = [trip for trip in list_of_finished_trips if trip.is_copy is False]
 
-            finished_schedules.append((int(current_trip.ID), db_vehicle_id))
-            dict_of_events[current_trip.atd] = {
-                "type": "Trip",
-                "id": int(current_trip.ID),
-            }
-            if i == 0:
-                raise UnstableSimulationException(
-                    f"New Vehicle required for the rotation/block {current_trip.ID}, which suggests the fleet or the "
-                    f"infrastructure might not be enough for the full electrification. Please add charging "
-                    f"interfaces or increase charging power ."
-                )
+    if len(non_copy_trips) == 0:
+        warnings.warn(
+            f"Vehicle {db_vehicle_id} has only copied trips and will not be stored in the database. "
+            f"This might suggest an unstable simulation result. "
+            f"Repetition of this schedule may require more vehicles."
+        )
 
-            elif i != 0 and i == len(list_of_finished_trips) - 1:
-                # Vehicle's last trip is a non-copy trip
-                if earliest_time is None:
-                    earliest_time = list_of_finished_trips[i - 1].ata
-                latest_time = list_of_finished_trips[i].ata
+        return None, None, None
 
-            else:
-                if list_of_finished_trips[i - 1].is_copy is True:
-                    earliest_time = list_of_finished_trips[i - 1].ata
-                if list_of_finished_trips[i + 1].is_copy is True:
-                    latest_time = list_of_finished_trips[i + 1].atd
+    idx_first_orig_trip = list_of_finished_trips.index(non_copy_trips[0])
+    idx_last_orig_trip = list_of_finished_trips.index(non_copy_trips[-1])
+
+    if idx_first_orig_trip == 0:
+        unstable_exp.raise_later(non_copy_trips[0])
+        earliest_time = non_copy_trips[0].ata
+
+    else:
+        earliest_time = list_of_finished_trips[idx_first_orig_trip - 1].ata
+
+    if idx_last_orig_trip == len(list_of_finished_trips) - 1:
+        # the last trip of this vehicle is a non-copy trip
+        all_processes_current_vehicle = non_copy_trips[-1].vehicle.logger.loggedData[
+            "dwd.active_processes_copy"
+        ]
+        time_stamps = [k for k, v in all_processes_current_vehicle.items()]
+        last_time_stamp = max(time_stamps)
+        if len(all_processes_current_vehicle[last_time_stamp]) == 0:
+            latest_time = last_time_stamp
+        else:
+            current_processes = all_processes_current_vehicle[last_time_stamp]
+
+            latest_time = 0
+            for p in current_processes:
+                latest_time = max((p.starts[0] + p.dur), latest_time)
+
+    else:
+        latest_time = list_of_finished_trips[idx_last_orig_trip + 1].atd
+
+    assert earliest_time <= latest_time
+
+    finished_schedules = []
+    for non_copy_trip in non_copy_trips:
+        finished_schedules.append((int(non_copy_trip.ID), db_vehicle_id))
+        dict_of_events[non_copy_trip.atd] = {
+            "type": "Trip",
+            "id": int(non_copy_trip.ID),
+        }
 
     return finished_schedules, earliest_time, latest_time
 
@@ -578,13 +640,15 @@ def update_waiting_events(session, scenario, waiting_area_id) -> None:
         all_waiting_ends
     ), f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends"
 
-    if len(all_waiting_starts) == 0:
+    BUFFER_WAITING_CAPACITY = 1
+
+    if len(all_waiting_starts) < BUFFER_WAITING_CAPACITY:
         logger.info(
-            "No waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to 10 as buffer."
+            f"{all_waiting_starts} waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to {BUFFER_WAITING_CAPACITY} as buffer."
         )
 
         session.query(Area).filter(Area.id == waiting_area_id).update(
-            {"capacity": 10}, synchronize_session="auto"
+            {"capacity": BUFFER_WAITING_CAPACITY}, synchronize_session="auto"
         )
 
         return
