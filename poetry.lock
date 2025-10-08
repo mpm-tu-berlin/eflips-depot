@@ -600,10 +600,12 @@ name = "eflips-opt"
 version = "0.3.6"
 description = "A collection of pre-simulation optimization algorithms for eFLIPS."
 optional = false
-python-versions = ">=3.10, <3.14"
+python-versions = "<3.14,>=3.10"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "eflips_opt-0.3.6-py3-none-any.whl", hash = "sha256:3a7e0caffc3174df1b2959ce219b2cc8d7156ecb6bc5c401125124366c6346e3"},
+    {file = "eflips_opt-0.3.6.tar.gz", hash = "sha256:7ad2861095b483393a8c7ab69aa680d3bf262949c45341e88eb89e2c4d56a9a1"},
+]
 
 [package.dependencies]
 dash-cytoscape = ">=1.0.2,<2.0"
@@ -620,12 +622,6 @@ pyomo = ">=6.7.1,<7.0"
 scipy = ">=1.14.0,<2.0"
 shapely = ">=2.0.3,<3.0"
 tqdm = ">=4.66.4,<5.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/mpm-tu-berlin/eflips-opt.git"
-reference = "feature/non-const-charging-curve"
-resolved_reference = "c68d3a89dedcc67fc78f80f87729d559ff16e905"
 
 [[package]]
 name = "eflips-schedule-rust"
