@@ -597,14 +597,14 @@ sqlalchemy = ">=2.0.23,<3.0.0"
 
 [[package]]
 name = "eflips-opt"
-version = "0.3.5"
+version = "0.3.6"
 description = "A collection of pre-simulation optimization algorithms for eFLIPS."
 optional = false
 python-versions = "<3.14,>=3.10"
 groups = ["main"]
 files = [
-    {file = "eflips_opt-0.3.5-py3-none-any.whl", hash = "sha256:6ca1248acd2a8c123553a5a33f257224fddccc1d5105cbc6f65dc785f7fc822c"},
-    {file = "eflips_opt-0.3.5.tar.gz", hash = "sha256:d3f85431efd00c7f69c5238f8ac121aec19168062ab2a036cf4a0fa975d70076"},
+    {file = "eflips_opt-0.3.6-py3-none-any.whl", hash = "sha256:3a7e0caffc3174df1b2959ce219b2cc8d7156ecb6bc5c401125124366c6346e3"},
+    {file = "eflips_opt-0.3.6.tar.gz", hash = "sha256:7ad2861095b483393a8c7ab69aa680d3bf262949c45341e88eb89e2c4d56a9a1"},
 ]
 
 [package.dependencies]
@@ -2863,4 +2863,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <3.14"
-content-hash = "e108e5753714a045a26eac6653142587255d14fe0a2900ed3036b9c06749a398"
+content-hash = "3bcb71258984e7a17f7b716a733fd6ac844303812ebbeb7610ccb2ac82820ff8"

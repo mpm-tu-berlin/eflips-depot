@@ -225,8 +225,6 @@ def generate_vehicle_events(
                 "is_waiting": True,
             }
 
-    # Create a list of battery log in order of time asc. Convenient for looking up corresponding soc
-
     for time_stamp, process_log in current_vehicle.logger.loggedData[
         "dwd.active_processes_copy"
     ].items():
@@ -276,13 +274,18 @@ def generate_vehicle_events(
                                     )
                                     start_this_event = dict_of_events[time_stamp]["end"]
                                 else:
-                                    for other_process in process_log:
-                                        if (
-                                            other_process.ID != process.ID
-                                            and other_process.dur > 0
-                                        ):
-                                            start_this_event = other_process.ends[0]
-                                            break
+                                    if len(process_log) > 1:
+                                        # This is for the case where the charging and standby_departure happen in the same area, and the standby_departure is the last process.
+                                        for other_process in process_log:
+                                            if (
+                                                other_process.ID != process.ID
+                                                and other_process.dur > 0
+                                            ):
+                                                start_this_event = other_process.ends[0]
+                                                break
+                                    else:
+                                        # This is for the case where only standby_departure happens in the last area.
+                                        start_this_event = time_stamp
 
                                 assert (
                                     start_this_event is not None
@@ -395,7 +398,7 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
     """
     battery_log_list = []
     for log in battery_log:
-        battery_log_list.append((log.t, log.energy / log.energy_real))
+        battery_log_list.append((log.t, round(log.energy / log.energy_real, 4)))
 
     time_keys = sorted(dict_of_events.keys())
 
@@ -408,15 +411,42 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
         start_time = time_keys[i]
         process_dict = dict_of_events[time_keys[i]]
 
-        if process_dict["type"] != "Trip":
-            soc_start = np.interp(start_time, battery_log_times, battery_log_socs)
-            process_dict["soc_start"] = min(float(soc_start), 1.0)
-            soc_end = np.interp(
-                process_dict["end"], battery_log_times, battery_log_socs
-            )
-            process_dict["soc_end"] = min(float(soc_end), 1.0)
-        else:
-            continue
+        match process_dict["type"]:
+            case "Charge" | "ChargeSteps" | "ChargeEquationSteps":
+                event_start = start_time
+                event_end = process_dict["end"]
+                start_time_index = battery_log_times.index(event_start)
+                end_time_index = battery_log_times.index(event_end)
+                time_series = {
+                    "time": battery_log_times[start_time_index:end_time_index],
+                    "soc": battery_log_socs[start_time_index:end_time_index],
+                }
+
+                # if there are repeated timestamps, we need to remove them
+                unique_indices = np.unique(
+                    time_series["time"], return_index=True, return_inverse=False
+                )[1]
+                time_series["time"] = [
+                    time_series["time"][index] for index in unique_indices
+                ]
+                time_series["soc"] = [
+                    time_series["soc"][index] for index in unique_indices
+                ]
+                process_dict["timeseries"] = time_series
+                process_dict["soc_start"] = battery_log_socs[start_time_index]
+                process_dict["soc_end"] = battery_log_socs[end_time_index]
+
+            case "Serve" | "Standby":
+                soc_start = np.interp(start_time, battery_log_times, battery_log_socs)
+                process_dict["soc_start"] = min(float(soc_start), 1.0)
+                soc_end = np.interp(
+                    process_dict["end"], battery_log_times, battery_log_socs
+                )
+                process_dict["soc_end"] = min(float(soc_end), 1.0)
+            case "Trip":
+                continue
+            case _:
+                raise NotImplementedError
 
 
 def add_events_into_database(
@@ -446,7 +476,7 @@ def add_events_into_database(
         match process_dict["type"]:
             case "Serve":
                 event_type = EventType.SERVICE
-            case "Charge":
+            case "Charge" | "ChargeSteps" | "ChargeEquationSteps":  # TODO that might be problematic
                 event_type = EventType.CHARGING_DEPOT
             case "Standby":
                 if (
@@ -488,6 +518,20 @@ def add_events_into_database(
             capacity_per_line = int(current_area.capacity / current_area.row_count)
             process_dict["slot"] = capacity_per_line * row + process_dict["slot"] - 1
 
+        timeseries = {}
+        if "timeseries" in process_dict.keys():
+            # Convert "time" in timeseries to timedelta
+            timeseries["time"] = [
+                (timedelta(seconds=t) + simulation_start_time).isoformat()
+                for t in process_dict["timeseries"]["time"]
+            ]
+            timeseries["soc"] = process_dict["timeseries"]["soc"]
+
+            assert all(
+                timeseries["soc"][i] <= timeseries["soc"][i + 1]
+                for i in range(len(timeseries["soc"]) - 1)
+            ), "SOC values in the timeseries should be non-decreasing."
+
         current_event = Event(
             scenario=scenario,
             vehicle_type_id=db_vehicle.vehicle_type_id,
@@ -507,7 +551,7 @@ def add_events_into_database(
             # then this is not an event with soc change
             event_type=event_type,
             description=process_dict["id"] if "id" in process_dict.keys() else None,
-            timeseries=None,
+            timeseries=timeseries if "timeseries" in process_dict.keys() else None,
         )
 
         session.add(current_event)

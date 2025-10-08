@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from enum import auto, Enum
 from warnings import warn
 
+import numpy as np
 import simpy
 from eflips.helperFunctions import flexprint
 from eflips.settings import globalConstants
@@ -672,7 +673,7 @@ class ChargeAbstract(VehicleProcess, ABC):
         cancellable_for_dispatch=False,
         efficiency=1,
         *args,
-        **kwargs
+        **kwargs,
     ):
         if required_resources is not None:
             raise ValueError(
@@ -1426,6 +1427,25 @@ def exponential_power(vehicle, charging_interface, peq_params, *args, **kwargs):
             * (math.exp(SoC) - math.exp(SoC_threshold))
             + P_max
         )
+
+
+def charging_curve_power(vehicle, charging_interface, peq_params):
+    """
+    Return power in kW for given peq_params in the format of dict[flaot, float]
+    :param vehicle: SimpleVehicle
+    :param charging_interface: DepotChargingInterface storing maximum power from charger
+    :param peq_params: A dictionary with "soc" storing soc turning points and "power" for corresponding charging power
+    :return: charging power in float for given SimpleVehicle
+    """
+
+    current_soc = vehicle.battery.soc
+    p_max = charging_interface.max_power
+
+    current_power = min(
+        p_max, np.interp(current_soc, peq_params["soc"], peq_params["power"])
+    )
+
+    return float(current_power)
 
 
 class Standby(VehicleProcess):

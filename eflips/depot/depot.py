@@ -1360,7 +1360,9 @@ class DepotControl:
             for procID in area.available_processes
             if self.depot.processes[procID]["type"].request_immediately
             and (
+                # TODO: Simplify this condition
                 self.depot.processes[procID]["kwargs"]["ismandatory"]
+                and self.depot.processes[procID]["kwargs"]["vehicle_filter"](vehicle)
                 or not self.depot.processes[procID]["kwargs"]["ismandatory"]
                 and self.depot.processes[procID]["kwargs"]["vehicle_filter"](vehicle)
             )
