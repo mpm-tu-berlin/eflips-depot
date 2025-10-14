@@ -286,26 +286,19 @@ def extract_trip_information(
             )
             .one()
         )
-        # Check exactly one of the vehicle classes has a consumption LUT
-        all_consumption_luts = [
-            vehicle_class.consumption_lut
-            for vehicle_class in trip.rotation.vehicle_type.vehicle_classes
-        ]
-        all_consumption_luts = [x for x in all_consumption_luts if x is not None]
-        if len(all_consumption_luts) != 1:
-            raise ValueError(
-                f"Expected exactly one consumption LUT, got {len(all_consumption_luts)}"
-            )
-        consumption_lut = all_consumption_luts[0]
-        # Disconnect the consumption LUT from the session to avoid loading the whole table
-
-        del all_consumption_luts
 
         total_distance = trip.route.distance / 1000  # km
         total_duration = (
             trip.arrival_time - trip.departure_time
         ).total_seconds() / 3600
         average_speed = total_distance / total_duration  # km/h
+
+        # Check exactly one of the vehicle classes has a consumption LUT
+        all_consumption_luts = [
+            vehicle_class.consumption_lut
+            for vehicle_class in trip.rotation.vehicle_type.vehicle_classes
+        ]
+        all_consumption_luts = [x for x in all_consumption_luts if x is not None]
 
         temperature = temperature_for_trip(trip_id, session)
 
@@ -324,16 +317,46 @@ def extract_trip_information(
         )
         level_of_loading = payload_mass / full_payload
 
-        info = ConsumptionInformation(
-            trip_id=trip.id,
-            consumption_lut=consumption_lut,
-            average_speed=average_speed,
-            distance=total_distance,
-            temperature=temperature,
-            level_of_loading=level_of_loading,
-        )
+        if len(all_consumption_luts) == 1:
+            consumption_lut = all_consumption_luts[0]
+            # Disconnect the consumption LUT from the session to avoid loading the whole table
 
-        info.calculate()
+            del all_consumption_luts
+
+            info = ConsumptionInformation(
+                trip_id=trip.id,
+                consumption_lut=consumption_lut,
+                average_speed=average_speed,
+                distance=total_distance,
+                temperature=temperature,
+                level_of_loading=level_of_loading,
+            )
+            info.calculate()
+        elif len(all_consumption_luts) == 0:
+            warnings.warn(
+                f"No consumption LUT found for vehicle type {trip.rotation.vehicle_type}.",
+                ConsistencyWarning,
+            )
+            # Here, we fill out the condumption information without the LUT and LUT data, but with `consumption_per_km`
+            # set to the vehicle's `consumption` value.
+            assert (
+                VehicleType.consumption is not None
+            ), f"Vehicle type {trip.rotation.vehicle_type} must have a consumption value set if no consumption LUT is available."
+            info = ConsumptionInformation(
+                trip_id=trip.id,
+                average_speed=average_speed,
+                distance=total_distance,
+                consumption_per_km=trip.rotation.vehicle_type.consumption,
+                consumption=trip.rotation.vehicle_type.consumption * total_distance,
+                consumption_lut=None,
+                temperature=temperature,
+                level_of_loading=level_of_loading,
+            )
+        else:
+            raise ValueError(
+                f"Expected exactly one consumption LUT, got {len(all_consumption_luts)}"
+            )
+
     return info
 
 

@@ -1,6 +1,7 @@
 """This module contains miscellaneous utility functions for the eflips-depot API."""
 import logging
 import os
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta, datetime
@@ -17,9 +18,11 @@ from eflips.model import (
     Trip,
     Depot,
     Temperatures,
+    ConsistencyWarning,
 )
 from eflips.model import create_engine
 from sqlalchemy import inspect
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from eflips.depot import SimpleTrip, Timetable as EflipsTimeTable
@@ -204,7 +207,9 @@ def check_depot_validity(depot: Depot) -> None:
 
 def temperature_for_trip(trip_id: int, session: Session) -> float:
     """
-    Returns the temperature for a trip. Finds the temperature for the mid-point of the trip.
+    Returns the temperature for a trip.
+
+    Finds the temperature for the mid-point of the trip.
 
     :param trip_id: The ID of the trip
     :param session: The SQLAlchemy session
@@ -212,11 +217,18 @@ def temperature_for_trip(trip_id: int, session: Session) -> float:
     """
 
     trip = session.query(Trip).filter(Trip.id == trip_id).one()
-    temperatures = (
-        session.query(Temperatures)
-        .filter(Temperatures.scenario_id == trip.scenario_id)
-        .one()
-    )
+    try:
+        temperatures = (
+            session.query(Temperatures)
+            .filter(Temperatures.scenario_id == trip.scenario_id)
+            .one()
+        )
+    except NoResultFound:
+        warnings.warn(
+            f"No temperatures found for scenario {trip.scenario_id}.",
+            ConsistencyWarning,
+        )
+        return None
 
     # Find the mid-point of the trip
     mid_time = trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
