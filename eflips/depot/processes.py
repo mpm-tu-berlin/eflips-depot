@@ -840,6 +840,7 @@ class Charge(ChargeAbstract):
 
     @property
     def power(self):
+        # TODO this doesn't consider vehicle charging power
         return self.charging_interface.max_power
 
     def _action(self, *args, **kwargs):
@@ -1240,6 +1241,8 @@ class ChargeEquationSteps(ChargeAbstract):
         self.precision = precision
         Charge.check_soc_target(soc_target, vehicle_filter)
         self.soc_target = soc_target
+        if "precision" in self.peq_params:
+            self.precision = self.peq_params["precision"]
 
     @property
     def power(self):
@@ -1276,6 +1279,7 @@ class ChargeEquationSteps(ChargeAbstract):
                     * self.efficiency
                     * self.vehicle.vehicle_type.charging_efficiency
                 )
+                self.dur = round(amount / effective_power * 3600, 12)
 
                 if self.dur == 0:
                     # amount is so small that dur is <1s. Reduce the precision
@@ -1298,6 +1302,7 @@ class ChargeEquationSteps(ChargeAbstract):
                 yield self.env.timeout(self.dur)
 
                 if soc_target_step < self.soc_target:
+                    # TODO why here we have energy higher than the step_soc_target?
                     # recalculate amount because update_battery may have been
                     # called in the meantime
                     amount_step = (
@@ -1441,12 +1446,20 @@ def charging_curve_power(vehicle, charging_interface, peq_params):
     :return: charging power in float for given SimpleVehicle
     """
 
+    precision = peq_params.get("precision", 0.01)
     current_soc = vehicle.battery.soc
     p_max = charging_interface.max_power
+    target_step_soc = min(vehicle.battery.soc + precision, vehicle.battery.soc_max)
 
-    current_power = min(
+    power_current_soc = min(
         p_max, np.interp(current_soc, peq_params["soc"], peq_params["power"])
     )
+
+    power_target_soc = min(
+        p_max, np.interp(target_step_soc, peq_params["soc"], peq_params["power"])
+    )
+
+    current_power = min(power_current_soc, power_target_soc)
 
     return float(current_power)
 

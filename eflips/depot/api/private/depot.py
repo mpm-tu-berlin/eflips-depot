@@ -407,6 +407,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                         "power": [
                             soc_power_pair[1] for soc_power_pair in charging_curve
                         ],
+                        "precision": 0.01,
                     }
 
                     del template["processes"][process_name + str(vt.id)]["dur"]
