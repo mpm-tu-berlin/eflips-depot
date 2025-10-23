@@ -36,7 +36,17 @@ class VehicleType:
 
     """
 
-    def __init__(self, ID, battery_capacity, soc_min, soc_max, soc_init, soh, CR=None):
+    def __init__(
+        self,
+        ID,
+        battery_capacity,
+        soc_min,
+        soc_max,
+        soc_init,
+        soh,
+        charging_efficiency=1.0,
+        CR=None,
+    ):
         self.ID = ID
         self.battery_capacity = battery_capacity
         self.soc_min = soc_min

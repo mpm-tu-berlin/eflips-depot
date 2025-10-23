@@ -230,7 +230,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                 if process_type(processes_in_area) == ProcessType.CHARGING:
                     # Add the charging process for this vehicle type
                     template["areas"][area_name]["available_processes"].append(
-                        str(processes_in_area.id) + str(area.vehicle_type_id)
+                        str(processes_in_area.id) + "vt" + str(area.vehicle_type_id)
                     )
                     # Delete the original charging process
                     template["areas"][area_name]["available_processes"].remove(
@@ -253,7 +253,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                     # Add the charging process for this vehicle type
                     for vt in scenario.vehicle_types:
                         template["areas"][area_name]["available_processes"].append(
-                            str(processes_in_area.id) + str(vt.id)
+                            str(processes_in_area.id) + "vt" + str(vt.id)
                         )
                     # Delete the original charging process
                     template["areas"][area_name]["available_processes"].remove(
@@ -386,23 +386,23 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
 
                 for vt in all_vehicle_types:
                     charging_curve = vt.charging_curve
-                    template["processes"][process_name + str(vt.id)] = template[
+
+                    charging_process_name = process_name + "vt" + str(vt.id)
+                    template["processes"][charging_process_name] = template[
                         "processes"
                     ][process_name].copy()
-                    template["processes"][process_name + str(vt.id)][
+                    template["processes"][charging_process_name][
                         "typename"
                     ] = "ChargeEquationSteps"
-                    template["processes"][process_name + str(vt.id)][
-                        "vehicle_filter"
-                    ] = {
+                    template["processes"][charging_process_name]["vehicle_filter"] = {
                         "filter_names": ["vehicle_type"],
                         "vehicle_types": [str(vt.id)],
                     }
 
-                    template["processes"][process_name + str(vt.id)][
+                    template["processes"][charging_process_name][
                         "peq_name"
                     ] = "charging_curve_power"
-                    template["processes"][process_name + str(vt.id)]["peq_params"] = {
+                    template["processes"][charging_process_name]["peq_params"] = {
                         "soc": [soc_power_pair[0] for soc_power_pair in charging_curve],
                         "power": [
                             soc_power_pair[1] for soc_power_pair in charging_curve
@@ -410,7 +410,7 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                         "precision": 0.01,
                     }
 
-                    del template["processes"][process_name + str(vt.id)]["dur"]
+                    del template["processes"][charging_process_name]["dur"]
 
                 # delete the original process
                 del template["processes"][process_name]
