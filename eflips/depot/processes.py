@@ -1271,8 +1271,11 @@ class ChargeEquationSteps(ChargeAbstract):
                 )
                 soc_target_step = self.vehicle.battery.soc + soc_interval
                 amount = self.vehicle.battery.energy_real * soc_interval
-                effective_power = self.power * self.efficiency
-                self.dur = int(amount / effective_power * 3600)
+                effective_power = (
+                    self.power
+                    * self.efficiency
+                    * self.vehicle.vehicle_type.charging_efficiency
+                )
 
                 if self.dur == 0:
                     # amount is so small that dur is <1s. Reduce the precision

@@ -45,6 +45,7 @@ class VehicleType:
         self.soh = soh
         self.CR = CR
         self.group = None
+        self.charging_efficiency = charging_efficiency
 
         self.count = {}
         self.share = {}
