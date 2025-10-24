@@ -128,7 +128,7 @@ class DepotConfigurationWish:
         if self.auto_generate is True:
             if self.default_power is None or self.standard_block_length is None:
                 raise ValueError(
-                    "If auto_generate is True, default_power, standard_block_length, cleaning_slots, cleaning_duration and shunting_slots must be provided."
+                    "If auto_generate is True, default_power, standard_block_length must be provided."
                 )
             if (
                 self.cleaning_slots is not None
