@@ -685,7 +685,9 @@ def simulate_scenario(
             case SmartChargingStrategy.NONE:
                 pass
             case SmartChargingStrategy.EVEN:
-                apply_even_smart_charging(scenario, database_url)
+                apply_even_smart_charging(
+                    scenario, database_url, delete_existing_charging_timeseries=True
+                )
             case SmartChargingStrategy.MIN_PRICE:
                 raise NotImplementedError("MIN_PRICE strategy is not implemented yet.")
             case _:
