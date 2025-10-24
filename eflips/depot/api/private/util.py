@@ -102,6 +102,7 @@ def vehicle_type_to_global_constants_dict(vt: VehicleType) -> Dict[str, float]:
         "soc_max": 1.0,
         "soc_init": 1.0,
         "soh": 1.0,
+        "charging_efficiency": vt.charging_efficiency,
     }
     return the_dict
 

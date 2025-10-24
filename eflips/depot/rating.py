@@ -422,7 +422,7 @@ class RfdDiffDispatch:
         diffs = []
         for vehicle in area.vehicles:
             etc = vehicle.dwd.etc_processes
-            if isinstance(etc, int):
+            if isinstance(etc, int) or isinstance(etc, float):
                 diff = etc - slot[0].env.now
                 diffs.append(diff)
             # Convert EstimateValue to numerical rfddiff

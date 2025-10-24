@@ -1,6 +1,7 @@
 import datetime
 import itertools
 import logging
+import math
 import warnings
 from datetime import timedelta
 from typing import List, Dict
@@ -398,6 +399,10 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
     """
     battery_log_list = []
     for log in battery_log:
+        # TODO this is a bypass of update events having lower energy_real than the event before. It happens in processes L 1304
+        if log.event_name == "update":
+            continue
+
         battery_log_list.append((log.t, round(log.energy / log.energy_real, 4)))
 
     time_keys = sorted(dict_of_events.keys())
@@ -522,7 +527,7 @@ def add_events_into_database(
         if "timeseries" in process_dict.keys():
             # Convert "time" in timeseries to timedelta
             timeseries["time"] = [
-                (timedelta(seconds=t) + simulation_start_time).isoformat()
+                (timedelta(seconds=math.ceil(t)) + simulation_start_time).isoformat()
                 for t in process_dict["timeseries"]["time"]
             ]
             timeseries["soc"] = process_dict["timeseries"]["soc"]
