@@ -1196,7 +1196,9 @@ def depot_smallest_possible_size(
 
                     # Simulate the depot
                     simulate_scenario(
-                        scenario, smart_charging_strategy=SmartChargingStrategy.NONE
+                        scenario,
+                        smart_charging_strategy=SmartChargingStrategy.NONE,
+                        ignore_unstable_simulation=True,
                     )
 
                     # Find the peak usage of the depot
