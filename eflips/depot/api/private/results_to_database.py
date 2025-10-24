@@ -399,6 +399,10 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
     """
     battery_log_list = []
     for log in battery_log:
+        # TODO this is a bypass of update events having lower energy_real than the event before. It happens in processes L 1304
+        if log.event_name == "update":
+            continue
+
         battery_log_list.append((log.t, round(log.energy / log.energy_real, 4)))
 
     time_keys = sorted(dict_of_events.keys())
