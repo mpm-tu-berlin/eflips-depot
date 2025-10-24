@@ -1196,7 +1196,9 @@ def depot_smallest_possible_size(
 
                     # Simulate the depot
                     simulate_scenario(
-                        scenario, smart_charging_strategy=SmartChargingStrategy.NONE
+                        scenario,
+                        smart_charging_strategy=SmartChargingStrategy.NONE,
+                        ignore_unstable_simulation=True,
                     )
 
                     # Find the peak usage of the depot
@@ -1260,12 +1262,6 @@ def depot_smallest_possible_size(
 
                 except MissingVehicleDimensionError as e:
                     raise e
-                except UnstableSimulationException as e:
-                    # This change is made after Unstable exception and delay exceptions are introduced
-                    logger.debug(
-                        f"Results are unstable, suggesting depot is too small."
-                    )
-                    continue
                 except DelayedTripException as e:
                     logger.debug(f"Trips are delayed, suggesting depot is too small.")
                     continue
@@ -1275,6 +1271,10 @@ def depot_smallest_possible_size(
         # Identify the best configuration for each vehicle type
         ret_val: Dict[VehicleType, Dict[AreaType, int]] = dict()
         for vt in vts_and_rotations.keys():
+            assert area_needed[vt] != {}, (
+                f"No valid configurations found for {vt.name}, "
+                f"please check if there are any delays after simulating scenario."
+            )
             best_config = min(area_needed[vt].keys(), key=lambda x: area_needed[vt][x])
             ret_val[vt] = {
                 AreaType.LINE: best_config * standard_block_length,
