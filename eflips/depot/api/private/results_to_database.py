@@ -1,6 +1,7 @@
 import datetime
 import itertools
 import logging
+import math
 import warnings
 from datetime import timedelta
 from typing import List, Dict
@@ -522,7 +523,7 @@ def add_events_into_database(
         if "timeseries" in process_dict.keys():
             # Convert "time" in timeseries to timedelta
             timeseries["time"] = [
-                (timedelta(seconds=t) + simulation_start_time).isoformat()
+                (timedelta(seconds=math.ceil(t)) + simulation_start_time).isoformat()
                 for t in process_dict["timeseries"]["time"]
             ]
             timeseries["soc"] = process_dict["timeseries"]["soc"]
