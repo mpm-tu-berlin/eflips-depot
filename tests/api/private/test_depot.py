@@ -32,7 +32,11 @@ from geoalchemy2.shape import from_shape
 from shapely import Point
 
 from api.test_api import TestHelpers
-from eflips.depot.api import simple_consumption_simulation, simulate_scenario
+from eflips.depot.api import (
+    simple_consumption_simulation,
+    simulate_scenario,
+    generate_depot_optimal_size,
+)
 from eflips.depot.api.private.depot import (
     area_needed_for_vehicle_parking,
     generate_depot,
@@ -592,7 +596,7 @@ class TestGenerateOptimalDepot(TestHelpers):
         session.commit()
         return scenario
 
-    def test_generate_optimal_depot(self, session, full_scenario):
+    def test_calculate_depot_optimal_size(self, session, full_scenario):
         station_to_create_at = (
             session.query(Station).filter(Station.name_short == "TS1").one()
         )
@@ -603,3 +607,12 @@ class TestGenerateOptimalDepot(TestHelpers):
         depot_smallest_possible_size(
             station_to_create_at, full_scenario, session, standard_block_length=6
         )
+
+    def test_generate_optimal_depot(self, session, full_scenario):
+        generate_depot_optimal_size(full_scenario, delete_existing_depot=True)
+
+        depot = session.query(Depot).filter(Depot.scenario_id == full_scenario.id).all()
+        assert len(depot) != 0, "No depot was created in the scenario!"
+
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        assert len(areas) != 0, "No areas were created in the depot!"
