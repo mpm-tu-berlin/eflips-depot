@@ -36,11 +36,15 @@ from eflips.depot.api import (
     simple_consumption_simulation,
     simulate_scenario,
     generate_depot_optimal_size,
+    generate_optimal_depot_layout,
 )
+
+from eflips.depot.api.private.depot import DepotConfigurationWish, AreaInformation
 from eflips.depot.api.private.depot import (
     area_needed_for_vehicle_parking,
     generate_depot,
     depot_smallest_possible_size,
+    group_rotations_by_start_end_stop,
 )
 
 
@@ -386,6 +390,8 @@ class TestGenerateOptimalDepot(TestHelpers):
             length=10,
             width=2.5,
             height=4,
+            empty_mass=12000,
+            allowed_mass=16760,
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
@@ -404,6 +410,8 @@ class TestGenerateOptimalDepot(TestHelpers):
             length=10,
             width=2.5,
             height=4,
+            empty_mass=12000,
+            allowed_mass=16760,
         )
         session.add(vehicle_type)
 
@@ -616,3 +624,96 @@ class TestGenerateOptimalDepot(TestHelpers):
 
         areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
         assert len(areas) != 0, "No areas were created in the depot!"
+
+    def test_generate_optimal_depot_auto_generate(self, session, full_scenario):
+        station_rotation_group = group_rotations_by_start_end_stop(
+            full_scenario.id, session
+        )
+
+        depot_wishes = []
+        for station, rotation_groups in station_rotation_group.items():
+            depot_wish = DepotConfigurationWish(
+                station_id=station[0].id,
+                auto_generate=True,
+                default_power=150,
+                standard_block_length=6,
+            )
+
+            depot_wishes.append(depot_wish)
+        generate_optimal_depot_layout(
+            depot_wishes, full_scenario, delete_existing_depot=True
+        )
+
+        depots = (
+            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).all()
+        )
+        assert len(depots) == 1, "1 depot was expected to be created in the scenario!"
+
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        assert len(areas) != 0, "No areas were created in the depot!"
+
+    def test_generate_optimal_depot_from_wish(self, session, full_scenario):
+        station_rotation_group = group_rotations_by_start_end_stop(
+            full_scenario.id, session
+        )
+
+        depot_wishes = []
+
+        area_infos = []
+        vehicle_types = session.query(VehicleType).all()
+        for vt in vehicle_types:
+            area_info_direct = AreaInformation(
+                vehicle_type_id=vt.id,
+                area_type=AreaType.DIRECT_ONESIDE,
+                capacity=20,
+                power=150,
+            )
+            area_info_line = AreaInformation(
+                vehicle_type_id=vt.id,
+                area_type=AreaType.LINE,
+                capacity=6,
+                power=200,
+                block_length=6,
+            )
+            area_infos.append(area_info_direct)
+            area_infos.append(area_info_line)
+
+            # area_infos.append(area_info)
+        for station, rotation_groups in station_rotation_group.items():
+            depot_wish = DepotConfigurationWish(
+                station_id=station[0].id,
+                auto_generate=False,
+                default_power=150,
+                standard_block_length=6,
+                cleaning_slots=2,
+                shunting_slots=2,
+                shunting_duration=timedelta(minutes=5),
+                cleaning_duration=timedelta(minutes=10),
+                areas=area_infos,
+            )
+
+            depot_wishes.append(depot_wish)
+
+        generate_optimal_depot_layout(
+            depot_wishes, full_scenario, delete_existing_depot=True
+        )
+
+        depots = (
+            session.query(Depot).filter(Depot.scenario_id == full_scenario.id).all()
+        )
+        assert len(depots) == 1, "1 depot was expected to be created in the scenario!"
+
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        assert len(areas) != 0, "No areas were created in the depot!"
+
+        charging_areas = (
+            session.query(Area)
+            .filter(
+                Area.scenario_id == full_scenario.id,
+                Area.vehicle_type_id.isnot(None),
+            )
+            .all()
+        )
+        assert len(charging_areas) == 2 * len(
+            vehicle_types
+        ), "Charging areas for each vehicle type were expected to be created in the depot!"

@@ -126,20 +126,27 @@ class DepotConfigurationWish:
         self.areas = areas
 
         if self.auto_generate is True:
-            if self.default_power is None or self.standard_block_length is None:
-                raise ValueError(
-                    "If auto_generate is True, default_power, standard_block_length must be provided."
-                )
-            if (
-                self.cleaning_slots is not None
-                or self.cleaning_duration is not None
-                or self.shunting_slots is not None
-                or self.shunting_duration is not None
-            ):
-                raise ValueError(
-                    "If auto_generate is True, default_power, standard_block_length, cleaning_slots, cleaning_duration and shunting_slots cannot be provided."
-                )
-        # do some simple validation here
+            assert (
+                self.default_power is not None
+            ), "default_power must be provided if auto_generate is True"
+            assert (
+                self.standard_block_length is not None
+            ), "standard_block_length must be provided if auto_generate is True"
+
+            assert (
+                self.cleaning_slots is None
+            ), "cleaning_slots cannot be provided if auto_generate is True"
+            assert (
+                self.cleaning_duration is None
+            ), "cleaning_duration cannot be provided if auto_generate is True"
+            assert (
+                self.shunting_slots is None
+            ), "shunting_slots cannot be provided if auto_generate is True"
+            assert (
+                self.shunting_duration is None
+            ), "shunting_duration cannot be provided if auto_generate is True"
+
+            assert areas is None, "areas cannot be provided if auto_generate is True"
 
 
 def delete_depots(scenario: Scenario, session: Session) -> None:
