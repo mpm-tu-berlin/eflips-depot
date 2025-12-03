@@ -545,8 +545,9 @@ def add_events_into_database(
             area_id=area_id,
             subloc_no=process_dict["slot"] if "slot" in process_dict.keys() else 00,
             trip_id=None,
-            time_start=timedelta(seconds=start_time) + simulation_start_time,
-            time_end=timedelta(seconds=process_dict["end"]) + simulation_start_time,
+            time_start=timedelta(seconds=math.ceil(start_time)) + simulation_start_time,
+            time_end=timedelta(seconds=math.ceil(process_dict["end"]))
+            + simulation_start_time,
             soc_start=process_dict["soc_start"]
             if process_dict["soc_start"] is not None
             else process_dict["soc_end"],
