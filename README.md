@@ -104,4 +104,4 @@ This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md
 
 ## Funding Notice
 
-This code was developed as part of the project [eBus2030+]([https://www.eflip.de/](https://www.now-gmbh.de/projektfinder/e-bus-2030/)) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
+This code was developed as part of the project [eBus2030+](https://www.now-gmbh.de/projektfinder/e-bus-2030/) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
