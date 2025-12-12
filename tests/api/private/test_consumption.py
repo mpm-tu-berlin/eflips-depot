@@ -1,7 +1,5 @@
-import warnings
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-import numpy as np
 import pytest
 from eflips.model import (
     AssocRouteStation,
@@ -20,12 +18,12 @@ from eflips.model import (
 from geoalchemy2.shape import from_shape
 from shapely import Point
 
-from tests.api.test_api import TestHelpers
 from eflips.depot.api.private.consumption import (
     ConsumptionInformation,
     ConsumptionResult,
     extract_trip_information,
 )
+from tests.api.test_api import TestHelpers
 
 
 class TestConsumptionInformation(TestHelpers):
@@ -748,7 +746,7 @@ class TestConsumptionInformation(TestHelpers):
 
         with pytest.warns(ConsistencyWarning, match="No consumption LUT found"):
             with pytest.raises(
-                TypeError,
-                match="unsupported operand type",
+                ValueError,
+                match="must have a consumption value set if no consumption LUT is available.",
             ):
                 extract_trip_information(trip_without_lut.id, scenario)
