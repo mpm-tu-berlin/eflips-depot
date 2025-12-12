@@ -3,7 +3,7 @@ import warnings
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from math import ceil
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -88,11 +88,13 @@ class ConsumptionInformation:
     """
 
     trip_id: int
-    consumption_lut: ConsumptionLut | None  # the LUT for the vehicle class
+    consumption_lut: Optional[ConsumptionLut]  # the LUT for the vehicle class
     average_speed: float  # the average speed of the trip in km/h
     distance: float  # the distance of the trip in km
-    temperature: float  # The ambient temperature in °C
-    level_of_loading: float
+    temperature: Optional[float]  # The ambient temperature in °C
+    level_of_loading: Optional[
+        float
+    ]  # The level of loading of the vehicle as a fraction of its maximum payload
     incline: float = 0.0  # The incline of the trip in 0.0-1.0
     consumption: float = None  # The consumption of the trip in kWh
     consumption_per_km: float = None  # The consumption per km in kWh
@@ -302,22 +304,22 @@ def extract_trip_information(
 
         temperature = temperature_for_trip(trip_id, session)
 
-        payload_mass = passenger_mass * passenger_count
-        assert (
-            trip.rotation.vehicle_type.allowed_mass is not None
-        ), f"allowed_mass of vehicle {trip.rotation.vehicle_type} must be set"
-
-        assert (
-            trip.rotation.vehicle_type.empty_mass is not None
-        ), f"empty_mass of vehicle {trip.rotation.vehicle_type} must be set"
-
-        full_payload = (
-            trip.rotation.vehicle_type.allowed_mass
-            - trip.rotation.vehicle_type.empty_mass
-        )
-        level_of_loading = payload_mass / full_payload
-
         if len(all_consumption_luts) == 1:
+            payload_mass = passenger_mass * passenger_count
+            assert (
+                trip.rotation.vehicle_type.allowed_mass is not None
+            ), f"allowed_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
+            assert (
+                trip.rotation.vehicle_type.empty_mass is not None
+            ), f"empty_mass of vehicle {trip.rotation.vehicle_type} must be set"
+
+            full_payload = (
+                trip.rotation.vehicle_type.allowed_mass
+                - trip.rotation.vehicle_type.empty_mass
+            )
+            level_of_loading = payload_mass / full_payload
+
             consumption_lut = all_consumption_luts[0]
             # Disconnect the consumption LUT from the session to avoid loading the whole table
 
@@ -339,9 +341,10 @@ def extract_trip_information(
             )
             # Here, we fill out the condumption information without the LUT and LUT data, but with `consumption_per_km`
             # set to the vehicle's `consumption` value.
-            assert (
-                VehicleType.consumption is not None
-            ), f"Vehicle type {trip.rotation.vehicle_type} must have a consumption value set if no consumption LUT is available."
+            if trip.rotation.vehicle_type.consumption is None:
+                raise ValueError(
+                    f"Vehicle type {trip.rotation.vehicle_type} must have a consumption value set if no consumption LUT is available."
+                )
             info = ConsumptionInformation(
                 trip_id=trip.id,
                 average_speed=average_speed,
@@ -350,7 +353,7 @@ def extract_trip_information(
                 consumption=trip.rotation.vehicle_type.consumption * total_distance,
                 consumption_lut=None,
                 temperature=temperature,
-                level_of_loading=level_of_loading,
+                level_of_loading=None,
             )
         else:
             raise ValueError(
