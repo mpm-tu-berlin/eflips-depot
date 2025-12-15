@@ -501,7 +501,7 @@ def add_events_into_database(
                     '"Standby", "Precondition"'
                 )
 
-        if process_dict["end"] == start_time:
+        if math.ceil(process_dict["end"]) == math.ceil(start_time):
             logger.warning("Refusing to create an event with zero duration.")
             continue
 
