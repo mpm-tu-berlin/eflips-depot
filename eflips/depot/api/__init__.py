@@ -328,13 +328,23 @@ def simple_consumption_simulation(
 
             # The departure SoC for this rotation is the SoC of the last event preceding the first trip
             with session.no_autoflush:
-                current_soc = (
+                current_soc_q = (
                     session.query(Event.soc_end)
                     .filter(Event.vehicle_id == rotation.vehicle_id)
                     .filter(Event.time_end <= rotation.trips[0].departure_time)
                     .order_by(Event.time_end.desc())
-                    .first()[0]
+                    .first()
                 )
+                if current_soc_q is None:
+                    # We – for some reason – do not have an initial event for this vehicle. This is due to unstable
+                    # simulation in the depot. We set the SoC to 1.0 and add a warning.
+                    current_soc = 1.0
+                    warnings.warn(
+                        f"No initial event found for vehicle {vehicle.id} before rotation {rotation.id}. Assuming 100% SoC.",
+                        ConsistencyWarning,
+                    )
+                else:
+                    current_soc = current_soc_q[0]
 
             for trip in rotation.trips:
                 # Set up a timeseries
