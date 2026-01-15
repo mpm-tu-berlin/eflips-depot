@@ -49,7 +49,7 @@ class AreaInformation:
     capacity: int
     """Capacity of the area."""
     block_length: int | None
-    """Block length of the area in meters. Only needed for AreaType.LINE."""
+    """Block length of the area in number of buses. Only needed for AreaType.LINE."""
     power: float
     """Charging power of the area in kW."""
     vehicle_type_id: int
@@ -96,12 +96,33 @@ class DepotConfigurationWish:
     True if the depot should be auto-generated, False if the depot should be created from user input.
     """
     default_power: float | None
+    """
+    Default charging power in kW for auto-generated depots.
+    """
     standard_block_length: int | None
+    """
+    Default number of vehicles in a line for auto-generated depots.
+    """
     cleaning_slots: int | None
+    """
+    Number of cleaning slots for auto-generated depots.
+    """
     cleaning_duration: timedelta | None
+    """
+    Duration of the cleaning process for auto-generated depots.
+    """
     shunting_slots: int | None
+    """
+    Duration of the shunting process for auto-generated depots.
+    """
     shunting_duration: timedelta | None
+    """
+    Duration of the shunting process for auto-generated depots.
+    """
     areas: list[AreaInformation] | None  #
+    """
+    List of AreaInformation objects representing charging area configurations for user-defined depots.
+    """
 
     def __init__(
         self,
