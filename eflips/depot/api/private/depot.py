@@ -167,7 +167,7 @@ class DepotConfigurationWish:
                 self.shunting_duration is None
             ), "shunting_duration cannot be provided if auto_generate is True"
 
-            assert areas is None, "areas cannot be provided if auto_generate is True"
+            assert not areas, "areas cannot be provided if auto_generate is True"
 
 
 def delete_depots(scenario: Scenario, session: Session) -> None:
