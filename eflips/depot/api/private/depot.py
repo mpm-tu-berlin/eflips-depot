@@ -24,6 +24,7 @@ from eflips.model import (
     VehicleType,
     Vehicle,
     EventType,
+    EnergySource,
 )
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -597,6 +598,8 @@ def generate_depot(
     cleaning_duration: None | timedelta = timedelta(minutes=30),
     num_cleaning_slots: int = 10,
     charging_power: float = 90,
+    num_tanking_slots: Optional[int] = None,
+    tanking_duration: None | timedelta = timedelta(minutes=15),
 ) -> None:
     """
     Creates a depot object with all associated data structures and adds them to the database.
@@ -736,6 +739,58 @@ def generate_depot(
             )
         )
 
+    if tanking_duration is not None and num_tanking_slots is not None:
+        tanking = Process(
+            name="Tanking",
+            scenario=scenario,
+            dispatchable=False,
+            duration=tanking_duration,
+        )
+        session.add(tanking)
+        tanking_area = Area(
+            scenario=scenario,
+            name=f"Tanking Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be tanked here
+            capacity=num_tanking_slots,
+        )
+        session.add(tanking_area)
+        tanking_area.processes.append(tanking)
+        assocs.append(
+            AssocPlanProcess(
+                scenario=scenario, process=tanking, plan=plan, ordinal=len(assocs)
+            )
+        )
+
+        # Add another shunting process after tanking if shunting is needed
+        if shunting_duration is not None:
+            shunting_3 = Process(
+                name="Shunting after Tanking",
+                scenario=scenario,
+                dispatchable=False,
+                duration=shunting_duration,
+            )
+            session.add(shunting_3)
+            shunting_area_3 = Area(
+                scenario=scenario,
+                name=f"Shunting Area after Tanking",
+                depot=depot,
+                area_type=AreaType.DIRECT_ONESIDE,
+                vehicle_type=None,  # Meaning any vehicle type can be shunted here
+                capacity=num_shunting_slots,
+            )
+            session.add(shunting_area_3)
+            shunting_area_3.processes.append(shunting_3)
+            assocs.append(
+                AssocPlanProcess(
+                    scenario=scenario,
+                    process=shunting_3,
+                    plan=plan,
+                    ordinal=len(assocs),
+                )
+            )
+
     charging = Process(
         name="Charging",
         scenario=scenario,
@@ -772,14 +827,20 @@ def generate_depot(
         name=f"Waiting Area for every type of vehicle",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=rotation_count
-        * 4,  # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
+        capacity=rotation_count * 4,
+        # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
     )
     session.add(waiting_area)
 
     for vehicle_type, capacities in capacity_of_areas.items():
+        # TODO if vehicle_type.energy_source is diesel?
         vehicle_type: VehicleType
         capacities: Dict[AreaType, None | int]
+        processes_this_area = []
+        if vehicle_type.energy_source == EnergySource.BATTERY_ELECTRIC:
+            processes_this_area.append(charging)
+        processes_this_area.append(standby_departure)
+
         if capacities[AreaType.LINE] is not None and capacities[AreaType.LINE] > 0:
             # Create a number of LINE areas
             number_of_rows = capacities[AreaType.LINE] // standard_block_length
@@ -793,9 +854,9 @@ def generate_depot(
                 capacity=capacities[AreaType.LINE],
                 row_count=number_of_rows,
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+            area.processes = processes_this_area
             session.add(area)
+
         if (
             capacities[AreaType.DIRECT_ONESIDE] is not None
             and capacities[AreaType.DIRECT_ONESIDE] > 0
@@ -809,9 +870,10 @@ def generate_depot(
                 vehicle_type=vehicle_type,
                 capacity=capacities[AreaType.DIRECT_ONESIDE],
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+
+            area.processes = processes_this_area
             session.add(area)
+
         if (
             capacities[AreaType.DIRECT_TWOSIDE] is not None
             and capacities[AreaType.DIRECT_TWOSIDE] > 0
@@ -825,8 +887,8 @@ def generate_depot(
                 vehicle_type=vehicle_type,
                 capacity=capacities[AreaType.DIRECT_TWOSIDE],
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+
+            area.processes = processes_this_area
             session.add(area)
 
     session.flush()
