@@ -26,10 +26,12 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    EnergySource,
 )
 from eflips.model import create_engine
 from geoalchemy2.shape import from_shape
 from shapely import Point
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
@@ -40,6 +42,8 @@ from eflips.depot.api import (
     simulate_scenario,
     add_evaluation_to_database,
     schedule_duration_days,
+    simulate_diesel_scenario,
+    simulate_heterogeneous_scenario,
 )
 
 
@@ -1265,6 +1269,109 @@ class TestApi(TestHelpers):
         for event in all_charging_events:
             assert event.soc_end > event.soc_start
             assert event.soc_end < 1
+
+    def test_simulate_diesel_scenario(self, session, full_scenario):
+        diesel_scenario = full_scenario.clone(session)
+        simulate_diesel_scenario(diesel_scenario)
+
+        # Test events are generated
+        events = (
+            session.query(Event).filter(Event.scenario_id == diesel_scenario.id).all()
+        )
+        assert len(events) > 0
+
+        # Test no charging events are generated
+        charging_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == diesel_scenario.id,
+                or_(
+                    Event.event_type == EventType.CHARGING_DEPOT,
+                    Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                ),
+            )
+            .all()
+        )
+        assert len(charging_events) == 0
+
+        # Test all soc values are 1.0
+        assert all(e.soc_start == 1.0 for e in events)
+        assert all(e.soc_end == 1.0 for e in events)
+
+        all_diesel_vt = (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == diesel_scenario.id)
+            .all()
+        )
+        for vt in all_diesel_vt:
+            assert vt.energy_source == EnergySource.DIESEL
+
+    def test_simulate_heterogenous_scenario(self, session, full_scenario):
+        heterogeneous_scenario = full_scenario.clone(session)
+
+        simulate_heterogeneous_scenario(
+            scenario=heterogeneous_scenario,
+            diesel_rotation_ids=[
+                r.id for r in heterogeneous_scenario.rotations[:1]
+            ],  # Make the first rotation diesel, the rest electric
+        )
+
+        diesel_vt_ids = [
+            vt.id
+            for vt in session.query(VehicleType)
+            .filter(
+                VehicleType.scenario_id == heterogeneous_scenario.id,
+                VehicleType.energy_source == EnergySource.DIESEL,
+            )
+            .all()
+        ]
+        electric_vt_ids = [
+            vt.id
+            for vt in session.query(VehicleType)
+            .filter(
+                VehicleType.scenario_id == heterogeneous_scenario.id,
+                VehicleType.energy_source == EnergySource.BATTERY_ELECTRIC,
+            )
+            .all()
+        ]
+
+        # --- Diesel event assertions ---
+        diesel_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == heterogeneous_scenario.id,
+                Event.vehicle_type_id.in_(diesel_vt_ids),
+            )
+            .all()
+        )
+        assert len(diesel_events) > 0
+
+        # No charging events for diesel vehicles
+        assert not any(
+            e.event_type in (EventType.CHARGING_DEPOT, EventType.CHARGING_OPPORTUNITY)
+            for e in diesel_events
+        )
+
+        # All SOC values are 1.0 for diesel
+        assert all(e.soc_start == 1.0 for e in diesel_events)
+        assert all(e.soc_end == 1.0 for e in diesel_events)
+
+        # --- Electric event assertions ---
+        electric_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == heterogeneous_scenario.id,
+                Event.vehicle_type_id.in_(electric_vt_ids),
+            )
+            .all()
+        )
+        assert len(electric_events) > 0
+
+        # Charging events exist for electric vehicles
+        assert any(e.event_type == EventType.CHARGING_DEPOT for e in electric_events)
+
+        # SOC values vary for electric vehicles (not all 1.0)
+        assert not all(e.soc_start == 1.0 for e in electric_events)
 
 
 class TestSimpleConsumptionSimulation(TestHelpers):

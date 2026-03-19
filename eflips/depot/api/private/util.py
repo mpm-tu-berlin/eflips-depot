@@ -19,6 +19,7 @@ from eflips.model import (
     Depot,
     Temperatures,
     ConsistencyWarning,
+    EnergySource,
 )
 from eflips.model import create_engine
 from sqlalchemy import inspect
@@ -245,6 +246,66 @@ def temperature_for_trip(trip_id: int, session: Session) -> float:
 
     temperature = np.interp(mid_time, datetimes, temperatures)
     return float(temperature)
+
+
+def assign_diesel_vehicle_types(
+    scenario: Scenario,
+    session: Session,
+    diesel_rotation_ids: List[int],
+) -> None:
+    """
+    Core logic for heterogeneous fleet setup. Operates directly on an open session.
+
+    For each unique vehicle type found among the given rotations, creates a diesel equivalent
+    and reassigns those rotations to it. All other rotations are untouched.
+    """
+    diesel_rotations = (
+        session.query(Rotation)
+        .filter(
+            Rotation.scenario_id == scenario.id,
+            Rotation.id.in_(diesel_rotation_ids),
+        )
+        .all()
+    )
+
+    unique_vt_ids = {
+        r.vehicle_type_id for r in diesel_rotations if r.vehicle_type_id is not None
+    }
+    original_vts = (
+        session.query(VehicleType).filter(VehicleType.id.in_(unique_vt_ids)).all()
+    )
+
+    vt_id_to_diesel: Dict[int, VehicleType] = {}
+    for vt in original_vts:
+        diesel_vt = VehicleType(
+            scenario_id=scenario.id,
+            name=f"Diesel {vt.name}",
+            name_short=f"Diesel {vt.name_short}" if vt.name_short else None,
+            energy_source=EnergySource.DIESEL,
+            consumption=0.0001,
+            battery_type_id=None,
+            battery_capacity=vt.battery_capacity,
+            battery_capacity_reserve=vt.battery_capacity_reserve,
+            charging_curve=vt.charging_curve,
+            v2g_curve=None,
+            charging_efficiency=vt.charging_efficiency,
+            opportunity_charging_capable=False,
+            minimum_charging_power=0.0,
+            length=vt.length,
+            width=vt.width,
+            height=vt.height,
+            empty_mass=vt.empty_mass,
+            allowed_mass=vt.allowed_mass,
+            tco_parameters=vt.tco_parameters,
+            lca_params=vt.lca_params,
+        )
+        session.add(diesel_vt)
+        session.flush()  # obtain the new ID before updating rotations
+        vt_id_to_diesel[vt.id] = diesel_vt
+
+    for rotation in diesel_rotations:
+        if rotation.vehicle_type_id in vt_id_to_diesel:
+            rotation.vehicle_type = vt_id_to_diesel[rotation.vehicle_type_id]
 
 
 @dataclass

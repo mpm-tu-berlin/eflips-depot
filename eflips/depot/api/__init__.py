@@ -51,6 +51,7 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
+    EnergySource,
 )
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -93,6 +94,7 @@ from eflips.depot.api.private.util import (
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
     check_depot_validity,
+    assign_diesel_vehicle_types,
 )
 
 from eflips.depot.api.private.depot import AreaInformation, DepotConfigurationWish
@@ -1566,3 +1568,90 @@ def generate_optimal_depot_layout(
         create_depots_from_wish(
             depot_config_wishes, grouped_rotations, scenario, session
         )
+
+
+def simulate_diesel_scenario(
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+) -> None:
+    """
+    Converts all BATTERY_ELECTRIC vehicle types in the scenario to DIESEL and runs
+    the full simulation pipeline in-place.
+
+    .. note::
+        This function modifies the scenario **in-place**. Clone the scenario before
+        calling if you want to preserve the original.
+
+    :param scenario: A :class:`eflips.model.Scenario` object or its integer ID.
+    :param database_url: Database URL required when ``scenario`` is an integer.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        diesel_vehicle_types = (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        )
+
+        for vt in diesel_vehicle_types:
+            if vt.energy_source == EnergySource.BATTERY_ELECTRIC:
+                vt.consumption = 0.0001
+                vt.energy_source = EnergySource.DIESEL
+                vt.name = f"Diesel {vt.name}"
+                vt.name_short = f"Diesel {vt.name_short}"
+
+        session.query(Rotation).filter(
+            Rotation.scenario_id == scenario.id
+        ).update({"vehicle_id": None})
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+
+        delete_depots(scenario, session)
+        session.flush()
+        session.expire_all()
+
+    generate_depot_optimal_size(scenario=scenario, delete_existing_depot=True)
+    simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
+    simulate_scenario(scenario)
+    simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+
+
+def simulate_heterogeneous_scenario(
+    scenario: Union[Scenario, int, Any],
+    diesel_rotation_ids: List[int],
+    database_url: Optional[str] = None,
+) -> None:
+    """
+    Runs a full depot simulation for a heterogeneous (partially electrified) fleet.
+
+    The specified rotations are reassigned to diesel vehicle types; all other rotations keep
+    their original (electric) vehicle types. The depot layout is then (re-)generated and the
+    simulation pipeline is executed.
+
+    .. note::
+        This function modifies the scenario **in-place**. Clone the scenario before
+        calling if you want to preserve the original. When cloning, note that rotation IDs
+        change — use :func:`map_rotation_ids` to map IDs from the original to the clone.
+
+    :param scenario: A :class:`eflips.model.Scenario` object or its integer ID.
+    :param diesel_rotation_ids: IDs of :class:`eflips.model.Rotation` objects (within this
+        scenario) that should be operated by diesel vehicles.
+    :param database_url: Database URL required when ``scenario`` is an integer.
+    """
+
+    with create_session(scenario, database_url) as (session, scenario):
+        assign_diesel_vehicle_types(scenario, session, diesel_rotation_ids)
+
+        # Clear simulation state so the pipeline starts from scratch
+        session.query(Rotation).filter(Rotation.scenario_id == scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        delete_depots(scenario, session)
+        session.flush()
+        session.expire_all()
+
+    generate_depot_optimal_size(scenario=scenario, delete_existing_depot=True)
+    simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
+    simulate_scenario(scenario)
+    simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
