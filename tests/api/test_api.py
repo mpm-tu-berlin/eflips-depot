@@ -87,7 +87,7 @@ class TestHelpers:
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass=100, chemistry="test"
         )
         session.add(battery_type)
         vehicle_type.battery_type = battery_type
@@ -393,7 +393,7 @@ class TestHelpers:
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
-            scenario=multi_depot_scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=multi_depot_scenario, specific_mass=100, chemistry="test"
         )
         session.add(battery_type)
         vehicle_type.battery_type = battery_type
