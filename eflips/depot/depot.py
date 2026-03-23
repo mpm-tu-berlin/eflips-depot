@@ -2730,8 +2730,8 @@ class ParkingAreaGroup(AreaGroup):
                     self.max_power = None
 
             else:
-                min_power = None
-                max_power = None
+                min_power = 0
+                max_power = 0
 
     def put(self, item, selection=None):
         """Summarize put_imm and put_wait.
