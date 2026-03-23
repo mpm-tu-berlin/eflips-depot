@@ -301,6 +301,30 @@ def simple_consumption_simulation(
         session.flush()
 
         for rotation in rotations:
+            if rotation.vehicle_type.energy_source == EnergySource.DIESEL:
+                with session.no_autoflush:
+                    vehicle = (
+                        session.query(Vehicle)
+                        .join(Rotation)
+                        .filter(Rotation.id == rotation.id)
+                        .one()
+                    )
+                for trip in rotation.trips:
+                    current_event = Event(
+                        scenario_id=scenario.id,
+                        vehicle_type_id=rotation.vehicle_type_id,
+                        vehicle=vehicle,
+                        trip_id=trip.id,
+                        time_start=trip.departure_time,
+                        time_end=trip.arrival_time,
+                        soc_start=1.0,
+                        soc_end=1.0,
+                        event_type=EventType.DRIVING,
+                        description=f"Diesel bus driving event for trip {trip.id}.",
+                        timeseries=None,
+                    )
+                    session.add(current_event)
+                continue
             rotation: Rotation
             with session.no_autoflush:
                 vehicle_type = (
