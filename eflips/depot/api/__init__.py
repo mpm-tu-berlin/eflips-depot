@@ -54,7 +54,7 @@ from eflips.model import (
     EnergySource,
 )
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import eflips.depot
 from eflips.depot import (
@@ -1088,19 +1088,26 @@ def add_evaluation_to_database(
 
         # Depot-layer operations
 
-        list_of_assigned_schedules = []
+        list_of_assigned_rotations = []
 
-        waiting_area_id = None
-
-        total_areas = session.query(Area).filter(Area.scenario_id == scenario.id).all()
-        for area in total_areas:
-            if area.depot_id == int(depot_id) and len(area.processes) == 0:
-                waiting_area_id = area.id
+        waiting_area_id = (
+            session.query(Area.id)
+            .filter(Area.depot_id == int(depot_id), ~Area.processes.any())
+            .scalar()
+        )
 
         assert isinstance(waiting_area_id, int) and waiting_area_id > 0, (
             f"Waiting area id should be an integer greater than 0. For every depot there must be at least "
             f"one waiting area."
         )
+
+        area_cache = {
+            area.id: area
+            for area in session.query(Area)
+            .filter(Area.depot_id == int(depot_id))
+            .options(joinedload(Area.depot))
+            .all()
+        }
 
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             # Vehicle-layer operations
@@ -1138,7 +1145,7 @@ def add_evaluation_to_database(
             if schedule_current_vehicle is None:
                 continue
 
-            list_of_assigned_schedules.extend(schedule_current_vehicle)
+            list_of_assigned_rotations.extend(schedule_current_vehicle)
 
             generate_vehicle_events(
                 dict_of_events,
@@ -1160,10 +1167,11 @@ def add_evaluation_to_database(
                 session,
                 scenario,
                 simulation_start_time,
+                area_cache,
             )
 
         # Postprocessing of events
-        update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
+        update_vehicle_in_rotation(session, scenario, list_of_assigned_rotations)
         update_waiting_events(session, scenario, waiting_area_id)
 
     if delay_exp.has_errors:
