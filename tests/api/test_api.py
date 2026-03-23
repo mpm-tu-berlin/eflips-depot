@@ -26,10 +26,12 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    EnergySource,
 )
 from eflips.model import create_engine
 from geoalchemy2.shape import from_shape
 from shapely import Point
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from eflips.depot.api import (
@@ -40,6 +42,7 @@ from eflips.depot.api import (
     simulate_scenario,
     add_evaluation_to_database,
     schedule_duration_days,
+    simulate_diesel_scenario,
 )
 
 
@@ -1265,6 +1268,42 @@ class TestApi(TestHelpers):
         for event in all_charging_events:
             assert event.soc_end > event.soc_start
             assert event.soc_end < 1
+
+    def test_simulate_diesel_scenario(self, session, full_scenario):
+        diesel_scenario = full_scenario.clone(session)
+        simulate_diesel_scenario(diesel_scenario)
+
+        # Test events are generated
+        events = (
+            session.query(Event).filter(Event.scenario_id == diesel_scenario.id).all()
+        )
+        assert len(events) > 0
+
+        # Test no charging events are generated
+        charging_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == diesel_scenario.id,
+                or_(
+                    Event.event_type == EventType.CHARGING_DEPOT,
+                    Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                ),
+            )
+            .all()
+        )
+        assert len(charging_events) == 0
+
+        # Test all soc values are 1.0
+        assert all(e.soc_start == 1.0 for e in events)
+        assert all(e.soc_end == 1.0 for e in events)
+
+        all_diesel_vt = (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == diesel_scenario.id)
+            .all()
+        )
+        for vt in all_diesel_vt:
+            assert vt.energy_source == EnergySource.DIESEL
 
 
 class TestSimpleConsumptionSimulation(TestHelpers):
