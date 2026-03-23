@@ -75,6 +75,7 @@ from eflips.depot.api.private.depot import (
     generate_depot,
     depot_smallest_possible_size,
     create_depots_from_wish,
+    estimate_service_capacity,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -1330,32 +1331,25 @@ def generate_depot_optimal_size(
             for vehicle_type, rotations in vehicle_type_rot_dict.items():
                 all_rotations_this_depot.extend(rotations)
 
-            # sort the rotations by their start time
-            all_rotations_this_depot.sort(key=lambda r: r.trips[0].departure_time)
+            estimated_cleaning_slot_count = estimate_service_capacity(
+                all_rotations_this_depot, timedelta(minutes=30)
+            )
+            estimated_shunting_slot_count = estimate_service_capacity(
+                all_rotations_this_depot, timedelta(minutes=5)
+            )
 
-            start_time = all_rotations_this_depot[0].trips[0].departure_time
-            end_time = all_rotations_this_depot[-1].trips[-1].arrival_time
+            # Estimate diesel rotation counts
+            diesel_rotations = []
+            for vehicle_type, rotations in vehicle_type_rot_dict.items():
+                if vehicle_type.energy_source == EnergySource.DIESEL:
+                    diesel_rotations.extend(rotations)
 
-            elapsed_time = (end_time - start_time).total_seconds()
-            # make them into a numpy with 30 min resolution
-            import numpy as np
-
-            TIME_RESOLUTION = 30 * 60  # 30 minutes in seconds
-
-            time_range = np.zeros(int(elapsed_time / TIME_RESOLUTION) + 1)
-            # calculate the number of rotations per time slot
-            for rot in all_rotations_this_depot:
-                start_time_index = int(
-                    (rot.trips[0].departure_time - start_time).total_seconds()
-                    // TIME_RESOLUTION
+            if len(diesel_rotations) > 0:
+                estimated_refueling_slot_count = estimate_service_capacity(
+                    diesel_rotations, timedelta(minutes=15)
                 )
-                end_time_index = int(
-                    (rot.trips[-1].arrival_time - start_time).total_seconds()
-                    // TIME_RESOLUTION
-                )
-                # interpolate the start and end time to the time range
-
-                time_range[start_time_index : end_time_index + 1] += 1
+            else:
+                estimated_refueling_slot_count = None
 
             generate_depot(
                 capacities,
@@ -1364,8 +1358,9 @@ def generate_depot_optimal_size(
                 session,
                 standard_block_length=standard_block_length,
                 charging_power=charging_power,
-                num_shunting_slots=int(max(time_range)),
-                num_cleaning_slots=int(max(time_range)),
+                num_shunting_slots=estimated_shunting_slot_count,
+                num_cleaning_slots=estimated_cleaning_slot_count,
+                num_refueling_slots=estimated_refueling_slot_count,
             )
 
 
