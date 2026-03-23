@@ -51,6 +51,7 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
+    EnergySource,
 )
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -527,6 +528,19 @@ def generate_depot_layout(
                 }
                 rotation_count_depot += len(rotations)
 
+            diesel_vt = (
+                session.query(VehicleType)
+                .filter(
+                    VehicleType.scenario_id == scenario.id,
+                    VehicleType.energy_source == EnergySource.DIESEL,
+                )
+                .all()
+            )
+            if len(diesel_vt) > 0:
+                num_refueling_slots = max(len(diesel_vt) // 10, 1)
+            else:
+                num_refueling_slots = None
+
             generate_depot(
                 vt_capacity_dict,
                 first_stop,
@@ -535,6 +549,7 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 num_shunting_slots=max(rotation_count_depot // 10, 1),
                 num_cleaning_slots=max(rotation_count_depot // 10, 1),
+                num_refueling_slots=num_refueling_slots,
             )
 
 
