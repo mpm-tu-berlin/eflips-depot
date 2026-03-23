@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.15.12"
+version = "4.16.0"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -46,6 +46,7 @@ django-environ = "^0.11.2"
 pre-commit = "^3.4.0"
 coverage = "^7.3.2"
 openpyxl = "^3.1.2"
+#eflips-model = {path = "../eflips-model", develop = true}
 
 [build-system]
 requires = ["poetry-core"]
