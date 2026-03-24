@@ -578,10 +578,17 @@ def update_vehicle_in_rotation(session, scenario, list_of_assigned_rotations) ->
     # New rotation assignment
     session.execute(
         update(Rotation)
-        .where(Rotation.id.in_([rotation_id for rotation_id, _ in list_of_assigned_rotations]))
+        .where(
+            Rotation.id.in_(
+                [rotation_id for rotation_id, _ in list_of_assigned_rotations]
+            )
+        )
         .values(
             vehicle_id=case(
-                *[(Rotation.id == rotation_id, vehicle_id) for rotation_id, vehicle_id in list_of_assigned_rotations]
+                *[
+                    (Rotation.id == rotation_id, vehicle_id)
+                    for rotation_id, vehicle_id in list_of_assigned_rotations
+                ]
             )
         )
     )

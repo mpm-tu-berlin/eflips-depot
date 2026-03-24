@@ -975,8 +975,6 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
     return results
 
 
-
-
 def add_evaluation_to_database(
     scenario: Scenario,
     depot_evaluations: Dict[str, DepotEvaluation],
@@ -1563,7 +1561,9 @@ def create_diesel_vehicle_type_copies(
         diesel_copy = type(original)()
         for column_attr in inspect(type(original)).column_attrs:
             if column_attr.key not in ("id", "scenario_id"):
-                setattr(diesel_copy, column_attr.key, getattr(original, column_attr.key))
+                setattr(
+                    diesel_copy, column_attr.key, getattr(original, column_attr.key)
+                )
 
         diesel_copy.scenario = scenario
         diesel_copy.energy_source = EnergySource.DIESEL
@@ -1576,6 +1576,3 @@ def create_diesel_vehicle_type_copies(
         vehicle_type_mapping[vehicle_type_id] = diesel_copy.id
 
     return vehicle_type_mapping
-
-
-

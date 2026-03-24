@@ -89,9 +89,7 @@ if __name__ == "__main__":
         session.query(Rotation).filter(
             Rotation.scenario_id == diesel_scenario.id
         ).update({"vehicle_id": None})
-        session.query(Event).filter(
-            Event.scenario_id == diesel_scenario.id
-        ).delete()
+        session.query(Event).filter(Event.scenario_id == diesel_scenario.id).delete()
         session.query(Vehicle).filter(
             Vehicle.scenario_id == diesel_scenario.id
         ).delete()
@@ -131,11 +129,15 @@ if __name__ == "__main__":
         generate_depot_layout(scenario=diesel_scenario, delete_existing_depot=True)
 
         # Consumption simulation generates driving events with soc_start = soc_end = 1.0 for diesel vehicles.
-        simple_consumption_simulation(scenario=diesel_scenario, initialize_vehicles=True)
+        simple_consumption_simulation(
+            scenario=diesel_scenario, initialize_vehicles=True
+        )
 
         simulate_scenario(diesel_scenario)
 
-        simple_consumption_simulation(scenario=diesel_scenario, initialize_vehicles=False)
+        simple_consumption_simulation(
+            scenario=diesel_scenario, initialize_vehicles=False
+        )
 
         session.commit()
         #
