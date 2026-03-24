@@ -53,7 +53,7 @@ from eflips.model import (
     Station,
     EnergySource,
 )
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from sqlalchemy.orm import Session, joinedload
 
 import eflips.depot
@@ -1536,48 +1536,46 @@ def generate_optimal_depot_layout(
         )
 
 
-def simulate_diesel_scenario(
-    scenario: Union[Scenario, int, Any],
-    database_url: Optional[str] = None,
-) -> None:
+def create_diesel_vehicle_type_copies(
+    vehicle_type_ids: set,
+    scenario: Any,
+    session: Session,
+) -> Dict[int, int]:
     """
-    Converts all BATTERY_ELECTRIC vehicle types in the scenario to DIESEL and runs
-    the full simulation pipeline in-place.
+    For each VehicleType ID in *vehicle_type_ids*, creates a DIESEL copy inside *scenario*
+    and returns a mapping ``{original_vt_id: diesel_vt_id}``.
 
-    .. note::
-        This function modifies the scenario **in-place**. Clone the scenario before
-        calling if you want to preserve the original.
+    The original vehicle types are left unchanged. The caller is responsible for
+    reassigning rotations using the returned mapping and for removing any orphaned
+    vehicle types afterwards.
 
-    :param scenario: A :class:`eflips.model.Scenario` object or its integer ID.
-    :param database_url: Database URL required when ``scenario`` is an integer.
+    :param vehicle_type_ids: IDs of the vehicle types to copy as diesel.
+    :param scenario: The :class:`eflips.model.Scenario` the copies belong to.
+    :param session: An active SQLAlchemy session.
+    :return: Dict mapping each original vehicle type ID to its new diesel copy ID.
     """
-    with create_session(scenario, database_url) as (session, scenario):
-        diesel_vehicle_types = (
-            session.query(VehicleType)
-            .filter(VehicleType.scenario_id == scenario.id)
-            .all()
+    vehicle_type_mapping: Dict[int, int] = {}
+    for vehicle_type_id in vehicle_type_ids:
+        original = (
+            session.query(VehicleType).filter(VehicleType.id == vehicle_type_id).one()
         )
 
-        for vt in diesel_vehicle_types:
-            if vt.energy_source == EnergySource.BATTERY_ELECTRIC:
-                vt.consumption = 0.0001
-                vt.energy_source = EnergySource.DIESEL
-                vt.name = f"Diesel {vt.name}"
-                vt.name_short = f"Diesel {vt.name_short}"
+        diesel_copy = type(original)()
+        for column_attr in inspect(type(original)).column_attrs:
+            if column_attr.key not in ("id", "scenario_id"):
+                setattr(diesel_copy, column_attr.key, getattr(original, column_attr.key))
 
-        session.query(Rotation).filter(
-            Rotation.scenario_id == scenario.id
-        ).update({"vehicle_id": None})
-        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
-        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        diesel_copy.scenario = scenario
+        diesel_copy.energy_source = EnergySource.DIESEL
+        diesel_copy.consumption = 0.0001
+        diesel_copy.name = f"{original.name} (diesel)"
+        diesel_copy.name_short = f"{original.name_short} (diesel)"
 
-        delete_depots(scenario, session)
+        session.add(diesel_copy)
         session.flush()
-        session.expire_all()
+        vehicle_type_mapping[vehicle_type_id] = diesel_copy.id
 
-    generate_depot_optimal_size(scenario=scenario, delete_existing_depot=True)
-    simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
-    simulate_scenario(scenario)
-    simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+    return vehicle_type_mapping
+
 
 

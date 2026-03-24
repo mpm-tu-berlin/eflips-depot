@@ -42,7 +42,8 @@ from eflips.depot.api import (
     simulate_scenario,
     add_evaluation_to_database,
     schedule_duration_days,
-    simulate_diesel_scenario,
+    create_diesel_vehicle_type_copies,
+    delete_depots,
 )
 
 
@@ -1269,21 +1270,104 @@ class TestApi(TestHelpers):
             assert event.soc_end > event.soc_start
             assert event.soc_end < 1
 
-    def test_simulate_diesel_scenario(self, session, full_scenario):
-        diesel_scenario = full_scenario.clone(session)
-        simulate_diesel_scenario(diesel_scenario)
+    def test_create_diesel_vehicle_type_copies(self, session, full_scenario):
+        original_vt_ids = {
+            vt.id
+            for vt in session.query(VehicleType)
+            .filter(VehicleType.scenario_id == full_scenario.id)
+            .all()
+        }
 
-        # Test events are generated
-        events = (
-            session.query(Event).filter(Event.scenario_id == diesel_scenario.id).all()
+        mapping = create_diesel_vehicle_type_copies(
+            original_vt_ids, full_scenario, session
         )
+        session.flush()
+
+        # Mapping covers every original VT
+        assert set(mapping.keys()) == original_vt_ids
+
+        for orig_id, diesel_id in mapping.items():
+            original = (
+                session.query(VehicleType).filter(VehicleType.id == orig_id).one()
+            )
+            diesel_copy = (
+                session.query(VehicleType).filter(VehicleType.id == diesel_id).one()
+            )
+
+            # Copy is DIESEL with correct naming
+            assert diesel_copy.energy_source == EnergySource.DIESEL
+            assert diesel_copy.consumption == 0.0001
+            assert diesel_copy.name == f"{original.name} (diesel)"
+            assert diesel_copy.name_short == f"{original.name_short} (diesel)"
+            assert diesel_copy.scenario_id == full_scenario.id
+
+            # Original is unchanged
+            assert original.energy_source == EnergySource.BATTERY_ELECTRIC
+
+    def _setup_heterogeneous_scenario(
+        self, session, full_scenario, num_diesel_rotations
+    ):
+        """
+        Shared setup for all-diesel and heterogeneous fleet tests, following the
+        approach in simulate_heterogeneous_fleet.py.
+
+        :param num_diesel_rotations: Number of rotations (by ascending id) to convert to
+            diesel. Pass None to convert all rotations.
+        """
+        scenario = full_scenario.clone(session)
+
+        session.query(Rotation).filter(Rotation.scenario_id == scenario.id).update(
+            {"vehicle_id": None}
+        )
+        session.query(Event).filter(Event.scenario_id == scenario.id).delete()
+        session.query(Vehicle).filter(Vehicle.scenario_id == scenario.id).delete()
+        delete_depots(scenario, session)
+
+        for vt in (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        ):
+            vt.energy_source = EnergySource.BATTERY_ELECTRIC
+
+        q = (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == scenario.id)
+            .order_by(Rotation.id)
+        )
+        if num_diesel_rotations is not None:
+            q = q.limit(num_diesel_rotations)
+        diesel_rotations = q.all()
+
+        selected_vt_ids = {r.vehicle_type_id for r in diesel_rotations}
+        mapping = create_diesel_vehicle_type_copies(selected_vt_ids, scenario, session)
+
+        for rotation in diesel_rotations:
+            rotation.vehicle_type_id = mapping[rotation.vehicle_type_id]
+
+        session.flush()
+        session.expire_all()
+
+        generate_depot_layout(scenario=scenario, delete_existing_depot=True)
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=True)
+        simulate_scenario(scenario)
+        simple_consumption_simulation(scenario=scenario, initialize_vehicles=False)
+        session.commit()
+
+        return scenario
+
+    def test_all_diesel_scenario(self, session, full_scenario):
+        # Convert all rotations to diesel
+        scenario = self._setup_heterogeneous_scenario(session, full_scenario, None)
+
+        events = session.query(Event).filter(Event.scenario_id == scenario.id).all()
         assert len(events) > 0
 
-        # Test no charging events are generated
+        # No charging events for an all-diesel fleet
         charging_events = (
             session.query(Event)
             .filter(
-                Event.scenario_id == diesel_scenario.id,
+                Event.scenario_id == scenario.id,
                 or_(
                     Event.event_type == EventType.CHARGING_DEPOT,
                     Event.event_type == EventType.CHARGING_OPPORTUNITY,
@@ -1293,17 +1377,62 @@ class TestApi(TestHelpers):
         )
         assert len(charging_events) == 0
 
-        # Test all soc values are 1.0
+        # All SoC values are 1.0 (diesel dummy)
         assert all(e.soc_start == 1.0 for e in events)
         assert all(e.soc_end == 1.0 for e in events)
 
-        all_diesel_vt = (
-            session.query(VehicleType)
-            .filter(VehicleType.scenario_id == diesel_scenario.id)
+    def test_heterogeneous_fleet_scenario(self, session, full_scenario):
+        # Convert 1 out of 3 rotations to diesel, keep the rest electric
+        scenario = self._setup_heterogeneous_scenario(session, full_scenario, 1)
+
+        events = session.query(Event).filter(Event.scenario_id == scenario.id).all()
+        assert len(events) > 0
+
+        # Charging events exist for the electric rotations
+        charging_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == scenario.id,
+                Event.event_type == EventType.CHARGING_DEPOT,
+            )
             .all()
         )
-        for vt in all_diesel_vt:
-            assert vt.energy_source == EnergySource.DIESEL
+        assert len(charging_events) > 0
+
+        # Both energy sources are present
+        remaining_vts = (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        )
+        energy_sources = {vt.energy_source for vt in remaining_vts}
+        assert EnergySource.DIESEL in energy_sources
+        assert EnergySource.BATTERY_ELECTRIC in energy_sources
+
+        # Events of diesel vehicles all have soc = 1.0
+        diesel_vt_ids = {
+            vt.id for vt in remaining_vts if vt.energy_source == EnergySource.DIESEL
+        }
+        diesel_vehicle_ids = {
+            v.id
+            for v in session.query(Vehicle)
+            .filter(
+                Vehicle.scenario_id == scenario.id,
+                Vehicle.vehicle_type_id.in_(diesel_vt_ids),
+            )
+            .all()
+        }
+        diesel_events = (
+            session.query(Event)
+            .filter(
+                Event.scenario_id == scenario.id,
+                Event.vehicle_id.in_(diesel_vehicle_ids),
+            )
+            .all()
+        )
+        assert len(diesel_events) > 0
+        assert all(e.soc_start == 1.0 for e in diesel_events)
+        assert all(e.soc_end == 1.0 for e in diesel_events)
 
 
 class TestSimpleConsumptionSimulation(TestHelpers):
