@@ -6,13 +6,13 @@ import warnings
 from eflips.model import *
 from eflips.model import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy import func, inspect
 
 from eflips.depot.api import (
     simple_consumption_simulation,
-    generate_depot_optimal_size,
     simulate_scenario,
     delete_depots,
+    generate_depot_layout,
+    create_diesel_vehicle_type_copies,
 )
 
 
@@ -77,104 +77,65 @@ if __name__ == "__main__":
         )
 
     engine = create_engine(args.database_url, echo=False)
-    NUM_DIESEL_ROTATIONS = 50
     with Session(engine) as session:
         orig_scenario = (
             session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
         )
 
-        # Modify scenario
+        diesel_scenario = orig_scenario.clone(session)
 
-        heterogeneous_scenario = orig_scenario.clone(session=session)
+        # Delete simulation results from the clone (events, vehicles, depot)
 
-        # Pick up random rotations as example. If a pure diesel scenario is desired, all rotations can be selected.
+        session.query(Rotation).filter(
+            Rotation.scenario_id == diesel_scenario.id
+        ).update({"vehicle_id": None})
+        session.query(Event).filter(
+            Event.scenario_id == diesel_scenario.id
+        ).delete()
+        session.query(Vehicle).filter(
+            Vehicle.scenario_id == diesel_scenario.id
+        ).delete()
 
-        diesel_rotations = (
-            session.query(Rotation).filter(
-                Rotation.scenario_id == heterogeneous_scenario.id
-            )
-            .order_by(func.random())
-            .limit(NUM_DIESEL_ROTATIONS)
+        delete_depots(diesel_scenario, session)
+
+        # Ensure all vehicle types are marked as electric before creating diesel copies
+
+        for vt in (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == diesel_scenario.id)
+            .all()
+        ):
+            vt.energy_source = EnergySource.BATTERY_ELECTRIC
+
+        # Convert all rotations to diesel
+
+        all_rotations = (
+            session.query(Rotation)
+            .filter(Rotation.scenario_id == diesel_scenario.id)
             .all()
         )
 
-        # Generate diesel vehicle types and assign them to the rotations
+        selected_vehicle_types = {r.vehicle_type_id for r in all_rotations}
+        vehicle_type_mapping = create_diesel_vehicle_type_copies(
+            selected_vehicle_types, diesel_scenario, session
+        )
 
-        selected_vehicle_types = set([dr.vehicle_type_id for dr in diesel_rotations])
-
-        # Create a mapping from the original vehicle types to the new diesel vehicle types
-        vehicle_type_mapping = {}
-        for vehicle_type_id in selected_vehicle_types:
-            original_vehicle_type = (
-                session.query(VehicleType)
-                .filter(VehicleType.id == vehicle_type_id)
-                .one()
-            )
-
-            # Copy vehicle type and modify it for diesel
-            diesel_vehicle_type = type(original_vehicle_type)()
-            for column_attr in inspect(type(original_vehicle_type)).column_attrs:
-                if column_attr.key not in ("id", "scenario_id"):
-                    setattr(
-                        diesel_vehicle_type,
-                        column_attr.key,
-                        getattr(original_vehicle_type, column_attr.key),
-                    )
-
-            diesel_vehicle_type.scenario = heterogeneous_scenario
-            diesel_vehicle_type.energy_source = EnergySource.DIESEL
-            diesel_vehicle_type.consumption = 0.0001  # This is a dummy value, since the consumption simulation is not used for diesel vehicle
-            diesel_vehicle_type.name = f"{original_vehicle_type.name} (diesel)"
-            diesel_vehicle_type.name_short = (
-                f"{original_vehicle_type.name_short} (diesel)"
-            )
-            # TCO parameters for the diesel vehicle type should be set here.
-
-            session.add(diesel_vehicle_type)
-
-            session.flush()
-            vehicle_type_mapping[vehicle_type_id] = diesel_vehicle_type.id
-
-        # Update the rotations to use the new diesel vehicle types
-        for rotation in diesel_rotations:
+        for rotation in all_rotations:
             rotation.vehicle_type_id = vehicle_type_mapping[rotation.vehicle_type_id]
-            session.add(rotation)
 
-        # Delete old depot and events. Remove the rotation-vehicle assignment.
-
-        session.query(Rotation).filter(
-            Rotation.scenario_id == heterogeneous_scenario.id
-        ).update({"vehicle_id": None})
-        session.query(Event).filter(
-            Event.scenario_id == heterogeneous_scenario.id
-        ).delete()
-        session.query(Vehicle).filter(
-            Vehicle.scenario_id == heterogeneous_scenario.id
-        ).delete()
-
-        delete_depots(heterogeneous_scenario, session)
         session.flush()
         session.expire_all()
 
-        # Generate the depot layout for the heterogeneous scenario. This will create a depot layout that can accommodate
-        # both the electric and diesel vehicles. Refueling processes and areas are created for the diesel vehicles.
+        # Generate the depot layout. Refueling processes and areas are created for diesel vehicles.
 
-        generate_depot_optimal_size(
-            scenario=heterogeneous_scenario, delete_existing_depot=True
-        )
+        generate_depot_layout(scenario=diesel_scenario, delete_existing_depot=True)
 
-        # Consumption Simulation. For diesel rotations, driving events with soc_start = 1.0 and soc_end = 1.0 are generated.
-        simple_consumption_simulation(
-            scenario=heterogeneous_scenario, initialize_vehicles=True
-        )
+        # Consumption simulation generates driving events with soc_start = soc_end = 1.0 for diesel vehicles.
+        simple_consumption_simulation(scenario=diesel_scenario, initialize_vehicles=True)
 
-        # Simulate the scenario.
-        simulate_scenario(heterogeneous_scenario)
+        simulate_scenario(diesel_scenario)
 
-        # Run the consumption simulation again.
-        simple_consumption_simulation(
-            scenario=heterogeneous_scenario, initialize_vehicles=False
-        )
+        simple_consumption_simulation(scenario=diesel_scenario, initialize_vehicles=False)
 
         session.commit()
         #
@@ -198,9 +159,9 @@ if __name__ == "__main__":
         else:
             # The visualization functions are now available. You can use them to visualize the results.
             # For example, to visualize the departure and arrival SoC, you can use the following code:
-            OUTPUT_DIR = os.path.join("output", heterogeneous_scenario.name)
+            OUTPUT_DIR = os.path.join("output", diesel_scenario.name)
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            for depot in heterogeneous_scenario.depots:
+            for depot in diesel_scenario.depots:
                 DEPOT_NAME = depot.station.name
                 DEPOT_OUTPUT_DIR = os.path.join(OUTPUT_DIR, DEPOT_NAME)
                 os.makedirs(DEPOT_OUTPUT_DIR, exist_ok=True)
@@ -208,7 +169,7 @@ if __name__ == "__main__":
                 # Find all the rotations that use the depot
                 rotations = (
                     session.query(Rotation)
-                    .filter(Rotation.scenario_id == heterogeneous_scenario.id)
+                    .filter(Rotation.scenario_id == diesel_scenario.id)
                     .options(
                         sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route)
                     )
@@ -220,7 +181,7 @@ if __name__ == "__main__":
                 rotation_ids = list(rotation_ids)
 
                 rotation_info = eflips.eval.input.prepare.rotation_info(
-                    scenario_id=heterogeneous_scenario.id,
+                    scenario_id=diesel_scenario.id,
                     session=session,
                     rotation_ids=rotation_ids,
                 )
@@ -250,7 +211,7 @@ if __name__ == "__main__":
                 )
                 vehicle_ids = [vehicle.id for vehicle in vehicles]
                 df = eflips.eval.output.prepare.depot_event(
-                    heterogeneous_scenario.id, session, vehicle_ids
+                    diesel_scenario.id, session, vehicle_ids
                 )
                 for color_scheme in "event_type", "soc", "location":
                     fig = eflips.eval.output.visualize.depot_event(
