@@ -8,7 +8,7 @@ from typing import List, Dict
 
 import numpy as np
 from eflips.model import Event, EventType, Rotation, Vehicle, Area, AreaType
-from sqlalchemy import select
+from sqlalchemy import case, select, update
 
 from eflips.depot import SimpleVehicle, ProcessStatus
 
@@ -371,9 +371,8 @@ def complete_standby_departure_events(
 
     :return: None. The results are added to the dictionary.
     """
-    for i in range(len(dict_of_events.keys())):
-        time_keys = sorted(dict_of_events.keys())
-
+    time_keys = sorted(dict_of_events.keys())
+    for i in range(len(time_keys)):
         process_dict = dict_of_events[time_keys[i]]
         if "end" not in process_dict and process_dict["type"] != "Trip":
             # End time of a standby_departure will be the start of the following trip
@@ -409,6 +408,7 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
 
     battery_log_times = [log[0] for log in battery_log_list]
     battery_log_socs = [log[1] for log in battery_log_list]
+    battery_log_index = {t: i for i, t in enumerate(battery_log_times)}
 
     for i in range(len(time_keys)):
         # Get soc
@@ -420,8 +420,8 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
             case "Charge" | "ChargeSteps" | "ChargeEquationSteps":
                 event_start = start_time
                 event_end = process_dict["end"]
-                start_time_index = battery_log_times.index(event_start)
-                end_time_index = battery_log_times.index(event_end)
+                start_time_index = battery_log_index[event_start]
+                end_time_index = battery_log_index[event_end]
                 time_series = {
                     "time": battery_log_times[start_time_index:end_time_index],
                     "soc": battery_log_socs[start_time_index:end_time_index],
@@ -455,7 +455,7 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
 
 
 def add_events_into_database(
-    db_vehicle, dict_of_events, session, scenario, simulation_start_time
+    db_vehicle, dict_of_events, session, scenario, simulation_start_time, area_cache
 ) -> None:
     """
     This function generates :class:`eflips.model.Event` objects from the dictionary of events and adds them into the.
@@ -471,6 +471,9 @@ def add_events_into_database(
     :param scenario: the current simulated scenario
 
     :param simulation_start_time: simulation start time in :class:`datetime.datetime` format
+
+    :param area_cache: a dict mapping area_id to the corresponding :class:`eflips.model.Area` object,
+        pre-fetched with depot eagerly loaded.
 
     :return: None. The results are added to the database.
     """
@@ -516,7 +519,7 @@ def add_events_into_database(
         else:
             area_id = int(process_dict["area"])
 
-        current_area = session.query(Area).filter(Area.id == area_id).one()
+        current_area = area_cache[area_id]
         station_id = current_area.depot.station_id
 
         if current_area.area_type == AreaType.LINE:
@@ -563,21 +566,32 @@ def add_events_into_database(
         session.add(current_event)
 
 
-def update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules) -> None:
+def update_vehicle_in_rotation(session, scenario, list_of_assigned_rotations) -> None:
     """
     This function updates the vehicle id assigned to the rotations and deletes the events that are not depot events.
 
     :param session: a :class:`sqlalchemy.orm.Session` object for database connection.
     :param scenario: the current simulated scenario
-    :param list_of_assigned_schedules: a list of tuples containing the rotation id and the vehicle id.
+    :param list_of_assigned_rotations: a list of tuples containing the rotation id and the vehicle id.
     :return: None. The results are added to the database.
     """
     # New rotation assignment
-    for schedule_id, vehicle_id in list_of_assigned_schedules:
-        # Get corresponding old vehicle id
-        session.query(Rotation).filter(Rotation.id == schedule_id).update(
-            {"vehicle_id": vehicle_id}, synchronize_session="auto"
+    session.execute(
+        update(Rotation)
+        .where(
+            Rotation.id.in_(
+                [rotation_id for rotation_id, _ in list_of_assigned_rotations]
+            )
         )
+        .values(
+            vehicle_id=case(
+                *[
+                    (Rotation.id == rotation_id, vehicle_id)
+                    for rotation_id, vehicle_id in list_of_assigned_rotations
+                ]
+            )
+        )
+    )
 
     # Delete all non-depot events
     session.query(Event).filter(
@@ -622,7 +636,7 @@ def update_waiting_events(session, scenario, waiting_area_id) -> None:
     logger = logging.getLogger(__name__)
 
     # Process all the STANDBY (waiting) events #
-    all_waiting_starts = (
+    all_waiting_events = (
         session.query(Event)
         .filter(
             Event.scenario_id == scenario.id,
@@ -631,26 +645,12 @@ def update_waiting_events(session, scenario, waiting_area_id) -> None:
         )
         .all()
     )
-
-    all_waiting_ends = (
-        session.query(Event)
-        .filter(
-            Event.scenario_id == scenario.id,
-            Event.event_type == EventType.STANDBY,
-            Event.area_id == waiting_area_id,
-        )
-        .all()
-    )
-
-    assert len(all_waiting_starts) == len(
-        all_waiting_ends
-    ), f"Number of waiting events starts {len(all_waiting_starts)} is not equal to the number of waiting event ends"
 
     BUFFER_WAITING_CAPACITY = 1
 
-    if len(all_waiting_starts) < BUFFER_WAITING_CAPACITY:
+    if len(all_waiting_events) < BUFFER_WAITING_CAPACITY:
         logger.info(
-            f"{all_waiting_starts} waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to {BUFFER_WAITING_CAPACITY} as buffer."
+            f"{all_waiting_events} waiting events found. The depot has enough capacity for waiting. Change the waiting area capacity to {BUFFER_WAITING_CAPACITY} as buffer."
         )
 
         session.query(Area).filter(Area.id == waiting_area_id).update(
@@ -660,26 +660,25 @@ def update_waiting_events(session, scenario, waiting_area_id) -> None:
         return
 
     list_waiting_timestamps = []
-    for waiting_start in all_waiting_starts:
+    for event in all_waiting_events:
         list_waiting_timestamps.append(
-            {"timestamp": waiting_start.time_start, "event": (waiting_start.id, 1)}
+            {"timestamp": event.time_start, "event": (event.id, 1)}
+        )
+        list_waiting_timestamps.append(
+            {"timestamp": event.time_end, "event": (event.id, -1)}
         )
 
-    for waiting_end in all_waiting_ends:
-        list_waiting_timestamps.append(
-            {"timestamp": waiting_end.time_end, "event": (waiting_end.id, -1)}
-        )
-
-    list_waiting_timestamps.sort(key=lambda x: x["timestamp"])
+    # Sort by timestamp; break ties so check-outs (-1) come before check-ins (+1)
+    # to avoid inflating peak occupancy when one vehicle departs exactly as another arrives.
+    list_waiting_timestamps.sort(key=lambda x: (x["timestamp"], x["event"][1]))
     start_and_end_records = [wt["event"][1] for wt in list_waiting_timestamps]
 
     peak_waiting_occupancy = max(list(itertools.accumulate(start_and_end_records)))
 
     # Assuming that there is only one waiting area in each depot
 
-    waiting_area_id = all_waiting_starts[0].area_id
     waiting_area = session.query(Area).filter(Area.id == waiting_area_id).first()
-    if waiting_area.capacity > peak_waiting_occupancy:
+    if waiting_area.capacity >= peak_waiting_occupancy:
         logger.info(
             f"Current waiting area capacity {waiting_area.capacity} "
             f"is greater than the peak waiting occupancy. Updating the capacity to {peak_waiting_occupancy}."
@@ -687,41 +686,55 @@ def update_waiting_events(session, scenario, waiting_area_id) -> None:
         session.query(Area).filter(Area.id == waiting_area_id).update(
             {"capacity": peak_waiting_occupancy}, synchronize_session="auto"
         )
-        session.flush()
+
     elif waiting_area.capacity < peak_waiting_occupancy:
         raise ValueError(
             f"Waiting area capacity is less than the peak waiting occupancy. "
             f"Waiting area capacity: {waiting_area.capacity}, peak waiting occupancy: {peak_waiting_occupancy}."
         )
-    else:
-        pass
 
     session.flush()
 
     # Update waiting slots
     virtual_waiting_area = [None] * peak_waiting_occupancy
+    assigned_slots: dict[int, int] = {}  # event_id -> slot index
     for wt in list_waiting_timestamps:
+        event_id = wt["event"][0]
         # check in
         if wt["event"][1] == 1:
             for i in range(len(virtual_waiting_area)):
                 if virtual_waiting_area[i] is None:
-                    virtual_waiting_area[i] = wt["event"][0]
-                    session.query(Event).filter(Event.id == wt["event"][0]).update(
-                        {"subloc_no": i}, synchronize_session="auto"
-                    )
+                    virtual_waiting_area[i] = event_id
+                    assigned_slots[event_id] = i
                     break
+            else:
+                raise AssertionError(
+                    f"No free slot found for waiting event {event_id}. "
+                    f"This should not happen if peak_waiting_occupancy is correct."
+                )
         # check out
         else:
             for i in range(len(virtual_waiting_area)):
-                if virtual_waiting_area[i] == wt["event"][0]:
-                    current_waiting_event = (
-                        session.query(Event).filter(Event.id == wt["event"][0]).first()
-                    )
-                    assert current_waiting_event.subloc_no == i, (
-                        f"Subloc number of the event {current_waiting_event.id} is not equal to the index of the "
-                        f"event in the virtual waiting area."
+                if virtual_waiting_area[i] == event_id:
+                    assert assigned_slots.get(event_id) == i, (
+                        f"Subloc number of event {event_id} is {assigned_slots.get(event_id)}, "
+                        f"expected {i}."
                     )
                     virtual_waiting_area[i] = None
                     break
+            else:
+                raise AssertionError(
+                    f"Waiting event {event_id} not found in virtual waiting area during check-out. "
+                    f"This should not happen."
+                )
 
+    session.execute(
+        update(Event)
+        .where(Event.id.in_(assigned_slots.keys()))
+        .values(
+            subloc_no=case(
+                *[(Event.id == eid, slot) for eid, slot in assigned_slots.items()]
+            )
+        )
+    )
     session.flush()

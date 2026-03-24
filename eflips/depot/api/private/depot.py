@@ -24,6 +24,7 @@ from eflips.model import (
     VehicleType,
     Vehicle,
     EventType,
+    EnergySource,
 )
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -205,171 +206,169 @@ def delete_depots(scenario: Scenario, session: Session) -> None:
     # delete assoc_plan_process
 
 
-def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
+def _time_to_seconds(t) -> int:
+    """Convert a time object to seconds since midnight."""
+    return t.hour * 3600 + t.minute * 60 + t.second
+
+
+def _resolve_entry_filter_and_remap_processes(
+    area: Area, scenario: Scenario, available_processes: list
+) -> tuple:
+    """Return (entry_filter dict, remapped available_processes list).
+
+    Charging process IDs are replaced with per-vehicle-type variants
+    (e.g. "42" -> "42vt7", "42vt9", ...).
     """
-    Converts the depot to a template for internal use in the simulation core.
+    if area.vehicle_type_id is not None:
+        allowed_vt_ids = [str(area.vehicle_type_id)]
+    else:
+        # TODO: refueling workaround should use a proper tag/attribute, not a name check
+        if area.name and "refueling" in area.name.lower():
+            allowed_vt_ids = [
+                str(vt.id)
+                for vt in scenario.vehicle_types
+                if vt.energy_source == EnergySource.DIESEL
+            ]
+        else:
+            allowed_vt_ids = [str(vt.id) for vt in scenario.vehicle_types]
 
-    :return: A dict that can be consumed by eFLIPS-Depot.
-    """
-    # Initialize the template
-    template = {
-        "templatename_display": "",
-        "general": {"depotID": "", "dispatch_strategy_name": ""},
-        "resources": {},
-        "resource_switches": {},
-        "processes": {},
-        "areas": {},
-        "groups": {},
-        "plans": {},
-    }
+    entry_filter = {"filter_names": ["vehicle_type"], "vehicle_types": allowed_vt_ids}
 
-    # Set up the general information
-    template["templatename_display"] = depot.name
-    template["general"]["depotID"] = str(depot.id)
-    template["general"]["dispatch_strategy_name"] = "SMART"
+    remapped = []
+    for process in area.processes:
+        pid = str(process.id)
+        if process_type(process) == ProcessType.CHARGING:
+            remapped.extend(pid + "vt" + vt_id for vt_id in allowed_vt_ids)
+        else:
+            remapped.append(pid)
 
-    # Helper for adding processes to the template
-    list_of_processes = []
+    return entry_filter, remapped
 
-    # Get dictionary of each area
-    # For line areas, generate a dictionary item for total areas, later it will be split into individual lines
+
+def _build_area_entries(depot: Depot, template_resources: dict) -> tuple:
+    """Phase 1: build raw area dicts and collect unique processes (in encounter order)."""
+    areas: dict = {}
+    seen_process_ids: set = set()
+    seen_processes: list = []
+    scenario = depot.scenario
+
     for area in depot.areas:
-        area_name = str(area.id)
-        template["areas"][area_name] = {
-            "typename": (
-                "LineArea" if area.area_type == AreaType.LINE else "DirectArea"
-            ),
+        area_key = str(area.id)
+        entry_filter, available = _resolve_entry_filter_and_remap_processes(
+            area, scenario, [str(p.id) for p in area.processes]
+        )
+
+        entry: dict = {
+            "typename": "LineArea" if area.area_type == AreaType.LINE else "DirectArea",
             "capacity": area.capacity,
-            "available_processes": [str(process.id) for process in area.processes],
-            "issink": False,
-            "entry_filter": None,
+            "available_processes": available,
+            "issink": any(
+                process_type(p) == ProcessType.STANDBY_DEPARTURE for p in area.processes
+            ),
+            "entry_filter": entry_filter,
         }
         if area.area_type == AreaType.LINE:
-            template["areas"][area_name]["row_count"] = area.row_count
+            entry["row_count"] = area.row_count
 
-        # Fill in vehicle_filter.
-        # If the vehicle type id is set, the area is only for this vehicle type
-        if area.vehicle_type_id is not None:
-            template["areas"][area_name]["entry_filter"] = {
-                "filter_names": ["vehicle_type"],
-                "vehicle_types": [str(area.vehicle_type_id)],
-            }
-            for processes_in_area in area.processes:
-                if process_type(processes_in_area) == ProcessType.CHARGING:
-                    # Add the charging process for this vehicle type
-                    template["areas"][area_name]["available_processes"].append(
-                        str(processes_in_area.id) + "vt" + str(area.vehicle_type_id)
-                    )
-                    # Delete the original charging process
-                    template["areas"][area_name]["available_processes"].remove(
-                        str(processes_in_area.id)
-                    )
-
-        else:
-            # If the vehicle type id is not set, the area is for all vehicle types
-            scenario = depot.scenario
-            all_vehicle_type_ids = [str(vt.id) for vt in scenario.vehicle_types]
-
-            template["areas"][area_name]["entry_filter"] = {
-                "filter_names": ["vehicle_type"],
-                "vehicle_types": all_vehicle_type_ids,
-            }
-
-            # if there are any charging areas, all a unique charging process for each vehicle type
-            for processes_in_area in area.processes:
-                if process_type(processes_in_area) == ProcessType.CHARGING:
-                    # Add the charging process for this vehicle type
-                    for vt in scenario.vehicle_types:
-                        template["areas"][area_name]["available_processes"].append(
-                            str(processes_in_area.id) + "vt" + str(vt.id)
-                        )
-                    # Delete the original charging process
-                    template["areas"][area_name]["available_processes"].remove(
-                        str(processes_in_area.id)
-                    )
-
-        for process in area.processes:
-            # Add process into process list
-            list_of_processes.append(
-                process
-            ) if process not in list_of_processes else None
-
-            # Charging interfaces
-            if process_type(process) == ProcessType.CHARGING:
-                ci_per_area = []
-                for i in range(area.capacity):
-                    ID = "ci_" + str(len(template["resources"]))
-                    template["resources"][ID] = {
-                        "typename": "DepotChargingInterface",
-                        "max_power": process.electric_power,
-                    }
-                    ci_per_area.append(ID)
-
-                template["areas"][area_name]["charging_interfaces"] = ci_per_area
-
-            # Set issink to True for departure areas
-            if process_type(process) == ProcessType.STANDBY_DEPARTURE:
-                template["areas"][area_name]["issink"] = True
-
-    # Generate line areas in the unit of a single line for the simulation core and assigning charging interfaces
-    area_template = template["areas"]
-
-    line_area_template = {}
-    line_areas_to_delete = []
-    for name, area in area_template.items():
-        if area["typename"] == "LineArea":
-            line_areas_to_delete.append(name)
-            capacity_per_line = int(area["capacity"] / area["row_count"])
-            for i in range(area["row_count"]):
-                area_name = name + "_row_" + str(i)
-                line_area_template[area_name] = {
-                    "typename": "LineArea",
-                    "capacity": capacity_per_line,
-                    "available_processes": area["available_processes"],
-                    "issink": area["issink"],
-                    "entry_filter": area["entry_filter"],
-                    "charging_interfaces": area["charging_interfaces"][
-                        i * capacity_per_line : (i + 1) * capacity_per_line
-                    ],
+        # Charging interfaces — expect at most one charging process per area
+        charging_procs = [
+            p for p in area.processes if process_type(p) == ProcessType.CHARGING
+        ]
+        if charging_procs:
+            if len(charging_procs) > 1:
+                logging.warning(
+                    "Area %s has multiple charging processes; only the first is used for CIs.",
+                    area_key,
+                )
+            ci_ids = []
+            for _ in range(area.capacity):
+                ci_id = f"ci_{len(template_resources)}"
+                template_resources[ci_id] = {
+                    "typename": "DepotChargingInterface",
+                    "max_power": charging_procs[0].electric_power,
                 }
-    area_template.update(line_area_template)
+                ci_ids.append(ci_id)
+            entry["charging_interfaces"] = ci_ids
 
-    for name in line_areas_to_delete:
-        del area_template[name]
+        areas[area_key] = entry
 
-    # Fill in the dictionary of processes
-    for process in list_of_processes:
-        process_name = str(process.id)
-        # Shared template for all processes
-        template["processes"][process_name] = {
-            "typename": "",  # Placeholder for initialization
+        for p in area.processes:
+            if p.id not in seen_process_ids:
+                seen_process_ids.add(p.id)
+                seen_processes.append(p)
+
+    return areas, seen_processes
+
+
+def _expand_line_areas(areas: dict) -> dict:
+    """Phase 2: replace each LineArea entry with row_count individual row entries."""
+    result = {}
+    for name, area in areas.items():
+        if area["typename"] != "LineArea":
+            result[name] = area
+            continue
+
+        row_count = area["row_count"]
+        capacity_per_row = area["capacity"] // row_count
+        ci_list = area.get("charging_interfaces", [])
+
+        for i in range(row_count):
+            row_entry: dict = {
+                "typename": "LineArea",
+                "capacity": capacity_per_row,
+                "available_processes": area["available_processes"],
+                "issink": area["issink"],
+                "entry_filter": area["entry_filter"],
+            }
+            if ci_list:
+                row_entry["charging_interfaces"] = ci_list[
+                    i * capacity_per_row : (i + 1) * capacity_per_row
+                ]
+            result[f"{name}_row_{i}"] = row_entry
+
+    return result
+
+
+def _build_process_entries(processes: list, scenario: Scenario, template: dict) -> None:
+    """Phase 3: fill template['processes'], ['resources'], and ['resource_switches']."""
+    for process in processes:
+        pid = str(process.id)
+        base: dict = {
+            "typename": "",
             "dur": int(process.duration.total_seconds()) if process.duration else None,
-            # True if this process will be executed for all vehicles. False if there are available vehicle filters
             "ismandatory": True,
             "vehicle_filter": {},
-            # True if this process can be interrupted by a dispatch. False if it cannot be interrupted
             "cancellable_for_dispatch": process.dispatchable,
         }
 
+        # TODO: refueling workaround — replace with a proper attribute/tag on the process
+        if process.name and "refueling" in process.name.lower():
+            base["vehicle_filter"] = {
+                "filter_names": ["vehicle_type"],
+                "vehicle_types": [
+                    str(vt.id)
+                    for vt in scenario.vehicle_types
+                    if vt.energy_source == EnergySource.DIESEL
+                ],
+            }
+
         match process_type(process):
             case ProcessType.SERVICE:
-                template["processes"][process_name]["typename"] = "Serve"
-
-                # Fill in the worker_service
-                service_capacity = sum([x.capacity for x in process.areas])
-
-                template["processes"][process_name]["required_resources"] = [
-                    "workers_service"
-                ]
-                template["resources"]["workers_service"] = {
+                resource_key = "workers_service" + pid
+                base["typename"] = "Serve"
+                base["required_resources"] = [resource_key]
+                template["resources"][resource_key] = {
                     "typename": "DepotResource",
-                    "capacity": service_capacity,
+                    "capacity": sum(a.capacity for a in process.areas),
                 }
-
-                if process.availability is not None and len(process.availability) > 0:
-                    template["resource_switches"]["service_switch"] = {
-                        "resource": "workers_service",
-                        "breaks": [],
+                if process.availability:
+                    breaks = [
+                        (_time_to_seconds(s), _time_to_seconds(e))
+                        for s, e in process._generate_break_intervals()
+                    ]
+                    template["resource_switches"]["service_switch_" + pid] = {
+                        "resource": resource_key,
+                        "breaks": breaks,
                         "preempt": process.preemptable
                         if process.preemptable is not None
                         else True,
@@ -380,121 +379,106 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
                         # Priority -3 means this process has the highest priority
                         "priority": -3,
                     }
-
-                    list_of_breaks = process._generate_break_intervals()
-                    list_of_breaks_in_seconds = []
-
-                    # Converting the time intervals into seconds
-
-                    for time_interval in list_of_breaks:
-                        start_time = time_interval[0]
-                        end_time = time_interval[1]
-                        start_time_in_seconds = (
-                            start_time.hour * 3600
-                            + start_time.minute * 60
-                            + start_time.second
-                        )
-
-                        end_time_in_seconds = (
-                            end_time.hour * 3600
-                            + end_time.minute * 60
-                            + end_time.second
-                        )
-
-                        list_of_breaks_in_seconds.append(
-                            (start_time_in_seconds, end_time_in_seconds)
-                        )
-
-                    template["resource_switches"]["service_switch"][
-                        "breaks"
-                    ] = list_of_breaks_in_seconds
+                template["processes"][pid] = base
 
             case ProcessType.CHARGING:
-                all_vehicle_types = depot.scenario.vehicle_types
-
-                for vt in all_vehicle_types:
-                    charging_curve = vt.charging_curve
-
-                    charging_process_name = process_name + "vt" + str(vt.id)
-                    template["processes"][charging_process_name] = template[
-                        "processes"
-                    ][process_name].copy()
-                    template["processes"][charging_process_name][
-                        "typename"
-                    ] = "ChargeEquationSteps"
-                    template["processes"][charging_process_name]["vehicle_filter"] = {
+                # For each vehicle type, create a unique charging process with that type's
+                # charging curve. The generic pid entry is intentionally not added.
+                for vt in scenario.vehicle_types:
+                    vt_entry = base.copy()
+                    vt_entry["typename"] = "ChargeEquationSteps"
+                    vt_entry["vehicle_filter"] = {
                         "filter_names": ["vehicle_type"],
                         "vehicle_types": [str(vt.id)],
                     }
-
-                    template["processes"][charging_process_name][
-                        "peq_name"
-                    ] = "charging_curve_power"
-                    template["processes"][charging_process_name]["peq_params"] = {
-                        "soc": [soc_power_pair[0] for soc_power_pair in charging_curve],
-                        "power": [
-                            soc_power_pair[1] for soc_power_pair in charging_curve
-                        ],
+                    vt_entry["peq_name"] = "charging_curve_power"
+                    vt_entry["peq_params"] = {
+                        "soc": [pair[0] for pair in vt.charging_curve],
+                        "power": [pair[1] for pair in vt.charging_curve],
                         "precision": 0.01,
                     }
-
-                    del template["processes"][charging_process_name]["dur"]
-
-                # delete the original process
-                del template["processes"][process_name]
-
-                # The original one
-                # template["processes"][process_name]["typename"] = "Charge"
-
-                # del template["processes"][process_name]["dur"]
+                    del vt_entry["dur"]
+                    template["processes"][pid + "vt" + str(vt.id)] = vt_entry
 
             case ProcessType.STANDBY | ProcessType.STANDBY_DEPARTURE:
-                template["processes"][process_name]["typename"] = "Standby"
-                template["processes"][process_name]["dur"] = 0
+                base["typename"] = "Standby"
+                base["dur"] = 0
+                template["processes"][pid] = base
 
             case ProcessType.PRECONDITION:
-                template["processes"][process_name]["typename"] = "Precondition"
-                template["processes"][process_name]["dur"] = int(
-                    process.duration.total_seconds()
-                )
-                template["processes"][process_name]["power"] = process.electric_power
+                base["typename"] = "Precondition"
+                base["power"] = process.electric_power
+                template["processes"][pid] = base
+
             case _:
                 raise ValueError(f"Invalid process type: {process_type(process).name}")
 
-    # Initialize the default plan
-    template["plans"]["default"] = {
-        "typename": "DefaultActivityPlan",
-        "locations": [],
-    }
-    # Groups
+
+def _build_groups_and_plan(depot: Depot, template: dict) -> None:
+    """Phase 4: build groups and the default activity plan.
+
+    Groups collect areas that share the same process role (e.g. all charging areas).
+    The plan's location list mirrors the order of processes in the depot's default plan.
+    """
+    template["plans"]["default"] = {"typename": "DefaultActivityPlan", "locations": []}
+
     for process in depot.default_plan.processes:
-        group_name = str(process.name) + "_group"
-        template["groups"][group_name] = {
-            "typename": "AreaGroup",
-            "stores": [
-                str(area.id)
-                for area in process.areas
-                if area.area_type != AreaType.LINE
-            ],
-        }
-        if (
-            process_type(process) == ProcessType.CHARGING
-            or process_type(process) == ProcessType.STANDBY_DEPARTURE
-        ):
-            areas_this_process = process.areas
-            for area in areas_this_process:
-                if area.area_type == AreaType.LINE:
-                    for i in range(area.row_count):
-                        template["groups"][group_name]["stores"].append(
-                            str(area.id) + "_row_" + str(i)
-                        )
+        if not process.areas:
+            continue
 
-            if process_type(process) == ProcessType.CHARGING:
-                template["groups"][group_name]["typename"] = "ParkingAreaGroup"
-                template["groups"][group_name]["parking_strategy_name"] = "LINEFIRST"
+        group_name = f"{process.name}_group"
+        non_line_areas = [
+            str(a.id) for a in process.areas if a.area_type != AreaType.LINE
+        ]
+        group: dict = {"typename": "AreaGroup", "stores": non_line_areas}
 
-        # Fill in locations of the plan
+        for area in process.areas:
+            if area.area_type == AreaType.LINE:
+                group["stores"].extend(
+                    f"{area.id}_row_{i}" for i in range(area.row_count)
+                )
+
+        if process_type(process) == ProcessType.STANDBY_DEPARTURE:
+            group["typename"] = "ParkingAreaGroup"
+            group["parking_strategy_name"] = "LINEFIRST"
+
+        template["groups"][group_name] = group
         template["plans"]["default"]["locations"].append(group_name)
+
+
+def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
+    """
+    Converts the depot to a template for internal use in the simulation core.
+
+    :return: A dict that can be consumed by eFLIPS-Depot.
+    """
+    template: dict = {
+        "templatename_display": depot.name,
+        "general": {
+            "depotID": str(depot.id),
+            "dispatch_strategy_name": "SMART",
+        },
+        "resources": {},
+        "resource_switches": {},
+        "processes": {},
+        "areas": {},
+        "groups": {},
+        "plans": {},
+    }
+
+    # Phase 1: build area dicts and collect unique processes
+    template["areas"], seen_processes = _build_area_entries(
+        depot, template["resources"]
+    )
+
+    # Phase 2: expand LINE areas into individual row entries
+    template["areas"] = _expand_line_areas(template["areas"])
+
+    # Phase 3: build process entries
+    _build_process_entries(seen_processes, depot.scenario, template)
+
+    # Phase 4: build groups and plan
+    _build_groups_and_plan(depot, template)
 
     return template
 
@@ -614,6 +598,8 @@ def generate_depot(
     cleaning_duration: None | timedelta = timedelta(minutes=30),
     num_cleaning_slots: int = 10,
     charging_power: float = 90,
+    num_refueling_slots: Optional[int] = None,
+    refueling_duration: None | timedelta = timedelta(minutes=15),
 ) -> None:
     """
     Creates a depot object with all associated data structures and adds them to the database.
@@ -631,6 +617,8 @@ def generate_depot(
     :param cleaning_duration: The duration of the cleaning process. Defaults to 30 minutes. Set to None if not needed.
     :param num_cleaning_slots: The number of slots for cleaning. Defaults to 10.
     :param charging_power: The charging power in kW. Defaults to 90 kW.
+    :param num_refueling_slots: The number of slots for refueling. Set to None if not needed. Only applicable if there are diesel vehicles in the depot.
+    :param refueling_duration: The duration of the refueling process. Set to None if not needed. Only applicable if there are diesel vehicles in the depot.
     :return: Nothing. Depot is added to the database.
     """
 
@@ -753,6 +741,58 @@ def generate_depot(
             )
         )
 
+    if refueling_duration is not None and num_refueling_slots is not None:
+        refueling = Process(
+            name="Refueling",
+            scenario=scenario,
+            dispatchable=False,
+            duration=refueling_duration,
+        )
+        session.add(refueling)
+        refueling_area = Area(
+            scenario=scenario,
+            name=f"Refueling Area",
+            depot=depot,
+            area_type=AreaType.DIRECT_ONESIDE,
+            vehicle_type=None,  # Meaning any vehicle type can be refueled here
+            capacity=num_refueling_slots,
+        )
+        session.add(refueling_area)
+        refueling_area.processes.append(refueling)
+        assocs.append(
+            AssocPlanProcess(
+                scenario=scenario, process=refueling, plan=plan, ordinal=len(assocs)
+            )
+        )
+
+        # Add another shunting process after refueling if shunting is needed
+        if shunting_duration is not None:
+            shunting_3 = Process(
+                name="Shunting after refueling",
+                scenario=scenario,
+                dispatchable=False,
+                duration=shunting_duration,
+            )
+            session.add(shunting_3)
+            shunting_area_3 = Area(
+                scenario=scenario,
+                name=f"Shunting Area after refueling",
+                depot=depot,
+                area_type=AreaType.DIRECT_ONESIDE,
+                vehicle_type=None,  # Meaning any vehicle type can be shunted here
+                capacity=num_shunting_slots,
+            )
+            session.add(shunting_area_3)
+            shunting_area_3.processes.append(shunting_3)
+            assocs.append(
+                AssocPlanProcess(
+                    scenario=scenario,
+                    process=shunting_3,
+                    plan=plan,
+                    ordinal=len(assocs),
+                )
+            )
+
     charging = Process(
         name="Charging",
         scenario=scenario,
@@ -789,14 +829,19 @@ def generate_depot(
         name=f"Waiting Area for every type of vehicle",
         depot=depot,
         area_type=AreaType.DIRECT_ONESIDE,
-        capacity=rotation_count
-        * 4,  # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
+        capacity=rotation_count * 4,
+        # Initialize with 4 times of rotation count because all rotations are copied three times. Assuming each rotation needs a vehicle.
     )
     session.add(waiting_area)
 
     for vehicle_type, capacities in capacity_of_areas.items():
         vehicle_type: VehicleType
         capacities: Dict[AreaType, None | int]
+        processes_this_area = []
+        if vehicle_type.energy_source == EnergySource.BATTERY_ELECTRIC:
+            processes_this_area.append(charging)
+        processes_this_area.append(standby_departure)
+
         if capacities[AreaType.LINE] is not None and capacities[AreaType.LINE] > 0:
             # Create a number of LINE areas
             number_of_rows = capacities[AreaType.LINE] // standard_block_length
@@ -810,9 +855,9 @@ def generate_depot(
                 capacity=capacities[AreaType.LINE],
                 row_count=number_of_rows,
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+            area.processes = processes_this_area
             session.add(area)
+
         if (
             capacities[AreaType.DIRECT_ONESIDE] is not None
             and capacities[AreaType.DIRECT_ONESIDE] > 0
@@ -826,9 +871,10 @@ def generate_depot(
                 vehicle_type=vehicle_type,
                 capacity=capacities[AreaType.DIRECT_ONESIDE],
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+
+            area.processes = processes_this_area
             session.add(area)
+
         if (
             capacities[AreaType.DIRECT_TWOSIDE] is not None
             and capacities[AreaType.DIRECT_TWOSIDE] > 0
@@ -842,8 +888,8 @@ def generate_depot(
                 vehicle_type=vehicle_type,
                 capacity=capacities[AreaType.DIRECT_TWOSIDE],
             )
-            area.processes.append(charging)
-            area.processes.append(standby_departure)
+
+            area.processes = processes_this_area
             session.add(area)
 
     session.flush()

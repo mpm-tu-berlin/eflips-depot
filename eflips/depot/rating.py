@@ -233,7 +233,7 @@ class RfdDiffPark(BaseCriterion):
 
 
 class AvailablePower(BaseCriterion):
-    """Criterion for ParkRating and DispatchRating.
+    """Criterion for ParkRating and DispatchRating. The detailed information can be found in the thesis of P. Mundt.
 
     For both Direct and Line areas.
 
@@ -244,6 +244,13 @@ class AvailablePower(BaseCriterion):
         self.value = self.calculate(slot, max_power)
 
     def calculate(self, slot, max_power):
+        if max_power is None or max_power == 0:
+            return 0
+        if (
+            slot[0].charging_interfaces is None
+            or slot[0].charging_interfaces[slot[1]].max_power is None
+        ):
+            return 0
         normalization_factor = 1 / max_power
         return slot[0].charging_interfaces[slot[1]].max_power * normalization_factor
 

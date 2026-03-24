@@ -51,9 +51,10 @@ from eflips.model import (
     Route,
     ConsistencyWarning,
     Station,
+    EnergySource,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import func, inspect
+from sqlalchemy.orm import Session, joinedload
 
 import eflips.depot
 from eflips.depot import (
@@ -74,6 +75,7 @@ from eflips.depot.api.private.depot import (
     generate_depot,
     depot_smallest_possible_size,
     create_depots_from_wish,
+    estimate_service_capacity,
 )
 from eflips.depot.api.private.results_to_database import (
     get_finished_schedules_per_vehicle,
@@ -300,6 +302,30 @@ def simple_consumption_simulation(
         session.flush()
 
         for rotation in rotations:
+            if rotation.vehicle_type.energy_source == EnergySource.DIESEL:
+                with session.no_autoflush:
+                    vehicle = (
+                        session.query(Vehicle)
+                        .join(Rotation)
+                        .filter(Rotation.id == rotation.id)
+                        .one()
+                    )
+                for trip in rotation.trips:
+                    current_event = Event(
+                        scenario_id=scenario.id,
+                        vehicle_type_id=rotation.vehicle_type_id,
+                        vehicle=vehicle,
+                        trip_id=trip.id,
+                        time_start=trip.departure_time,
+                        time_end=trip.arrival_time,
+                        soc_start=1.0,
+                        soc_end=1.0,
+                        event_type=EventType.DRIVING,
+                        description=f"Diesel bus driving event for trip {trip.id}.",
+                        timeseries=None,
+                    )
+                    session.add(current_event)
+                continue
             rotation: Rotation
             with session.no_autoflush:
                 vehicle_type = (
@@ -527,6 +553,16 @@ def generate_depot_layout(
                 }
                 rotation_count_depot += len(rotations)
 
+            diesel_rotation_count = sum(
+                len(rotations)
+                for vt, rotations in vehicle_type_dict.items()
+                if vt.energy_source == EnergySource.DIESEL
+            )
+            if diesel_rotation_count > 0:
+                num_refueling_slots = max(diesel_rotation_count // 10, 1)
+            else:
+                num_refueling_slots = None
+
             generate_depot(
                 vt_capacity_dict,
                 first_stop,
@@ -535,6 +571,7 @@ def generate_depot_layout(
                 charging_power=charging_power,
                 num_shunting_slots=max(rotation_count_depot // 10, 1),
                 num_cleaning_slots=max(rotation_count_depot // 10, 1),
+                num_refueling_slots=num_refueling_slots,
             )
 
 
@@ -938,79 +975,6 @@ def run_simulation(simulation_host: SimulationHost) -> Dict[str, DepotEvaluation
     return results
 
 
-def insert_dummy_standby_departure_events(
-    depot_id: int, session: Session, sim_time_end: Optional[datetime] = None
-) -> None:
-    """
-    Workaround for the missing STANDBY_DEPARTURE events in the database.
-
-    :param session: The database session
-    :param scenario: A scenario object
-    :param sim_time_end: The end time of the simulation. If None, final events might not be properly handled.
-    :return:
-    """
-    logger = logging.getLogger(__name__)
-
-    # Look for charging events at areas belonging to the depot
-    charging_events = (
-        session.query(Event)
-        .join(Area)
-        .filter(Area.depot_id == depot_id)
-        .filter(Event.event_type == EventType.CHARGING_DEPOT)
-        .all()
-    )
-
-    for charging_event in charging_events:
-        # See if the next event is a DRIVING event, but there is time between the two events
-        next_event = (
-            session.query(Event)
-            .filter(Event.time_start >= charging_event.time_end)
-            .filter(Event.vehicle_id == charging_event.vehicle_id)
-            .order_by(Event.time_start)
-            .first()
-        )
-        if (
-            next_event is not None
-            and next_event.event_type == EventType.DRIVING
-            and (next_event.time_start - charging_event.time_end) > timedelta(seconds=1)
-        ):
-            logger.warning("Inserting dummy STANDBY_DEPARTURE event")
-            # Insert a dummy STANDBY_DEPARTURE event
-            dummy_event = Event(
-                vehicle_id=charging_event.vehicle_id,
-                vehicle_type_id=charging_event.vehicle.vehicle_type_id,
-                time_start=charging_event.time_end,
-                time_end=(next_event.time_start - timedelta(seconds=1)),
-                event_type=EventType.STANDBY_DEPARTURE,
-                area_id=charging_event.area_id,
-                subloc_no=charging_event.subloc_no,
-                scenario_id=charging_event.scenario_id,
-                soc_start=charging_event.soc_end,
-                soc_end=charging_event.soc_end,
-                description="Dummy STANDBY_DEPARTURE event",
-            )
-            session.add(dummy_event)
-        elif next_event is None and sim_time_end is not None:
-            # If the event's end is before the simulation end, insert a dummy STANDBY_DEPARTURE event
-            # From the end of the charging event to the end of the simulation
-            logger.warning("Inserting dummy STANDBY_DEPARTURE event")
-            if charging_event.time_end < sim_time_end:
-                dummy_event = Event(
-                    vehicle_id=charging_event.vehicle_id,
-                    vehicle_type_id=charging_event.vehicle.vehicle_type_id,
-                    time_start=charging_event.time_end,
-                    time_end=sim_time_end,
-                    event_type=EventType.STANDBY_DEPARTURE,
-                    area_id=charging_event.area_id,
-                    subloc_no=charging_event.subloc_no,
-                    scenario_id=charging_event.scenario_id,
-                    soc_start=charging_event.soc_end,
-                    soc_end=charging_event.soc_end,
-                    description="Dummy STANDBY_DEPARTURE event",
-                )
-                session.add(dummy_event)
-
-
 def add_evaluation_to_database(
     scenario: Scenario,
     depot_evaluations: Dict[str, DepotEvaluation],
@@ -1048,19 +1012,26 @@ def add_evaluation_to_database(
 
         # Depot-layer operations
 
-        list_of_assigned_schedules = []
+        list_of_assigned_rotations = []
 
-        waiting_area_id = None
-
-        total_areas = session.query(Area).filter(Area.scenario_id == scenario.id).all()
-        for area in total_areas:
-            if area.depot_id == int(depot_id) and len(area.processes) == 0:
-                waiting_area_id = area.id
+        waiting_area_id = (
+            session.query(Area.id)
+            .filter(Area.depot_id == int(depot_id), ~Area.processes.any())
+            .scalar()
+        )
 
         assert isinstance(waiting_area_id, int) and waiting_area_id > 0, (
             f"Waiting area id should be an integer greater than 0. For every depot there must be at least "
             f"one waiting area."
         )
+
+        area_cache = {
+            area.id: area
+            for area in session.query(Area)
+            .filter(Area.depot_id == int(depot_id))
+            .options(joinedload(Area.depot))
+            .all()
+        }
 
         for current_vehicle in depot_evaluation.vehicle_generator.items:
             # Vehicle-layer operations
@@ -1098,7 +1069,7 @@ def add_evaluation_to_database(
             if schedule_current_vehicle is None:
                 continue
 
-            list_of_assigned_schedules.extend(schedule_current_vehicle)
+            list_of_assigned_rotations.extend(schedule_current_vehicle)
 
             generate_vehicle_events(
                 dict_of_events,
@@ -1120,10 +1091,11 @@ def add_evaluation_to_database(
                 session,
                 scenario,
                 simulation_start_time,
+                area_cache,
             )
 
         # Postprocessing of events
-        update_vehicle_in_rotation(session, scenario, list_of_assigned_schedules)
+        update_vehicle_in_rotation(session, scenario, list_of_assigned_rotations)
         update_waiting_events(session, scenario, waiting_area_id)
 
     if delay_exp.has_errors:
@@ -1291,32 +1263,25 @@ def generate_depot_optimal_size(
             for vehicle_type, rotations in vehicle_type_rot_dict.items():
                 all_rotations_this_depot.extend(rotations)
 
-            # sort the rotations by their start time
-            all_rotations_this_depot.sort(key=lambda r: r.trips[0].departure_time)
+            estimated_cleaning_slot_count = estimate_service_capacity(
+                all_rotations_this_depot, timedelta(minutes=30)
+            )
+            estimated_shunting_slot_count = estimate_service_capacity(
+                all_rotations_this_depot, timedelta(minutes=5)
+            )
 
-            start_time = all_rotations_this_depot[0].trips[0].departure_time
-            end_time = all_rotations_this_depot[-1].trips[-1].arrival_time
+            # Estimate diesel rotation counts
+            diesel_rotations = []
+            for vehicle_type, rotations in vehicle_type_rot_dict.items():
+                if vehicle_type.energy_source == EnergySource.DIESEL:
+                    diesel_rotations.extend(rotations)
 
-            elapsed_time = (end_time - start_time).total_seconds()
-            # make them into a numpy with 30 min resolution
-            import numpy as np
-
-            TIME_RESOLUTION = 30 * 60  # 30 minutes in seconds
-
-            time_range = np.zeros(int(elapsed_time / TIME_RESOLUTION) + 1)
-            # calculate the number of rotations per time slot
-            for rot in all_rotations_this_depot:
-                start_time_index = int(
-                    (rot.trips[0].departure_time - start_time).total_seconds()
-                    // TIME_RESOLUTION
+            if len(diesel_rotations) > 0:
+                estimated_refueling_slot_count = estimate_service_capacity(
+                    diesel_rotations, timedelta(minutes=15)
                 )
-                end_time_index = int(
-                    (rot.trips[-1].arrival_time - start_time).total_seconds()
-                    // TIME_RESOLUTION
-                )
-                # interpolate the start and end time to the time range
-
-                time_range[start_time_index : end_time_index + 1] += 1
+            else:
+                estimated_refueling_slot_count = None
 
             generate_depot(
                 capacities,
@@ -1325,8 +1290,9 @@ def generate_depot_optimal_size(
                 session,
                 standard_block_length=standard_block_length,
                 charging_power=charging_power,
-                num_shunting_slots=int(max(time_range)),
-                num_cleaning_slots=int(max(time_range)),
+                num_shunting_slots=estimated_shunting_slot_count,
+                num_cleaning_slots=estimated_cleaning_slot_count,
+                num_refueling_slots=estimated_refueling_slot_count,
             )
 
 
@@ -1566,3 +1532,47 @@ def generate_optimal_depot_layout(
         create_depots_from_wish(
             depot_config_wishes, grouped_rotations, scenario, session
         )
+
+
+def create_diesel_vehicle_type_copies(
+    vehicle_type_ids: set,
+    scenario: Any,
+    session: Session,
+) -> Dict[int, int]:
+    """
+    For each VehicleType ID in *vehicle_type_ids*, creates a DIESEL copy inside *scenario*
+    and returns a mapping ``{original_vt_id: diesel_vt_id}``.
+
+    The original vehicle types are left unchanged. The caller is responsible for
+    reassigning rotations using the returned mapping and for removing any orphaned
+    vehicle types afterwards.
+
+    :param vehicle_type_ids: IDs of the vehicle types to copy as diesel.
+    :param scenario: The :class:`eflips.model.Scenario` the copies belong to.
+    :param session: An active SQLAlchemy session.
+    :return: Dict mapping each original vehicle type ID to its new diesel copy ID.
+    """
+    vehicle_type_mapping: Dict[int, int] = {}
+    for vehicle_type_id in vehicle_type_ids:
+        original = (
+            session.query(VehicleType).filter(VehicleType.id == vehicle_type_id).one()
+        )
+
+        diesel_copy = type(original)()
+        for column_attr in inspect(type(original)).column_attrs:
+            if column_attr.key not in ("id", "scenario_id"):
+                setattr(
+                    diesel_copy, column_attr.key, getattr(original, column_attr.key)
+                )
+
+        diesel_copy.scenario = scenario
+        diesel_copy.energy_source = EnergySource.DIESEL
+        diesel_copy.consumption = 0.0001
+        diesel_copy.name = f"{original.name} (diesel)"
+        diesel_copy.name_short = f"{original.name_short} (diesel)"
+
+        session.add(diesel_copy)
+        session.flush()
+        vehicle_type_mapping[vehicle_type_id] = diesel_copy.id
+
+    return vehicle_type_mapping
