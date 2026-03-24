@@ -553,16 +553,13 @@ def generate_depot_layout(
                 }
                 rotation_count_depot += len(rotations)
 
-            diesel_vt = (
-                session.query(VehicleType)
-                .filter(
-                    VehicleType.scenario_id == scenario.id,
-                    VehicleType.energy_source == EnergySource.DIESEL,
-                )
-                .all()
+            diesel_rotation_count = sum(
+                len(rotations)
+                for vt, rotations in vehicle_type_dict.items()
+                if vt.energy_source == EnergySource.DIESEL
             )
-            if len(diesel_vt) > 0:
-                num_refueling_slots = max(len(diesel_vt) // 10, 1)
+            if diesel_rotation_count > 0:
+                num_refueling_slots = max(diesel_rotation_count // 10, 1)
             else:
                 num_refueling_slots = None
 
