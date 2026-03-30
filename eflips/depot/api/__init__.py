@@ -67,6 +67,7 @@ from eflips.depot.api.private.consumption import (
     add_initial_standby_event,
     attempt_opportunity_charging_event,
     extract_trip_information,
+    clear_interpolator_cache,
 )
 from eflips.depot.api.private.depot import (
     delete_depots,
