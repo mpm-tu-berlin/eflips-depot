@@ -21,6 +21,7 @@ from shapely import Point
 from eflips.depot.api.private.consumption import (
     ConsumptionInformation,
     ConsumptionResult,
+    clear_interpolator_cache,
     extract_trip_information,
 )
 from tests.api.test_api import TestHelpers
@@ -664,6 +665,8 @@ class TestConsumptionInformation(TestHelpers):
         self, session, scenario, consumption_lut
     ):
         """Test that calculate() fails when LUT has incorrect columns."""
+        # Clear cache so that the modified columns are re-validated
+        clear_interpolator_cache()
         # Modify the LUT to have wrong columns
         consumption_lut.columns = ["wrong", "columns"]
 

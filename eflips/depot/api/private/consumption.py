@@ -3,7 +3,7 @@ import warnings
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from math import ceil
-from typing import Tuple, List, Optional
+from typing import Any, Dict, Tuple, List, Optional
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -26,6 +26,102 @@ from eflips.model import (
 from sqlalchemy.orm import joinedload
 
 from eflips.depot.api.private.util import temperature_for_trip, create_session
+
+# Module-level cache for parsed interpolators, keyed by ConsumptionLut.id.
+# Avoids rebuilding the 4D numpy array and scipy RegularGridInterpolator
+# for every trip when many trips share the same vehicle class (same LUT).
+_interpolator_cache: Dict[int, Dict[str, Any]] = {}
+
+
+def clear_interpolator_cache() -> None:
+    """Clear the module-level interpolator cache."""
+    _interpolator_cache.clear()
+
+
+def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any]:
+    """
+    Build or retrieve a cached RegularGridInterpolator for a ConsumptionLut.
+
+    Returns a dict with keys: 'interpolator', 'consumption_array', 'incline_scale',
+    'temperature_scale', 'level_of_loading_scale', 'speed_scale'.
+    """
+    lut_id = consumption_lut.id
+    if lut_id in _interpolator_cache:
+        return _interpolator_cache[lut_id]
+
+    # Validate columns
+    if not all(
+        col in consumption_lut.columns
+        for col in [
+            "incline",
+            "t_amb",
+            "level_of_loading",
+            "mean_speed_kmh",
+        ]
+    ):
+        raise ValueError(
+            "The consumption LUT must have the columns 'incline', 't_amb', 'level_of_loading', 'mean_speed_kmh'"
+        )
+
+    # Recover the scales along each of the four axes from the datapoints
+    incline_col_index = consumption_lut.columns.index("incline")
+    temperature_col_index = consumption_lut.columns.index("t_amb")
+    level_of_loading_col_index = consumption_lut.columns.index("level_of_loading")
+    speed_col_index = consumption_lut.columns.index("mean_speed_kmh")
+
+    incline_scale = sorted(
+        set([x[incline_col_index] for x in consumption_lut.data_points])
+    )
+    temperature_scale = sorted(
+        set([x[temperature_col_index] for x in consumption_lut.data_points])
+    )
+    level_of_loading_scale = sorted(
+        set([x[level_of_loading_col_index] for x in consumption_lut.data_points])
+    )
+    speed_scale = sorted(set([x[speed_col_index] for x in consumption_lut.data_points]))
+
+    # Create and populate the 4D array
+    consumption_array = np.zeros(
+        (
+            len(incline_scale),
+            len(temperature_scale),
+            len(level_of_loading_scale),
+            len(speed_scale),
+        )
+    )
+    consumption_array.fill(np.nan)
+
+    for i, data_point in enumerate(consumption_lut.data_points):
+        incline = data_point[incline_col_index]
+        temperature = data_point[temperature_col_index]
+        level_of_loading = data_point[level_of_loading_col_index]
+        speed = data_point[speed_col_index]
+        consumption_array[
+            incline_scale.index(incline),
+            temperature_scale.index(temperature),
+            level_of_loading_scale.index(level_of_loading),
+            speed_scale.index(speed),
+        ] = consumption_lut.values[i]
+
+    # Build the interpolator
+    interpolator = scipy.interpolate.RegularGridInterpolator(
+        (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
+        consumption_array,
+        bounds_error=False,
+        fill_value=None,
+        method="linear",
+    )
+
+    result = {
+        "interpolator": interpolator,
+        "consumption_array": consumption_array,
+        "incline_scale": incline_scale,
+        "temperature_scale": temperature_scale,
+        "level_of_loading_scale": level_of_loading_scale,
+        "speed_scale": speed_scale,
+    }
+    _interpolator_cache[lut_id] = result
+    return result
 
 
 @dataclass
@@ -108,89 +204,17 @@ class ConsumptionInformation:
         :return: The energy consumption in kWh. This is already the consumption for the whole trip.
         """
 
-        # Make sure the consumption lut has 4 dimensions with the correct columns
-        if not all(
-            col in self.consumption_lut.columns
-            for col in [
-                "incline",
-                "t_amb",
-                "level_of_loading",
-                "mean_speed_kmh",
-            ]
-        ):
-            raise ValueError(
-                "The consumption LUT must have the columns 'incline', 't_amb', 'level_of_loading', 'mean_speed_kmh'"
-            )
+        # Get or build the cached interpolator for this LUT
+        cached = _get_or_build_interpolator(self.consumption_lut)
+        interpolator = cached["interpolator"]
+        consumption_array = cached["consumption_array"]
 
-        # Recover the scales along each of the four axes from the datapoints
-        incline_col_index = self.consumption_lut.columns.index("incline")
-        temperature_col_index = self.consumption_lut.columns.index("t_amb")
-        level_of_loading_col_index = self.consumption_lut.columns.index(
-            "level_of_loading"
-        )
-        speed_col_index = self.consumption_lut.columns.index("mean_speed_kmh")
-
-        incline_scale = sorted(
-            set([x[incline_col_index] for x in self.consumption_lut.data_points])
-        )
-        temperature_scale = sorted(
-            set([x[temperature_col_index] for x in self.consumption_lut.data_points])
-        )
-        level_of_loading_scale = sorted(
-            set(
-                [
-                    x[level_of_loading_col_index]
-                    for x in self.consumption_lut.data_points
-                ]
-            )
-        )
-        speed_scale = sorted(
-            set([x[speed_col_index] for x in self.consumption_lut.data_points])
-        )
-
-        # Create the 4d array
-        consumption_lut = np.zeros(
-            (
-                len(incline_scale),
-                len(temperature_scale),
-                len(level_of_loading_scale),
-                len(speed_scale),
-            )
-        )
-
-        # Fill it with NaNs
-        consumption_lut.fill(np.nan)
-
-        for (
-            i,
-            data_point,
-        ) in enumerate(self.consumption_lut.data_points):
-            incline = data_point[incline_col_index]
-            temperature = data_point[temperature_col_index]
-            level_of_loading = data_point[level_of_loading_col_index]
-            speed = data_point[speed_col_index]
-            consumption_lut[
-                incline_scale.index(incline),
-                temperature_scale.index(temperature),
-                level_of_loading_scale.index(level_of_loading),
-                speed_scale.index(speed),
-            ] = self.consumption_lut.values[i]
-
-        # Interpolate the consumption
-        interpolator = scipy.interpolate.RegularGridInterpolator(
-            (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
-            consumption_lut,
-            bounds_error=False,
-            fill_value=None,
-            method="linear",
-        )
         consumption_per_km = interpolator(
             [self.incline, self.temperature, self.level_of_loading, self.average_speed]
         )[0]
 
-        # This is a temporary workaround to handle cases where the LUT does not contain
+        # Fallback to nearest neighbor interpolation if the result is NaN
         if consumption_per_km is None or np.isnan(consumption_per_km):
-            # Add a warning if we had to use nearest neighbor interpolation
             warnings.warn(
                 f"Consumption LUT for trip {self.trip_id} with parameters: "
                 f"incline={self.incline}, temperature={self.temperature}, "
@@ -198,6 +222,11 @@ class ConsumptionInformation:
                 f"returned NaN. Using nearest neighbor interpolation instead. The result may be less accurate.",
                 ConsistencyWarning,
             )
+
+            incline_scale = cached["incline_scale"]
+            temperature_scale = cached["temperature_scale"]
+            level_of_loading_scale = cached["level_of_loading_scale"]
+            speed_scale = cached["speed_scale"]
 
             x, y, z, alpha = np.meshgrid(
                 incline_scale,
@@ -209,16 +238,16 @@ class ConsumptionInformation:
             points_array = np.column_stack(
                 [x.ravel(), y.ravel(), z.ravel(), alpha.ravel()]
             )
-            consumption_lut_flattened = consumption_lut.ravel()
+            consumption_array_flattened = consumption_array.ravel()
 
-            # Remove the NaN entries from consumption_lut and points_array
-            valid_mask = ~np.isnan(consumption_lut_flattened)
+            # Remove the NaN entries from consumption_array and points_array
+            valid_mask = ~np.isnan(consumption_array_flattened)
             points_array = points_array[valid_mask]
-            consumption_lut = consumption_lut_flattened[valid_mask]
+            valid_values = consumption_array_flattened[valid_mask]
 
             interpolator_nn = scipy.interpolate.NearestNDInterpolator(
                 x=points_array,
-                y=consumption_lut.ravel(),
+                y=valid_values,
             )
             consumption_per_km = interpolator_nn(
                 [
@@ -228,8 +257,6 @@ class ConsumptionInformation:
                     self.average_speed,
                 ]
             )[0]
-
-            # Add a warning if we had to use nearest neighbor interpolation
 
         if consumption_per_km is None or np.isnan(consumption_per_km):
             raise ValueError(
