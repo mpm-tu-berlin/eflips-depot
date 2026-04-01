@@ -3,7 +3,10 @@ import warnings
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from math import ceil
-from typing import Any, Dict, Tuple, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Tuple, List, Optional
+
+if TYPE_CHECKING:
+    import scipy.interpolate
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -31,11 +34,13 @@ from eflips.depot.api.private.util import temperature_for_trip, create_session
 # Avoids rebuilding the 4D numpy array and scipy RegularGridInterpolator
 # for every trip when many trips share the same vehicle class (same LUT).
 _interpolator_cache: Dict[int, Dict[str, Any]] = {}
+_nn_interpolator_cache: "Dict[int, scipy.interpolate.NearestNDInterpolator]" = {}
 
 
 def clear_interpolator_cache() -> None:
     """Clear the module-level interpolator cache."""
     _interpolator_cache.clear()
+    _nn_interpolator_cache.clear()
 
 
 def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any]:
@@ -122,6 +127,46 @@ def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any
     }
     _interpolator_cache[lut_id] = result
     return result
+
+
+def _get_or_build_nearest_neighbor_interpolator(
+    cached: Dict[str, Any], lut_id: int
+) -> "scipy.interpolate.NearestNDInterpolator":
+    """
+    Build or retrieve a cached NearestNDInterpolator for a ConsumptionLut.
+
+    This is used as a fallback when the RegularGridInterpolator returns NaN.
+    """
+    if lut_id in _nn_interpolator_cache:
+        return _nn_interpolator_cache[lut_id]
+
+    warnings.warn(
+        f"Consumption LUT {lut_id} returned NaN for at least one trip. "
+        f"Using nearest neighbor interpolation instead. The result may be less accurate.",
+        ConsistencyWarning,
+    )
+
+    x, y, z, alpha = np.meshgrid(
+        cached["incline_scale"],
+        cached["temperature_scale"],
+        cached["level_of_loading_scale"],
+        cached["speed_scale"],
+        indexing="ij",
+    )
+    points_array = np.column_stack([x.ravel(), y.ravel(), z.ravel(), alpha.ravel()])
+    consumption_array_flattened = cached["consumption_array"].ravel()
+
+    # Remove the NaN entries from consumption_array and points_array
+    valid_mask = ~np.isnan(consumption_array_flattened)
+    points_array = points_array[valid_mask]
+    valid_values = consumption_array_flattened[valid_mask]
+
+    interpolator_nn = scipy.interpolate.NearestNDInterpolator(
+        x=points_array,
+        y=valid_values,
+    )
+    _nn_interpolator_cache[lut_id] = interpolator_nn
+    return interpolator_nn
 
 
 @dataclass
@@ -215,39 +260,8 @@ class ConsumptionInformation:
 
         # Fallback to nearest neighbor interpolation if the result is NaN
         if consumption_per_km is None or np.isnan(consumption_per_km):
-            warnings.warn(
-                f"Consumption LUT for trip {self.trip_id} with parameters: "
-                f"incline={self.incline}, temperature={self.temperature}, "
-                f"level_of_loading={self.level_of_loading}, average_speed={self.average_speed} "
-                f"returned NaN. Using nearest neighbor interpolation instead. The result may be less accurate.",
-                ConsistencyWarning,
-            )
-
-            incline_scale = cached["incline_scale"]
-            temperature_scale = cached["temperature_scale"]
-            level_of_loading_scale = cached["level_of_loading_scale"]
-            speed_scale = cached["speed_scale"]
-
-            x, y, z, alpha = np.meshgrid(
-                incline_scale,
-                temperature_scale,
-                level_of_loading_scale,
-                speed_scale,
-                indexing="ij",
-            )
-            points_array = np.column_stack(
-                [x.ravel(), y.ravel(), z.ravel(), alpha.ravel()]
-            )
-            consumption_array_flattened = consumption_array.ravel()
-
-            # Remove the NaN entries from consumption_array and points_array
-            valid_mask = ~np.isnan(consumption_array_flattened)
-            points_array = points_array[valid_mask]
-            valid_values = consumption_array_flattened[valid_mask]
-
-            interpolator_nn = scipy.interpolate.NearestNDInterpolator(
-                x=points_array,
-                y=valid_values,
+            interpolator_nn = _get_or_build_nearest_neighbor_interpolator(
+                cached, self.consumption_lut.id
             )
             consumption_per_km = interpolator_nn(
                 [
