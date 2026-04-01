@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.16.1"
+version = "4.16.2"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -30,6 +30,7 @@ eflips-model = "^10.1.0"
 addopts = [
     "--import-mode=importlib",
 ]
+pythonpath = ["tests"]
 
 [tool.pydocstringformatter]
 write = true

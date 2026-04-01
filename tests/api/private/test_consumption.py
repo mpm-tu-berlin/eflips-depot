@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime, timezone
 
 import pytest
@@ -738,6 +739,118 @@ class TestConsumptionInformation(TestHelpers):
 
         with pytest.raises(ValueError, match="Expected exactly one consumption LUT"):
             extract_trip_information(trip_with_lut.id, scenario)
+
+    @pytest.fixture
+    def consumption_lut_with_hole(self, session, scenario):
+        """Creates a consumption LUT that has one interior grid point missing (NaN hole).
+
+        The hole is at (incline=0.0, t_amb=0.0, level_of_loading=0.5, speed=30.0).
+        Querying at that exact point forces the RegularGridInterpolator to return NaN,
+        which triggers the nearest-neighbor fallback.
+        """
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type for Holey LUT",
+            name_short="TVTH",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            allowed_mass=18000,
+            empty_mass=12000,
+            opportunity_charging_capable=False,
+        )
+        session.add(vehicle_type)
+        session.flush()
+
+        vehicle_class = VehicleClass(
+            scenario_id=vehicle_type.scenario_id,
+            name=f"Holey LUT for {vehicle_type.name_short}",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
+        session.flush()
+
+        consumption_lut = ConsumptionLut.from_vehicle_type(vehicle_type, vehicle_class)
+        consumption_lut.columns = [
+            "incline",
+            "t_amb",
+            "level_of_loading",
+            "mean_speed_kmh",
+        ]
+
+        data_points = []
+        values = []
+        hole = (0.0, 0.0, 0.5, 30.0)  # (incline, t_amb, level_of_loading, speed)
+
+        for incline in [0.0, 0.05]:
+            for temp in [-10.0, 0.0, 10.0, 20.0]:
+                for loading in [0.0, 0.5, 1.0]:
+                    for speed in [10.0, 20.0, 30.0, 40.0]:
+                        if (incline, temp, loading, speed) == hole:
+                            continue  # leave this grid point missing
+                        consumption = (
+                            1.0
+                            + (20 - temp) * 0.01
+                            + loading * 0.3
+                            + speed * 0.02
+                            + incline * 5.0
+                        )
+                        data_points.append([incline, temp, loading, speed])
+                        values.append(consumption)
+
+        consumption_lut.data_points = data_points
+        consumption_lut.values = values
+
+        session.add(consumption_lut)
+        session.flush()
+        return consumption_lut
+
+    def test_consumption_information_calculate_with_hole_in_lut(
+        self, session, scenario, consumption_lut_with_hole
+    ):
+        """Test that the NN fallback is used (and cached) when the LUT has a NaN hole.
+
+        The query point lands exactly on the missing grid entry, so the
+        RegularGridInterpolator returns NaN and the NearestNDInterpolator takes over.
+        The ConsistencyWarning should be emitted exactly once even when calculate()
+        is called a second time for the same LUT.
+        """
+        clear_interpolator_cache()
+
+        def make_info():
+            return ConsumptionInformation(
+                trip_id=1,
+                consumption_lut=consumption_lut_with_hole,
+                average_speed=30.0,  # exactly on the hole
+                distance=10.0,
+                temperature=0.0,  # exactly on the hole
+                level_of_loading=0.5,  # exactly on the hole
+                incline=0.0,  # exactly on the hole
+            )
+
+        # First call: NN interpolator is built and warning is emitted
+        info = make_info()
+        with pytest.warns(
+            ConsistencyWarning, match=f"Consumption LUT {consumption_lut_with_hole.id}"
+        ):
+            info.calculate()
+
+        assert info.consumption is not None
+        assert info.consumption > 0
+
+        # Second call: NN interpolator is already cached — no NN warning this time
+        info2 = make_info()
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter("always")
+            info2.calculate()
+        nn_warnings = [
+            w
+            for w in record
+            if issubclass(w.category, ConsistencyWarning)
+            and "nearest neighbor" in str(w.message).lower()
+        ]
+        assert len(nn_warnings) == 0, "NN warning should not fire on cache hit"
+        assert info2.consumption is not None
+        assert info2.consumption > 0
 
     def test_no_lut_no_consumption_value_error(
         self, session, scenario, trip_without_lut
