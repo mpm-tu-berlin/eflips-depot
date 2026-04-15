@@ -1513,23 +1513,30 @@ def generate_optimal_depot_layout(
             f"Found {len(depot_config_wishes)} wishes and {len(grouped_rotations)} depots."
         )
 
+        # Sandbox: null out all rotation.vehicle_id, run the auto-layout sizing,
+        # then always roll back so the caller's vehicle assignments survive even
+        # if auto_generate_depot_inplace raises (e.g. UnstableSimulationException
+        # bubbling up from depot_smallest_possible_size → simulate_scenario).
+        # Without try/finally, an exception escapes with the NULLs uncommitted in
+        # memory but get committed by create_session's finally-clause commit.
         savepoint = session.begin_nested()
-
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-
-        for depot_wish in depot_config_wishes:
-            if depot_wish.auto_generate is False:
-                continue
-
-            auto_generate_depot_inplace(
-                depot_wish,
-                session,
-                scenario,
+        try:
+            rotation_q = session.query(Rotation).filter(
+                Rotation.scenario_id == scenario.id
             )
+            rotation_q.update({"vehicle_id": None})
 
-        savepoint.rollback()
+            for depot_wish in depot_config_wishes:
+                if depot_wish.auto_generate is False:
+                    continue
+
+                auto_generate_depot_inplace(
+                    depot_wish,
+                    session,
+                    scenario,
+                )
+        finally:
+            savepoint.rollback()
         create_depots_from_wish(
             depot_config_wishes, grouped_rotations, scenario, session
         )
