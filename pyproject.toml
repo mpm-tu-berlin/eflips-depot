@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.16.2"
+version = "4.16.3"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -38,7 +38,7 @@ max-line-length = 100
 exclude = ["eflips/depot/*", "eflips/depot/layout_opt/**", "tests/**"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
+pytest = "^9.0.0"
 pytest-pycharm = "^0.7.0"
 sphinx = "^6.2.1"
 sphinx-autoapi = "^3.0.0"
