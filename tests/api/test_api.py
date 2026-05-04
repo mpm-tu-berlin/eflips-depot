@@ -124,7 +124,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -133,7 +133,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -142,7 +142,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -427,7 +427,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -436,7 +436,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -445,7 +445,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -728,7 +728,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 7",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_4)
@@ -737,7 +737,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 8",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_5)
@@ -746,7 +746,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 9",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -1308,7 +1308,8 @@ class TestApi(TestHelpers):
         self, session, full_scenario, num_diesel_rotations
     ):
         """
-        Shared setup for all-diesel and heterogeneous fleet tests, following the
+        Shared setup for all-diesel and heterogeneous fleet tests, following the.
+
         approach in simulate_heterogeneous_fleet.py.
 
         :param num_diesel_rotations: Number of rotations (by ascending id) to convert to

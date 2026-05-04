@@ -140,7 +140,7 @@ class BaseTest:
             scenario=scenario,
             name="Industriepark",
             name_short="OS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -149,14 +149,14 @@ class BaseTest:
             scenario=scenario,
             name="Duckstraße",
             name_short="OS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         stop_3 = Station(
             scenario=scenario,
             name="Alte Kirche",
             name_short="OS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -164,14 +164,14 @@ class BaseTest:
             scenario=scenario,
             name="Düsentrieb Werkstatt",
             name_short="US1",
-            geom=from_shape(Point(0, 1), srid=4326),
+            geom=from_shape(Point(0, 1, 0), srid=4326),
             is_electrified=False,
         )
         stop_5 = Station(
             scenario=scenario,
             name="Geldspeicher",
             name_short="US2",
-            geom=from_shape(Point(0, 4), srid=4326),
+            geom=from_shape(Point(0, 4, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -179,21 +179,21 @@ class BaseTest:
             scenario=scenario,
             name="Milliardärsclub",
             name_short="HV1",
-            geom=from_shape(Point(0, 5), srid=4326),
+            geom=from_shape(Point(0, 5, 0), srid=4326),
             is_electrified=False,
         )
         stop_7 = Station(
             scenario=scenario,
             name="Emil-Erpel-Statue",
             name_short="HV2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         stop_8 = Station(
             scenario=scenario,
             name="Rathaus",
             name_short="HV3",
-            geom=from_shape(Point(0, -2), srid=4326),
+            geom=from_shape(Point(0, -2, 0), srid=4326),
             is_electrified=False,
         )
 
