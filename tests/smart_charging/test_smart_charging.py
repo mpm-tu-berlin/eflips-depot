@@ -3,7 +3,7 @@ from datetime import datetime
 from eflips.model import Event, EventType
 
 from eflips.depot.api import apply_even_smart_charging
-from smart_charging.base import BaseTest
+from tests.smart_charging.base import BaseTest
 
 
 class TestSmartCharging(BaseTest):
@@ -20,6 +20,10 @@ class TestSmartCharging(BaseTest):
             .filter(Event.event_type == EventType.CHARGING_DEPOT)
             .all()
         )
+        # Keep only two of these events to reduce data size
+        for event in all_charging_events[2:]:
+            session.delete(event)
+
         start_socs = for_event = {}
         end_socs_for_event = {}
         for event in all_charging_events:
