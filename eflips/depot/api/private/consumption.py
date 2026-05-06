@@ -40,11 +40,51 @@ from eflips.depot.api.private.util import temperature_for_trip, create_session
 _interpolator_cache: Dict[int, Dict[str, Any]] = {}
 _nn_interpolator_cache: "Dict[int, scipy.interpolate.NearestNDInterpolator]" = {}
 
+# Dedup set for nearest-neighbor fallback warnings.
+# Key: (lut_id, kind, dim_tuple). ``kind`` is "out_of_range" or "ragged"; for
+# out_of_range the dim_tuple lists the offending LUT axes (sorted).
+_nn_fallback_warned: set = set()
+
 
 def clear_interpolator_cache() -> None:
     """Clear the module-level interpolator cache."""
     _interpolator_cache.clear()
     _nn_interpolator_cache.clear()
+    _nn_fallback_warned.clear()
+
+
+_LUT_DIM_NAMES: Tuple[str, str, str, str] = (
+    "incline",
+    "t_amb",
+    "level_of_loading",
+    "mean_speed_kmh",
+)
+
+
+def _classify_nan_query(
+    point: np.ndarray, cached: Dict[str, Any]
+) -> Tuple[str, Tuple[str, ...]]:
+    """
+    Classify a 4D query that produced NaN under the regular-grid interpolator.
+
+    Returns ``("out_of_range", (dim_names...))`` if any axis value is outside
+    its scale, else ``("ragged", ())`` — meaning the query lies inside the
+    bounding box but a neighbouring grid cell is unpopulated.
+    """
+    scales = (
+        cached["incline_scale"],
+        cached["temperature_scale"],
+        cached["level_of_loading_scale"],
+        cached["speed_scale"],
+    )
+    out_of_range: List[str] = []
+    for i, scale in enumerate(scales):
+        v = float(point[i])
+        if v < scale[0] or v > scale[-1]:
+            out_of_range.append(_LUT_DIM_NAMES[i])
+    if out_of_range:
+        return "out_of_range", tuple(sorted(out_of_range))
+    return "ragged", ()
 
 
 def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any]:
@@ -112,12 +152,14 @@ def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any
             speed_scale.index(speed),
         ] = consumption_lut.values[i]
 
-    # Build the interpolator
+    # Build the interpolator. ``fill_value=np.nan`` disables linear extrapolation
+    # outside the grid; any out-of-range query produces NaN and is routed to the
+    # nearest-neighbor fallback in :meth:`ConsumptionInformation.calculate`.
     interpolator = scipy.interpolate.RegularGridInterpolator(
         (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
         consumption_array,
         bounds_error=False,
-        fill_value=None,
+        fill_value=np.nan,
         method="linear",
     )
 
@@ -143,12 +185,6 @@ def _get_or_build_nearest_neighbor_interpolator(
     """
     if lut_id in _nn_interpolator_cache:
         return _nn_interpolator_cache[lut_id]
-
-    warnings.warn(
-        f"Consumption LUT {lut_id} returned NaN for at least one trip. "
-        f"Using nearest neighbor interpolation instead. The result may be less accurate.",
-        ConsistencyWarning,
-    )
 
     x, y, z, alpha = np.meshgrid(
         cached["incline_scale"],
@@ -260,6 +296,14 @@ class ConsumptionInformation:
     segments: List["TripSegment"]
     consumption_lut: Optional[ConsumptionLut] = None
     flat_consumption_per_km: Optional[float] = None
+    line_name: Optional[str] = None
+    """Human-readable line name, used purely for diagnostic warnings."""
+    route_name: Optional[str] = None
+    """Human-readable route name, used purely for diagnostic warnings."""
+    trip_departure: Optional[datetime] = None
+    """Trip departure time, used purely for diagnostic warnings."""
+    trip_arrival: Optional[datetime] = None
+    """Trip arrival time, used purely for diagnostic warnings."""
 
     def calculate(self) -> None:
         """
@@ -308,8 +352,10 @@ class ConsumptionInformation:
 
         nan_mask = np.isnan(kwh_per_km)
         if nan_mask.any():
+            lut_id = self.consumption_lut.id
+            self._warn_nn_fallback(points, nan_mask, cached, lut_id)
             interpolator_nn = _get_or_build_nearest_neighbor_interpolator(
-                cached, self.consumption_lut.id
+                cached, lut_id
             )
             kwh_per_km[nan_mask] = np.asarray(
                 interpolator_nn(points[nan_mask]), dtype=float
@@ -325,6 +371,74 @@ class ConsumptionInformation:
             segment.consumption_kwh = float(kwh_per_km[i]) * segment.distance_m / 1000.0
 
         self.consumption_lut = None  # release the LUT reference
+
+    def _warn_nn_fallback(
+        self,
+        points: np.ndarray,
+        nan_mask: np.ndarray,
+        cached: Dict[str, Any],
+        lut_id: int,
+    ) -> None:
+        """
+        Emit a deduplicated :class:`ConsistencyWarning` for every distinct
+        nearest-neighbor fallback reason encountered on this trip.
+
+        Each NaN query is classified as either ``out_of_range`` (at least one
+        LUT axis outside its scale; the offending axes are listed) or
+        ``ragged`` (all four axes in-range, but a neighbouring grid cell is
+        unpopulated). Warnings are deduplicated by
+        ``(lut_id, kind, dim_tuple)`` across the whole process.
+        """
+        nan_indices = np.flatnonzero(nan_mask)
+        groups: Dict[Tuple[str, Tuple[str, ...]], List[int]] = {}
+        for idx in nan_indices:
+            kind, dims = _classify_nan_query(points[idx], cached)
+            groups.setdefault((kind, dims), []).append(int(idx))
+
+        ctx_parts: List[str] = []
+        if self.line_name:
+            ctx_parts.append(f"line={self.line_name!r}")
+        if self.route_name:
+            ctx_parts.append(f"route={self.route_name!r}")
+        if self.trip_departure is not None:
+            ctx_parts.append(f"departure={self.trip_departure.isoformat()}")
+        if self.trip_arrival is not None:
+            ctx_parts.append(f"arrival={self.trip_arrival.isoformat()}")
+        ctx_suffix = (
+            (" Trip context: " + ", ".join(ctx_parts) + ".") if ctx_parts else ""
+        )
+
+        for (kind, dims), idxs in groups.items():
+            key = (lut_id, kind, dims)
+            if key in _nn_fallback_warned:
+                continue
+            _nn_fallback_warned.add(key)
+
+            example_seg = self.segments[idxs[0]]
+            example = (
+                f" Example segment: incline={example_seg.incline:.4f}, "
+                f"t_amb={example_seg.t_amb}, "
+                f"level_of_loading={example_seg.level_of_loading}, "
+                f"mean_speed_kmh={example_seg.mean_speed_kmh:.2f}."
+            )
+
+            if kind == "out_of_range":
+                msg = (
+                    f"Consumption LUT {lut_id}: {len(idxs)} segment(s) on "
+                    f"trip {self.trip_id} were outside the LUT grid on "
+                    f"dimension(s) {list(dims)}. Falling back to "
+                    f"nearest-neighbor interpolation; the result may be less "
+                    f"accurate." + ctx_suffix + example
+                )
+            else:
+                msg = (
+                    f"Consumption LUT {lut_id}: {len(idxs)} segment(s) on "
+                    f"trip {self.trip_id} fell into an unpopulated cell of "
+                    f"the 4D grid (ragged grid; all axes in range). Falling "
+                    f"back to nearest-neighbor interpolation; the result may "
+                    f"be less accurate." + ctx_suffix + example
+                )
+            warnings.warn(msg, ConsistencyWarning)
 
     def generate_consumption_result(self, battery_capacity: float) -> ConsumptionResult:
         """
@@ -560,6 +674,7 @@ def extract_trip_information(
             )
             .options(joinedload(Trip.route).joinedload(Route.departure_station))
             .options(joinedload(Trip.route).joinedload(Route.arrival_station))
+            .options(joinedload(Trip.route).joinedload(Route.line))
             .options(joinedload(Trip.stop_times).joinedload(StopTime.station))
             .options(
                 joinedload(Trip.rotation)
@@ -581,6 +696,10 @@ def extract_trip_information(
                 f"Expected at most one consumption LUT, got {len(all_consumption_luts)}"
             )
 
+        line = getattr(trip.route, "line", None)
+        line_name = getattr(line, "name", None) if line is not None else None
+        route_name = trip.route.name
+
         if len(all_consumption_luts) == 1:
             assert (
                 trip.rotation.vehicle_type.allowed_mass is not None
@@ -600,6 +719,10 @@ def extract_trip_information(
                 trip_id=trip.id,
                 segments=segments,
                 consumption_lut=all_consumption_luts[0],
+                line_name=line_name,
+                route_name=route_name,
+                trip_departure=trip.departure_time,
+                trip_arrival=trip.arrival_time,
             )
             info.calculate()
         else:
@@ -617,6 +740,10 @@ def extract_trip_information(
                 trip_id=trip.id,
                 segments=segments,
                 flat_consumption_per_km=trip.rotation.vehicle_type.consumption,
+                line_name=line_name,
+                route_name=route_name,
+                trip_departure=trip.departure_time,
+                trip_arrival=trip.arrival_time,
             )
             info.calculate()
 
