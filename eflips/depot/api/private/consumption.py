@@ -28,9 +28,10 @@ from eflips.model import (
     ConsistencyWarning,
     ConsumptionLut,
     Scenario,
+    Temperatures,
 )
 from geoalchemy2.shape import to_shape
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from eflips.depot.api.private.util import temperature_for_trip, create_session
 
@@ -544,8 +545,8 @@ def _assoc_z(assoc: Optional[AssocRouteStation]) -> Optional[float]:
 
 def _build_trip_segments(
     trip: Trip,
-    session: sqlalchemy.orm.session.Session,
     level_of_loading: Optional[float],
+    t_amb: Optional[float],
 ) -> List[TripSegment]:
     """
     Walk a trip's stop times and route geometry to produce :class:`TripSegment` objects.
@@ -554,7 +555,8 @@ def _build_trip_segments(
     departure/arrival), with synthetic knots inserted from ``Route.geom`` vertices
     whenever two consecutive stop-time knots are more than
     ``_VERTEX_GAP_THRESHOLD_M`` apart. A single :class:`ConsistencyWarning` is
-    emitted per trip when at least one knot has no Z.
+    emitted per trip when at least one knot has no Z. Ambient temperature is
+    constant across all segments — sample it once at the trip midpoint upstream.
     """
     route = trip.route
     assoc_by_station: Dict[int, AssocRouteStation] = {
@@ -617,7 +619,8 @@ def _build_trip_segments(
             ConsistencyWarning,
         )
 
-    # 4. Build the segments.
+    # 4. Build the segments. t_amb is constant per trip (sampled at the trip
+    #    midpoint by the caller).
     segments: List[TripSegment] = []
     for prev, curr in zip(knots, knots[1:]):
         d_prev, t_prev, z_prev = prev
@@ -632,8 +635,6 @@ def _build_trip_segments(
             incline = (z_curr - z_prev) / distance_m
         else:
             incline = 0.0
-        midpoint = t_prev + (t_curr - t_prev) / 2 if duration_s > 0 else t_prev
-        t_amb = temperature_for_trip(trip.id, session, at_time=midpoint)
         segments.append(
             TripSegment(
                 distance_m=distance_m,
@@ -653,6 +654,9 @@ def extract_trip_information(
     scenario: Scenario,
     passenger_mass=68,
     passenger_count=17.6,
+    *,
+    temperatures: Optional[Temperatures] = None,
+    consumption_luts: Optional[Dict[int, ConsumptionLut]] = None,
 ) -> ConsumptionInformation:
     """
     Build a :class:`ConsumptionInformation` for a trip, decomposed into segments.
@@ -664,32 +668,44 @@ def extract_trip_information(
     """
 
     with create_session(scenario) as (session, scenario):
+        # Use selectinload for the *collections* (Route.assoc_route_stations,
+        # Trip.stop_times, VehicleType.vehicle_classes) so they each become a
+        # separate small query instead of multiplying out into a Cartesian
+        # product on the main row. Many-to-one steps stay joinedload.
         trip = (
             session.query(Trip)
             .filter(Trip.id == trip_id)
             .options(
+                joinedload(Trip.route).joinedload(Route.departure_station),
+                joinedload(Trip.route).joinedload(Route.arrival_station),
+                joinedload(Trip.route).joinedload(Route.line),
                 joinedload(Trip.route)
-                .joinedload(Route.assoc_route_stations)
-                .joinedload(AssocRouteStation.station)
-            )
-            .options(joinedload(Trip.route).joinedload(Route.departure_station))
-            .options(joinedload(Trip.route).joinedload(Route.arrival_station))
-            .options(joinedload(Trip.route).joinedload(Route.line))
-            .options(joinedload(Trip.stop_times).joinedload(StopTime.station))
-            .options(
+                .selectinload(Route.assoc_route_stations)
+                .joinedload(AssocRouteStation.station),
+                selectinload(Trip.stop_times).joinedload(StopTime.station),
                 joinedload(Trip.rotation)
                 .joinedload(Rotation.vehicle_type)
-                .joinedload(VehicleType.vehicle_classes)
-                .joinedload(VehicleClass.consumption_lut)
+                .selectinload(VehicleType.vehicle_classes),
             )
             .one()
         )
 
-        all_consumption_luts = [
-            vc.consumption_lut
-            for vc in trip.rotation.vehicle_type.vehicle_classes
-            if vc.consumption_lut is not None
-        ]
+        # Resolve LUTs from the caller-provided dict when present; otherwise fall
+        # back to lazy-loading the relationship. Preloading once per scenario
+        # avoids re-decoding ConsumptionLut's large JSON columns (columns,
+        # data_points, values) on every joined row of every trip.
+        if consumption_luts is not None:
+            all_consumption_luts = [
+                consumption_luts[vc.id]
+                for vc in trip.rotation.vehicle_type.vehicle_classes
+                if vc.id in consumption_luts
+            ]
+        else:
+            all_consumption_luts = [
+                vc.consumption_lut
+                for vc in trip.rotation.vehicle_type.vehicle_classes
+                if vc.consumption_lut is not None
+            ]
 
         if len(all_consumption_luts) > 1:
             raise ValueError(
@@ -699,6 +715,14 @@ def extract_trip_information(
         line = getattr(trip.route, "line", None)
         line_name = getattr(line, "name", None) if line is not None else None
         route_name = trip.route.name
+
+        # Sample ambient temperature once at the trip midpoint; constant per trip.
+        trip_midpoint = (
+            trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
+        )
+        t_amb = temperature_for_trip(
+            trip.id, session, at_time=trip_midpoint, temperatures=temperatures
+        )
 
         if len(all_consumption_luts) == 1:
             assert (
@@ -714,7 +738,7 @@ def extract_trip_information(
             )
             level_of_loading = (passenger_mass * passenger_count) / full_payload
 
-            segments = _build_trip_segments(trip, session, level_of_loading)
+            segments = _build_trip_segments(trip, level_of_loading, t_amb)
             info = ConsumptionInformation(
                 trip_id=trip.id,
                 segments=segments,
@@ -735,7 +759,7 @@ def extract_trip_information(
                     f"Vehicle type {trip.rotation.vehicle_type} must have a "
                     "consumption value set if no consumption LUT is available."
                 )
-            segments = _build_trip_segments(trip, session, level_of_loading=None)
+            segments = _build_trip_segments(trip, level_of_loading=None, t_amb=t_amb)
             info = ConsumptionInformation(
                 trip_id=trip.id,
                 segments=segments,

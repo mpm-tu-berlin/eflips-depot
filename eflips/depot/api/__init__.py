@@ -52,8 +52,14 @@ from eflips.model import (
     ConsistencyWarning,
     Station,
     EnergySource,
+    Temperatures,
+    AssocRouteStation,
+    StopTime,
+    VehicleClass,
+    ConsumptionLut,
 )
 from sqlalchemy import func, inspect
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, joinedload
 
 import eflips.depot
@@ -141,6 +147,28 @@ def generate_consumption_result(scenario):
     """
 
     with create_session(scenario) as (session, scenario):
+        # Preload Temperatures once — every trip in the scenario reuses it, and
+        # the JSON-decoded `datetimes`/`data` columns are huge.
+        try:
+            temperatures: Optional[Temperatures] = (
+                session.query(Temperatures)
+                .filter(Temperatures.scenario_id == scenario.id)
+                .one()
+            )
+        except NoResultFound:
+            temperatures = None
+
+        # Preload ConsumptionLuts once and key by VehicleClass.id. Without this
+        # the per-trip joinedload chain re-decodes the huge JSON `columns`,
+        # `data_points` and `values` columns once per row of the Cartesian
+        # product (assoc_route_stations × stop_times) — millions of decodes.
+        consumption_luts: Dict[int, ConsumptionLut] = {
+            lut.vehicle_class_id: lut
+            for lut in session.query(ConsumptionLut)
+            .filter(ConsumptionLut.scenario_id == scenario.id)
+            .all()
+        }
+
         trips = session.query(Trip).filter(Trip.scenario_id == scenario.id).all()
         consumption_results = {}
         for trip in trips:
@@ -148,6 +176,8 @@ def generate_consumption_result(scenario):
                 consumption_info = extract_trip_information(
                     trip.id,
                     scenario,
+                    temperatures=temperatures,
+                    consumption_luts=consumption_luts,
                 )
             except ValueError as e:
                 # If the trip has no consumption information, skip it

@@ -207,7 +207,11 @@ def check_depot_validity(depot: Depot) -> None:
 
 
 def temperature_for_trip(
-    trip_id: int, session: Session, at_time: Optional[datetime] = None
+    trip_id: int,
+    session: Session,
+    at_time: Optional[datetime] = None,
+    *,
+    temperatures: Optional[Temperatures] = None,
 ) -> Optional[float]:
     """
     Returns the temperature for a trip.
@@ -219,22 +223,25 @@ def temperature_for_trip(
     :param session: The SQLAlchemy session
     :param at_time: Optional timestamp at which to evaluate the temperature. Must
         carry tzinfo. If ``None``, the trip mid-point is used.
+    :param temperatures: Optional preloaded :class:`Temperatures` to skip the
+        per-call query. Hot loops should hoist this lookup.
     :return: A temperature in °C, or ``None`` if no temperatures are recorded.
     """
 
     trip = session.query(Trip).filter(Trip.id == trip_id).one()
-    try:
-        temperatures = (
-            session.query(Temperatures)
-            .filter(Temperatures.scenario_id == trip.scenario_id)
-            .one()
-        )
-    except NoResultFound:
-        warnings.warn(
-            f"No temperatures found for scenario {trip.scenario_id}.",
-            ConsistencyWarning,
-        )
-        return None
+    if temperatures is None:
+        try:
+            temperatures = (
+                session.query(Temperatures)
+                .filter(Temperatures.scenario_id == trip.scenario_id)
+                .one()
+            )
+        except NoResultFound:
+            warnings.warn(
+                f"No temperatures found for scenario {trip.scenario_id}.",
+                ConsistencyWarning,
+            )
+            return None
 
     if at_time is None:
         eval_time = trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
