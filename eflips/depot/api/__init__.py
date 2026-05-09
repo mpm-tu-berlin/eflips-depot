@@ -23,6 +23,8 @@ The following steps are recommended for using the API:
 4. For the results to be valid, the consumption simulation should now be run again.
     a. If you are using an external consumption model, run it again making sure it does not create new vehicles.
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
+5. Optionally (enabled by default in :func:`simulate_scenario`), call :func:`shrink_to_peak_usage` to right-size
+   the auto-generated depots and electrified opportunity-charging stations to their peak observed concurrency.
 """
 import copy
 import logging
@@ -105,6 +107,10 @@ from eflips.depot.api.private.util import (
 )
 
 from eflips.depot.api.private.depot import AreaInformation, DepotConfigurationWish
+from eflips.depot.api.private.shrink import (
+    _shrink_areas_to_peak,
+    _shrink_stations_to_peak,
+)
 
 
 class SmartChargingStrategy(Enum):
@@ -632,6 +638,44 @@ def apply_even_smart_charging(
                 session.add(event)
 
 
+def shrink_to_peak_usage(
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    resolution: timedelta = timedelta(minutes=5),
+) -> None:
+    """Shrink Areas and electrified terminus Stations to their peak observed usage.
+
+    A freshly generated depot layout is intentionally over-provisioned, but
+    downstream cost estimation counts every slot. This pass walks every
+    :class:`eflips.model.Area` in the scenario and reduces ``Area.capacity`` to
+    the maximum number of simultaneous events observed at that area (rounded up
+    to the next valid value for the area type). Areas that saw no events at all
+    are deleted. Each :class:`eflips.model.Station` with ``is_electrified=True``
+    and ``charge_type=ChargeType.OPPORTUNITY`` has its
+    ``amount_charging_places`` (and ``power_total``) reduced to peak observed
+    CHARGING_OPPORTUNITY concurrency; stations with zero such events are
+    un-electrified.
+
+    Must be called *after* :func:`add_evaluation_to_database` so the events are
+    persisted in the database. :func:`simulate_scenario` calls this
+    automatically by default.
+
+    :param scenario: A :class:`eflips.model.Scenario`, its integer id, or any
+        object with an ``id`` attribute pointing to a scenario id.
+    :param database_url: Optional database URL. Falls back to ``DATABASE_URL``
+        if the scenario is not given as a :class:`Scenario` object.
+    :param resolution: Time-block resolution used to detect concurrent events.
+        Default 5 minutes.
+
+    :raises RuntimeError: If an Area or Station has zero peak concurrency but
+        the database still holds matching events — this indicates an
+        inconsistency and is never silently ignored.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        _shrink_areas_to_peak(scenario, session, resolution)
+        _shrink_stations_to_peak(scenario, session, resolution)
+
+
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
@@ -639,6 +683,8 @@ def simulate_scenario(
     smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.NONE,
     ignore_unstable_simulation: bool = False,
     ignore_delayed_trips: bool = False,
+    shrink_to_peak_usage: bool = True,
+    shrink_resolution: timedelta = timedelta(minutes=5),
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -673,6 +719,14 @@ def simulate_scenario(
 
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
     :param ignore_delayed_trips: If True, the simulation will not raise an exception if there are delayed trips.
+
+    :param shrink_to_peak_usage: If True (the default), Areas and electrified
+        opportunity-charging Stations are shrunk to their peak observed usage
+        after the events have been written to the database. See
+        :func:`shrink_to_peak_usage` for details.
+
+    :param shrink_resolution: Time-block resolution used when computing peak
+        concurrency for the shrinking step. Default 5 minutes.
 
     :return: Nothing. The results are added to the database.
 
@@ -713,6 +767,10 @@ def simulate_scenario(
         # Only the DelayedTripException will be raised if both exceptions are in the list.
         for e in errors:
             raise e
+
+        if shrink_to_peak_usage:
+            _shrink_areas_to_peak(scenario, session, shrink_resolution)
+            _shrink_stations_to_peak(scenario, session, shrink_resolution)
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
