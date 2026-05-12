@@ -24,7 +24,10 @@ The following steps are recommended for using the API:
     a. If you are using an external consumption model, run it again making sure it does not create new vehicles.
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
 5. Optionally (enabled by default in :func:`simulate_scenario`), call :func:`shrink_to_peak_usage` to right-size
-   the auto-generated depots and electrified opportunity-charging stations to their peak observed concurrency.
+   the auto-generated depot Areas to their peak observed concurrency. Note: electrified terminus Stations cannot be
+   shrunk at this point because they have no charging events yet — those are only created by the consumption
+   simulation in step 4. To also shrink terminus Stations, call :func:`shrink_to_peak_usage` manually *after*
+   the consumption simulation in step 4b.
 """
 import copy
 import logging
@@ -657,8 +660,11 @@ def shrink_to_peak_usage(
     un-electrified.
 
     Must be called *after* :func:`add_evaluation_to_database` so the events are
-    persisted in the database. :func:`simulate_scenario` calls this
-    automatically by default.
+    persisted in the database. :func:`simulate_scenario` automatically shrinks
+    Areas when ``shrink_to_peak_usage=True`` (the default), but it does **not**
+    shrink terminus Stations — those have no charging events until the subsequent
+    consumption simulation runs. Call this function manually after that
+    consumption simulation to also right-size the Stations.
 
     :param scenario: A :class:`eflips.model.Scenario`, its integer id, or any
         object with an ``id`` attribute pointing to a scenario id.
@@ -720,10 +726,13 @@ def simulate_scenario(
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
     :param ignore_delayed_trips: If True, the simulation will not raise an exception if there are delayed trips.
 
-    :param shrink_to_peak_usage: If True (the default), Areas and electrified
-        opportunity-charging Stations are shrunk to their peak observed usage
-        after the events have been written to the database. See
-        :func:`shrink_to_peak_usage` for details.
+    :param shrink_to_peak_usage: If True (the default), depot Areas are shrunk
+        to their peak observed usage after the events have been written to the
+        database. Electrified terminus Stations are *not* shrunk here because
+        they have no charging events at this stage — those are only created by
+        the subsequent consumption simulation. To also shrink terminus Stations,
+        call :func:`shrink_to_peak_usage` manually after that consumption
+        simulation. See :func:`shrink_to_peak_usage` for details.
 
     :param shrink_resolution: Time-block resolution used when computing peak
         concurrency for the shrinking step. Default 5 minutes.
@@ -770,7 +779,8 @@ def simulate_scenario(
 
         if shrink_to_peak_usage:
             _shrink_areas_to_peak(scenario, session, shrink_resolution)
-            _shrink_stations_to_peak(scenario, session, shrink_resolution)
+            # Stations are not shrunk here: terminus charging events only exist after a subsequent
+            # consumption simulation. Call shrink_to_peak_usage() after that simulation.
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
