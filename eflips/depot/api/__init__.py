@@ -23,6 +23,11 @@ The following steps are recommended for using the API:
 4. For the results to be valid, the consumption simulation should now be run again.
     a. If you are using an external consumption model, run it again making sure it does not create new vehicles.
     b. Run the :func:`simple_consumption_simulation` function again, this time with ``initialize_vehicles=False``.
+5. Optionally (enabled by default in :func:`simulate_scenario`), call :func:`shrink_to_peak_usage` to right-size
+   the auto-generated depot Areas to their peak observed concurrency. Note: electrified terminus Stations cannot be
+   shrunk at this point because they have no charging events yet — those are only created by the consumption
+   simulation in step 4. To also shrink terminus Stations, call :func:`shrink_to_peak_usage` manually *after*
+   the consumption simulation in step 4b.
 """
 import copy
 import logging
@@ -52,8 +57,14 @@ from eflips.model import (
     ConsistencyWarning,
     Station,
     EnergySource,
+    Temperatures,
+    AssocRouteStation,
+    StopTime,
+    VehicleClass,
+    ConsumptionLut,
 )
 from sqlalchemy import func, inspect
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, joinedload
 
 import eflips.depot
@@ -99,6 +110,10 @@ from eflips.depot.api.private.util import (
 )
 
 from eflips.depot.api.private.depot import AreaInformation, DepotConfigurationWish
+from eflips.depot.api.private.shrink import (
+    _shrink_areas_to_peak,
+    _shrink_stations_to_peak,
+)
 
 
 class SmartChargingStrategy(Enum):
@@ -141,6 +156,28 @@ def generate_consumption_result(scenario):
     """
 
     with create_session(scenario) as (session, scenario):
+        # Preload Temperatures once — every trip in the scenario reuses it, and
+        # the JSON-decoded `datetimes`/`data` columns are huge.
+        try:
+            temperatures: Optional[Temperatures] = (
+                session.query(Temperatures)
+                .filter(Temperatures.scenario_id == scenario.id)
+                .one()
+            )
+        except NoResultFound:
+            temperatures = None
+
+        # Preload ConsumptionLuts once and key by VehicleClass.id. Without this
+        # the per-trip joinedload chain re-decodes the huge JSON `columns`,
+        # `data_points` and `values` columns once per row of the Cartesian
+        # product (assoc_route_stations × stop_times) — millions of decodes.
+        consumption_luts: Dict[int, ConsumptionLut] = {
+            lut.vehicle_class_id: lut
+            for lut in session.query(ConsumptionLut)
+            .filter(ConsumptionLut.scenario_id == scenario.id)
+            .all()
+        }
+
         trips = session.query(Trip).filter(Trip.scenario_id == scenario.id).all()
         consumption_results = {}
         for trip in trips:
@@ -148,6 +185,8 @@ def generate_consumption_result(scenario):
                 consumption_info = extract_trip_information(
                     trip.id,
                     scenario,
+                    temperatures=temperatures,
+                    consumption_luts=consumption_luts,
                 )
             except ValueError as e:
                 # If the trip has no consumption information, skip it
@@ -174,12 +213,16 @@ def simple_consumption_simulation(
     consumption_result: Dict[int, ConsumptionResult] | None = None,
 ) -> None:
     """
-    Run a simple consumption simulation and optionally initialize vehicles in the database.
+    Run a consumption simulation and optionally initialize vehicles in the database.
 
-    This function calculates energy consumption by multiplying each vehicle's total traveled
-    distance by a constant ``VehicleType.consumption`` (kWh per km), then updates the database
-    with the resulting SoC (State of Charge) data. The function can also use precomputed results
-    for specific trips via the ``consumption_result`` parameter.
+    For every trip, this function obtains a :class:`ConsumptionResult` and writes the
+    resulting :class:`Event` (with optional SoC timeseries) to the database. The
+    :class:`ConsumptionResult` comes from one of two sources:
+
+    1. The caller's ``consumption_result`` dict (preferred when provided).
+    2. :func:`extract_trip_information`, which decomposes the trip into route-aware
+       segments and evaluates the vehicle's consumption LUT — or, when no LUT is
+       attached, the vehicle type's flat ``consumption`` value — once per segment.
 
     If ``initialize_vehicles`` is True, vehicles and an initial STANDBY event (with 100% SoC)
     are created for each rotation that does not already have a vehicle. If it is False, existing
@@ -192,18 +235,16 @@ def simple_consumption_simulation(
 
     **SoC Constraints**
 
-    - When no precomputed results are provided, SoC is computed by subtracting energy used
-      (`consumption * distance / battery_capacity`) from the previous event’s SoC.
-    - When precomputed ``ConsumptionResult`` objects are provided in ``consumption_result``,
-      they must have a non-positive total change in SoC (``delta_soc_total <= 0``).
-      If the function detects a positive ``delta_soc_total``, it raises a ``ValueError``.
+    - The :class:`ConsumptionResult` (whether supplied or computed) must have a
+      non-positive ``delta_soc_total``. ``delta_soc`` must be monotonically
+      non-increasing. Otherwise a ``ValueError`` is raised.
 
     **Timeseries Calculation**
 
-    - If ``calculate_timeseries`` is True, the function builds a more granular SoC timeseries
-      at each stop in the trip and stores it in the ``Event.timeseries`` column.
-    - If False, the event’s ``timeseries`` is set to ``None``, which may speed up the simulation
-      if you do not need intermediate SoC data.
+    - If ``calculate_timeseries`` is True, the per-segment timestamps and SoC values
+      from the :class:`ConsumptionResult` are written to ``Event.timeseries``.
+    - If False, the event's ``timeseries`` is set to ``None``, which may speed up
+      the simulation if you do not need intermediate SoC data.
 
     :param scenario:
         One of:
@@ -341,18 +382,6 @@ def simple_consumption_simulation(
                     .filter(Rotation.id == rotation.id)
                     .one()
                 )
-            if vehicle_type.consumption is None:
-                # If the vehicle type has no consumption value, all trips must have a precomputed consumption result
-                all_trip_ids = [trip.id for trip in rotation.trips]
-                if not (
-                    consumption_result is not None
-                    and all(trip_id in consumption_result for trip_id in all_trip_ids)
-                ):
-                    raise ValueError(
-                        "The vehicle type does not have a consumption value set and no consumption results are provided."
-                    )
-            consumption = vehicle_type.consumption
-
             # The departure SoC for this rotation is the SoC of the last event preceding the first trip
             with session.no_autoflush:
                 current_soc_q = (
@@ -374,80 +403,45 @@ def simple_consumption_simulation(
                     current_soc = current_soc_q[0]
 
             for trip in rotation.trips:
-                # Set up a timeseries
-                if consumption_result is None or trip.id not in consumption_result:
-                    logger.debug("Calculating consumption for trip %s", trip.id)
-                    soc_start = current_soc
-                    if calculate_timeseries and len(trip.stop_times) > 0:
-                        timeseries = {
-                            "time": [],
-                            "soc": [],
-                            "distance": [],
-                        }
-                        for i in range(len(trip.stop_times)):
-                            current_time = trip.stop_times[i].arrival_time
-                            dwell_duration = trip.stop_times[i].dwell_duration
-                            elapsed_distance = trip.route.assoc_route_stations[
-                                i
-                            ].elapsed_distance
-                            elapsed_energy = consumption * (
-                                elapsed_distance / 1000
-                            )  # kWh
-                            soc = (
-                                current_soc
-                                - elapsed_energy / vehicle_type.battery_capacity
-                            )
-                            timeseries["time"].append(current_time.isoformat())
-                            timeseries["soc"].append(soc)
-                            timeseries["distance"].append(elapsed_distance)
-                            if dwell_duration > timedelta(seconds=0):
-                                timeseries["time"].append(
-                                    (current_time + dwell_duration).isoformat()
-                                )
-                                timeseries["soc"].append(soc)
-                                timeseries["distance"].append(elapsed_distance)
-                    else:
-                        timeseries = None
-                    energy_used = consumption * trip.route.distance / 1000  # kWh
-                    current_soc = (
-                        soc_start - energy_used / vehicle_type.battery_capacity
-                    )
-                else:
+                if consumption_result is not None and trip.id in consumption_result:
                     logger.debug(f"Using pre-calculated timeseries for trip {trip.id}")
-                    if (
-                        calculate_timeseries
-                        and consumption_result[trip.id].timestamps is not None
+                    result = consumption_result[trip.id]
+                else:
+                    logger.debug("Calculating consumption for trip %s", trip.id)
+                    info = extract_trip_information(trip.id, scenario)
+                    result = info.generate_consumption_result(
+                        vehicle_type.battery_capacity
+                    )
+
+                if result.delta_soc_total > 0:
+                    raise ValueError(
+                        "The delta_soc_total must be <= 0 when using a consumption result."
+                    )
+                if result.delta_soc is not None:
+                    if result.timestamps is None or len(result.delta_soc) != len(
+                        result.timestamps
                     ):
-                        assert consumption_result[trip.id].delta_soc is not None
-                        timestamps = consumption_result[trip.id].timestamps
-
-                        # Make sure the delta_soc is a monotonic decreasing function, with the same length as timestamps
-                        if len(consumption_result[trip.id].delta_soc) != len(
-                            timestamps
-                        ):
-                            raise ValueError(
-                                "The length of the delta_soc and timestamps lists must be the same."
-                            )
-                        delta_socs = consumption_result[trip.id].delta_soc
-                        if delta_socs[-1] > 0:
-                            raise ValueError(
-                                "The delta_soc must be a decreasing function."
-                            )
-
-                        socs = [current_soc + d for d in delta_socs]
-                        timeseries = {
-                            "time": [t.isoformat() for t in timestamps],
-                            "soc": socs,
-                        }
-                    else:
-                        timeseries = None
-
-                    if consumption_result[trip.id].delta_soc_total > 0:
                         raise ValueError(
-                            "The current SoC must be <= 0 when using a consumption result."
+                            "The length of the delta_soc and timestamps lists must be the same."
                         )
-                    soc_start = current_soc
-                    current_soc += consumption_result[trip.id].delta_soc_total
+                    if result.delta_soc and result.delta_soc[-1] > 0:
+                        raise ValueError("The delta_soc must be a decreasing function.")
+
+                soc_start = current_soc
+                current_soc += result.delta_soc_total
+
+                if (
+                    calculate_timeseries
+                    and result.timestamps is not None
+                    and result.delta_soc is not None
+                    and len(result.timestamps) > 0
+                ):
+                    timeseries = {
+                        "time": [t.isoformat() for t in result.timestamps],
+                        "soc": [soc_start + d for d in result.delta_soc],
+                    }
+                else:
+                    timeseries = None
 
                 # Create a driving event
                 current_event = Event(
@@ -460,7 +454,7 @@ def simple_consumption_simulation(
                     soc_start=soc_start,
                     soc_end=current_soc,
                     event_type=EventType.DRIVING,
-                    description=f"`VehicleType.consumption`-based driving event for trip {trip.id}.",
+                    description=f"Driving event for trip {trip.id}.",
                     timeseries=timeseries,
                 )
                 session.add(current_event)
@@ -647,6 +641,47 @@ def apply_even_smart_charging(
                 session.add(event)
 
 
+def shrink_to_peak_usage(
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    resolution: timedelta = timedelta(minutes=5),
+) -> None:
+    """Shrink Areas and electrified terminus Stations to their peak observed usage.
+
+    A freshly generated depot layout is intentionally over-provisioned, but
+    downstream cost estimation counts every slot. This pass walks every
+    :class:`eflips.model.Area` in the scenario and reduces ``Area.capacity`` to
+    the maximum number of simultaneous events observed at that area (rounded up
+    to the next valid value for the area type). Areas that saw no events at all
+    are deleted. Each :class:`eflips.model.Station` with ``is_electrified=True``
+    and ``charge_type=ChargeType.OPPORTUNITY`` has its
+    ``amount_charging_places`` (and ``power_total``) reduced to peak observed
+    CHARGING_OPPORTUNITY concurrency; stations with zero such events are
+    un-electrified.
+
+    Must be called *after* :func:`add_evaluation_to_database` so the events are
+    persisted in the database. :func:`simulate_scenario` automatically shrinks
+    Areas when ``shrink_to_peak_usage=True`` (the default), but it does **not**
+    shrink terminus Stations — those have no charging events until the subsequent
+    consumption simulation runs. Call this function manually after that
+    consumption simulation to also right-size the Stations.
+
+    :param scenario: A :class:`eflips.model.Scenario`, its integer id, or any
+        object with an ``id`` attribute pointing to a scenario id.
+    :param database_url: Optional database URL. Falls back to ``DATABASE_URL``
+        if the scenario is not given as a :class:`Scenario` object.
+    :param resolution: Time-block resolution used to detect concurrent events.
+        Default 5 minutes.
+
+    :raises RuntimeError: If an Area or Station has zero peak concurrency but
+        the database still holds matching events — this indicates an
+        inconsistency and is never silently ignored.
+    """
+    with create_session(scenario, database_url) as (session, scenario):
+        _shrink_areas_to_peak(scenario, session, resolution)
+        _shrink_stations_to_peak(scenario, session, resolution)
+
+
 def simulate_scenario(
     scenario: Union[Scenario, int, Any],
     repetition_period: Optional[timedelta] = None,
@@ -654,6 +689,8 @@ def simulate_scenario(
     smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.NONE,
     ignore_unstable_simulation: bool = False,
     ignore_delayed_trips: bool = False,
+    shrink_to_peak_usage: bool = True,
+    shrink_resolution: timedelta = timedelta(minutes=5),
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -688,6 +725,17 @@ def simulate_scenario(
 
     :param ignore_unstable_simulation: If True, the simulation will not raise an exception if it becomes unstable.
     :param ignore_delayed_trips: If True, the simulation will not raise an exception if there are delayed trips.
+
+    :param shrink_to_peak_usage: If True (the default), depot Areas are shrunk
+        to their peak observed usage after the events have been written to the
+        database. Electrified terminus Stations are *not* shrunk here because
+        they have no charging events at this stage — those are only created by
+        the subsequent consumption simulation. To also shrink terminus Stations,
+        call :func:`shrink_to_peak_usage` manually after that consumption
+        simulation. See :func:`shrink_to_peak_usage` for details.
+
+    :param shrink_resolution: Time-block resolution used when computing peak
+        concurrency for the shrinking step. Default 5 minutes.
 
     :return: Nothing. The results are added to the database.
 
@@ -728,6 +776,11 @@ def simulate_scenario(
         # Only the DelayedTripException will be raised if both exceptions are in the list.
         for e in errors:
             raise e
+
+        if shrink_to_peak_usage:
+            _shrink_areas_to_peak(scenario, session, shrink_resolution)
+            # Stations are not shrunk here: terminus charging events only exist after a subsequent
+            # consumption simulation. Call shrink_to_peak_usage() after that simulation.
 
         match smart_charging_strategy:
             case SmartChargingStrategy.NONE:
@@ -1347,7 +1400,8 @@ def auto_generate_depot_inplace(
     scenario,
 ) -> None:
     """
-    This method calculates an optimal depot layout for auto-generated depots and modifies the instance of
+    This method calculates an optimal depot layout for auto-generated depots and modifies the instance of.
+
     :class:`eflips.depot.api.private.depot.DepotConfigurationWish` objects in place.
 
     :param depot_wish: a :class:`eflips.depot.api.private.depot.DepotConfigurationWish` object. It represents a depot to be generated by eflips calulation.
@@ -1480,8 +1534,8 @@ def generate_optimal_depot_layout(
     delete_existing_depot: bool = False,
 ) -> None:
     """
-
     :param depot_config_wishes: a list of :class:`eflips.depot.api.private.depot.DepotConfigurationWish` objects.
+
     :param scenario: Either a :class:`eflips.model.Scenario` object containing the input data for the simulation. Or
         an integer specifying the ID of a scenario in the database. Or any other object that has an attribute "id" containing
         an integer pointing to a unique scenario id.
@@ -1513,23 +1567,30 @@ def generate_optimal_depot_layout(
             f"Found {len(depot_config_wishes)} wishes and {len(grouped_rotations)} depots."
         )
 
+        # Sandbox: null out all rotation.vehicle_id, run the auto-layout sizing,
+        # then always roll back so the caller's vehicle assignments survive even
+        # if auto_generate_depot_inplace raises (e.g. UnstableSimulationException
+        # bubbling up from depot_smallest_possible_size → simulate_scenario).
+        # Without try/finally, an exception escapes with the NULLs uncommitted in
+        # memory but get committed by create_session's finally-clause commit.
         savepoint = session.begin_nested()
-
-        # Delete all vehicles and events, also disconnect the vehicles from the rotations
-        rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
-        rotation_q.update({"vehicle_id": None})
-
-        for depot_wish in depot_config_wishes:
-            if depot_wish.auto_generate is False:
-                continue
-
-            auto_generate_depot_inplace(
-                depot_wish,
-                session,
-                scenario,
+        try:
+            rotation_q = session.query(Rotation).filter(
+                Rotation.scenario_id == scenario.id
             )
+            rotation_q.update({"vehicle_id": None})
 
-        savepoint.rollback()
+            for depot_wish in depot_config_wishes:
+                if depot_wish.auto_generate is False:
+                    continue
+
+                auto_generate_depot_inplace(
+                    depot_wish,
+                    session,
+                    scenario,
+                )
+        finally:
+            savepoint.rollback()
         create_depots_from_wish(
             depot_config_wishes, grouped_rotations, scenario, session
         )
@@ -1541,7 +1602,8 @@ def create_diesel_vehicle_type_copies(
     session: Session,
 ) -> Dict[int, int]:
     """
-    For each VehicleType ID in *vehicle_type_ids*, creates a DIESEL copy inside *scenario*
+    For each VehicleType ID in *vehicle_type_ids*, creates a DIESEL copy inside *scenario*.
+
     and returns a mapping ``{original_vt_id: diesel_vt_id}``.
 
     The original vehicle types are left unchanged. The caller is responsible for

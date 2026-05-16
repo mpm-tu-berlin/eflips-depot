@@ -13,20 +13,25 @@ import numpy as np
 import scipy
 import sqlalchemy.orm
 from eflips.model import (
+    AssocRouteStation,
     Event,
     EventType,
     Rotation,
+    Route,
     Vehicle,
     VehicleType,
     VehicleClass,
     Trip,
     Station,
+    StopTime,
     ChargeType,
     ConsistencyWarning,
     ConsumptionLut,
     Scenario,
+    Temperatures,
 )
-from sqlalchemy.orm import joinedload
+from geoalchemy2.shape import to_shape
+from sqlalchemy.orm import joinedload, selectinload
 
 from eflips.depot.api.private.util import temperature_for_trip, create_session
 
@@ -36,11 +41,51 @@ from eflips.depot.api.private.util import temperature_for_trip, create_session
 _interpolator_cache: Dict[int, Dict[str, Any]] = {}
 _nn_interpolator_cache: "Dict[int, scipy.interpolate.NearestNDInterpolator]" = {}
 
+# Dedup set for nearest-neighbor fallback warnings.
+# Key: (lut_id, kind, dim_tuple). ``kind`` is "out_of_range" or "ragged"; for
+# out_of_range the dim_tuple lists the offending LUT axes (sorted).
+_nn_fallback_warned: set = set()
+
 
 def clear_interpolator_cache() -> None:
     """Clear the module-level interpolator cache."""
     _interpolator_cache.clear()
     _nn_interpolator_cache.clear()
+    _nn_fallback_warned.clear()
+
+
+_LUT_DIM_NAMES: Tuple[str, str, str, str] = (
+    "incline",
+    "t_amb",
+    "level_of_loading",
+    "mean_speed_kmh",
+)
+
+
+def _classify_nan_query(
+    point: np.ndarray, cached: Dict[str, Any]
+) -> Tuple[str, Tuple[str, ...]]:
+    """
+    Classify a 4D query that produced NaN under the regular-grid interpolator.
+
+    Returns ``("out_of_range", (dim_names...))`` if any axis value is outside
+    its scale, else ``("ragged", ())`` — meaning the query lies inside the
+    bounding box but a neighbouring grid cell is unpopulated.
+    """
+    scales = (
+        cached["incline_scale"],
+        cached["temperature_scale"],
+        cached["level_of_loading_scale"],
+        cached["speed_scale"],
+    )
+    out_of_range: List[str] = []
+    for i, scale in enumerate(scales):
+        v = float(point[i])
+        if v < scale[0] or v > scale[-1]:
+            out_of_range.append(_LUT_DIM_NAMES[i])
+    if out_of_range:
+        return "out_of_range", tuple(sorted(out_of_range))
+    return "ragged", ()
 
 
 def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any]:
@@ -108,12 +153,14 @@ def _get_or_build_interpolator(consumption_lut: ConsumptionLut) -> Dict[str, Any
             speed_scale.index(speed),
         ] = consumption_lut.values[i]
 
-    # Build the interpolator
+    # Build the interpolator. ``fill_value=np.nan`` disables linear extrapolation
+    # outside the grid; any out-of-range query produces NaN and is routed to the
+    # nearest-neighbor fallback in :meth:`ConsumptionInformation.calculate`.
     interpolator = scipy.interpolate.RegularGridInterpolator(
         (incline_scale, temperature_scale, level_of_loading_scale, speed_scale),
         consumption_array,
         bounds_error=False,
-        fill_value=None,
+        fill_value=np.nan,
         method="linear",
     )
 
@@ -139,12 +186,6 @@ def _get_or_build_nearest_neighbor_interpolator(
     """
     if lut_id in _nn_interpolator_cache:
         return _nn_interpolator_cache[lut_id]
-
-    warnings.warn(
-        f"Consumption LUT {lut_id} returned NaN for at least one trip. "
-        f"Using nearest neighbor interpolation instead. The result may be less accurate.",
-        ConsistencyWarning,
-    )
 
     x, y, z, alpha = np.meshgrid(
         cached["incline_scale"],
@@ -203,106 +244,409 @@ class ConsumptionResult:
 
 
 @dataclass
+class TripSegment:
+    """
+    A piece of a trip between two adjacent knots — either consecutive.
+
+    :class:`StopTime` boundaries, or synthetic knots inserted from
+    ``Route.geom`` vertices to capture intermediate elevation changes.
+
+    Each segment is the unit at which the consumption LUT is evaluated.
+    """
+
+    distance_m: float
+    """2D ground distance in meters."""
+
+    duration_s: float
+    """Duration of this segment in seconds."""
+
+    mean_speed_kmh: float
+    """Mean speed in km/h."""
+
+    incline: float
+    """Signed Δz / distance_m.
+
+    0.0 if either knot lacks an elevation.
+    """
+
+    level_of_loading: Optional[float]
+    """Vehicle loading as a fraction of max payload, or ``None`` when no LUT is in use."""
+
+    t_amb: Optional[float]
+    """Ambient temperature in °C at the segment midpoint, or ``None`` when no temperature data is available."""
+
+    end_time: datetime
+    """Absolute timestamp at the end of this segment."""
+
+    consumption_kwh: Optional[float] = None
+    """Energy used on this segment in kWh; populated by :meth:`ConsumptionInformation.calculate`."""
+
+
+@dataclass
 class ConsumptionInformation:
     """
-    A dataclass to hold the information needed for the consumption simulation.
+    Per-trip consumption inputs decomposed into route-aware segments.
 
-    :param trip_id:
-        The ID of the trip for which the consumption is calculated.
-    :param consumption_lut:
-        The ConsumptionLut object for the vehicle class. This is used to calculate the
-        consumption based on the trip parameters.
-    :param average_speed:
-        The average speed of the trip in km/h. This is used to calculate the consumption.
-    :param distance:
-        The distance of the trip in km. This is used to calculate the total consumption.
-    :param temperature:
-        The ambient temperature in °C. This is used to calculate the consumption.
-    :param level_of_loading:
-        The level of loading of the vehicle as a fraction of its maximum payload.
-    :param incline:
-        The incline of the trip as a fraction (0.0-1.0). This is used to calculate the consumption.
-    :param consumption:
-        The total consumption of the trip in kWh. This is calculated based on the LUT and trip parameters.
-    :param consumption_per_km:
-        The consumption per km in kWh. This is calculated based on the LUT and trip parameters.
+    Either ``consumption_lut`` or ``flat_consumption_per_km`` must be set.
+    Calling :meth:`calculate` populates ``segment.consumption_kwh`` for every
+    segment; :meth:`generate_consumption_result` then turns that into a
+    :class:`ConsumptionResult` with cumulative SoC.
     """
 
     trip_id: int
-    consumption_lut: Optional[ConsumptionLut]  # the LUT for the vehicle class
-    average_speed: float  # the average speed of the trip in km/h
-    distance: float  # the distance of the trip in km
-    temperature: Optional[float]  # The ambient temperature in °C
-    level_of_loading: Optional[
-        float
-    ]  # The level of loading of the vehicle as a fraction of its maximum payload
-    incline: float = 0.0  # The incline of the trip in 0.0-1.0
-    consumption: float = None  # The consumption of the trip in kWh
-    consumption_per_km: float = None  # The consumption per km in kWh
+    segments: List["TripSegment"]
+    consumption_lut: Optional[ConsumptionLut] = None
+    flat_consumption_per_km: Optional[float] = None
+    line_name: Optional[str] = None
+    """Human-readable line name, used purely for diagnostic warnings."""
+    route_name: Optional[str] = None
+    """Human-readable route name, used purely for diagnostic warnings."""
+    trip_departure: Optional[datetime] = None
+    """Trip departure time, used purely for diagnostic warnings."""
+    trip_arrival: Optional[datetime] = None
+    """Trip arrival time, used purely for diagnostic warnings."""
 
-    def calculate(self):
+    def calculate(self) -> None:
         """
-        Calculates the consumption for the trip.
+        Compute energy consumption for every segment.
 
-        Returns a float in kWh.
+        - When ``consumption_lut`` is set, the LUT is evaluated once for all
+          segments via a vectorized :class:`RegularGridInterpolator` call. Any
+          segment whose result is NaN is filled in via a
+          :class:`NearestNDInterpolator` fallback (a single warning is emitted).
+        - When only ``flat_consumption_per_km`` is set, each segment's energy
+          is just ``flat_consumption_per_km * distance_m / 1000``.
 
-        :return: The energy consumption in kWh. This is already the consumption for the whole trip.
+        The LUT reference is dropped after evaluation to avoid pinning the
+        whole table in memory.
         """
 
-        # Get or build the cached interpolator for this LUT
+        if not self.segments:
+            raise ValueError(
+                f"ConsumptionInformation for trip {self.trip_id} has no segments."
+            )
+
+        if self.consumption_lut is None and self.flat_consumption_per_km is None:
+            raise ValueError(
+                f"ConsumptionInformation for trip {self.trip_id} has neither a "
+                "consumption_lut nor a flat_consumption_per_km."
+            )
+
+        if self.consumption_lut is None:
+            for segment in self.segments:
+                segment.consumption_kwh = (
+                    self.flat_consumption_per_km * segment.distance_m / 1000.0
+                )
+            return
+
         cached = _get_or_build_interpolator(self.consumption_lut)
         interpolator = cached["interpolator"]
-        consumption_array = cached["consumption_array"]
 
-        consumption_per_km = interpolator(
-            [self.incline, self.temperature, self.level_of_loading, self.average_speed]
-        )[0]
+        points = np.array(
+            [
+                [s.incline, s.t_amb, s.level_of_loading, s.mean_speed_kmh]
+                for s in self.segments
+            ],
+            dtype=float,
+        )
+        kwh_per_km = np.asarray(interpolator(points), dtype=float)
 
-        # Fallback to nearest neighbor interpolation if the result is NaN
-        if consumption_per_km is None or np.isnan(consumption_per_km):
+        nan_mask = np.isnan(kwh_per_km)
+        if nan_mask.any():
+            lut_id = self.consumption_lut.id
+            self._warn_nn_fallback(points, nan_mask, cached, lut_id)
             interpolator_nn = _get_or_build_nearest_neighbor_interpolator(
-                cached, self.consumption_lut.id
+                cached, lut_id
             )
-            consumption_per_km = interpolator_nn(
-                [
-                    self.incline,
-                    self.temperature,
-                    self.level_of_loading,
-                    self.average_speed,
-                ]
-            )[0]
+            kwh_per_km[nan_mask] = np.asarray(
+                interpolator_nn(points[nan_mask]), dtype=float
+            )
 
-        if consumption_per_km is None or np.isnan(consumption_per_km):
+        if np.isnan(kwh_per_km).any():
             raise ValueError(
-                f"Could not calculate consumption for trip {self.trip_id} with parameters: "
-                f"incline={self.incline}, temperature={self.temperature}, "
-                f"level_of_loading={self.level_of_loading}, average_speed={self.average_speed}. "
-                f"Possible reason: data points missing in the LUT."
+                f"Could not calculate consumption for trip {self.trip_id}. "
+                "Possible reason: data points missing in the LUT."
             )
 
-        self.consumption = consumption_per_km * self.distance
-        self.consumption_per_km = consumption_per_km
-        self.consumption_lut = None  # To save memory
+        for i, segment in enumerate(self.segments):
+            segment.consumption_kwh = float(kwh_per_km[i]) * segment.distance_m / 1000.0
 
-    def generate_consumption_result(self, battery_capacity) -> ConsumptionResult:
-        """
-        Generates a ConsumptionResult object from the current instance.
+        self.consumption_lut = None  # release the LUT reference
 
-        :param battery_capacity: The battery capacity in kWh.
-        :return: A ConsumptionResult object containing the total change in SoC and optional timeseries.
+    def _warn_nn_fallback(
+        self,
+        points: np.ndarray,
+        nan_mask: np.ndarray,
+        cached: Dict[str, Any],
+        lut_id: int,
+    ) -> None:
         """
-        if self.consumption is None:
+        Emit a deduplicated :class:`ConsistencyWarning` for every distinct
+        nearest-neighbor fallback reason encountered on this trip.
+
+        Each NaN query is classified as either ``out_of_range`` (at least one
+        LUT axis outside its scale; the offending axes are listed) or
+        ``ragged`` (all four axes in-range, but a neighbouring grid cell is
+        unpopulated). Warnings are deduplicated by
+        ``(lut_id, kind, dim_tuple)`` across the whole process.
+        """
+        nan_indices = np.flatnonzero(nan_mask)
+        groups: Dict[Tuple[str, Tuple[str, ...]], List[int]] = {}
+        for idx in nan_indices:
+            kind, dims = _classify_nan_query(points[idx], cached)
+            groups.setdefault((kind, dims), []).append(int(idx))
+
+        ctx_parts: List[str] = []
+        if self.line_name:
+            ctx_parts.append(f"line={self.line_name!r}")
+        if self.route_name:
+            ctx_parts.append(f"route={self.route_name!r}")
+        if self.trip_departure is not None:
+            ctx_parts.append(f"departure={self.trip_departure.isoformat()}")
+        if self.trip_arrival is not None:
+            ctx_parts.append(f"arrival={self.trip_arrival.isoformat()}")
+        ctx_suffix = (
+            (" Trip context: " + ", ".join(ctx_parts) + ".") if ctx_parts else ""
+        )
+
+        for (kind, dims), idxs in groups.items():
+            key = (lut_id, kind, dims)
+            if key in _nn_fallback_warned:
+                continue
+            _nn_fallback_warned.add(key)
+
+            example_seg = self.segments[idxs[0]]
+            example = (
+                f" Example segment: incline={example_seg.incline:.4f}, "
+                f"t_amb={example_seg.t_amb}, "
+                f"level_of_loading={example_seg.level_of_loading}, "
+                f"mean_speed_kmh={example_seg.mean_speed_kmh:.2f}."
+            )
+
+            if kind == "out_of_range":
+                msg = (
+                    f"Consumption LUT {lut_id}: {len(idxs)} segment(s) on "
+                    f"trip {self.trip_id} were outside the LUT grid on "
+                    f"dimension(s) {list(dims)}. Falling back to "
+                    f"nearest-neighbor interpolation; the result may be less "
+                    f"accurate." + ctx_suffix + example
+                )
+            else:
+                msg = (
+                    f"Consumption LUT {lut_id}: {len(idxs)} segment(s) on "
+                    f"trip {self.trip_id} fell into an unpopulated cell of "
+                    f"the 4D grid (ragged grid; all axes in range). Falling "
+                    f"back to nearest-neighbor interpolation; the result may "
+                    f"be less accurate." + ctx_suffix + example
+                )
+            warnings.warn(msg, ConsistencyWarning)
+
+    def generate_consumption_result(self, battery_capacity: float) -> ConsumptionResult:
+        """
+        Build a :class:`ConsumptionResult` from per-segment consumption_kwh values.
+
+        ``timestamps`` matches ``[s.end_time for s in segments]`` and ``delta_soc``
+        is the cumulative SoC drop at the end of each segment.
+        """
+        if any(s.consumption_kwh is None for s in self.segments):
             raise ValueError(
                 "Consumption must be calculated before generating a result."
             )
 
-        # TODO implement a timeseries of timestamps and delta_soc
-        consumption_result = ConsumptionResult(
-            delta_soc_total=-float(self.consumption) / battery_capacity,
-            timestamps=None,
-            delta_soc=None,
+        per_segment_kwh = np.array(
+            [s.consumption_kwh for s in self.segments], dtype=float
         )
-        return consumption_result
+        delta_soc = (-np.cumsum(per_segment_kwh) / battery_capacity).tolist()
+        timestamps = [s.end_time for s in self.segments]
+
+        return ConsumptionResult(
+            delta_soc_total=delta_soc[-1] if delta_soc else 0.0,
+            timestamps=timestamps,
+            delta_soc=delta_soc,
+        )
+
+
+_EARTH_RADIUS_M = 6_371_008.8
+_VERTEX_GAP_THRESHOLD_M = 1_000.0
+
+
+def _haversine_cumulative(coords: np.ndarray) -> np.ndarray:
+    """
+    Cumulative haversine distance in meters along a polyline.
+
+    ``coords`` is an ``(N, 2+)`` array of (lon, lat[, z]) in degrees. Z is
+    ignored — :func:`Route.calculate_length` (PostGIS ``ST_Length(..., true)``)
+    also ignores Z, so the route's stored ``distance`` is purely 2D and we want
+    to match that for elapsed_distance bookkeeping.
+
+    Returns an ``(N,)`` array, with index 0 always 0.
+    """
+    if len(coords) < 2:
+        return np.zeros(len(coords))
+
+    lon = np.radians(coords[:, 0].astype(float))
+    lat = np.radians(coords[:, 1].astype(float))
+    dlon = np.diff(lon)
+    dlat = np.diff(lat)
+    a = (
+        np.sin(dlat / 2.0) ** 2
+        + np.cos(lat[:-1]) * np.cos(lat[1:]) * np.sin(dlon / 2.0) ** 2
+    )
+    seg = 2.0 * _EARTH_RADIUS_M * np.arcsin(np.sqrt(a))
+    out = np.empty(len(coords))
+    out[0] = 0.0
+    out[1:] = np.cumsum(seg)
+    return out
+
+
+def _route_geom_knots(route: Route) -> Optional[np.ndarray]:
+    """
+    Return the route's geometry as an ``(N, 4)`` array of ``[elapsed_distance_m, lon, lat, z]``.
+
+    The cumulative haversine distance is rescaled so that the last vertex sits at
+    ``route.distance``. Returns ``None`` when the route has no geometry or fewer
+    than three vertices (only the endpoints — no useful intermediate Z to add).
+    """
+    if route.geom is None:
+        return None
+    line = to_shape(route.geom)
+    raw = np.array(line.coords, dtype=float)  # (N, 2 or 3)
+    if raw.shape[0] < 3:
+        return None
+    if raw.shape[1] < 3:
+        coords = np.column_stack([raw[:, 0], raw[:, 1], np.zeros(raw.shape[0])])
+    else:
+        coords = raw[:, :3]
+    cum = _haversine_cumulative(coords)
+    if cum[-1] > 0:
+        cum = cum * (route.distance / cum[-1])
+    return np.column_stack([cum, coords])
+
+
+def _station_z(station: Station) -> Optional[float]:
+    """Return the Z coordinate of a station's geom, or ``None`` if absent."""
+    if station is None or station.geom is None:
+        return None
+    pt = to_shape(station.geom)
+    if not getattr(pt, "has_z", False):
+        return None
+    return float(pt.z)
+
+
+def _assoc_z(assoc: Optional[AssocRouteStation]) -> Optional[float]:
+    """Return the Z coordinate of an AssocRouteStation.location, or ``None`` if absent."""
+    if assoc is None or assoc.location is None:
+        return None
+    pt = to_shape(assoc.location)
+    if not getattr(pt, "has_z", False):
+        return None
+    return float(pt.z)
+
+
+def _build_trip_segments(
+    trip: Trip,
+    level_of_loading: Optional[float],
+    t_amb: Optional[float],
+) -> List[TripSegment]:
+    """
+    Walk a trip's stop times and route geometry to produce :class:`TripSegment` objects.
+
+    Knots come from :class:`StopTime` rows when present (otherwise from the trip's
+    departure/arrival), with synthetic knots inserted from ``Route.geom`` vertices
+    whenever two consecutive stop-time knots are more than
+    ``_VERTEX_GAP_THRESHOLD_M`` apart. A single :class:`ConsistencyWarning` is
+    emitted per trip when at least one knot has no Z. Ambient temperature is
+    constant across all segments — sample it once at the trip midpoint upstream.
+    """
+    route = trip.route
+    assoc_by_station: Dict[int, AssocRouteStation] = {
+        a.station_id: a for a in route.assoc_route_stations
+    }
+
+    # 1. Build the stop-time-derived knot list as (elapsed_distance_m, time, z).
+    stop_times = sorted(trip.stop_times, key=lambda st: st.arrival_time)
+    knots: List[Tuple[float, datetime, Optional[float]]] = []
+    if stop_times:
+        for st in stop_times:
+            assoc = assoc_by_station.get(st.station_id)
+            if assoc is None:
+                raise ValueError(
+                    f"StopTime {st.id} references station {st.station_id} which is "
+                    f"not in route {route.id}'s assoc_route_stations."
+                )
+            z = _assoc_z(assoc)
+            if z is None:
+                z = _station_z(st.station)
+            knots.append((float(assoc.elapsed_distance), st.arrival_time, z))
+    else:
+        dep_assoc = assoc_by_station.get(route.departure_station_id)
+        arr_assoc = assoc_by_station.get(route.arrival_station_id)
+        dep_z = _assoc_z(dep_assoc) if dep_assoc else None
+        if dep_z is None:
+            dep_z = _station_z(route.departure_station)
+        arr_z = _assoc_z(arr_assoc) if arr_assoc else None
+        if arr_z is None:
+            arr_z = _station_z(route.arrival_station)
+        knots.append((0.0, trip.departure_time, dep_z))
+        knots.append((float(route.distance), trip.arrival_time, arr_z))
+
+    # 2. Insert synthetic knots from route.geom when a gap > threshold.
+    geom_knots = _route_geom_knots(route)
+    if geom_knots is not None:
+        densified: List[Tuple[float, datetime, Optional[float]]] = [knots[0]]
+        for prev, curr in zip(knots, knots[1:]):
+            d_prev, t_prev, _ = prev
+            d_curr, t_curr, _ = curr
+            if d_curr - d_prev > _VERTEX_GAP_THRESHOLD_M:
+                mask = (geom_knots[:, 0] > d_prev) & (geom_knots[:, 0] < d_curr)
+                gap_span = d_curr - d_prev
+                for d, _lon, _lat, z in geom_knots[mask]:
+                    if gap_span > 0:
+                        frac = (d - d_prev) / gap_span
+                    else:
+                        frac = 0.0
+                    t_synth = t_prev + (t_curr - t_prev) * float(frac)
+                    densified.append((float(d), t_synth, float(z)))
+            densified.append(curr)
+        knots = densified
+
+    # 3. Track missing-Z and resolve to floats for incline math.
+    z_missing = any(k[2] is None for k in knots)
+    if z_missing:
+        warnings.warn(
+            f"Trip {trip.id}: at least one knot lacks a Z coordinate; "
+            "treating those segments as flat (incline=0).",
+            ConsistencyWarning,
+        )
+
+    # 4. Build the segments. t_amb is constant per trip (sampled at the trip
+    #    midpoint by the caller).
+    segments: List[TripSegment] = []
+    for prev, curr in zip(knots, knots[1:]):
+        d_prev, t_prev, z_prev = prev
+        d_curr, t_curr, z_curr = curr
+        distance_m = max(0.0, d_curr - d_prev)
+        duration_s = (t_curr - t_prev).total_seconds()
+        if distance_m > 0 and duration_s > 0:
+            mean_speed_kmh = distance_m / duration_s * 3.6
+        else:
+            mean_speed_kmh = 0.0
+        if distance_m > 0 and z_prev is not None and z_curr is not None:
+            incline = (z_curr - z_prev) / distance_m
+        else:
+            incline = 0.0
+        segments.append(
+            TripSegment(
+                distance_m=distance_m,
+                duration_s=duration_s,
+                mean_speed_kmh=mean_speed_kmh,
+                incline=incline,
+                level_of_loading=level_of_loading,
+                t_amb=t_amb,
+                end_time=t_curr,
+            )
+        )
+    return segments
 
 
 def extract_trip_information(
@@ -310,47 +654,80 @@ def extract_trip_information(
     scenario: Scenario,
     passenger_mass=68,
     passenger_count=17.6,
+    *,
+    temperatures: Optional[Temperatures] = None,
+    consumption_luts: Optional[Dict[int, ConsumptionLut]] = None,
 ) -> ConsumptionInformation:
-    """Extracts the information needed for the consumption simulation from a trip."""
+    """
+    Build a :class:`ConsumptionInformation` for a trip, decomposed into segments.
+
+    Segment knots come from the trip's :class:`StopTime` rows; route-vertex
+    knots are inserted between stops more than 1 km apart so that intermediate
+    elevation changes are captured. The returned object has already had
+    :meth:`ConsumptionInformation.calculate` called on it.
+    """
 
     with create_session(scenario) as (session, scenario):
-        # Load the trip with its route and rotation, including vehicle type and consumption LUT
-        # We use joinedload to avoid N+1 queries
-
+        # Use selectinload for the *collections* (Route.assoc_route_stations,
+        # Trip.stop_times, VehicleType.vehicle_classes) so they each become a
+        # separate small query instead of multiplying out into a Cartesian
+        # product on the main row. Many-to-one steps stay joinedload.
         trip = (
             session.query(Trip)
             .filter(Trip.id == trip_id)
-            .options(joinedload(Trip.route))
             .options(
+                joinedload(Trip.route).joinedload(Route.departure_station),
+                joinedload(Trip.route).joinedload(Route.arrival_station),
+                joinedload(Trip.route).joinedload(Route.line),
+                joinedload(Trip.route)
+                .selectinload(Route.assoc_route_stations)
+                .joinedload(AssocRouteStation.station),
+                selectinload(Trip.stop_times).joinedload(StopTime.station),
                 joinedload(Trip.rotation)
                 .joinedload(Rotation.vehicle_type)
-                .joinedload(VehicleType.vehicle_classes)
-                .joinedload(VehicleClass.consumption_lut)
+                .selectinload(VehicleType.vehicle_classes),
             )
             .one()
         )
 
-        total_distance = trip.route.distance / 1000  # km
-        total_duration = (
-            trip.arrival_time - trip.departure_time
-        ).total_seconds() / 3600
-        average_speed = total_distance / total_duration  # km/h
+        # Resolve LUTs from the caller-provided dict when present; otherwise fall
+        # back to lazy-loading the relationship. Preloading once per scenario
+        # avoids re-decoding ConsumptionLut's large JSON columns (columns,
+        # data_points, values) on every joined row of every trip.
+        if consumption_luts is not None:
+            all_consumption_luts = [
+                consumption_luts[vc.id]
+                for vc in trip.rotation.vehicle_type.vehicle_classes
+                if vc.id in consumption_luts
+            ]
+        else:
+            all_consumption_luts = [
+                vc.consumption_lut
+                for vc in trip.rotation.vehicle_type.vehicle_classes
+                if vc.consumption_lut is not None
+            ]
 
-        # Check exactly one of the vehicle classes has a consumption LUT
-        all_consumption_luts = [
-            vehicle_class.consumption_lut
-            for vehicle_class in trip.rotation.vehicle_type.vehicle_classes
-        ]
-        all_consumption_luts = [x for x in all_consumption_luts if x is not None]
+        if len(all_consumption_luts) > 1:
+            raise ValueError(
+                f"Expected at most one consumption LUT, got {len(all_consumption_luts)}"
+            )
 
-        temperature = temperature_for_trip(trip_id, session)
+        line = getattr(trip.route, "line", None)
+        line_name = getattr(line, "name", None) if line is not None else None
+        route_name = trip.route.name
+
+        # Sample ambient temperature once at the trip midpoint; constant per trip.
+        trip_midpoint = (
+            trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
+        )
+        t_amb = temperature_for_trip(
+            trip.id, session, at_time=trip_midpoint, temperatures=temperatures
+        )
 
         if len(all_consumption_luts) == 1:
-            payload_mass = passenger_mass * passenger_count
             assert (
                 trip.rotation.vehicle_type.allowed_mass is not None
             ), f"allowed_mass of vehicle {trip.rotation.vehicle_type} must be set"
-
             assert (
                 trip.rotation.vehicle_type.empty_mass is not None
             ), f"empty_mass of vehicle {trip.rotation.vehicle_type} must be set"
@@ -359,47 +736,40 @@ def extract_trip_information(
                 trip.rotation.vehicle_type.allowed_mass
                 - trip.rotation.vehicle_type.empty_mass
             )
-            level_of_loading = payload_mass / full_payload
+            level_of_loading = (passenger_mass * passenger_count) / full_payload
 
-            consumption_lut = all_consumption_luts[0]
-            # Disconnect the consumption LUT from the session to avoid loading the whole table
-
-            del all_consumption_luts
-
+            segments = _build_trip_segments(trip, level_of_loading, t_amb)
             info = ConsumptionInformation(
                 trip_id=trip.id,
-                consumption_lut=consumption_lut,
-                average_speed=average_speed,
-                distance=total_distance,
-                temperature=temperature,
-                level_of_loading=level_of_loading,
+                segments=segments,
+                consumption_lut=all_consumption_luts[0],
+                line_name=line_name,
+                route_name=route_name,
+                trip_departure=trip.departure_time,
+                trip_arrival=trip.arrival_time,
             )
             info.calculate()
-        elif len(all_consumption_luts) == 0:
+        else:
             warnings.warn(
                 f"No consumption LUT found for vehicle type {trip.rotation.vehicle_type}.",
                 ConsistencyWarning,
             )
-            # Here, we fill out the condumption information without the LUT and LUT data, but with `consumption_per_km`
-            # set to the vehicle's `consumption` value.
             if trip.rotation.vehicle_type.consumption is None:
                 raise ValueError(
-                    f"Vehicle type {trip.rotation.vehicle_type} must have a consumption value set if no consumption LUT is available."
+                    f"Vehicle type {trip.rotation.vehicle_type} must have a "
+                    "consumption value set if no consumption LUT is available."
                 )
+            segments = _build_trip_segments(trip, level_of_loading=None, t_amb=t_amb)
             info = ConsumptionInformation(
                 trip_id=trip.id,
-                average_speed=average_speed,
-                distance=total_distance,
-                consumption_per_km=trip.rotation.vehicle_type.consumption,
-                consumption=trip.rotation.vehicle_type.consumption * total_distance,
-                consumption_lut=None,
-                temperature=temperature,
-                level_of_loading=None,
+                segments=segments,
+                flat_consumption_per_km=trip.rotation.vehicle_type.consumption,
+                line_name=line_name,
+                route_name=route_name,
+                trip_departure=trip.departure_time,
+                trip_arrival=trip.arrival_time,
             )
-        else:
-            raise ValueError(
-                f"Expected exactly one consumption LUT, got {len(all_consumption_luts)}"
-            )
+            info.calculate()
 
     return info
 

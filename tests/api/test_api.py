@@ -44,6 +44,7 @@ from eflips.depot.api import (
     schedule_duration_days,
     create_diesel_vehicle_type_copies,
     delete_depots,
+    shrink_to_peak_usage,
 )
 
 
@@ -124,7 +125,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -133,7 +134,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -142,7 +143,7 @@ class TestHelpers:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -427,7 +428,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -436,7 +437,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -445,7 +446,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -728,7 +729,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 7",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_4)
@@ -737,7 +738,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 8",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_5)
@@ -746,7 +747,7 @@ class TestHelpers:
             scenario=multi_depot_scenario,
             name="Test Station 9",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -1308,7 +1309,8 @@ class TestApi(TestHelpers):
         self, session, full_scenario, num_diesel_rotations
     ):
         """
-        Shared setup for all-diesel and heterogeneous fleet tests, following the
+        Shared setup for all-diesel and heterogeneous fleet tests, following the.
+
         approach in simulate_heterogeneous_fleet.py.
 
         :param num_diesel_rotations: Number of rotations (by ascending id) to convert to
@@ -1433,6 +1435,100 @@ class TestApi(TestHelpers):
         assert len(diesel_events) > 0
         assert all(e.soc_start == 1.0 for e in diesel_events)
         assert all(e.soc_end == 1.0 for e in diesel_events)
+
+
+class TestShrinkToPeakUsage(TestHelpers):
+    def _peak_concurrency(self, events, resolution=timedelta(minutes=5)):
+        from eflips.depot.api.private.shrink import _compute_peak_concurrency
+
+        return _compute_peak_concurrency(events, resolution)
+
+    def _run_manual_flow(self, session, scenario):
+        generate_depot_layout(
+            scenario=scenario, charging_power=90, delete_existing_depot=True
+        )
+        simulation_host = init_simulation(scenario, session)
+        depot_evaluations = run_simulation(simulation_host)
+        add_evaluation_to_database(scenario, depot_evaluations, session)
+        session.flush()
+
+    def test_shrink_after_manual_flow(self, session, full_scenario):
+        self._run_manual_flow(session, full_scenario)
+
+        pre_areas = (
+            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        )
+        assert len(pre_areas) > 0
+        pre_capacities = {a.id: a.capacity for a in pre_areas}
+
+        shrink_to_peak_usage(scenario=full_scenario)
+        session.expire_all()
+
+        post_areas = (
+            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        )
+
+        # Some Areas got shrunk or deleted
+        assert len(post_areas) <= len(pre_areas)
+        shrunk_or_deleted = len(pre_areas) - len(post_areas)
+        for area in post_areas:
+            if area.id in pre_capacities and area.capacity < pre_capacities[area.id]:
+                shrunk_or_deleted += 1
+        assert shrunk_or_deleted > 0
+
+        # Every remaining Area has capacity matching its rounded peak
+        from eflips.depot.api.private.shrink import _round_capacity_for_area_type
+
+        for area in post_areas:
+            events = session.query(Event).filter(Event.area_id == area.id).all()
+            peak = self._peak_concurrency(events)
+            assert peak > 0, f"Area {area.id} survived shrink with no events"
+            assert area.capacity == _round_capacity_for_area_type(peak, area)
+
+    def test_shrink_via_simulate_scenario_default(self, session, full_scenario):
+        # Default path: simulate_scenario(shrink_to_peak_usage=True) is the default.
+        generate_depot_layout(
+            scenario=full_scenario, charging_power=90, delete_existing_depot=True
+        )
+        simulate_scenario(scenario=full_scenario)
+        session.expire_all()
+
+        from eflips.depot.api.private.shrink import _round_capacity_for_area_type
+
+        post_areas = (
+            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        )
+        assert len(post_areas) > 0
+        for area in post_areas:
+            events = session.query(Event).filter(Event.area_id == area.id).all()
+            peak = self._peak_concurrency(events)
+            assert peak > 0
+            assert area.capacity == _round_capacity_for_area_type(peak, area)
+
+    def test_shrink_disabled_runs_without_error(self, session, full_scenario):
+        # The boolean opt-out is wired correctly: simulate_scenario completes
+        # and leaves some areas in place when shrinking is disabled.
+        generate_depot_layout(
+            scenario=full_scenario, charging_power=90, delete_existing_depot=True
+        )
+        simulate_scenario(scenario=full_scenario, shrink_to_peak_usage=False)
+        session.expire_all()
+        areas = session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+        assert len(areas) > 0
+
+    def test_defensive_runtime_error_when_zero_peak_with_events(
+        self, session, full_scenario, monkeypatch
+    ):
+        self._run_manual_flow(session, full_scenario)
+
+        # An Area with events exists; force peak=0 to trigger the defensive raise.
+        from eflips.depot.api.private import shrink as shrink_mod
+
+        monkeypatch.setattr(shrink_mod, "_compute_peak_concurrency", lambda *a, **kw: 0)
+        session.commit()
+
+        with pytest.raises(RuntimeError):
+            shrink_to_peak_usage(scenario=full_scenario)
 
 
 class TestSimpleConsumptionSimulation(TestHelpers):

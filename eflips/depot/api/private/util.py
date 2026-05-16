@@ -206,44 +206,56 @@ def check_depot_validity(depot: Depot) -> None:
         ), "All processes except the last one must have electric power."
 
 
-def temperature_for_trip(trip_id: int, session: Session) -> float:
+def temperature_for_trip(
+    trip_id: int,
+    session: Session,
+    at_time: Optional[datetime] = None,
+    *,
+    temperatures: Optional[Temperatures] = None,
+) -> Optional[float]:
     """
     Returns the temperature for a trip.
 
-    Finds the temperature for the mid-point of the trip.
+    By default this evaluates the temperature at the mid-point of the trip. Pass
+    ``at_time`` to evaluate at a specific timestamp (e.g. a per-segment midpoint).
 
     :param trip_id: The ID of the trip
     :param session: The SQLAlchemy session
-    :return: A temperature in °C
+    :param at_time: Optional timestamp at which to evaluate the temperature. Must
+        carry tzinfo. If ``None``, the trip mid-point is used.
+    :param temperatures: Optional preloaded :class:`Temperatures` to skip the
+        per-call query. Hot loops should hoist this lookup.
+    :return: A temperature in °C, or ``None`` if no temperatures are recorded.
     """
 
     trip = session.query(Trip).filter(Trip.id == trip_id).one()
-    try:
-        temperatures = (
-            session.query(Temperatures)
-            .filter(Temperatures.scenario_id == trip.scenario_id)
-            .one()
-        )
-    except NoResultFound:
-        warnings.warn(
-            f"No temperatures found for scenario {trip.scenario_id}.",
-            ConsistencyWarning,
-        )
-        return None
+    if temperatures is None:
+        try:
+            temperatures = (
+                session.query(Temperatures)
+                .filter(Temperatures.scenario_id == trip.scenario_id)
+                .one()
+            )
+        except NoResultFound:
+            warnings.warn(
+                f"No temperatures found for scenario {trip.scenario_id}.",
+                ConsistencyWarning,
+            )
+            return None
 
-    # Find the mid-point of the trip
-    mid_time = trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
+    if at_time is None:
+        eval_time = trip.departure_time + (trip.arrival_time - trip.departure_time) / 2
+    else:
+        eval_time = at_time
 
     if temperatures.use_only_time:
-        # The temperatures are only given by time. We change our mid-time to be the date of the temperatures
-        mid_time = datetime.combine(temperatures.datetimes[0].date(), mid_time.time())
+        # The temperatures are only given by time. We change the eval time to be the date of the temperatures
+        eval_time = datetime.combine(temperatures.datetimes[0].date(), eval_time.time())
 
-    mid_time = mid_time.timestamp()
+    eval_time_ts = eval_time.timestamp()
 
     datetimes = [dt.timestamp() for dt in temperatures.datetimes]
-    temperatures = temperatures.data
-
-    temperature = np.interp(mid_time, datetimes, temperatures)
+    temperature = np.interp(eval_time_ts, datetimes, temperatures.data)
     return float(temperature)
 
 

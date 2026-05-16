@@ -31,7 +31,7 @@ from eflips.model import (
 from geoalchemy2.shape import from_shape
 from shapely import Point
 
-from api.test_api import TestHelpers
+from tests.api.test_api import TestHelpers
 from eflips.depot.api import (
     simple_consumption_simulation,
     simulate_scenario,
@@ -434,7 +434,7 @@ class TestGenerateOptimalDepot(TestHelpers):
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -443,7 +443,7 @@ class TestGenerateOptimalDepot(TestHelpers):
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -452,7 +452,7 @@ class TestGenerateOptimalDepot(TestHelpers):
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0), srid=4326),
+            geom=from_shape(Point(2, 0, 0), srid=4326),
             is_electrified=False,
         )
 

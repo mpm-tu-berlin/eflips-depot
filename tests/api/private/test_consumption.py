@@ -1,5 +1,5 @@
 import warnings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from eflips.model import (
@@ -10,6 +10,7 @@ from eflips.model import (
     Rotation,
     Route,
     Station,
+    StopTime,
     Temperatures,
     Trip,
     TripType,
@@ -17,15 +18,40 @@ from eflips.model import (
     VehicleType,
 )
 from geoalchemy2.shape import from_shape
-from shapely import Point
+from shapely.geometry import LineString, Point
 
 from eflips.depot.api.private.consumption import (
     ConsumptionInformation,
     ConsumptionResult,
+    TripSegment,
     clear_interpolator_cache,
     extract_trip_information,
 )
 from tests.api.test_api import TestHelpers
+
+
+def _segment(
+    *,
+    distance_m=10_000.0,
+    duration_s=1800.0,
+    incline=0.0,
+    level_of_loading=0.5,
+    t_amb=10.0,
+    end_time=None,
+):
+    """Build a TripSegment for tests with sensible defaults."""
+    if end_time is None:
+        end_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=timezone.utc)
+    mean_speed_kmh = (distance_m / duration_s) * 3.6 if duration_s > 0 else 0.0
+    return TripSegment(
+        distance_m=distance_m,
+        duration_s=duration_s,
+        mean_speed_kmh=mean_speed_kmh,
+        incline=incline,
+        level_of_loading=level_of_loading,
+        t_amb=t_amb,
+        end_time=end_time,
+    )
 
 
 class TestConsumptionInformation(TestHelpers):
@@ -120,14 +146,14 @@ class TestConsumptionInformation(TestHelpers):
             scenario=scenario,
             name="Station 1",
             name_short="S1",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         station_2 = Station(
             scenario=scenario,
             name="Station 2",
             name_short="S2",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add_all([station_1, station_2])
@@ -229,14 +255,14 @@ class TestConsumptionInformation(TestHelpers):
             scenario=scenario,
             name="Station 3",
             name_short="S3",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         station_2 = Station(
             scenario=scenario,
             name="Station 4",
             name_short="S4",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add_all([station_1, station_2])
@@ -338,14 +364,14 @@ class TestConsumptionInformation(TestHelpers):
             scenario=scenario,
             name="Station 5",
             name_short="S5",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         station_2 = Station(
             scenario=scenario,
             name="Station 6",
             name_short="S6",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add_all([station_1, station_2])
@@ -411,42 +437,48 @@ class TestConsumptionInformation(TestHelpers):
         assert (
             info.consumption_lut is None
         )  # Should be None after calculation to save memory
-        assert info.distance == 10.0  # 10 km
-        assert info.average_speed > 0
-        assert info.temperature is not None
-        assert info.level_of_loading > 0
-        assert info.consumption is not None
-        assert info.consumption > 0
-        assert info.consumption_per_km is not None
-        assert info.consumption_per_km > 0
+        assert len(info.segments) >= 1
+        assert sum(s.distance_m for s in info.segments) == pytest.approx(10_000.0)
+        assert all(s.mean_speed_kmh > 0 for s in info.segments)
+        assert all(s.t_amb is not None for s in info.segments)
+        assert all(
+            s.level_of_loading is not None and s.level_of_loading > 0
+            for s in info.segments
+        )
+        total_kwh = sum(s.consumption_kwh for s in info.segments)
+        assert total_kwh > 0
 
     def test_extract_trip_information_without_lut(
         self, session, scenario, trip_without_lut
     ):
-        """Test extracting trip information without LUT (new functionality from commit)."""
+        """Test extracting trip information without LUT (uses VehicleType.consumption directly)."""
         with pytest.warns(ConsistencyWarning, match="No consumption LUT found"):
             info = extract_trip_information(trip_without_lut.id, scenario)
 
         assert info is not None
         assert info.trip_id == trip_without_lut.id
         assert info.consumption_lut is None
-        assert info.distance == 15.0  # 15 km
-        assert info.consumption_per_km == 1.5  # Direct from vehicle type
-        assert info.consumption == 1.5 * 15.0  # 22.5 kWh
-        assert info.temperature is not None
+        assert info.flat_consumption_per_km == 1.5
+        assert sum(s.distance_m for s in info.segments) == pytest.approx(15_000.0)
+        assert sum(s.consumption_kwh for s in info.segments) == pytest.approx(
+            1.5 * 15.0
+        )
+        assert all(s.t_amb is not None for s in info.segments)
 
     def test_extract_trip_information_without_temperature(
         self, session, scenario, trip_without_temperature
     ):
-        """Test extracting trip information without temperature data (new functionality from commit)."""
+        """Test extracting trip information without temperature data."""
         with pytest.warns(ConsistencyWarning, match="No temperatures found"):
             info = extract_trip_information(trip_without_temperature.id, scenario)
 
         assert info is not None
         assert info.trip_id == trip_without_temperature.id
-        assert info.temperature is None  # Should be None when no temperature data
-        assert info.consumption_per_km == 1.2
-        assert info.consumption == 1.2 * 20.0  # 24 kWh
+        assert all(s.t_amb is None for s in info.segments)
+        assert info.flat_consumption_per_km == 1.2
+        assert sum(s.consumption_kwh for s in info.segments) == pytest.approx(
+            1.2 * 20.0
+        )
 
     def test_extract_trip_information_no_vehicle_class(self, session, scenario):
         """Test extracting trip information for VehicleType without VehicleClass but with consumption value."""
@@ -468,14 +500,14 @@ class TestConsumptionInformation(TestHelpers):
             scenario=scenario,
             name="Station 7",
             name_short="S7",
-            geom=from_shape(Point(0, 0), srid=4326),
+            geom=from_shape(Point(0, 0, 0), srid=4326),
             is_electrified=False,
         )
         station_2 = Station(
             scenario=scenario,
             name="Station 8",
             name_short="S8",
-            geom=from_shape(Point(1, 0), srid=4326),
+            geom=from_shape(Point(1, 0, 0), srid=4326),
             is_electrified=False,
         )
         session.add_all([station_1, station_2])
@@ -552,10 +584,12 @@ class TestConsumptionInformation(TestHelpers):
         assert info is not None
         assert info.trip_id == trip.id
         assert info.consumption_lut is None
-        assert info.distance == 25.0  # 25 km
-        assert info.consumption_per_km == 2.0  # Direct from vehicle type
-        assert info.consumption == 2.0 * 25.0  # 50 kWh
-        assert info.temperature is not None
+        assert info.flat_consumption_per_km == 2.0
+        assert sum(s.distance_m for s in info.segments) == pytest.approx(25_000.0)
+        assert sum(s.consumption_kwh for s in info.segments) == pytest.approx(
+            2.0 * 25.0
+        )
+        assert all(s.t_amb is not None for s in info.segments)
 
     def test_consumption_information_calculate_with_lut(
         self, session, scenario, trip_with_lut, consumption_lut
@@ -563,21 +597,15 @@ class TestConsumptionInformation(TestHelpers):
         """Test the calculate() method with a valid LUT."""
         info = ConsumptionInformation(
             trip_id=1,
+            segments=[_segment(distance_m=10_000.0, t_amb=10.0, incline=0.0)],
             consumption_lut=consumption_lut,
-            average_speed=20.0,
-            distance=10.0,
-            temperature=10.0,
-            level_of_loading=0.5,
-            incline=0.0,
         )
 
         info.calculate()
 
-        assert info.consumption is not None
-        assert info.consumption > 0
-        assert info.consumption_per_km is not None
-        assert info.consumption_per_km > 0
-        # After calculation, LUT should be cleared to save memory
+        assert len(info.segments) == 1
+        assert info.segments[0].consumption_kwh is not None
+        assert info.segments[0].consumption_kwh > 0
         assert info.consumption_lut is None
 
     def test_consumption_information_calculate_with_interpolation(
@@ -586,19 +614,21 @@ class TestConsumptionInformation(TestHelpers):
         """Test that interpolation works for values between LUT points."""
         info = ConsumptionInformation(
             trip_id=1,
+            segments=[
+                _segment(
+                    distance_m=10_000.0,
+                    duration_s=10_000.0 / (25.0 / 3.6),  # mean_speed_kmh = 25
+                    incline=0.025,
+                    level_of_loading=0.25,
+                    t_amb=5.0,
+                )
+            ],
             consumption_lut=consumption_lut,
-            average_speed=25.0,  # Between 20 and 30
-            distance=10.0,
-            temperature=5.0,  # Between 0 and 10
-            level_of_loading=0.25,  # Between 0 and 0.5
-            incline=0.025,  # Between 0 and 0.05
         )
 
         info.calculate()
 
-        assert info.consumption is not None
-        assert info.consumption > 0
-        assert info.consumption_per_km is not None
+        assert info.segments[0].consumption_kwh > 0
 
     def test_consumption_information_calculate_extrapolation(
         self, session, scenario, consumption_lut
@@ -606,54 +636,109 @@ class TestConsumptionInformation(TestHelpers):
         """Test that extrapolation with nearest neighbor works when out of bounds."""
         info = ConsumptionInformation(
             trip_id=1,
+            segments=[
+                _segment(
+                    distance_m=10_000.0,
+                    duration_s=10_000.0
+                    / (50.0 / 3.6),  # mean_speed_kmh = 50, outside LUT
+                    incline=0.0,
+                    level_of_loading=0.5,
+                    t_amb=30.0,  # outside LUT
+                )
+            ],
             consumption_lut=consumption_lut,
-            average_speed=50.0,  # Outside LUT range (max is 40)
-            distance=10.0,
-            temperature=30.0,  # Outside LUT range (max is 20)
-            level_of_loading=0.5,
-            incline=0.0,
         )
 
-        # Calculate - should work with nearest neighbor (no warning expected)
         info.calculate()
 
-        # Should still get a valid result from nearest neighbor
-        assert info.consumption is not None
-        assert info.consumption > 0
-        assert info.consumption_per_km is not None
+        assert info.segments[0].consumption_kwh > 0
+
+    def test_consumption_information_calculate_vectorized_per_segment(
+        self, session, scenario, consumption_lut
+    ):
+        """Vectorized calculate() should match independent per-segment evaluations."""
+        clear_interpolator_cache()
+        seg_inputs = [
+            dict(
+                distance_m=4_000.0,
+                duration_s=600.0,
+                incline=0.0,
+                level_of_loading=0.0,
+                t_amb=10.0,
+            ),
+            dict(
+                distance_m=3_000.0,
+                duration_s=400.0,
+                incline=0.05,
+                level_of_loading=0.5,
+                t_amb=0.0,
+            ),
+            dict(
+                distance_m=2_500.0,
+                duration_s=300.0,
+                incline=0.025,
+                level_of_loading=1.0,
+                t_amb=20.0,
+            ),
+        ]
+        bulk = ConsumptionInformation(
+            trip_id=1,
+            segments=[_segment(**si) for si in seg_inputs],
+            consumption_lut=consumption_lut,
+        )
+        bulk.calculate()
+
+        for i, si in enumerate(seg_inputs):
+            single = ConsumptionInformation(
+                trip_id=1,
+                segments=[_segment(**si)],
+                consumption_lut=consumption_lut,
+            )
+            single.calculate()
+            assert bulk.segments[i].consumption_kwh == pytest.approx(
+                single.segments[0].consumption_kwh
+            )
 
     def test_consumption_information_generate_result(self):
-        """Test generating a ConsumptionResult from ConsumptionInformation."""
+        """Test generating a ConsumptionResult from a multi-segment ConsumptionInformation."""
+        t0 = datetime(2020, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         info = ConsumptionInformation(
             trip_id=1,
-            consumption_lut=None,
-            average_speed=20.0,
-            distance=10.0,
-            temperature=10.0,
-            level_of_loading=0.5,
-            consumption=15.0,  # Pre-calculated
-            consumption_per_km=1.5,
+            segments=[
+                _segment(
+                    distance_m=5_000.0,
+                    duration_s=600.0,
+                    end_time=t0 + timedelta(minutes=10),
+                ),
+                _segment(
+                    distance_m=5_000.0,
+                    duration_s=600.0,
+                    end_time=t0 + timedelta(minutes=20),
+                ),
+            ],
+            flat_consumption_per_km=1.5,
         )
+        info.calculate()
 
         battery_capacity = 100.0
         result = info.generate_consumption_result(battery_capacity)
 
         assert isinstance(result, ConsumptionResult)
-        assert result.delta_soc_total == -15.0 / 100.0  # -0.15
-        assert result.timestamps is None  # Not implemented yet
-        assert result.delta_soc is None  # Not implemented yet
+        assert result.delta_soc_total == pytest.approx(-15.0 / 100.0)
+        assert result.timestamps == [s.end_time for s in info.segments]
+        assert len(result.delta_soc) == 2
+        assert result.delta_soc[0] == pytest.approx(-7.5 / 100.0)
+        assert result.delta_soc[1] == pytest.approx(-15.0 / 100.0)
+        assert (
+            result.delta_soc[0] >= result.delta_soc[1]
+        )  # monotonically non-increasing
 
     def test_consumption_information_generate_result_without_calculation(self):
-        """Test that generating result without calculation raises error."""
+        """Test that generating a result before calculate() raises an error."""
         info = ConsumptionInformation(
             trip_id=1,
-            consumption_lut=None,
-            average_speed=20.0,
-            distance=10.0,
-            temperature=10.0,
-            level_of_loading=0.5,
-            consumption=None,  # Not calculated
-            consumption_per_km=None,
+            segments=[_segment()],
+            flat_consumption_per_km=1.5,
         )
 
         with pytest.raises(
@@ -673,11 +758,8 @@ class TestConsumptionInformation(TestHelpers):
 
         info = ConsumptionInformation(
             trip_id=1,
+            segments=[_segment()],
             consumption_lut=consumption_lut,
-            average_speed=20.0,
-            distance=10.0,
-            temperature=10.0,
-            level_of_loading=0.5,
         )
 
         with pytest.raises(
@@ -737,7 +819,7 @@ class TestConsumptionInformation(TestHelpers):
         session.add(lut2)
         session.flush()
 
-        with pytest.raises(ValueError, match="Expected exactly one consumption LUT"):
+        with pytest.raises(ValueError, match="Expected at most one consumption LUT"):
             extract_trip_information(trip_with_lut.id, scenario)
 
     @pytest.fixture
@@ -817,14 +899,19 @@ class TestConsumptionInformation(TestHelpers):
         clear_interpolator_cache()
 
         def make_info():
+            # Single-segment trip whose inputs land exactly on the LUT's NaN hole.
             return ConsumptionInformation(
                 trip_id=1,
+                segments=[
+                    _segment(
+                        distance_m=10_000.0,
+                        duration_s=10_000.0 / (30.0 / 3.6),  # mean_speed_kmh = 30
+                        incline=0.0,
+                        level_of_loading=0.5,
+                        t_amb=0.0,
+                    )
+                ],
                 consumption_lut=consumption_lut_with_hole,
-                average_speed=30.0,  # exactly on the hole
-                distance=10.0,
-                temperature=0.0,  # exactly on the hole
-                level_of_loading=0.5,  # exactly on the hole
-                incline=0.0,  # exactly on the hole
             )
 
         # First call: NN interpolator is built and warning is emitted
@@ -834,8 +921,7 @@ class TestConsumptionInformation(TestHelpers):
         ):
             info.calculate()
 
-        assert info.consumption is not None
-        assert info.consumption > 0
+        assert info.segments[0].consumption_kwh > 0
 
         # Second call: NN interpolator is already cached — no NN warning this time
         info2 = make_info()
@@ -849,8 +935,7 @@ class TestConsumptionInformation(TestHelpers):
             and "nearest neighbor" in str(w.message).lower()
         ]
         assert len(nn_warnings) == 0, "NN warning should not fire on cache hit"
-        assert info2.consumption is not None
-        assert info2.consumption > 0
+        assert info2.segments[0].consumption_kwh > 0
 
     def test_no_lut_no_consumption_value_error(
         self, session, scenario, trip_without_lut
@@ -866,3 +951,87 @@ class TestConsumptionInformation(TestHelpers):
                 match="must have a consumption value set if no consumption LUT is available.",
             ):
                 extract_trip_information(trip_without_lut.id, scenario)
+
+    def test_extract_trip_information_inserts_route_vertex_knots(
+        self, session, scenario, trip_without_lut
+    ):
+        """A >1km gap between stop_times with intermediate Z vertices should.
+
+        produce extra segments — and the inclines should reflect Δz.
+        """
+        trip = trip_without_lut
+        route = trip.route
+        # Build a 5-vertex LineString whose 2D geodesic length matches route.distance
+        # (15 km). 1° lon at the equator ≈ 111195 m, so 15 km ≈ 0.13490°. The middle
+        # vertex sits at 100 m elevation: a smooth ramp up then back down.
+        end_lon = 15_000.0 / 111_195.0
+        route.geom = from_shape(
+            LineString(
+                [
+                    (0.0, 0.0, 0.0),
+                    (end_lon * 0.25, 0.0, 50.0),
+                    (end_lon * 0.5, 0.0, 100.0),
+                    (end_lon * 0.75, 0.0, 50.0),
+                    (end_lon, 0.0, 0.0),
+                ]
+            ),
+            srid=4326,
+        )
+        # Stop times only at the two endpoints — the gap between them is 15 km,
+        # so route-vertex knots should be inserted.
+        session.add(
+            StopTime(
+                scenario=scenario,
+                station=route.departure_station,
+                trip=trip,
+                arrival_time=trip.departure_time,
+                dwell_duration=timedelta(seconds=0),
+            )
+        )
+        session.add(
+            StopTime(
+                scenario=scenario,
+                station=route.arrival_station,
+                trip=trip,
+                arrival_time=trip.arrival_time,
+                dwell_duration=timedelta(seconds=0),
+            )
+        )
+        session.flush()
+
+        with pytest.warns(ConsistencyWarning, match="No consumption LUT found"):
+            info = extract_trip_information(trip.id, scenario)
+
+        # The three interior vertices each split the trip further.
+        assert len(info.segments) > 1
+        # Cumulative distance still matches the route distance.
+        assert sum(s.distance_m for s in info.segments) == pytest.approx(15_000.0)
+        # First half climbs, second half descends — at least one positive and one negative incline.
+        inclines = [s.incline for s in info.segments]
+        assert any(i > 0 for i in inclines), "expected an uphill segment"
+        assert any(i < 0 for i in inclines), "expected a downhill segment"
+
+    def test_extract_trip_information_warns_on_missing_z(
+        self, session, scenario, trip_without_lut
+    ):
+        """Stations without Z should trigger a single ConsistencyWarning per trip.
+
+        and produce zero-incline segments.
+        """
+        # Strip the Z by clearing the station geom entirely (geom is nullable).
+        trip_without_lut.route.departure_station.geom = None
+        trip_without_lut.route.arrival_station.geom = None
+        session.flush()
+
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter("always")
+            info = extract_trip_information(trip_without_lut.id, scenario)
+
+        z_warnings = [
+            w
+            for w in record
+            if issubclass(w.category, ConsistencyWarning)
+            and "lacks a Z coordinate" in str(w.message)
+        ]
+        assert len(z_warnings) == 1
+        assert all(s.incline == 0.0 for s in info.segments)

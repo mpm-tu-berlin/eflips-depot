@@ -1,12 +1,17 @@
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 import simpy
-from eflips.model import Event, EventType, Rotation, Vehicle, VehicleType
+from eflips.model import AreaType, Event, EventType, Rotation, Vehicle, VehicleType
 
-from api.test_api import TestHelpers
+from tests.api.test_api import TestHelpers
 from eflips.depot import Depotinput, SimpleTrip, SimulationHost
 from eflips.depot.api.private.depot import depot_to_template
+from eflips.depot.api.private.shrink import (
+    _compute_peak_concurrency,
+    _round_capacity_for_area_type,
+)
 from eflips.depot.api.private.util import (
     vehicle_type_to_global_constants_dict,
     VehicleSchedule,
@@ -209,3 +214,74 @@ class TestDepot(TestHelpers):
         with pytest.raises(AssertionError):
             check_depot_validity(depot)
         session.rollback()
+
+
+def _ev(start_minutes: float, end_minutes: float) -> SimpleNamespace:
+    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    return SimpleNamespace(
+        time_start=base + timedelta(minutes=start_minutes),
+        time_end=base + timedelta(minutes=end_minutes),
+    )
+
+
+class TestComputePeakConcurrency:
+    res = timedelta(minutes=5)
+
+    def test_empty(self):
+        assert _compute_peak_concurrency([], self.res) == 0
+
+    def test_two_non_overlapping(self):
+        events = [_ev(0, 10), _ev(20, 30)]
+        assert _compute_peak_concurrency(events, self.res) == 1
+
+    def test_two_overlapping(self):
+        events = [_ev(0, 30), _ev(10, 20)]
+        assert _compute_peak_concurrency(events, self.res) == 2
+
+    def test_three_two_overlap_one_alone(self):
+        events = [_ev(0, 20), _ev(10, 30), _ev(60, 70)]
+        assert _compute_peak_concurrency(events, self.res) == 2
+
+    def test_back_to_back_at_resolution_boundary(self):
+        events = [_ev(0, 5), _ev(5, 10)]
+        assert _compute_peak_concurrency(events, self.res) == 1
+
+    def test_sub_resolution_event(self):
+        events = [_ev(0, 1)]
+        assert _compute_peak_concurrency(events, self.res) == 1
+
+    def test_invalid_resolution(self):
+        with pytest.raises(ValueError):
+            _compute_peak_concurrency([_ev(0, 5)], timedelta(seconds=0))
+
+
+class TestRoundCapacityForAreaType:
+    def test_oneside(self):
+        area = SimpleNamespace(id=1, area_type=AreaType.DIRECT_ONESIDE, row_count=None)
+        assert _round_capacity_for_area_type(5, area) == 5
+
+    def test_twoside_odd(self):
+        area = SimpleNamespace(id=2, area_type=AreaType.DIRECT_TWOSIDE, row_count=None)
+        assert _round_capacity_for_area_type(3, area) == 4
+
+    def test_twoside_even(self):
+        area = SimpleNamespace(id=3, area_type=AreaType.DIRECT_TWOSIDE, row_count=None)
+        assert _round_capacity_for_area_type(4, area) == 4
+
+    def test_line_rounds_up(self):
+        area = SimpleNamespace(id=4, area_type=AreaType.LINE, row_count=4)
+        assert _round_capacity_for_area_type(5, area) == 8
+
+    def test_line_exact(self):
+        area = SimpleNamespace(id=5, area_type=AreaType.LINE, row_count=4)
+        assert _round_capacity_for_area_type(4, area) == 4
+
+    def test_line_missing_row_count(self):
+        area = SimpleNamespace(id=6, area_type=AreaType.LINE, row_count=None)
+        with pytest.raises(ValueError):
+            _round_capacity_for_area_type(5, area)
+
+    def test_zero_peak_rejected(self):
+        area = SimpleNamespace(id=7, area_type=AreaType.DIRECT_ONESIDE, row_count=None)
+        with pytest.raises(ValueError):
+            _round_capacity_for_area_type(0, area)
