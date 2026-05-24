@@ -1035,3 +1035,145 @@ class TestConsumptionInformation(TestHelpers):
         ]
         assert len(z_warnings) == 1
         assert all(s.incline == 0.0 for s in info.segments)
+
+    def test_extract_trip_information_circular_route(self, session, scenario):
+        """Circular routes (A → B → C → B → A) revisit stations.
+
+        Regression test for the bug where ``_build_trip_segments`` collapsed
+        every occurrence of a station_id to the last AssocRouteStation,
+        causing the first one or two segments to receive ``distance_m = 0``
+        and ``consumption_kwh = 0``. Every segment should carry the real
+        distance between its endpoints.
+        """
+        # 3 distinct stations; A and B each appear twice in the route.
+        station_a = Station(
+            scenario=scenario,
+            name="Circular A",
+            name_short="CA",
+            geom=from_shape(Point(0, 0, 0), srid=4326),
+            is_electrified=False,
+        )
+        station_b = Station(
+            scenario=scenario,
+            name="Circular B",
+            name_short="CB",
+            geom=from_shape(Point(1, 0, 0), srid=4326),
+            is_electrified=False,
+        )
+        station_c = Station(
+            scenario=scenario,
+            name="Circular C",
+            name_short="CC",
+            geom=from_shape(Point(2, 0, 0), srid=4326),
+            is_electrified=False,
+        )
+        session.add_all([station_a, station_b, station_c])
+
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Circular Bus",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            allowed_mass=18000,
+            empty_mass=12000,
+            consumption=1.5,
+            opportunity_charging_capable=False,
+        )
+        session.add(vehicle_type)
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Circular Vehicle Class",
+            vehicle_types=[vehicle_type],
+            consumption_lut=None,
+        )
+        session.add(vehicle_class)
+
+        line = Line(scenario=scenario, name="Circular Line", name_short="CL")
+        session.add(line)
+
+        # 20 km round trip: A(0) -> B(5) -> C(10) -> B(15) -> A(20).
+        route = Route(
+            scenario=scenario,
+            name="Circular Route",
+            name_short="CR",
+            departure_station=station_a,
+            arrival_station=station_a,
+            line=line,
+            distance=20_000,
+        )
+        route.assoc_route_stations = [
+            AssocRouteStation(
+                scenario=scenario, station=station_a, route=route, elapsed_distance=0
+            ),
+            AssocRouteStation(
+                scenario=scenario,
+                station=station_b,
+                route=route,
+                elapsed_distance=5_000,
+            ),
+            AssocRouteStation(
+                scenario=scenario,
+                station=station_c,
+                route=route,
+                elapsed_distance=10_000,
+            ),
+            AssocRouteStation(
+                scenario=scenario,
+                station=station_b,
+                route=route,
+                elapsed_distance=15_000,
+            ),
+            AssocRouteStation(
+                scenario=scenario,
+                station=station_a,
+                route=route,
+                elapsed_distance=20_000,
+            ),
+        ]
+        session.add(route)
+
+        rotation = Rotation(
+            scenario=scenario,
+            vehicle_type=vehicle_type,
+            allow_opportunity_charging=False,
+        )
+        session.add(rotation)
+
+        # 60-minute trip with one stop every 15 minutes.
+        t0 = datetime(2020, 1, 1, 9, 0, 0, tzinfo=timezone.utc)
+        trip = Trip(
+            scenario=scenario,
+            route=route,
+            rotation=rotation,
+            trip_type=TripType.PASSENGER,
+            departure_time=t0,
+            arrival_time=t0 + timedelta(minutes=60),
+        )
+        session.add(trip)
+        for i, station in enumerate(
+            [station_a, station_b, station_c, station_b, station_a]
+        ):
+            session.add(
+                StopTime(
+                    scenario=scenario,
+                    station=station,
+                    trip=trip,
+                    arrival_time=t0 + timedelta(minutes=15 * i),
+                    dwell_duration=timedelta(seconds=0),
+                )
+            )
+        session.flush()
+
+        with pytest.warns(ConsistencyWarning, match="No consumption LUT found"):
+            info = extract_trip_information(trip.id, scenario)
+
+        assert len(info.segments) == 4
+        # Every segment should be a real 5 km leg with nonzero consumption,
+        # not silently clamped to 0 by the dict-comprehension bug.
+        for seg in info.segments:
+            assert seg.distance_m == pytest.approx(5_000.0)
+            assert seg.consumption_kwh == pytest.approx(1.5 * 5.0)
+        assert sum(s.distance_m for s in info.segments) == pytest.approx(20_000.0)
+        assert sum(s.consumption_kwh for s in info.segments) == pytest.approx(
+            1.5 * 20.0
+        )

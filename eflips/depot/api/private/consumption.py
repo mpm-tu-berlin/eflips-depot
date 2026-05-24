@@ -1,9 +1,10 @@
 import logging
 import warnings
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from math import ceil
-from typing import TYPE_CHECKING, Any, Dict, Tuple, List, Optional
+from typing import TYPE_CHECKING, Any, DefaultDict, Dict, Tuple, List, Optional
 
 if TYPE_CHECKING:
     import scipy.interpolate
@@ -559,28 +560,57 @@ def _build_trip_segments(
     constant across all segments — sample it once at the trip midpoint upstream.
     """
     route = trip.route
-    assoc_by_station: Dict[int, AssocRouteStation] = {
-        a.station_id: a for a in route.assoc_route_stations
-    }
+    # On circular routes (e.g. ZOB → … → ZOB) the same station appears more
+    # than once in ``assoc_route_stations`` at different elapsed_distances.
+    # Keep every occurrence so we can pick the right one per StopTime; a flat
+    # ``station_id -> AssocRouteStation`` dict would collapse duplicates to
+    # the last occurrence and assign return-leg distances to early stops,
+    # producing zero-distance/zero-consumption segments at the trip start.
+    assocs_by_station: DefaultDict[int, List[AssocRouteStation]] = defaultdict(list)
+    for a in route.assoc_route_stations:
+        assocs_by_station[a.station_id].append(a)
+
+    trip_duration_s = (trip.arrival_time - trip.departure_time).total_seconds()
+    route_distance_m = float(route.distance)
+
+    def _pick_assoc(
+        candidates: List[AssocRouteStation], stop_time: datetime
+    ) -> AssocRouteStation:
+        """Choose the occurrence whose elapsed_distance best matches the
+        time-fraction of ``stop_time`` along the trip. Falls back to the first
+        candidate when the trip has zero duration."""
+        if len(candidates) == 1 or trip_duration_s <= 0:
+            return candidates[0]
+        t_s = (stop_time - trip.departure_time).total_seconds()
+        expected_m = (t_s / trip_duration_s) * route_distance_m
+        return min(
+            candidates, key=lambda a: abs(float(a.elapsed_distance) - expected_m)
+        )
 
     # 1. Build the stop-time-derived knot list as (elapsed_distance_m, time, z).
     stop_times = sorted(trip.stop_times, key=lambda st: st.arrival_time)
     knots: List[Tuple[float, datetime, Optional[float]]] = []
     if stop_times:
         for st in stop_times:
-            assoc = assoc_by_station.get(st.station_id)
-            if assoc is None:
+            candidates = assocs_by_station.get(st.station_id)
+            if not candidates:
                 raise ValueError(
                     f"StopTime {st.id} references station {st.station_id} which is "
                     f"not in route {route.id}'s assoc_route_stations."
                 )
+            assoc = _pick_assoc(candidates, st.arrival_time)
             z = _assoc_z(assoc)
             if z is None:
                 z = _station_z(st.station)
             knots.append((float(assoc.elapsed_distance), st.arrival_time, z))
     else:
-        dep_assoc = assoc_by_station.get(route.departure_station_id)
-        arr_assoc = assoc_by_station.get(route.arrival_station_id)
+        # On a circular route departure_station_id == arrival_station_id; take
+        # the first occurrence as departure (elapsed_distance == 0) and the
+        # last as arrival (elapsed_distance == route.distance).
+        dep_candidates = assocs_by_station.get(route.departure_station_id, [])
+        arr_candidates = assocs_by_station.get(route.arrival_station_id, [])
+        dep_assoc = dep_candidates[0] if dep_candidates else None
+        arr_assoc = arr_candidates[-1] if arr_candidates else None
         dep_z = _assoc_z(dep_assoc) if dep_assoc else None
         if dep_z is None:
             dep_z = _station_z(route.departure_station)
