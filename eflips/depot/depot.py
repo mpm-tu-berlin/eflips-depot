@@ -1495,6 +1495,43 @@ class DepotControl:
         """
         self.dispatch_strategy.trigger(self.depot)
 
+    def auto_move_up_after_vehicle_left(self,origin_area):
+        """Compact a parking LineArea after a vehicle has left it
+        The method is only active in autonomous shunting mode
+        It is restricted to LineAreas so no other service areas are affected
+        """
+        if getattr(self.depot,"shunting_mode","manual") != "autonomous":
+            return
+        if not isinstance(origin_area, LineArea):
+            return
+        if not origin_area.issink:
+            return
+        if origin_area.parking_area_group is None:
+            return
+        #Regulate the moveup on Charging interfaces
+        if not getattr(self.depot,"move_up_allow_charging_areas", True):
+            if getattr (origin_area, "charging_interfaces", None):
+                return
+        # vacant blocked is the trigger in correspondence to EmptySlotsExit
+        if getattr(origin_area, "vacant_blocked", 0) <=0:
+            return
+        exit_order = list(origin_area.range_from_side(origin_area.side_get_default))
+        vehicles_in_exit_order = [
+            origin_area.items[index]
+            for index in exit_order
+            if origin_area.items[index] is not None
+        ]
+        new_items =[None] * origin_area.capacity
+        for index, vehicle in zip(exit_order, vehicles_in_exit_order):
+            new_items[index] = vehicle
+        if new_items == origin_area.items:
+            return
+        origin_area.items[:] = new_items
+        origin_area._trigger_put(None)
+        origin_area.trigger_get(None)
+        self.trigger_dispatch()
+
+
     def request_vehicle(self, trip, filter=lambda item: True):
         """Schedule processes for the vehicle request for *trip*."""
         flexprint(
@@ -2108,6 +2145,10 @@ class LineAreaGet(BaseAreaGet, ExclusiveRequest, LineFilterStoreGet):
         super(LineAreaGet, self).__init__(
             store=store, filter=filter, side=side, other_requests=other_requests
         )
+        if getattr(store,"depot",None) is not None:
+            self.callbacks.append(
+                lambda event: store.depot.depot_control.auto_move_up_after_vehicle_left(store)
+            )
 
 
 class LineArea(BaseArea, LineFilterStore):
