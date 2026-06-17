@@ -1447,6 +1447,31 @@ class TestShrinkToPeakUsage(TestHelpers):
         generate_depot_layout(
             scenario=scenario, charging_power=90, delete_existing_depot=True
         )
+        # Manually set all areas to a high capacity to ensure they get shrunk
+        session.query(Area).filter(Area.scenario_id == scenario.id).update(
+            {"capacity": 100}
+        )
+        # Manually added charging areas
+        vehicle_types = (
+            session.query(VehicleType)
+            .filter(VehicleType.scenario_id == scenario.id)
+            .all()
+        )
+        charging_process = (
+            session.query(Process).filter(Process.electric_power.isnot(None)).one()
+        )
+        depot = session.query(Depot).filter(Depot.scenario_id == scenario.id).one()
+        for vt in vehicle_types:
+            extra_area = Area(
+                depot=depot,
+                vehicle_type=vt,
+                scenario=scenario,
+                name=f"Extra Area for {vt.name}",
+                area_type=AreaType.DIRECT_ONESIDE,
+                capacity=10,
+            )
+            extra_area.processes.append(charging_process)
+            session.add(extra_area)
         simulation_host = init_simulation(scenario, session)
         depot_evaluations = run_simulation(simulation_host)
         add_evaluation_to_database(scenario, depot_evaluations, session)
@@ -1456,7 +1481,9 @@ class TestShrinkToPeakUsage(TestHelpers):
         self._run_manual_flow(session, full_scenario)
 
         pre_areas = (
-            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+            session.query(Area)
+            .filter(Area.scenario_id == full_scenario.id, Area.processes.any())
+            .all()
         )
         assert len(pre_areas) > 0
         pre_capacities = {a.id: a.capacity for a in pre_areas}
@@ -1465,7 +1492,9 @@ class TestShrinkToPeakUsage(TestHelpers):
         session.expire_all()
 
         post_areas = (
-            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+            session.query(Area)
+            .filter(Area.scenario_id == full_scenario.id, Area.processes.any())
+            .all()
         )
 
         # Some Areas got shrunk or deleted
@@ -1496,7 +1525,9 @@ class TestShrinkToPeakUsage(TestHelpers):
         from eflips.depot.api.private.shrink import _round_capacity_for_area_type
 
         post_areas = (
-            session.query(Area).filter(Area.scenario_id == full_scenario.id).all()
+            session.query(Area)
+            .filter(Area.scenario_id == full_scenario.id, Area.processes.any())
+            .all()
         )
         assert len(post_areas) > 0
         for area in post_areas:

@@ -84,14 +84,18 @@ def _round_capacity_for_area_type(peak: int, area: Area) -> int:
 def _shrink_areas_to_peak(
     scenario: Scenario, session: Session, resolution: timedelta
 ) -> None:
-    """Shrink every :class:`Area` in ``scenario`` to its peak observed usage.
-
+    """Shrink every :class:`Area` in ``scenario`` to its peak observed usage. Waiting areas are ignored since
+    :meth:`add_evaluation_to_database()` already shrinks their sizes to minimum 1 slot.
     Areas whose peak concurrency is zero are deleted along with their
     :class:`AssocAreaProcess` rows. If we somehow compute a zero peak while
     events still reference the area we raise :class:`RuntimeError` rather than
     silently delete persisted state.
     """
-    areas = session.query(Area).filter(Area.scenario_id == scenario.id).all()
+    areas = (
+        session.query(Area)
+        .filter(Area.scenario_id == scenario.id, Area.processes.any())
+        .all()
+    )
     area_ids_to_delete: List[int] = []
 
     for area in areas:
