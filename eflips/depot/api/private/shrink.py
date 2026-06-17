@@ -91,7 +91,11 @@ def _shrink_areas_to_peak(
     events still reference the area we raise :class:`RuntimeError` rather than
     silently delete persisted state.
     """
-    areas = session.query(Area).filter(Area.scenario_id == scenario.id, Area.processes.any()).all()
+    areas = (
+        session.query(Area)
+        .filter(Area.scenario_id == scenario.id, Area.processes.any())
+        .all()
+    )
     area_ids_to_delete: List[int] = []
 
     for area in areas:
