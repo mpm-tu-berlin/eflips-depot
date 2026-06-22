@@ -230,8 +230,8 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     template["templatename_display"] = depot.name
     template["general"]["depotID"] = str(depot.id)
     template["general"]["dispatch_strategy_name"] = "SMART"
-    template[general]["shunting_mode"] = "manual"
-    template[general]["move_up_allow_charging_areas"] = True
+    template["general"]["shunting_mode"] = "manual"
+    template["general"]["move_up_allow_charging_areas"] = True
 
     # Helper for adding processes to the template
     list_of_processes = []
@@ -364,42 +364,41 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
         match process_type(process):
             case ProcessType.SERVICE:
                 template["processes"][process_name]["typename"] = "Serve"
-                #Autonomous Shunting process remains Serve process but it does not require the
+                # Autonomous Shunting process remains Serve process but it does not require the
                 # workers_service resource
-                #to further simulate the benefits of autonomous shunting the workers_service resource must be
-                #seperated from the general shunting capacity
-                if (
-                    process.name is not None
-                    and process_name.lower().startswith("autonomous shunting")
+                # to further simulate the benefits of autonomous shunting the workers_service resource must be
+                # seperated from the general shunting capacity
+                if process.name is not None and process_name.lower().startswith(
+                    "autonomous shunting"
                 ):
                     template["processes"][process_name]["required_resources"] = []
-                elif(
+                elif (
                     process.name is not None
                     and process_name.lower().startswith("shunting")
                     and shunting_worker_capacity is not None
-                     ):
-                        if shunting_worker_capacity <= 0:
-                         raise ValueError("shunting_worker_capacity must be > 0.")
-                        template["processes"][process_name]["required_resources"] = [
-                         "workers_shunting",
-                ]
+                ):
+                    if shunting_worker_capacity <= 0:
+                        raise ValueError("shunting_worker_capacity must be > 0.")
+                    template["processes"][process_name]["required_resources"] = [
+                        "workers_shunting",
+                    ]
                 if "workers_shunting" not in template["resources"]:
-                     template["resources"]["workers_shunting"] = {
-                         "typename": "DepotResource",
-                         "capacity": shunting_worker_capacity,
-                     }
+                    template["resources"]["workers_shunting"] = {
+                        "typename": "DepotResource",
+                        "capacity": shunting_worker_capacity,
+                    }
 
                 else:
                     # Fill in the worker_service
                     service_capacity = sum([x.capacity for x in process.areas])
 
                     template["processes"][process_name]["required_resources"] = [
-                    "workers_service"
+                        "workers_service"
                     ]
                     template["resources"]["workers_service"] = {
-                    "typename": "DepotResource",
-                    "capacity": service_capacity,
-                }
+                        "typename": "DepotResource",
+                        "capacity": service_capacity,
+                    }
 
                 if process.availability is not None and len(process.availability) > 0:
                     template["resource_switches"]["service_switch"] = {
@@ -675,7 +674,7 @@ def generate_depot(
     :return: Nothing. Depot is added to the database.
     """
 
-        # Sanity checks
+    # Sanity checks
     # Make sure the capacity of areas is valid.
     for key, value in capacity_of_areas.items():
         key: VehicleType
@@ -702,25 +701,24 @@ def generate_depot(
     # Make sure the scenario is the same as the station's scenario
     if station.scenario_id != scenario.id:
         raise ValueError("The scenario and station do not match.")
-    #Resolve Shunting Mode and check plausibility of durations
+    # Resolve Shunting Mode and check plausibility of durations
     allowed_shunting_modes = {"manual", "autonomous"}
     if shunting_mode not in allowed_shunting_modes:
         raise ValueError(
-        "Invalid shunting mode."
-        "Allowed values are: manual, autonomous"
+            "Invalid shunting mode." "Allowed values are: manual, autonomous"
         )
-    if autonomous_factor <=0:
+    if autonomous_factor <= 0:
         raise ValueError("autonomous_factor must be >0")
     if autonomous_setup is None:
         autonomous_setup = timedelta(seconds=0)
     if shunting_duration is not None and shunting_mode == "autonomous":
-         effective_shunting_duration = timedelta(
-             seconds=math.ceil(
-            shunting_duration.total_seconds()*autonomous_factor
-            + autonomous_setup.total_seconds()
-              )
-         )
-         shunting_process_prefix = "Autonomous Shunting"
+        effective_shunting_duration = timedelta(
+            seconds=math.ceil(
+                shunting_duration.total_seconds() * autonomous_factor
+                + autonomous_setup.total_seconds()
+            )
+        )
+        shunting_process_prefix = "Autonomous Shunting"
     else:
         effective_shunting_duration = shunting_duration
         shunting_process_prefix = "Manual Shunting"
