@@ -1,10 +1,10 @@
 """This package contains the private API for the depot-related functionality in eFLIPS."""
 import logging
 import math
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum, auto
 from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 
 import numpy as np
 import sqlalchemy.orm
@@ -30,7 +30,6 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from eflips.depot.api.private.results_to_database import (
-    UnstableSimulationException,
     DelayedTripException,
 )
 
@@ -41,16 +40,17 @@ class MissingVehicleDimensionError(ValueError):
 
 @dataclass
 class AreaInformation:
-    """ """
+    """"""
 
     area_type: AreaType
-    """
-    Type of the area, defined in AreaType enum.
-    """
+    """Type of the area, defined in AreaType enum."""
     capacity: int
     """Capacity of the area."""
     block_length: int | None
-    """Block length of the area in number of buses. Only needed for AreaType.LINE."""
+    """Block length of the area in number of buses.
+
+    Only needed for AreaType.LINE.
+    """
     power: float
     """Charging power of the area in kW."""
     vehicle_type_id: int
@@ -86,44 +86,26 @@ class AreaInformation:
 @dataclass
 class DepotConfigurationWish:
 
-    """ """
+    """"""
 
     station_id: int
-    """
-    ID of the station where the depot should be located.
-    """
+    """ID of the station where the depot should be located."""
     auto_generate: bool
-    """
-    True if the depot should be auto-generated, False if the depot should be created from user input.
-    """
+    """True if the depot should be auto-generated, False if the depot should be created from user input."""
     default_power: float | None
-    """
-    Default charging power in kW for auto-generated depots.
-    """
+    """Default charging power in kW for auto-generated depots."""
     standard_block_length: int | None
-    """
-    Default number of vehicles in a line for auto-generated depots.
-    """
+    """Default number of vehicles in a line for auto-generated depots."""
     cleaning_slots: int | None
-    """
-    Number of cleaning slots for auto-generated depots.
-    """
+    """Number of cleaning slots for auto-generated depots."""
     cleaning_duration: timedelta | None
-    """
-    Duration of the cleaning process for auto-generated depots.
-    """
+    """Duration of the cleaning process for auto-generated depots."""
     shunting_slots: int | None
-    """
-    Duration of the shunting process for auto-generated depots.
-    """
+    """Duration of the shunting process for auto-generated depots."""
     shunting_duration: timedelta | None
-    """
-    Duration of the shunting process for auto-generated depots.
-    """
+    """Duration of the shunting process for auto-generated depots."""
     areas: list[AreaInformation] | None  #
-    """
-    List of AreaInformation objects representing charging area configurations for user-defined depots.
-    """
+    """List of AreaInformation objects representing charging area configurations for user-defined depots."""
 
     def __init__(
         self,
@@ -1173,6 +1155,7 @@ def depot_smallest_possible_size(
             scenario,
             smart_charging_strategy=SmartChargingStrategy.NONE,
             repetition_period=repetition_period,
+            ignore_unstable_simulation=True,
         )
 
         # Find the peak usage of the depot
@@ -1365,6 +1348,7 @@ def estimate_service_capacity(
 ) -> int:
     """
     Estimate the number of service slots needed based on the rotations and a given service duration.
+
     It is estimated as the maximum arrivals in the time window of the service duration.
     :param all_rotations_this_depot: A list of all rotations starting and ending at the depot's station.
     :param service_duration: A timedelta representing the duration of the service.
@@ -1403,7 +1387,9 @@ def create_depots_from_wish(
     session: Session,
 ) -> None:
     """
-    This function only creates depots and their areas based on the provided configuration wishes. the result will be
+    This function only creates depots and their areas based on the provided configuration wishes.
+
+    the result will be
     written into the database.
 
     :param depot_config_wishes: A list of depot configuration wishes.
