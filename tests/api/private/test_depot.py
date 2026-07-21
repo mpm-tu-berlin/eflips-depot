@@ -45,6 +45,7 @@ from eflips.depot.api.private.depot import (
     generate_depot,
     depot_smallest_possible_size,
     group_rotations_by_start_end_stop,
+    _select_smallest_fleet_configuration,
 )
 
 
@@ -717,3 +718,68 @@ class TestGenerateOptimalDepot(TestHelpers):
         assert len(charging_areas) == 2 * len(
             vehicle_types
         ), "Charging areas for each vehicle type were expected to be created in the depot!"
+
+
+class TestSmallestFleetSelection:
+    """Regression tests for depot-sizing configuration selection.
+
+    Reproduces the Betriebshof Lichtenberg / GN failure: previously every
+    candidate depot layout was gated against a vehicle count taken from a
+    *separate* all-vehicle-type simulation. That reference is not directly
+    comparable to the single-vehicle-type candidate counts, and on the
+    real-world dataset it was lower than every candidate. As a result *every*
+    layout — including the always-valid all-direct one — was rejected and
+    ``depot_smallest_possible_size`` raised
+    ``AssertionError: No valid configurations found for ...``.
+
+    The selection now compares the candidates only against each other, so a
+    valid configuration is always returned.
+    """
+
+    def test_returns_all_direct_when_all_candidates_would_exceed_external_ref(self):
+        # Every candidate needs the same fleet size (120). In the real failure
+        # this was larger than the incomparable all-vehicle-type reference (119),
+        # which made the old gate reject all of them. Footprint grows with the
+        # number of (here unused) line areas, so the all-direct layout (0 line
+        # areas) has the smallest footprint and must be selected.
+        area_needed = {0: 4872.0, 1: 4900.0, 2: 4930.0}
+        occupancy_of_direct_areas = {0: 120, 1: 120, 2: 120}
+        vehicle_count_per_config = {0: 120, 1: 120, 2: 120}
+
+        result = _select_smallest_fleet_configuration(
+            area_needed,
+            occupancy_of_direct_areas,
+            vehicle_count_per_config,
+            standard_block_length=6,
+        )
+
+        assert result == {
+            AreaType.LINE: 0,
+            AreaType.DIRECT_ONESIDE: 120,
+            AreaType.DIRECT_TWOSIDE: 0,
+        }
+
+    def test_prefers_fewer_vehicles_then_smaller_footprint(self):
+        # Layouts 3 and 4 both need the fewest vehicles (99); among those the
+        # one with the smaller footprint (4) wins, even though the all-direct
+        # layout (0) would need one more vehicle.
+        area_needed = {0: 5000.0, 3: 4600.0, 4: 4200.0}
+        occupancy_of_direct_areas = {0: 100, 3: 96, 4: 95}
+        vehicle_count_per_config = {0: 100, 3: 99, 4: 99}
+
+        result = _select_smallest_fleet_configuration(
+            area_needed,
+            occupancy_of_direct_areas,
+            vehicle_count_per_config,
+            standard_block_length=6,
+        )
+
+        assert result == {
+            AreaType.LINE: 4 * 6,
+            AreaType.DIRECT_ONESIDE: 95,
+            AreaType.DIRECT_TWOSIDE: 0,
+        }
+
+    def test_empty_candidates_raises(self):
+        with pytest.raises(ValueError):
+            _select_smallest_fleet_configuration({}, {}, {}, standard_block_length=6)
