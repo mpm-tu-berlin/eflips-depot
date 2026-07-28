@@ -1073,6 +1073,56 @@ def find_peak_usage(
     return peak_occupancy
 
 
+def _select_smallest_fleet_configuration(
+    area_needed: Dict[int, float],
+    occupancy_of_direct_areas: Dict[int, int],
+    vehicle_count_per_config: Dict[int, int],
+    standard_block_length: int,
+) -> Dict[AreaType, int]:
+    """Select the best depot layout among the successfully simulated candidates.
+
+    The three input dictionaries are all keyed by the number of line areas in a
+    candidate layout; only layouts that simulated successfully (i.e. without
+    delayed trips) appear as keys.
+
+    Line areas reduce the parking footprint but, because they park vehicles
+    first-in-first-out, may require a larger fleet than the all-direct layout.
+    We therefore first minimise the fleet size and, among the layouts sharing
+    that fleet size, pick the one with the smallest footprint. The all-direct
+    layout (0 line areas) is always among the candidates, so as long as at least
+    one layout simulated successfully a valid configuration is returned.
+
+    Note that the fleet sizes are compared *against each other* here — all of
+    them measured under identical single-vehicle-type conditions. They must not
+    be gated against a vehicle count from a separate all-vehicle-type
+    simulation, whose value is not directly comparable and could reject every
+    candidate.
+
+    :param area_needed: Footprint in m² for each candidate layout.
+    :param occupancy_of_direct_areas: Peak direct-area occupancy for each candidate.
+    :param vehicle_count_per_config: Simulated fleet size for each candidate.
+    :param standard_block_length: Number of vehicles per line-area block.
+    :return: The area counts (per :class:`AreaType`) of the selected layout.
+    """
+    if not area_needed:
+        raise ValueError("No successfully simulated configurations to choose from.")
+
+    fewest_vehicles = min(vehicle_count_per_config.values())
+    best_config = min(
+        (
+            n
+            for n, count in vehicle_count_per_config.items()
+            if count == fewest_vehicles
+        ),
+        key=lambda n: area_needed[n],
+    )
+    return {
+        AreaType.LINE: best_config * standard_block_length,
+        AreaType.DIRECT_ONESIDE: occupancy_of_direct_areas[best_config],
+        AreaType.DIRECT_TWOSIDE: 0,
+    }
+
+
 def depot_smallest_possible_size(
     station: Station,
     scenario: Scenario,
@@ -1198,6 +1248,11 @@ def depot_smallest_possible_size(
     # Store the area needed for each vehicle type and number of line areas
     area_needed: Dict[VehicleType, Dict[int, float]] = dict()
     occupancy_of_direct_areas: Dict[VehicleType, Dict[int, int]] = dict()
+    # Store the simulated vehicle count for each configuration. This is used to
+    # pick the best configuration below and is measured under the exact same
+    # (single-vehicle-type) conditions as the area, so the counts are directly
+    # comparable to each other.
+    vehicle_count_per_config: Dict[VehicleType, Dict[int, int]] = dict()
     try:
         for vt, rotations in vts_and_rotations.items():
             # This is the savepoint for each vehicle type
@@ -1220,6 +1275,7 @@ def depot_smallest_possible_size(
                     logger.debug(f"Temporarily Deleted all rotations for {vt2.name}")
             area_needed[vt] = dict()
             occupancy_of_direct_areas[vt] = dict()
+            vehicle_count_per_config[vt] = dict()
             for amount_of_line_areas in range(max_number_of_line_areas[vt] + 2):
                 # This is the savepoint for each number of line areas
                 inner_savepoint = session.begin_nested()
@@ -1301,21 +1357,27 @@ def depot_smallest_possible_size(
                         .distinct()
                         .count()
                     )
-                    if vehicle_count_q <= vehicle_counts_all_direct[vt]:
-                        logger.debug(
-                            f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is <= than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
-                        )
-                        occupancy_of_direct_areas[vt][
-                            amount_of_line_areas
-                        ] = peak_occupancy[AreaType.DIRECT_ONESIDE]
-                        area_needed[vt][amount_of_line_areas] = (
-                            area_for_line_areas + area_for_direct_areas
-                        )
-
-                    else:
-                        logger.debug(
-                            f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q}. This is > than the all-direct configuration ({vehicle_counts_all_direct[vt]})."
-                        )
+                    # Record every configuration that simulated successfully
+                    # (i.e. without delayed trips). The best one is selected
+                    # after the loop by comparing these vehicle counts against
+                    # each other. We deliberately do *not* filter here against
+                    # ``vehicle_counts_all_direct[vt]``: that count comes from a
+                    # separate all-vehicle-type simulation and is not directly
+                    # comparable to these single-vehicle-type counts, so using it
+                    # as a hard gate can reject *every* configuration — including
+                    # the all-direct layout, which is always feasible — and make
+                    # the assertion below fire spuriously.
+                    logger.debug(
+                        f"Vehicle count for {vt.name} in {amount_of_line_areas} line areas configuration: {vehicle_count_q} "
+                        f"(all-vehicle-type all-direct reference: {vehicle_counts_all_direct[vt]})."
+                    )
+                    occupancy_of_direct_areas[vt][
+                        amount_of_line_areas
+                    ] = peak_occupancy[AreaType.DIRECT_ONESIDE]
+                    area_needed[vt][amount_of_line_areas] = (
+                        area_for_line_areas + area_for_direct_areas
+                    )
+                    vehicle_count_per_config[vt][amount_of_line_areas] = vehicle_count_q
 
                 except MissingVehicleDimensionError as e:
                     raise e
@@ -1329,15 +1391,16 @@ def depot_smallest_possible_size(
         ret_val: Dict[VehicleType, Dict[AreaType, int]] = dict()
         for vt in vts_and_rotations.keys():
             assert area_needed[vt] != {}, (
-                f"No valid configurations found for {vt.name}, "
-                f"please check if there are any delays after simulating scenario."
+                f"No valid configurations found for {vt.name}. Every candidate "
+                f"depot layout produced delayed trips when simulated. Please "
+                f"check the rotations of this vehicle type."
             )
-            best_config = min(area_needed[vt].keys(), key=lambda x: area_needed[vt][x])
-            ret_val[vt] = {
-                AreaType.LINE: best_config * standard_block_length,
-                AreaType.DIRECT_ONESIDE: occupancy_of_direct_areas[vt][best_config],
-                AreaType.DIRECT_TWOSIDE: 0,
-            }
+            ret_val[vt] = _select_smallest_fleet_configuration(
+                area_needed[vt],
+                occupancy_of_direct_areas[vt],
+                vehicle_count_per_config[vt],
+                standard_block_length,
+            )
         return ret_val
     finally:
         outer_savepoint.rollback()
