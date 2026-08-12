@@ -8,7 +8,6 @@ import warnings
 from eflips.model import *
 from eflips.model import create_engine
 from sqlalchemy.orm import Session
-from tqdm.auto import tqdm
 
 from eflips.depot.api import (
     delete_depots,
@@ -129,31 +128,9 @@ if __name__ == "__main__":
             station = first_stop
             savepoint = session.begin_nested()
             try:
-                # (Temporarily) Delete all rotations not starting or ending at the station
-                logger.debug(
-                    f"Deleting all rotations not starting or ending at {station.name}"
-                )
-                all_rot_for_scenario = (
-                    session.query(Rotation)
-                    .filter(Rotation.scenario_id == scenario.id)
-                    .all()
-                )
-                to_delete = []
-                for rot in tqdm(all_rot_for_scenario):
-                    first_stop = rot.trips[0].route.departure_station
-                    if first_stop != station:
-                        for trip in rot.trips:
-                            for stop_time in trip.stop_times:
-                                to_delete.append(stop_time)
-                            for event in trip.events:
-                                to_delete.append(event)
-                            to_delete.append(trip)
-                        to_delete.append(rot)
-                for obj in tqdm(to_delete):
-                    session.flush()
-                    session.delete(obj)
-                    session.flush()
-
+                # depot_smallest_possible_size() only simulates the rotations
+                # starting and ending at `station`, so the other depots'
+                # rotations do not need to be (temporarily) deleted first.
                 logger.info(f"Generating depot layout for station {station.name}")
                 vt_capacities_for_station = depot_smallest_possible_size(
                     station, scenario, session, charging_power=150
