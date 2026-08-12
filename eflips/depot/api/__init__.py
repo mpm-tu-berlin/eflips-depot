@@ -37,7 +37,7 @@ from collections import OrderedDict
 from datetime import timedelta, datetime
 from enum import Enum
 from math import ceil
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Collection, Dict, Optional, Union, List
 
 
 import sqlalchemy.orm
@@ -691,6 +691,7 @@ def simulate_scenario(
     ignore_delayed_trips: bool = False,
     shrink_to_peak_usage: bool = True,
     shrink_resolution: timedelta = timedelta(minutes=5),
+    rotation_ids: Optional[Collection[int]] = None,
 ) -> None:
     """
     This method simulates a scenario and adds the results to the database.
@@ -737,6 +738,12 @@ def simulate_scenario(
     :param shrink_resolution: Time-block resolution used when computing peak
         concurrency for the shrinking step. Default 5 minutes.
 
+    :param rotation_ids: An optional collection of :class:`eflips.model.Rotation` ids. If given, only these
+        rotations are loaded into the simulation timetable; all other rotations of the scenario are ignored (they
+        are neither simulated nor modified). This makes it possible to simulate a subset of the scenario (e.g. a
+        single depot's rotations) without having to delete the other rotations from the database first. If None
+        (the default), all rotations of the scenario are simulated.
+
     :return: Nothing. The results are added to the database.
 
     :raises UnstableSimulationException: If the simulation becomes numerically unstable or if
@@ -750,6 +757,7 @@ def simulate_scenario(
             scenario=scenario,
             session=session,
             repetition_period=repetition_period,
+            rotation_ids=rotation_ids,
         )
         ev = run_simulation(simulation_host)
 
@@ -800,6 +808,7 @@ def init_simulation(
     session: Session,
     repetition_period: Optional[timedelta] = None,
     vehicle_count_dict: Optional[Dict[str, Dict[str, int]]] = None,
+    rotation_ids: Optional[Collection[int]] = None,
 ) -> SimulationHost:
     """
     This methods checks the input data for consistency, initializes a simulation host object and returns it.
@@ -832,6 +841,9 @@ def init_simulation(
                     "2" (vehicle_type.id as str): 20,
                     ...
                 },
+
+    :param rotation_ids: An optional collection of :class:`eflips.model.Rotation` ids. If given, only these
+        rotations are loaded into the simulation timetable. See :func:`simulate_scenario`.
 
     :return: A :class:`eflips.depot.Simulation.SimulationHost` object. This object should be reagrded as a "black box"
         by the user. It should be passed to :func:`run_simulation()` to run the simulation and obtain the results.
@@ -871,15 +883,16 @@ def init_simulation(
     # However, we need to override quite a lot of the settings
     # The ["general"]["SIMULATION_TIME"] entry is calculated from the difference between the first and last departure
     # time in the vehicle schedule
+    rotation_query = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
+    if rotation_ids is not None:
+        rotation_query = rotation_query.filter(Rotation.id.in_(rotation_ids))
     vehicle_schedules = [
         VehicleSchedule.from_rotation(
             rotation,
             scenario=scenario,
             session=session,
         )
-        for rotation in session.query(Rotation)
-        .filter(Rotation.scenario_id == scenario.id)
-        .all()
+        for rotation in rotation_query.all()
     ]
 
     if repetition_period is None:
@@ -907,7 +920,9 @@ def init_simulation(
     # Clear old vehicle counts, if they exist
     eflips.globalConstants["depot"]["vehicle_count"] = {}
 
-    grouped_rotations = group_rotations_by_start_end_stop(scenario.id, session)
+    grouped_rotations = group_rotations_by_start_end_stop(
+        scenario.id, session, rotation_ids=rotation_ids
+    )
 
     # We need to calculate roughly how many vehicles we need for each depot
     for depot in session.query(Depot).filter(Depot.scenario_id == scenario.id).all():
@@ -933,7 +948,13 @@ def init_simulation(
         else:
             # Calculate it from the amount of rotations with a 4x margin because 4 times of repetition
             # in repeat_vehicle_schedules()
-            rotations = grouped_rotations[(depot.station, depot.station)]
+            if rotation_ids is not None:
+                # The grouping only contains the filtered rotations; a depot
+                # whose rotations are all outside the filter simply gets no
+                # vehicles (and a warning below).
+                rotations = grouped_rotations.get((depot.station, depot.station), {})
+            else:
+                rotations = grouped_rotations[(depot.station, depot.station)]
 
             for vehicle_type in vehicle_types_for_depot:
                 vehicle_type_object = (
@@ -1416,115 +1437,97 @@ def auto_generate_depot_inplace(
     warnings.simplefilter("ignore", category=ConsistencyWarning)
     warnings.simplefilter("ignore", category=UserWarning)
 
-    inner_savepoint = session.begin_nested()
-    try:
-        # (Temporarily) Delete all rotations not starting or ending at the station
-        logger.debug(f"Deleting all rotations not starting or ending at {station.name}")
-        all_rot_for_scenario = (
-            session.query(Rotation).filter(Rotation.scenario_id == scenario.id).all()
-        )
-        to_delete = []
-        for rot in all_rot_for_scenario:
-            first_stop = rot.trips[0].route.departure_station
-            if first_stop != station:
-                for trip in rot.trips:
-                    for stop_time in trip.stop_times:
-                        to_delete.append(stop_time)
-                    for event in trip.events:
-                        to_delete.append(event)
-                    to_delete.append(trip)
-                to_delete.append(rot)
+    # depot_smallest_possible_size() only simulates the rotations starting and
+    # ending at `station` (via the rotation filter of simulate_scenario()), so
+    # the other depots' rotations do not need to be (temporarily) deleted here.
+    # It also rolls back all of its own database changes internally.
+    logger.info(f"Generating depot layout for station {station.name}")
+    vt_capacities_for_station = depot_smallest_possible_size(
+        station,
+        scenario,
+        session,
+        depot_wish.standard_block_length,
+        depot_wish.default_power,
+    )
 
-        for obj in to_delete:
-            session.flush()
-            session.delete(obj)
-            session.flush()
+    area_list: List[AreaInformation] = []
 
-        # Consumption simulation for rotations of this depot
-
-        # if the driving events are already in the database, we do not need to run the consumption simulation again
-        current_driving_trips = (
-            session.query(Event.trip_id)
-            .filter(
-                Event.scenario_id == scenario.id, Event.event_type == EventType.DRIVING
-            )
-            .all()
-        )
-        current_trips = (
-            session.query(Trip.id).filter(Trip.scenario_id == scenario.id).all()
-        )
-
-        # if the two lists are identical, we can skip the consumption simulation
-        if set([t[0] for t in current_driving_trips]) != set(
-            [t[0] for t in current_trips]
+    for vt, capacity in vt_capacities_for_station.items():
+        # Block length only applies to LINE areas
+        for area_type, block_length in (
+            (AreaType.LINE, depot_wish.standard_block_length),
+            (AreaType.DIRECT_ONESIDE, None),
         ):
-            logger.info(
-                "Running eflips consumption simulation for depot layout generation since the driving events do not cover all trips"
-            )
-            driving_events_to_delete = (
-                session.query(Event)
-                .filter(
-                    Event.scenario_id == scenario.id,
-                    Event.event_type == EventType.DRIVING,
-                )
-                .all()
-            )
-            if len(driving_events_to_delete) > 0:
-                logger.info(
-                    "Deleting existing driving events before running consumption simulation"
-                )
-                for event in driving_events_to_delete:
-                    session.delete(event)
-                session.flush()
-
-            logger.warning("Starting eflips consumption sim")
-            consumption_results = generate_consumption_result(scenario)
-            simple_consumption_simulation(
-                scenario,
-                initialize_vehicles=True,
-                consumption_result=consumption_results,
-            )
-
-        logger.info(f"Generating depot layout for station {station.name}")
-        vt_capacities_for_station = depot_smallest_possible_size(
-            station,
-            scenario,
-            session,
-            depot_wish.standard_block_length,
-            depot_wish.default_power,
-        )
-
-        area_list: List[AreaInformation] = []
-
-        for vt, capacity in vt_capacities_for_station.items():
-            if capacity[AreaType.LINE] > 0:
+            if capacity[area_type] > 0:
                 area_list.append(
                     AreaInformation(
-                        area_type=AreaType.LINE,
-                        capacity=capacity[AreaType.LINE],
-                        block_length=depot_wish.standard_block_length,
+                        area_type=area_type,
+                        capacity=capacity[area_type],
+                        block_length=block_length,
                         power=depot_wish.default_power,
                         vehicle_type_id=vt.id,
                     )
                 )
 
-            if capacity[AreaType.DIRECT_ONESIDE] > 0:
-                area_list.append(
-                    AreaInformation(
-                        area_type=AreaType.DIRECT_ONESIDE,
-                        capacity=capacity[AreaType.DIRECT_ONESIDE],
-                        block_length=None,
-                        power=depot_wish.default_power,
-                        vehicle_type_id=vt.id,
-                    )
-                )
+    depot_wish.areas = area_list
 
-        depot_wish.areas = area_list
-
-    finally:
-        inner_savepoint.rollback()
-
+    # depot_smallest_possible_size() rolled all its database changes back;
+    # drop any ORM state loaded along the way.
     session.expire_all()
+
+
+def _ensure_driving_events_cover_all_trips(
+    scenario: Scenario, session: Session
+) -> None:
+    """
+    Make sure every trip of the scenario has a DRIVING event, running the consumption simulation if needed.
+
+    If some trips lack driving events, all existing driving events are discarded and the consumption
+    simulation is re-run for the whole scenario, so that the resulting events are consistent with each other.
+
+    :param scenario: A :class:`eflips.model.Scenario` object.
+    :param session: An open SQLAlchemy session.
+    :return: None. Events are written to the database.
+    """
+    logger = logging.getLogger(__name__)
+
+    trip_ids_with_driving_event = set(
+        t[0]
+        for t in session.query(Event.trip_id)
+        .filter(
+            Event.scenario_id == scenario.id,
+            Event.event_type == EventType.DRIVING,
+        )
+        .all()
+    )
+    all_trip_ids = set(
+        t[0]
+        for t in session.query(Trip.id).filter(Trip.scenario_id == scenario.id).all()
+    )
+    if trip_ids_with_driving_event == all_trip_ids:
+        return
+
+    logger.info(
+        "Running eflips consumption simulation since the driving events do not cover all trips"
+    )
+    deleted_event_count = (
+        session.query(Event)
+        .filter(
+            Event.scenario_id == scenario.id,
+            Event.event_type == EventType.DRIVING,
+        )
+        .delete()
+    )
+    if deleted_event_count > 0:
+        logger.info("Deleted existing driving events before running consumption sim")
+    session.flush()
+
+    consumption_results = generate_consumption_result(scenario)
+    simple_consumption_simulation(
+        scenario,
+        initialize_vehicles=True,
+        consumption_result=consumption_results,
+    )
 
 
 def generate_optimal_depot_layout(
@@ -1579,6 +1582,13 @@ def generate_optimal_depot_layout(
                 Rotation.scenario_id == scenario.id
             )
             rotation_q.update({"vehicle_id": None})
+
+            # The depot sizing needs driving events for every trip. Run the
+            # consumption simulation once for the whole scenario here (rather
+            # than once per depot); its events are discarded with the savepoint
+            # rollback afterwards.
+            if any(w.auto_generate for w in depot_config_wishes):
+                _ensure_driving_events_cover_all_trips(scenario, session)
 
             for depot_wish in depot_config_wishes:
                 if depot_wish.auto_generate is False:

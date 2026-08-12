@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum, auto
-from typing import Dict, List, Tuple, Optional
+from typing import Collection, Dict, List, Tuple, Optional
 
 import numpy as np
 import sqlalchemy.orm
@@ -485,11 +485,15 @@ def find_first_last_stop_for_rotation_id(
 def group_rotations_by_start_end_stop(
     scenario_id: int,
     session: sqlalchemy.orm.session.Session,
+    rotation_ids: Optional[Collection[int]] = None,
 ) -> Dict[Tuple[Station, Station], Dict[VehicleType, List[Rotation]]]:
     """
     For a given scenario, create a list of rotations and group them by their start and end stops.
 
     :param session: An SQLAlchemy session object
+    :param rotation_ids: An optional collection of rotation ids. If given, only these rotations are loaded and
+        grouped. This avoids loading the whole scenario's rotations (with their trips and routes) when only a
+        subset is of interest.
     :return: A dictionary of rotations grouped by their start and end stops, with each group further grouped by vehicle
         type.
     """
@@ -499,6 +503,8 @@ def group_rotations_by_start_end_stop(
         .options(sqlalchemy.orm.joinedload(Rotation.trips).joinedload(Trip.route))
         .options(sqlalchemy.orm.joinedload(Rotation.vehicle_type))
     )
+    if rotation_ids is not None:
+        rotations = rotations.filter(Rotation.id.in_(rotation_ids))
     grouped_rotations: Dict[
         Tuple[Station, Station], Dict[VehicleType, List[Rotation]]
     ] = {}
@@ -1140,7 +1146,9 @@ def depot_smallest_possible_size(
 
     Before calling this method:
     - An initial energy consumption simulation, creating DRIVING events for all trips, should have been run
-    - The dataset should be reduced to only contain a single depot.
+    - The scenario must not contain any :class:`eflips.model.Depot` objects (candidate depots are created and
+      rolled back internally). Rotations of other depots may remain in the database — only the rotations
+      starting and ending at `station` are simulated.
 
     Finally, the configuration with the smallest area footprint is returned.
 
@@ -1167,6 +1175,18 @@ def depot_smallest_possible_size(
     vts_and_rotations: Dict[VehicleType, List[Rotation]] = grouped_rotations[
         (station, station)
     ]
+
+    # Resolve the rotation ids up front, as plain integers. These are passed to
+    # simulate_scenario() so that only this depot's rotations (or a single
+    # vehicle type's rotations) are simulated — no need to delete the other
+    # rotations from the database. Plain ints also stay valid after
+    # session.expire_all() below, without triggering per-object refreshes.
+    all_rotation_ids: List[int] = [
+        r.id for rotations in vts_and_rotations.values() for r in rotations
+    ]
+    rotation_ids_by_vt: Dict[VehicleType, List[int]] = {
+        vt: [r.id for r in rotations] for vt, rotations in vts_and_rotations.items()
+    }
 
     outer_savepoint = session.begin_nested()
 
@@ -1206,6 +1226,7 @@ def depot_smallest_possible_size(
             smart_charging_strategy=SmartChargingStrategy.NONE,
             repetition_period=repetition_period,
             ignore_unstable_simulation=True,
+            rotation_ids=all_rotation_ids,
         )
 
         # Find the peak usage of the depot
@@ -1234,12 +1255,12 @@ def depot_smallest_possible_size(
                 f"Vehicle Count for {vehicle_type.name} in all-direct: {vehicle_count_q}"
             )
 
-            # How many lines would that be if we go all lines?
-            max_number_of_line_areas: Dict[VehicleType, int] = dict()
-            for vt, count in peak_occupancies.items():
-                max_number_of_line_areas[vt] = math.ceil(
-                    count[AreaType.DIRECT_ONESIDE] / standard_block_length
-                )
+        # How many lines would that be if we go all lines?
+        max_number_of_line_areas: Dict[VehicleType, int] = dict()
+        for vt, count in peak_occupancies.items():
+            max_number_of_line_areas[vt] = math.ceil(
+                count[AreaType.DIRECT_ONESIDE] / standard_block_length
+            )
     finally:
         savepoint.rollback()
 
@@ -1254,28 +1275,22 @@ def depot_smallest_possible_size(
     # comparable to each other.
     vehicle_count_per_config: Dict[VehicleType, Dict[int, int]] = dict()
     try:
-        for vt, rotations in vts_and_rotations.items():
-            # This is the savepoint for each vehicle type
-            savepoint = session.begin_nested()
-
-            # Remove all rotations by other vehicle types from the database. This will speed up the process.
-            # We `session.rollback()` after this, so the database is not changed.
-            for vt2 in vts_and_rotations.keys():
-                if vt2 != vt:
-                    rotations = vts_and_rotations[vt2]
-                    for rotation in rotations:
-                        for trip in rotation.trips:
-                            for event in trip.events:
-                                session.delete(event)
-                            for stop_time in trip.stop_times:
-                                session.delete(stop_time)
-                            session.delete(trip)
-                        session.delete(rotation)
-                    session.flush()
-                    logger.debug(f"Temporarily Deleted all rotations for {vt2.name}")
+        for vt in vts_and_rotations.keys():
+            # Only this vehicle type's rotations are passed to the simulation
+            # (via `rotation_ids`), so the rotations of the other vehicle types
+            # do not need to be (temporarily) deleted from the database.
             area_needed[vt] = dict()
             occupancy_of_direct_areas[vt] = dict()
             vehicle_count_per_config[vt] = dict()
+
+            # Early-exit bookkeeping: once the simulated fleet size has been
+            # strictly worse than the best seen so far for several successful
+            # candidates in a row, adding even more line areas will not yield a
+            # better configuration (selection minimizes fleet size first).
+            worse_streak_limit = 3
+            best_vehicle_count: Optional[int] = None
+            worse_streak = 0
+
             for amount_of_line_areas in range(max_number_of_line_areas[vt] + 2):
                 # This is the savepoint for each number of line areas
                 inner_savepoint = session.begin_nested()
@@ -1285,7 +1300,7 @@ def depot_smallest_possible_size(
                         vt: {
                             AreaType.LINE: amount_of_line_areas * standard_block_length,
                             AreaType.DIRECT_ONESIDE: len(vts_and_rotations[vt])
-                            + 100,  # +10 to work around the "Depot is too small" error
+                            + 100,  # spare direct spots so the sim never fails with "Depot is too small"
                             AreaType.DIRECT_TWOSIDE: 0,
                         }
                     }
@@ -1312,6 +1327,7 @@ def depot_smallest_possible_size(
                         scenario,
                         smart_charging_strategy=SmartChargingStrategy.NONE,
                         ignore_unstable_simulation=True,
+                        rotation_ids=rotation_ids_by_vt[vt],
                     )
 
                     # Find the peak usage of the depot
@@ -1379,6 +1395,27 @@ def depot_smallest_possible_size(
                     )
                     vehicle_count_per_config[vt][amount_of_line_areas] = vehicle_count_q
 
+                    # Early exit: line areas park vehicles FIFO, so beyond some
+                    # point more line areas only increase the fleet size. Stop
+                    # once the fleet size has been strictly worse than the best
+                    # seen so far for three successful candidates in a row.
+                    if (
+                        best_vehicle_count is None
+                        or vehicle_count_q <= best_vehicle_count
+                    ):
+                        best_vehicle_count = vehicle_count_q
+                        worse_streak = 0
+                    else:
+                        worse_streak += 1
+                        if worse_streak >= worse_streak_limit:
+                            logger.debug(
+                                f"Stopping the line-area sweep for {vt.name} at "
+                                f"{amount_of_line_areas} line areas: fleet size has "
+                                f"been above the best seen ({best_vehicle_count}) for "
+                                f"{worse_streak} consecutive candidates."
+                            )
+                            break
+
                 except MissingVehicleDimensionError as e:
                     raise e
                 except DelayedTripException as e:
@@ -1386,7 +1423,10 @@ def depot_smallest_possible_size(
                     continue
                 finally:
                     inner_savepoint.rollback()
-            savepoint.rollback()
+                    # The rollback discards the database rows of this candidate's
+                    # simulation, but the ORM instances loaded along the way would
+                    # otherwise accumulate in the session for the whole sweep.
+                    session.expire_all()
         # Identify the best configuration for each vehicle type
         ret_val: Dict[VehicleType, Dict[AreaType, int]] = dict()
         for vt in vts_and_rotations.keys():
