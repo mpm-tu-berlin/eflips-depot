@@ -1145,6 +1145,7 @@ def depot_smallest_possible_size(
     DIRECT areas. For each count of line areas, the amount of still-needed direct areas is calculated.
 
     Before calling this method:
+
     - An initial energy consumption simulation, creating DRIVING events for all trips, should have been run
     - The scenario must not contain any :class:`eflips.model.Depot` objects (candidate depots are created and
       rolled back internally). Rotations of other depots may remain in the database — only the rotations
