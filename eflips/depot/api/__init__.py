@@ -470,6 +470,7 @@ def generate_depot_layout(
     charging_power: float = 90,
     database_url: Optional[str] = None,
     delete_existing_depot: bool = False,
+    num_shunting_slots: Optional[int] = None,
 ) -> None:
     """
     Generates one or more depots for the scenario.
@@ -533,7 +534,12 @@ def generate_depot_layout(
                 scenario,
                 session,
                 charging_power=charging_power,
-                num_shunting_slots=max(rotation_count_depot // 10, 1),
+                num_shunting_slots=(
+                    num_shunting_slots
+                    if num_shunting_slots is not None
+                    else max(rotation_count_depot // 10, 1)
+                ),
+
                 num_cleaning_slots=max(rotation_count_depot // 10, 1),
             )
 
@@ -614,7 +620,7 @@ def simulate_scenario(
     repetition_period: Optional[timedelta] = None,
     database_url: Optional[str] = None,
     smart_charging_strategy: SmartChargingStrategy = SmartChargingStrategy.NONE,
-    ignore_unstable_simulation: bool = False,
+    ignore_unstable_simulation: bool = True,
     ignore_delayed_trips: bool = False,
 ) -> None:
     """
@@ -758,6 +764,8 @@ def init_simulation(
         check_depot_validity(depot)
 
         depot_dict = depot_to_template(depot)
+        depot_dict["general"]["shunting_mode"] = "autonomous"
+        depot_dict["general"]["move_up_allow_charging_areas"] = True
         eflips_depots.append(
             eflips.depot.Depotinput(filename_template=depot_dict, show_gui=False)
         )
@@ -1135,7 +1143,36 @@ def add_evaluation_to_database(
         raise ExceptionGroup(
             "Simulation is either unstable or including delayed blocks", errors
         )
+def calculate_num_shunting_slots(
+    shunting_mode: str,
+    shunting_personnel: int,
+    vehicles_per_supervisor: int=3,
+)-> int:
+    """Calculate the effective number of parallel shunting slots
+    For Manual Shunting a 1:1 ratio for slots:driver is needed
+    The autonomous Shunting simulates the use of supervising personell which can have a higher
+    ratio of managed vehicles per worker"""
+    shunting_mode = shunting_mode.lower()
+    if shunting_mode == "manual":
+        return shunting_personnel
+    if shunting_mode == "autonomous":
+        return shunting_personnel * vehicles_per_supervisor
+def generate_depot_layout_with_shunting_resources(
+        *args,
+        shunting_mode: str = "manual",
+        shunting_personnel: int =1,
+        vehicles_per_supervisor: int = 3,
+        **kwargs,
 
+):
+    print("DEBUG: generate_depot_layout_with_shunting_resources wurde aufgerufen")
+    num_shunting_slots = calculate_num_shunting_slots(
+        shunting_mode=shunting_mode,
+        shunting_personnel=shunting_personnel,
+        vehicles_per_supervisor=vehicles_per_supervisor,
+    )
+    kwargs["num_shunting_slots"] = num_shunting_slots
+    return generate_depot_layout(*args, **kwargs)
 
 def generate_depot_optimal_size(
     scenario: Union[Scenario, int, Any],
@@ -1145,6 +1182,9 @@ def generate_depot_optimal_size(
     delete_existing_depot: bool = False,
     use_consumption_lut: bool = False,
     repetition_period: Optional[timedelta] = None,
+    shunting_mode: str = "autonomous",
+    shunting_personnel: int =1,
+    vehicles_per_supervisor: int = 3,
 ) -> None:
     """
     Generates an optimal depot layout with the smallest possible size for each depot in the scenario.
@@ -1169,7 +1209,19 @@ def generate_depot_optimal_size(
 
     :return: None. The depot layout will be added to the database.
     """
-
+    shunting_mode = shunting_mode.lower()
+    if shunting_mode == "manual":
+        num_shunting_slots = shunting_personnel
+    elif shunting_mode == "autonomous":
+        num_shunting_slots = shunting_personnel * vehicles_per_supervisor
+        print("\n" + "=" * 80, flush=True)
+        print("DEBUG Shunting-Ressourcen in generate_depot_optimal_size", flush=True)
+        print("=" * 80, flush=True)
+        print(f"shunting_mode = {shunting_mode}", flush=True)
+        print(f"shunting_personnel = {shunting_personnel}", flush=True)
+        print(f"vehicles_per_supervisor = {vehicles_per_supervisor}", flush=True)
+        print(f"num_shunting_slots = {num_shunting_slots}", flush=True)
+        print("=" * 80, flush=True)
     logger = logging.getLogger(__name__)
 
     with create_session(scenario, database_url) as (session, scenario):
@@ -1325,7 +1377,7 @@ def generate_depot_optimal_size(
                 session,
                 standard_block_length=standard_block_length,
                 charging_power=charging_power,
-                num_shunting_slots=int(max(time_range)),
+                num_shunting_slots=num_shunting_slots,
                 num_cleaning_slots=int(max(time_range)),
             )
 

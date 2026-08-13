@@ -420,8 +420,22 @@ def add_soc_to_events(dict_of_events, battery_log) -> None:
             case "Charge" | "ChargeSteps" | "ChargeEquationSteps":
                 event_start = start_time
                 event_end = process_dict["end"]
-                start_time_index = battery_log_times.index(event_start)
-                end_time_index = battery_log_times.index(event_end)
+                start_time_index = next(
+                    (
+                        i
+                        for i, time in enumerate(battery_log_times)
+                        if time >= event_start
+                    ),
+                    len(battery_log_times),
+                )
+                end_time_index = next(
+                    (
+                        i
+                        for i, time in enumerate(battery_log_times)
+                        if time > event_end
+                    ),
+                    len(battery_log_times),
+                )
                 time_series = {
                     "time": battery_log_times[start_time_index:end_time_index],
                     "soc": battery_log_socs[start_time_index:end_time_index],

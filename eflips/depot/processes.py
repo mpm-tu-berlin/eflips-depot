@@ -1385,9 +1385,9 @@ class ChargeEquationSteps(ChargeAbstract):
             # returned False
             return 0
 
-        efficiency = chargedata["kwargs"]["efficiency"]
-        soc_target = chargedata["kwargs"]["soc_target"]
-        precision = chargedata["kwargs"]["precision"]
+        efficiency = chargedata["kwargs"].get("efficiency",1.0)
+        soc_target = chargedata["kwargs"].get("soc_target","soc_max")
+        precision = chargedata["kwargs"].get("precision",1)
         peq = getattr(eflips.depot.processes, chargedata["kwargs"]["peq_name"])
         peq_params = chargedata["kwargs"]["peq_params"]
         if soc_target == "soc_max":

@@ -344,7 +344,7 @@ class Depot:
         self.list_areas = self.areas.values()
         self.direct_departure_areas = []
         self.list_spec_plans = self.specific_plans.values()
-
+        self.shunting_mode = "manual"
         self.capacity = 0
         self.parking_capacity = 0
         self.parking_capacity_direct = 0
@@ -1494,20 +1494,64 @@ class DepotControl:
         self.dispatch_strategy.
         """
         self.dispatch_strategy.trigger(self.depot)
+    def _update_blocked_slot_minutes(self, area):
+        "Method to track to total time of a blocked parkingspot to analyze the AutoMoveUp"
+
+
+        if not hasattr(self, "_blocked_slot_tracker"):
+            self._blocked_slot_tracker = {}
+            self._blocked_slot_minutes_total = 0.0
+
+        now = float(self.env.now)
+
+        blocked_slots_now = max(
+            int(getattr(area, "vacant_blocked", 0)),
+            0
+        )
+
+        area_key = id(area)
+        previous_state = self._blocked_slot_tracker.get(area_key)
+
+        if previous_state is not None:
+            elapsed_minutes = max(
+                now - previous_state["time"],
+                0.0
+            ) / 60.0
+
+            self._blocked_slot_minutes_total += (
+                    previous_state["blocked_slots"]
+                    * elapsed_minutes
+            )
+            type(self).blocked_slot_minutes_total = self._blocked_slot_minutes_total
+
+        self._blocked_slot_tracker[area_key] = {
+            "time": now,
+            "blocked_slots": blocked_slots_now,
+        }
+
+        return blocked_slots_now
 
     def auto_move_up_after_vehicle_left(self,origin_area):
         """Compact a parking LineArea after a vehicle has left it
         The method is only active in autonomous shunting mode
         It is restricted to LineAreas so no other service areas are affected
         """
-        if getattr(self.depot,"shunting_mode","manual") != "autonomous":
-            return
+        self._auto_move_up_call_count = getattr(self, "_auto_move_up_call_count", 0) + 1
+        print("AUTO MOVE-UP CALLED #", self._auto_move_up_call_count)
+        print("shunting_mode:", getattr(self.depot, "shunting_mode", None))
+
         if not isinstance(origin_area, LineArea):
             return
         if not origin_area.issink:
             return
         if origin_area.parking_area_group is None:
             return
+        vacant_blocked = self._update_blocked_slot_minutes(
+            origin_area
+        )
+        if getattr(self.depot,"shunting_mode","manual") != "autonomous":
+            return
+        print("AUTO MOVE-UP CHECKS PASSED")
         #Regulate the moveup on Charging interfaces
         if not getattr(self.depot,"move_up_allow_charging_areas", True):
             if getattr (origin_area, "charging_interfaces", None):
@@ -1515,6 +1559,7 @@ class DepotControl:
         # vacant blocked is the trigger in correspondence to EmptySlotsExit
         if getattr(origin_area, "vacant_blocked", 0) <=0:
             return
+        yield self.env.timeout(2*60)
         exit_order = list(origin_area.range_from_side(origin_area.side_get_default))
         vehicles_in_exit_order = [
             origin_area.items[index]
@@ -1529,6 +1574,14 @@ class DepotControl:
         origin_area.items[:] = new_items
         origin_area._trigger_put(None)
         origin_area.trigger_get(None)
+        blocked_slots_after = self._update_blocked_slot_minutes(
+            origin_area
+        )
+        self._auto_move_up_executed_count = getattr(
+            self, "_auto_move_up_executed_count", 0
+        ) + 1
+        type(self).auto_move_up_executed_count = self._auto_move_up_executed_count
+        print("AUTO MOVE-UP EXECUTED")
         self.trigger_dispatch()
 
 
@@ -2147,9 +2200,10 @@ class LineAreaGet(BaseAreaGet, ExclusiveRequest, LineFilterStoreGet):
         )
         if getattr(store,"depot",None) is not None:
             self.callbacks.append(
-                lambda event: store.depot.depot_control.auto_move_up_after_vehicle_left(store)
+                lambda event: store.depot.env.process(
+                     store.depot.depot_control.auto_move_up_after_vehicle_left(store)
+                )
             )
-
 
 class LineArea(BaseArea, LineFilterStore):
     """Depot area where vehicles are arranged in a line and can block each.

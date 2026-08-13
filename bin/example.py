@@ -83,8 +83,9 @@ if __name__ == "__main__":
     with Session(engine) as session:
         scenario = session.query(Scenario).filter(Scenario.id == args.scenario_id).one()
         assert isinstance(scenario, Scenario)
+        all_events = session.query(Event).all()
 
-        ##### Step 0: Clean up the database, remove results from previous runs #####
+       ##### Step 0: Clean up the database, remove results from previous runs #####
 
         # Delete all vehicles and events, also disconnect the vehicles from the rotations
         rotation_q = session.query(Rotation).filter(Rotation.scenario_id == scenario.id)
@@ -181,7 +182,7 @@ if __name__ == "__main__":
         # This step is optional. It can be used to apply even smart charging to the vehicles, reducing the peak power
         # consumption. This is done by shifting the charging times of the vehicles. The method is called
         # apply_even_smart_charging and is part of the eflips.depot.api module.
-        apply_even_smart_charging(scenario, delete_existing_charging_timeseries=True)
+        # apply_even_smart_charging(scenario, delete_existing_charging_timeseries=True)
 
         # The simulation is now complete. The results are stored in the database and can be accessed using the
         session.commit()

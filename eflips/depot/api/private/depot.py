@@ -211,9 +211,6 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
 
     :return: A dict that can be consumed by eFLIPS-Depot.
     """
-    # Optional separate shunting driver capacity for manual shunting.
-    # None keeps the original eFLIPS behavior.
-    shunting_worker_capacity = None
     # Initialize the template
     template = {
         "templatename_display": "",
@@ -230,8 +227,8 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
     template["templatename_display"] = depot.name
     template["general"]["depotID"] = str(depot.id)
     template["general"]["dispatch_strategy_name"] = "SMART"
-    template[general]["shunting_mode"] = "manual"
-    template[general]["move_up_allow_charging_areas"] = True
+    template["general"]["shunting_mode"] = getattr(depot, "shunting_mode", "manual")
+    template["general"]["move_up_allow_charging_areas"] = True
 
     # Helper for adding processes to the template
     list_of_processes = []
@@ -364,38 +361,20 @@ def depot_to_template(depot: Depot) -> Dict[str, str | Dict[str, str | int]]:
         match process_type(process):
             case ProcessType.SERVICE:
                 template["processes"][process_name]["typename"] = "Serve"
-                #Autonomous Shunting process remains Serve process but it does not require the
-                # workers_service resource
-                #to further simulate the benefits of autonomous shunting the workers_service resource must be
-                #seperated from the general shunting capacity
+
                 if (
                     process.name is not None
-                    and process_name.lower().startswith("autonomous shunting")
+                    and "shunting" in process.name.lower()
                 ):
                     template["processes"][process_name]["required_resources"] = []
-                elif(
-                    process.name is not None
-                    and process_name.lower().startswith("shunting")
-                    and shunting_worker_capacity is not None
-                     ):
-                        if shunting_worker_capacity <= 0:
-                         raise ValueError("shunting_worker_capacity must be > 0.")
-                        template["processes"][process_name]["required_resources"] = [
-                         "workers_shunting",
-                ]
-                if "workers_shunting" not in template["resources"]:
-                     template["resources"]["workers_shunting"] = {
-                         "typename": "DepotResource",
-                         "capacity": shunting_worker_capacity,
-                     }
-
                 else:
-                    # Fill in the worker_service
-                    service_capacity = sum([x.capacity for x in process.areas])
-
-                    template["processes"][process_name]["required_resources"] = [
-                    "workers_service"
+                    service_capacity = sum(
+                        area.capacity for area in process.areas
+                    )
+                    template["processes"][process_name]["required_resources"] =[
+                        "workers_service"
                     ]
+
                     template["resources"]["workers_service"] = {
                     "typename": "DepotResource",
                     "capacity": service_capacity,
@@ -646,9 +625,9 @@ def generate_depot(
     standard_block_length: int = 6,
     # New Parameters for autonomous shunting and autonomous vehicle move up
     move_up_allow_charging_areas: bool = True,
-    shunting_mode: str = "manual",
-    autonomous_setup: None | timedelta = timedelta(seconds=0),
-    autonomous_factor: float = 1.0,
+    shunting_mode: str = "autonomous",
+    autonomous_setup: None | timedelta = timedelta(minutes=1),
+    autonomous_factor: float = 1.2,
     shunting_duration: None | timedelta = timedelta(minutes=5),
     num_shunting_slots: int = 10,
     cleaning_duration: None | timedelta = timedelta(minutes=30),
@@ -720,6 +699,7 @@ def generate_depot(
             + autonomous_setup.total_seconds()
               )
          )
+         print(f"DEBUG effective_shunting_duration = {effective_shunting_duration}", flush=True)
          shunting_process_prefix = "Autonomous Shunting"
     else:
         effective_shunting_duration = shunting_duration
@@ -749,7 +729,7 @@ def generate_depot(
             name=f"{shunting_process_prefix}1",
             scenario=scenario,
             dispatchable=False,
-            duration=effective_shunting_duration,
+            duration=timedelta(seconds=120.40),
         )
         session.add(shunting_1)
         shunting_area_1 = Area(
@@ -797,7 +777,7 @@ def generate_depot(
             name=f"{shunting_process_prefix}2",
             scenario=scenario,
             dispatchable=False,
-            duration=effective_shunting_duration,
+            duration=timedelta(seconds=115.14),
         )
         session.add(shunting_2)
         shunting_area_2 = Area(

@@ -24,6 +24,8 @@ xlrd = "<=1.2.0"
 scipy = "^1.14.0"
 eflips-model = "^10.0.0"
 eflips-opt = "^0.3.6"
+eflips-eval = "^1.9.0"
+matplotlib = "^3.11.0"
 
 
 [tool.pytest.ini_options]

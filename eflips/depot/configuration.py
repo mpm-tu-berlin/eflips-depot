@@ -786,7 +786,7 @@ class DepotConfigurator:
         self.depot.depot_control.dispatch_strategy_name = loaded_data["general"][
             "dispatch_strategy_name"
         ]
-
+        self.depot.shunting_mode = loaded_data["general"].get ("shunting_mode", "manual")
         # Import resources
         for k in loaded_data["resources"]:
             data = loaded_data["resources"][k]
