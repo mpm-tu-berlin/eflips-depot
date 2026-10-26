@@ -11,8 +11,9 @@ jobs:
   unittests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        PYTHON_VERSION: [ "3.11", "3.12", "3.13" ]
+        PYTHON_VERSION: [ "3.11", "3.12", "3.13", "3.14" ]
         DATABASE: ["postgres", "sqlite"]
     services:
       postgres:

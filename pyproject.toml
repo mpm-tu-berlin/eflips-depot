@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-depot"
-version = "4.19.2"
+version = "4.20.0"
 description = "Depot Simulation for eFLIPS"
 authors = ["Enrico Lauth <enrico.lauth@tu-berlin.de>",
     "Ludger Heide <ludger.heide@tu-berlin.de",
@@ -12,7 +12,7 @@ repository = "https://github.com/mpm-tu-berlin/eflips-depot"
 packages = [{ include = "eflips/depot" }]
 
 [tool.poetry.dependencies]
-python = ">=3.11, <3.14"
+python = ">=3.11,<3.15"
 simpy = "^4.0.1"
 tqdm = "^4.67.0"
 
@@ -22,8 +22,8 @@ xlsxwriter = "^3.1.9"
 pandas = "^2.2.0"
 xlrd = "<=1.2.0"
 scipy = "^1.14.0"
-eflips-model = ">=11.0.0, <12.0.0"
-eflips-opt = ">=0.3.6, <2.0.0"
+eflips-model = ">=11.4.0, <12.0.0"
+eflips-opt = ">=1.1.0, <2.0.0"
 
 
 [tool.pytest.ini_options]
@@ -41,6 +41,8 @@ pytest = "^9.0.3"
 pytest-pycharm = "^0.7.0"
 sphinx = "^6.2.1"
 sphinx-autoapi = "^3.0.0"
+# sphinx-autoapi 3.5 cannot parse files with astroid 4
+astroid = "<4.0"
 black = "^23.7.0"
 django-environ = "^0.11.2"
 pre-commit = "^3.4.0"
