@@ -41,6 +41,8 @@ pytest = "^9.0.3"
 pytest-pycharm = "^0.7.0"
 sphinx = "^6.2.1"
 sphinx-autoapi = "^3.0.0"
+# sphinx-autoapi 3.5 cannot parse files with astroid 4
+astroid = "<4.0"
 black = "^23.7.0"
 django-environ = "^0.11.2"
 pre-commit = "^3.4.0"
