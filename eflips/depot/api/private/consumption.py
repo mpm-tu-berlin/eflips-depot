@@ -964,6 +964,21 @@ def find_best_timeslot(
     session: sqlalchemy.orm.session.Session,
     resolution: timedelta = timedelta(seconds=1),
 ) -> datetime:
+    """
+    Find the start time of the least occupied window for a charging event at a station.
+
+    Slides a window of length ``charging_duration`` over the charger occupancy between ``time_start`` and
+    ``time_end`` and returns the start of the window with the lowest summed occupancy. Spreading events this way
+    reduces the peak number of chargers needed at the station.
+
+    :param station: The :class:`Station` at which the vehicle charges.
+    :param time_start: The earliest possible start of the event.
+    :param time_end: The latest possible end of the event.
+    :param charging_duration: The length of the event (including any deadtime).
+    :param session: An active SQLAlchemy :class:`Session` used to query existing charging events.
+    :param resolution: The timestep of the occupancy timeseries and of the candidate start times.
+    :return: The start time of the best window, as a timezone-aware UTC datetime.
+    """
     times, occupancy = find_charger_occupancy(
         station, time_start, time_end, session, resolution=resolution
     )
@@ -1038,6 +1053,95 @@ def find_best_timeslot(
     return best_start_time
 
 
+OPPORTUNITY_CHARGING_TIMESTEP = timedelta(seconds=1)
+"""Default integration step for the SoC-dependent opportunity charging profile."""
+
+_OPPORTUNITY_CHARGING_SAMPLE_INTERVAL = timedelta(seconds=60)
+"""
+Spacing of the points stored in an opportunity charging event's timeseries. Storing every integration step would
+bloat the database without adding information, as the curve is piecewise linear in SoC.
+"""
+
+
+def _integrate_opportunity_charge(
+    charging_curve: List[List[float]],
+    battery_capacity: float,
+    start_soc: float,
+    charger_power: Optional[float],
+    min_power: float,
+    timestep: timedelta = OPPORTUNITY_CHARGING_TIMESTEP,
+    max_duration: Optional[timedelta] = None,
+) -> Tuple[timedelta, float, List[Tuple[timedelta, float]]]:
+    """
+    Integrate the state of charge over time for a vehicle charging at a terminus.
+
+    The charging power at each step is the vehicle's charging curve evaluated at the current SoC, capped by the
+    charger's power. Charging ends when the battery is full, when ``max_duration`` is reached, or when the power drops
+    below ``min_power`` (the vehicle type's ``minimum_charging_power``, below which charging is canceled).
+
+    Since the power depends only on the SoC and not on the time of day, the resulting profile is independent of when
+    during the break the charging takes place.
+
+    :param charging_curve: The vehicle type's charging curve as a list of ``[soc, power_kw]`` pairs, sorted by SoC.
+    :param battery_capacity: The battery capacity in kWh.
+    :param start_soc: The SoC at the start of charging.
+    :param charger_power: The power of the charger in kW. If ``None``, only the charging curve limits the power.
+    :param min_power: The minimum charging power in kW. Charging stops as soon as the power falls below it.
+    :param timestep: The integration step. Smaller steps are more accurate but slower.
+    :param max_duration: The maximum charging duration. If ``None``, charging continues until the battery is full or
+        the minimum power cutoff is reached.
+    :return: A tuple of the charging duration, the SoC reached and a list of ``(offset, soc)`` points describing the
+        profile. The points start at offset zero, end at the charging duration and are spaced by
+        ``_OPPORTUNITY_CHARGING_SAMPLE_INTERVAL`` in between.
+    """
+    # Arrays rather than lists: np.interp is called once per step, and converting lists every time doubles its cost.
+    curve_soc = np.array([point[0] for point in charging_curve], dtype=float)
+    curve_power = np.array([point[1] for point in charging_curve], dtype=float)
+    step_seconds = timestep.total_seconds()
+    limit_seconds = (
+        max_duration.total_seconds() if max_duration is not None else float("inf")
+    )
+    steps_per_sample = max(
+        1, round(_OPPORTUNITY_CHARGING_SAMPLE_INTERVAL.total_seconds() / step_seconds)
+    )
+
+    soc = start_soc
+    elapsed = 0.0
+    step_count = 0
+    points = [(0.0, soc)]
+    while soc < 1.0 and elapsed < limit_seconds:
+        power = float(np.interp(soc, curve_soc, curve_power))
+        if charger_power is not None:
+            power = min(power, charger_power)
+        if power <= 0 or power < min_power:
+            break
+
+        this_step = min(step_seconds, limit_seconds - elapsed)
+        delta_soc = power * this_step / 3600 / battery_capacity
+        if soc + delta_soc >= 1.0:
+            # Only count the fraction of the step actually needed to fill up, so the duration does not depend on the
+            # timestep granularity.
+            this_step *= (1.0 - soc) / delta_soc
+            soc = 1.0
+        else:
+            soc += delta_soc
+        # Clamped so float rounding can never push the charge past max_duration (and into the next trip).
+        elapsed = min(elapsed + this_step, limit_seconds)
+
+        step_count += 1
+        if step_count % steps_per_sample == 0:
+            points.append((elapsed, soc))
+
+    if points[-1][0] != elapsed:
+        points.append((elapsed, soc))
+
+    return (
+        timedelta(seconds=elapsed),
+        soc,
+        [(timedelta(seconds=offset), soc) for offset, soc in points],
+    )
+
+
 def attempt_opportunity_charging_event(
     previous_trip: Trip,
     next_trip: Trip,
@@ -1045,7 +1149,32 @@ def attempt_opportunity_charging_event(
     charge_start_soc: float,
     terminus_deadtime: timedelta,
     session: sqlalchemy.orm.session.Session,
+    timestep: timedelta = OPPORTUNITY_CHARGING_TIMESTEP,
 ) -> float:
+    """
+    Add an opportunity charging event (and surrounding standby events) for the break between two trips.
+
+    The charging profile follows the vehicle type's SoC-dependent charging curve, capped by the station's
+    ``power_per_charger``, and stops early once the power drops below the vehicle type's ``minimum_charging_power``.
+    Half of ``terminus_deadtime`` is spent at the start and at the end of the event without charging (e.g. for
+    connecting and disconnecting).
+
+    If the vehicle can finish charging before the break ends, the event is moved to the timeslot with the lowest
+    charger occupancy at the station. The remaining break is filled with ``STANDBY`` (before) and
+    ``STANDBY_DEPARTURE`` (after) events. Otherwise, the event spans the entire break.
+
+    No event is added if the break is not longer than ``terminus_deadtime`` or if no charging is possible at all
+    (battery already full or the power is below the minimum from the start).
+
+    :param previous_trip: The trip arriving at the charging station.
+    :param next_trip: The trip departing from the charging station, in the same rotation.
+    :param vehicle: The vehicle that charges.
+    :param charge_start_soc: The SoC upon arrival at the station.
+    :param terminus_deadtime: The total time at the station during which the vehicle cannot charge.
+    :param session: An open database session. Created events are added to it.
+    :param timestep: The integration step for the charging profile.
+    :return: The SoC at departure from the station.
+    """
     logger = logging.getLogger(__name__)
 
     # Sanity checks
@@ -1063,11 +1192,12 @@ def attempt_opportunity_charging_event(
         raise ValueError(
             f"Trips {previous_trip.id} and {next_trip.id} are not in the same scenario."
         )
+    station = previous_trip.route.arrival_station
     if not (
         vehicle.vehicle_type.opportunity_charging_capable
         and next_trip.rotation.allow_opportunity_charging
-        and previous_trip.route.arrival_station.is_electrified
-        and previous_trip.route.arrival_station.charge_type == ChargeType.OPPORTUNITY
+        and station.is_electrified
+        and station.charge_type == ChargeType.OPPORTUNITY
     ):
         raise ValueError(
             "Opportunity charging was requested even though it is not possible."
@@ -1075,132 +1205,111 @@ def attempt_opportunity_charging_event(
 
     # Identify the break time between trips
     break_time = next_trip.departure_time - previous_trip.arrival_time
+    available_charging_time = break_time - terminus_deadtime
 
-    if break_time > terminus_deadtime:
-        logger.debug(f"Adding opportunity charging event after trip {previous_trip.id}")
-
-        # How much energy can be charged in this time?
-        max_recharged_energy = (
-            max([v[1] for v in vehicle.vehicle_type.charging_curve])
-            * (break_time.total_seconds() - terminus_deadtime.total_seconds())
-            / 3600
-        )
-        needed_energy = (1 - charge_start_soc) * vehicle.vehicle_type.battery_capacity
-
-        if max_recharged_energy < needed_energy:
-            # We do not need to shift the time around. Just charge as much as possible
-            time_event_start = previous_trip.arrival_time
-            time_charge_start = time_event_start + terminus_deadtime / 2
-            time_charge_end = next_trip.departure_time - terminus_deadtime / 2
-            time_event_end = next_trip.departure_time
-
-            soc_event_start = charge_start_soc
-            soc_charge_start = charge_start_soc
-            soc_charge_end = (
-                charge_start_soc
-                + max_recharged_energy / vehicle.vehicle_type.battery_capacity
-            )
-            assert soc_charge_end <= 1
-            soc_event_end = soc_charge_end
-        else:
-            needed_duration_purely_charing = timedelta(
-                seconds=(
-                    ceil(
-                        needed_energy
-                        * 3600
-                        / max([v[1] for v in vehicle.vehicle_type.charging_curve])
-                    )
-                )
-            )
-            needed_duration_total = needed_duration_purely_charing + terminus_deadtime
-
-            # We have to shift the time around to the time with the lowest occupancy
-            # Within this time band.
-
-            best_start_time = find_best_timeslot(
-                previous_trip.route.arrival_station,
-                previous_trip.arrival_time,
-                next_trip.departure_time,
-                needed_duration_total,
-                session,
-            )
-            time_event_start = best_start_time
-            time_charge_start = best_start_time + terminus_deadtime / 2
-            time_charge_end = time_charge_start + needed_duration_purely_charing
-            time_event_end = time_charge_end + (terminus_deadtime / 2)
-
-            soc_event_start = charge_start_soc
-            soc_charge_start = charge_start_soc
-            soc_charge_end = 1
-            soc_event_end = 1
-
-        # Create a simple timeseries for the charging event
-        timeseries = {
-            "time": [
-                time_event_start.isoformat(),
-                time_charge_start.isoformat(),
-                time_charge_end.isoformat(),
-                time_event_end.isoformat(),
-            ],
-            "soc": [soc_event_start, soc_charge_start, soc_charge_end, soc_event_end],
-        }
-
-        # Create the charging event
-        current_event = Event(
-            scenario_id=vehicle.scenario_id,
-            vehicle_type_id=vehicle.vehicle_type_id,
-            vehicle=vehicle,
-            station_id=previous_trip.route.arrival_station_id,
-            time_start=time_event_start,
-            time_end=time_event_end,
-            soc_start=charge_start_soc,
-            soc_end=soc_event_end,
-            event_type=EventType.CHARGING_OPPORTUNITY,
-            description=f"Opportunity charging event after trip {previous_trip.id}.",
-            timeseries=timeseries,
-        )
-        session.add(current_event)
-
-        # If there is time between the previous trip's end and the charging event's start, add a STANDBY event
-        if time_event_start > previous_trip.arrival_time:
-            standby_event = Event(
-                scenario_id=vehicle.scenario_id,
-                vehicle_type_id=vehicle.vehicle_type_id,
-                vehicle=vehicle,
-                station_id=previous_trip.route.arrival_station_id,
-                time_start=previous_trip.arrival_time,
-                time_end=time_event_start,
-                soc_start=charge_start_soc,  # SoC is unchanged while in STANDBY
-                soc_end=charge_start_soc,
-                event_type=EventType.STANDBY,
-                description=f"Standby event before charging after trip {previous_trip.id}.",
-                timeseries=None,
-            )
-            session.add(standby_event)
-
-        # If there is time between the charging event's end and the next trip's start, add a STANDBY_DEPARTURE event
-        if time_event_end < next_trip.departure_time:
-            standby_departure_event = Event(
-                scenario_id=vehicle.scenario_id,
-                vehicle_type_id=vehicle.vehicle_type_id,
-                vehicle=vehicle,
-                station_id=previous_trip.route.arrival_station_id,
-                time_start=time_event_end,
-                time_end=next_trip.departure_time,
-                soc_start=soc_event_end,  # SoC is unchanged while in STANDBY
-                soc_end=soc_event_end,
-                event_type=EventType.STANDBY_DEPARTURE,
-                description=(
-                    f"Standby departure event after charging, before trip {next_trip.id}."
-                ),
-                timeseries=None,
-            )
-            session.add(standby_departure_event)
-
-        return soc_event_end
-
-    else:
+    if available_charging_time <= timedelta(0):
         logger.debug(
             f"No opportunity charging event added after trip {previous_trip.id}"
         )
         return charge_start_soc
+
+    charging_duration, soc_charge_end, profile = _integrate_opportunity_charge(
+        charging_curve=vehicle.vehicle_type.charging_curve,
+        battery_capacity=vehicle.vehicle_type.battery_capacity,
+        start_soc=charge_start_soc,
+        charger_power=station.power_per_charger,
+        min_power=vehicle.vehicle_type.minimum_charging_power or 0.0,
+        timestep=timestep,
+        max_duration=available_charging_time,
+    )
+
+    if charging_duration <= timedelta(0):
+        logger.debug(
+            f"No opportunity charging event added after trip {previous_trip.id}: "
+            f"no charging possible at SoC {charge_start_soc}"
+        )
+        return charge_start_soc
+
+    logger.debug(f"Adding opportunity charging event after trip {previous_trip.id}")
+
+    # Events must start and end on full seconds (eflips-model warns otherwise and later code relies on it), so the
+    # event is padded to the next full second. The charging profile inside it stays exact.
+    padded_charging_duration = timedelta(
+        seconds=ceil(charging_duration.total_seconds())
+    )
+    if padded_charging_duration < available_charging_time:
+        # Charging finishes early, so we can place the event in the least occupied slot to reduce the peak number of
+        # chargers needed at this station.
+        event_duration = padded_charging_duration + terminus_deadtime
+        time_event_start = find_best_timeslot(
+            station,
+            previous_trip.arrival_time,
+            next_trip.departure_time,
+            event_duration,
+            session,
+        )
+        time_event_end = time_event_start + event_duration
+    else:
+        time_event_start = previous_trip.arrival_time
+        time_event_end = next_trip.departure_time
+    time_charge_start = time_event_start + terminus_deadtime / 2
+
+    timeseries = {
+        "time": [time_event_start.isoformat()]
+        + [(time_charge_start + offset).isoformat() for offset, _ in profile]
+        + [time_event_end.isoformat()],
+        "soc": [charge_start_soc] + [soc for _, soc in profile] + [soc_charge_end],
+    }
+
+    current_event = Event(
+        scenario_id=vehicle.scenario_id,
+        vehicle_type_id=vehicle.vehicle_type_id,
+        vehicle=vehicle,
+        station_id=station.id,
+        time_start=time_event_start,
+        time_end=time_event_end,
+        soc_start=charge_start_soc,
+        soc_end=soc_charge_end,
+        event_type=EventType.CHARGING_OPPORTUNITY,
+        description=f"Opportunity charging event after trip {previous_trip.id}.",
+        timeseries=timeseries,
+    )
+    session.add(current_event)
+
+    # If there is time between the previous trip's end and the charging event's start, add a STANDBY event
+    if time_event_start > previous_trip.arrival_time:
+        standby_event = Event(
+            scenario_id=vehicle.scenario_id,
+            vehicle_type_id=vehicle.vehicle_type_id,
+            vehicle=vehicle,
+            station_id=station.id,
+            time_start=previous_trip.arrival_time,
+            time_end=time_event_start,
+            soc_start=charge_start_soc,  # SoC is unchanged while in STANDBY
+            soc_end=charge_start_soc,
+            event_type=EventType.STANDBY,
+            description=f"Standby event before charging after trip {previous_trip.id}.",
+            timeseries=None,
+        )
+        session.add(standby_event)
+
+    # If there is time between the charging event's end and the next trip's start, add a STANDBY_DEPARTURE event
+    if time_event_end < next_trip.departure_time:
+        standby_departure_event = Event(
+            scenario_id=vehicle.scenario_id,
+            vehicle_type_id=vehicle.vehicle_type_id,
+            vehicle=vehicle,
+            station_id=station.id,
+            time_start=time_event_end,
+            time_end=next_trip.departure_time,
+            soc_start=soc_charge_end,  # SoC is unchanged while in STANDBY
+            soc_end=soc_charge_end,
+            event_type=EventType.STANDBY_DEPARTURE,
+            description=(
+                f"Standby departure event after charging, before trip {next_trip.id}."
+            ),
+            timeseries=None,
+        )
+        session.add(standby_departure_event)
+
+    return soc_charge_end
