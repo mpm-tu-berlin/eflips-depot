@@ -245,7 +245,19 @@ class VehicleFilter:
 
         elif globalConstants["depot"]["consumption_calc_mode"] == "soc_given":
             if self.trip.charge_on_track:
-                result = round(vehicle.battery.soc, 5) >= self.trip.minimal_soc
+                # minimal_soc is an absolute level reached when starting at start_soc, so the
+                # vehicle needs to cover the drawdown before the first recharge
+                required_soc = self.trip.start_soc - self.trip.minimal_soc
+
+                # If the vehicle is fully charged and still cannot cover the drawdown,
+                # dispatch anyway and warn the user
+                if abs(vehicle.battery.soc - 1) < 1e-6 and required_soc > 1:
+                    warnings.warn(
+                        f"Vehicle {vehicle.ID} is fully charged but the required energy for the trip is higher than the fully charged energy. Dispatching anyway."
+                    )
+                    return True
+
+                result = round(vehicle.battery.soc, 5) >= round(required_soc, 5)
             else:
                 required_energy = (
                     self.trip.start_soc - self.trip.end_soc
