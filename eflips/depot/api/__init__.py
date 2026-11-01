@@ -644,7 +644,7 @@ def apply_even_smart_charging(
 def shrink_to_peak_usage(
     scenario: Union[Scenario, int, Any],
     database_url: Optional[str] = None,
-    resolution: timedelta = timedelta(minutes=5),
+    resolution: timedelta = timedelta(minutes=1),
 ) -> None:
     """Shrink Areas and electrified terminus Stations to their peak observed usage.
 
@@ -671,7 +671,7 @@ def shrink_to_peak_usage(
     :param database_url: Optional database URL. Falls back to ``DATABASE_URL``
         if the scenario is not given as a :class:`Scenario` object.
     :param resolution: Time-block resolution used to detect concurrent events.
-        Default 5 minutes.
+        Default 1 minute.
 
     :raises RuntimeError: If an Area or Station has zero peak concurrency but
         the database still holds matching events — this indicates an
