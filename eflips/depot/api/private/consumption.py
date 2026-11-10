@@ -695,6 +695,11 @@ def extract_trip_information(
     knots are inserted between stops more than 1 km apart so that intermediate
     elevation changes are captured. The returned object has already had
     :meth:`ConsumptionInformation.calculate` called on it.
+
+    The level of loading a consumption LUT is read at is the trip's own
+    :attr:`eflips.model.Trip.loaded_mass` over the vehicle type's payload
+    (allowed minus empty mass) when the trip has one; otherwise it is
+    ``passenger_mass * passenger_count`` over the payload.
     """
 
     with create_session(scenario) as (session, scenario):
@@ -766,7 +771,20 @@ def extract_trip_information(
                 trip.rotation.vehicle_type.allowed_mass
                 - trip.rotation.vehicle_type.empty_mass
             )
-            level_of_loading = (passenger_mass * passenger_count) / full_payload
+            if trip.loaded_mass is not None:
+                # The trip says what it carries (freight, or a counted load): that
+                # takes precedence over the scenario-wide passenger load.
+                level_of_loading = trip.loaded_mass / full_payload
+                if level_of_loading > 1:
+                    warnings.warn(
+                        f"Trip {trip.id} carries {trip.loaded_mass} kg, more than the "
+                        f"payload of {full_payload} kg of vehicle type "
+                        f"{trip.rotation.vehicle_type}. Using the full payload.",
+                        ConsistencyWarning,
+                    )
+                    level_of_loading = 1.0
+            else:
+                level_of_loading = (passenger_mass * passenger_count) / full_payload
 
             segments = _build_trip_segments(trip, level_of_loading, t_amb)
             info = ConsumptionInformation(

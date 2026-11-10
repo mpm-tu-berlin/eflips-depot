@@ -448,6 +448,38 @@ class TestConsumptionInformation(TestHelpers):
         total_kwh = sum(s.consumption_kwh for s in info.segments)
         assert total_kwh > 0
 
+    def test_extract_trip_information_uses_loaded_mass(
+        self, session, scenario, trip_with_lut
+    ):
+        """A trip's own loaded_mass sets the level of loading, not the passenger load."""
+        payload = (
+            18000 - 12000
+        )  # allowed minus empty mass of the fixture's vehicle type
+
+        default = extract_trip_information(trip_with_lut.id, scenario)
+        assert all(
+            s.level_of_loading == pytest.approx(68 * 17.6 / payload)
+            for s in default.segments
+        )
+
+        trip_with_lut.loaded_mass = 3000.0
+        session.flush()
+        half = extract_trip_information(trip_with_lut.id, scenario)
+        assert all(s.level_of_loading == pytest.approx(0.5) for s in half.segments)
+
+        # An empty trip is empty, whatever the passenger count says.
+        trip_with_lut.loaded_mass = 0.0
+        session.flush()
+        empty = extract_trip_information(trip_with_lut.id, scenario, passenger_count=50)
+        assert all(s.level_of_loading == 0 for s in empty.segments)
+
+        # More than the payload is clamped to the full payload, with a warning.
+        trip_with_lut.loaded_mass = 9000.0
+        session.flush()
+        with pytest.warns(ConsistencyWarning, match="more than the payload"):
+            over = extract_trip_information(trip_with_lut.id, scenario)
+        assert all(s.level_of_loading == 1.0 for s in over.segments)
+
     def test_extract_trip_information_without_lut(
         self, session, scenario, trip_without_lut
     ):
